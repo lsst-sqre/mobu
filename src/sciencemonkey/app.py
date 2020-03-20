@@ -3,6 +3,7 @@
 __all__ = ["create_app"]
 
 from aiohttp import web
+from aiojobs.aiohttp import setup
 from safir.http import init_http_session
 from safir.logging import configure_logging
 from safir.metadata import setup_metadata
@@ -30,6 +31,7 @@ def create_app() -> web.Application:
 
     sub_app = web.Application()
     setup_middleware(sub_app)
+    setup(sub_app)
     sub_app.add_routes(init_external_routes())
     root_app.add_subapp(f'/{root_app["safir/config"].name}', sub_app)
 
