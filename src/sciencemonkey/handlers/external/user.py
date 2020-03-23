@@ -8,11 +8,13 @@ __all__ = [
 ]
 
 from aiohttp import web
-from aiojobs.aiohttp import get_scheduler, spawn
+from aiojobs.aiohttp import spawn
 
 from sciencemonkey.behavior import Idle
 from sciencemonkey.handlers import routes
 from sciencemonkey.user import User
+
+active_users = dict()
 
 
 @routes.post("/user")
@@ -32,8 +34,11 @@ async def post_user(request: web.Request) -> web.Response:
 
     u = User(username, uidnumber)
     b = Idle(u)
+
+    active_users[username] = b
+    b.job = await spawn(request, b.run())
+
     data = {"user": username}
-    await spawn(request, b.run())
     return web.json_response(data)
 
 
@@ -45,8 +50,8 @@ async def get_users(request: web.Request) -> web.Response:
     """
     data = []
 
-    for b in get_scheduler(request):
-        data.append(str(b))
+    for username, behavior in active_users.items():
+        data.append(username)
 
     return web.json_response(data)
 
@@ -58,7 +63,12 @@ async def get_user(request: web.Request) -> web.Response:
     Get info on a particular user.
     """
     username = request.match_info["name"]
-    data = {"user": username}
+
+    if username not in active_users:
+        raise web.HTTPNotFound()
+
+    behavior = active_users[username]
+    data = {"user": username, "behavior": str(behavior)}
     return web.json_response(data)
 
 
@@ -69,5 +79,9 @@ async def delete_user(request: web.Request) -> web.Response:
     Delete a particular user, which will cancel all testing it is doing.
     """
     username = request.match_info["name"]
-    data = {"user": username}
-    return web.json_response(data)
+
+    behavior = active_users[username]
+    await behavior.job.close()
+
+    del active_users[username]
+    return web.HTTPOk()
