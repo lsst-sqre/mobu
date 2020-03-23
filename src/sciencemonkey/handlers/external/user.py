@@ -24,16 +24,15 @@ async def post_user(request: web.Request) -> web.Response:
     uid, and other related fields that will be used in the ticket.
     """
     body = await request.json()
-    logger = request.config_dict["safir/logger"]
+    logger = request["safir/logger"]
+    logger.info(body)
 
     username = body["username"]
     uidnumber = body["uidnumber"]
 
     u = User(username, uidnumber)
     b = Idle(u)
-    # logger.info(u)
     data = {"user": username}
-    # logger.info(data)
     await spawn(request, b.run())
     return web.json_response(data)
 
