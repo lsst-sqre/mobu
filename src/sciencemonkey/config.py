@@ -10,6 +10,14 @@ from dataclasses import dataclass
 class Configuration:
     """Configuration for sciencemonkey."""
 
+    private_key_path: str = os.getenv(
+        "PRIVATE_KEY_PATH", "/etc/keys/signing_key.pem"
+    )
+    """The private key used for creating JWT tokens.
+
+    Set with the ``PRIVATE_KEY_PATH`` environment variable.
+    """
+
     name: str = os.getenv("SAFIR_NAME", "sciencemonkey")
     """The application's name, which doubles as the root HTTP endpoint path.
 

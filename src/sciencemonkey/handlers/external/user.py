@@ -80,8 +80,9 @@ async def delete_user(request: web.Request) -> web.Response:
     """
     username = request.match_info["name"]
 
-    behavior = active_users[username]
-    await behavior.job.close()
+    if username in active_users:
+        behavior = active_users[username]
+        await behavior.job.close()
+        del active_users[username]
 
-    del active_users[username]
     return web.HTTPOk()
