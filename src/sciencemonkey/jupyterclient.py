@@ -1,0 +1,133 @@
+"""AsyncIO client for communicating with Jupyter.
+
+Allows the caller to login to the hub, spawn lab
+containers, and then run jupyter kernels remotely."""
+
+__all__ = [
+    "JupyterClient",
+]
+
+import random
+import string
+from dataclasses import dataclass
+
+import structlog
+from aiohttp import ClientSession
+
+from sciencemonkey.user import User
+
+
+@dataclass
+class JupyterClient:
+    user: User
+    session: ClientSession
+    headers: dict()
+    xsrftoken: str
+    jupyter_url: str
+
+    def __init__(self, user):
+        self.user = user
+        self.log = structlog.get_logger(__name__)
+
+        self.jupyter_url = "https://lsst-lsp-stable.ncsa.illinois.edu/nb/"
+        self.xsrftoken = "".join(
+            random.choices(string.ascii_uppercase + string.digits, k=16)
+        )
+
+        self.headers = {
+            "Authorization": "Bearer " + user.token,
+            "x-xsrftoken": self.xsrftoken,
+        }
+
+        self.session = ClientSession(headers=self.headers)
+        self.session.cookie_jar.update_cookies({"_xsrf": self.xsrftoken})
+
+    async def hub_login(self):
+        async with self.session.get(self.jupyter_url + "hub/login") as r:
+            if r.status != 200:
+                self.log.error(f"Error {r.status} from {r.url}")
+
+            home_url = self.jupyter_url + "hub/home"
+            if str(r.url) != home_url:
+                self.log.error(
+                    f"Redirected to {r.url} but expected {home_url}"
+                )
+
+            for cookie in self.session.cookie_jar:
+                self.log.info(cookie)
+
+    async def ensure_lab(self):
+        self.log.info("Ensure lab")
+        running = await self.is_lab_running()
+        if running:
+            await self.lab_login()
+        else:
+            await self.spawn_lab()
+
+    async def lab_login(self):
+        self.log.info("Logging into lab")
+        lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
+        async with self.session.get(lab_url) as r:
+            self.log.info(r)
+            self.log.info(r.url)
+            self.log.info(r.status)
+
+            for cookie in self.session.cookie_jar:
+                self.log.info(cookie)
+
+    async def is_lab_running(self):
+        self.log.info("Is lab running?")
+        hub_url = self.jupyter_url + "hub"
+        async with self.session.get(hub_url) as r:
+            if r.status != 200:
+                self.log.error(f"Error {r.status} from {r.url}")
+
+            spawn_url = self.jupyter_url + "hub/spawn"
+            self.log.info(f"Going to {hub_url} redirected to {r.url}")
+            if str(r.url) == spawn_url:
+                return False
+
+        return True
+
+    async def spawn_lab(self):
+        body = {
+            "kernel_image": "lsstsqre/sciplat-lab:recommended",
+            "image_tag": "latest",
+            "size": "small",
+        }
+
+        spawn_url = self.jupyter_url + "hub/spawn"
+        async with self.session.post(
+            spawn_url, data=body, allow_redirects=False
+        ) as r:
+            if r.status != 302:
+                raise Exception(f"Error {r.status} from {r.url}")
+
+            progress_url = r.url
+            self.log.info(f"Watching progress url {progress_url}")
+
+        while True:
+            async with self.session.get(
+                progress_url, allow_redirects=False
+            ) as r:
+                if r.status == 302 and r.url != progress_url:
+                    self.log.info(f"Lab spawned, redirected to {r.url}")
+                    return
+
+    async def delete_lab(self):
+        headers = {"Referer": self.jupyter_url + "hub/home"}
+
+        server_url = (
+            self.jupyter_url + f"hub/api/users/{self.user.username}/server"
+        )
+        self.log.info(f"Deleting lab for {self.user.username} at {server_url}")
+
+        async with self.session.delete(server_url, headers=headers) as r:
+            if r.status not in [200, 202]:
+                self.log.error(f"Error {r.status} from {r.url}")
+
+    async def create_kernel(self):
+        pass
+
+    async def run_python(self):
+        pass
