@@ -7,9 +7,11 @@ __all__ = [
     "JupyterClient",
 ]
 
+import asyncio
 import random
 import string
 from dataclasses import dataclass
+from uuid import uuid4
 
 import structlog
 from aiohttp import ClientSession
@@ -98,7 +100,7 @@ class JupyterClient:
 
         spawn_url = self.jupyter_url + "hub/spawn"
         async with self.session.post(
-            spawn_url, data=body, allow_redirects=False
+            spawn_url, json=body, allow_redirects=False
         ) as r:
             if r.status != 302:
                 raise Exception(f"Error {r.status} from {r.url}")
@@ -113,6 +115,9 @@ class JupyterClient:
                 if r.status == 302 and r.url != progress_url:
                     self.log.info(f"Lab spawned, redirected to {r.url}")
                     return
+                else:
+                    self.log.info("Still waiting for lab to spawn")
+                    await asyncio.sleep(15)
 
     async def delete_lab(self):
         headers = {"Referer": self.jupyter_url + "hub/home"}
@@ -126,8 +131,58 @@ class JupyterClient:
             if r.status not in [200, 202]:
                 self.log.error(f"Error {r.status} from {r.url}")
 
-    async def create_kernel(self):
-        pass
+    async def create_kernel(self, kernel_name="python"):
+        kernel_url = (
+            self.jupyter_url + f"user/{self.user.username}/api/kernels"
+        )
+        body = {"name": kernel_name}
 
-    async def run_python(self):
-        pass
+        async with self.session.post(kernel_url, json=body) as r:
+            if r.status != 201:
+                raise Exception(f"Error {r.status} from {r.url}")
+
+            response = await r.json()
+            return response["id"]
+
+    async def run_python(self, kernel_id, code):
+        kernel_url = (
+            self.jupyter_url
+            + f"user/{self.user.username}/api/kernels/{kernel_id}/channels"
+        )
+
+        msg_id = uuid4().hex
+
+        msg = {
+            "header": {
+                "username": "",
+                "version": "5.0",
+                "session": "",
+                "msg_id": msg_id,
+                "msg_type": "execute_request",
+            },
+            "parent_header": {},
+            "channel": "shell",
+            "content": {
+                "code": code,
+                "silent": False,
+                "store_history": False,
+                "user_expressions": {},
+                "allow_stdin": False,
+            },
+            "metadata": {},
+            "buffers": {},
+        }
+
+        async with self.session.ws_connect(kernel_url) as ws:
+            await ws.send_json(msg)
+
+            while True:
+                r = await ws.receive_json()
+                msg_type = r["msg_type"]
+                if msg_type == "error":
+                    raise Exception(f"Error running python {r}")
+                elif (
+                    msg_type == "stream"
+                    and msg_id == r["parent_header"]["msg_id"]
+                ):
+                    return r["content"]["text"]

@@ -10,7 +10,7 @@ __all__ = [
 from aiohttp import web
 from aiojobs.aiohttp import spawn
 
-from sciencemonkey.behavior import JupyterLoginLoop
+from sciencemonkey.behavior import JupyterPythonLoop
 from sciencemonkey.handlers import routes
 from sciencemonkey.user import User
 
@@ -33,7 +33,7 @@ async def post_user(request: web.Request) -> web.Response:
     uidnumber = body["uidnumber"]
 
     u = User(username, uidnumber)
-    b = JupyterLoginLoop(u)
+    b = JupyterPythonLoop(u)
 
     active_users[username] = b
     b.job = await spawn(request, b.run())

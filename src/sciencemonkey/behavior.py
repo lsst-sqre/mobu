@@ -40,3 +40,22 @@ class JupyterLoginLoop:
             await asyncio.sleep(60)
             await client.delete_lab()
             await asyncio.sleep(60)
+
+
+@dataclass
+class JupyterPythonLoop:
+    user: User
+
+    async def run(self):
+        logger.info("Starting JupyterPythonLoop")
+
+        client = JupyterClient(self.user)
+        await client.hub_login()
+        await client.ensure_lab()
+
+        kernel = await client.create_kernel()
+
+        while True:
+            reply = await client.run_python(kernel, "print(2+2)")
+            logger.info(reply)
+            await asyncio.sleep(60)
