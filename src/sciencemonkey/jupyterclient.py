@@ -99,6 +99,8 @@ class JupyterClient:
         }
 
         spawn_url = self.jupyter_url + "hub/spawn"
+        lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
+
         async with self.session.post(
             spawn_url, json=body, allow_redirects=False
         ) as r:
@@ -109,14 +111,12 @@ class JupyterClient:
             self.log.info(f"Watching progress url {progress_url}")
 
         while True:
-            async with self.session.get(
-                progress_url, allow_redirects=False
-            ) as r:
-                if r.status == 302 and r.url != progress_url:
+            async with self.session.get(progress_url) as r:
+                if str(r.url) == lab_url:
                     self.log.info(f"Lab spawned, redirected to {r.url}")
                     return
                 else:
-                    self.log.info("Still waiting for lab to spawn")
+                    self.log.info(f"Still waiting for lab to spawn {r}")
                     await asyncio.sleep(15)
 
     async def delete_lab(self):
@@ -128,7 +128,7 @@ class JupyterClient:
         self.log.info(f"Deleting lab for {self.user.username} at {server_url}")
 
         async with self.session.delete(server_url, headers=headers) as r:
-            if r.status not in [200, 202]:
+            if r.status not in [200, 202, 204]:
                 self.log.error(f"Error {r.status} from {r.url}")
 
     async def create_kernel(self, kernel_name="python"):
