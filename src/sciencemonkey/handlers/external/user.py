@@ -10,7 +10,7 @@ __all__ = [
 from aiohttp import web
 from aiojobs.aiohttp import spawn
 
-from sciencemonkey.behavior import JupyterPythonLoop
+from sciencemonkey.behavior import Idle, JupyterLoginLoop, JupyterPythonLoop
 from sciencemonkey.handlers import routes
 from sciencemonkey.user import User
 
@@ -31,9 +31,19 @@ async def post_user(request: web.Request) -> web.Response:
 
     username = body["username"]
     uidnumber = body["uidnumber"]
+    behavior = body.get("behavior", None)
 
     u = User(username, uidnumber)
-    b = JupyterPythonLoop(u)
+
+    if behavior == "Idle":
+        b = Idle(u)
+    elif behavior == "JupyterLoginLoop":
+        b = JupyterLoginLoop(u)
+    elif behavior == "JupyterPythonLoop":
+        b = JupyterPythonLoop(u)
+    else:
+        logger.error(f"Unknown behavior {behavior}")
+        raise web.HTTPBadRequest()
 
     active_users[username] = b
     b.job = await spawn(request, b.run())
