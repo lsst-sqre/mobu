@@ -23,11 +23,11 @@ from sciencemonkey.user import User
 class JupyterClient:
     user: User
     session: ClientSession
-    headers: dict()
+    headers: dict
     xsrftoken: str
     jupyter_url: str
 
-    def __init__(self, user):
+    def __init__(self, user: User):
         self.user = user
         self.log = structlog.get_logger(__name__)
 
@@ -44,7 +44,7 @@ class JupyterClient:
         self.session = ClientSession(headers=self.headers)
         self.session.cookie_jar.update_cookies({"_xsrf": self.xsrftoken})
 
-    async def hub_login(self):
+    async def hub_login(self) -> None:
         async with self.session.get(self.jupyter_url + "hub/login") as r:
             if r.status != 200:
                 self.log.error(f"Error {r.status} from {r.url}")
@@ -58,7 +58,7 @@ class JupyterClient:
             for cookie in self.session.cookie_jar:
                 self.log.info(cookie)
 
-    async def ensure_lab(self):
+    async def ensure_lab(self) -> None:
         self.log.info("Ensure lab")
         running = await self.is_lab_running()
         if running:
@@ -66,7 +66,7 @@ class JupyterClient:
         else:
             await self.spawn_lab()
 
-    async def lab_login(self):
+    async def lab_login(self) -> None:
         self.log.info("Logging into lab")
         lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
         async with self.session.get(lab_url) as r:
@@ -77,7 +77,7 @@ class JupyterClient:
             for cookie in self.session.cookie_jar:
                 self.log.info(cookie)
 
-    async def is_lab_running(self):
+    async def is_lab_running(self) -> bool:
         self.log.info("Is lab running?")
         hub_url = self.jupyter_url + "hub"
         async with self.session.get(hub_url) as r:
@@ -91,7 +91,7 @@ class JupyterClient:
 
         return True
 
-    async def spawn_lab(self):
+    async def spawn_lab(self) -> None:
         body = {
             "kernel_image": "lsstsqre/sciplat-lab:recommended",
             "image_tag": "latest",
@@ -119,7 +119,7 @@ class JupyterClient:
                     self.log.info(f"Still waiting for lab to spawn {r}")
                     await asyncio.sleep(15)
 
-    async def delete_lab(self):
+    async def delete_lab(self) -> None:
         headers = {"Referer": self.jupyter_url + "hub/home"}
 
         server_url = (
@@ -131,7 +131,7 @@ class JupyterClient:
             if r.status not in [200, 202, 204]:
                 self.log.error(f"Error {r.status} from {r.url}")
 
-    async def create_kernel(self, kernel_name="python"):
+    async def create_kernel(self, kernel_name: str = "python") -> str:
         kernel_url = (
             self.jupyter_url + f"user/{self.user.username}/api/kernels"
         )
@@ -144,7 +144,7 @@ class JupyterClient:
             response = await r.json()
             return response["id"]
 
-    async def run_python(self, kernel_id, code):
+    async def run_python(self, kernel_id: str, code: str) -> str:
         kernel_url = (
             self.jupyter_url
             + f"user/{self.user.username}/api/kernels/{kernel_id}/channels"

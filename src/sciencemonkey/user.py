@@ -20,12 +20,12 @@ class User:
     uidnumber: int
     token: str
 
-    def __init__(self, username, uidnumber):
+    def __init__(self, username: str, uidnumber: int):
         self.username = username
         self.uidnumber = uidnumber
         self.generate_token()
 
-    def generate_token(self):
+    def generate_token(self) -> None:
         with open("static/jwt-template.json", "r") as f:
             token_template = Template(f.read())
 

@@ -19,7 +19,7 @@ logger = structlog.get_logger(__name__)
 class Idle:
     user: User
 
-    async def run(self):
+    async def run(self) -> None:
         while True:
             logger.info("Idling...")
             await asyncio.sleep(5)
@@ -29,7 +29,7 @@ class Idle:
 class JupyterLoginLoop:
     user: User
 
-    async def run(self):
+    async def run(self) -> None:
         logger.info("Starting JupyterLoginLoop")
 
         client = JupyterClient(self.user)
@@ -46,7 +46,7 @@ class JupyterLoginLoop:
 class JupyterPythonLoop:
     user: User
 
-    async def run(self):
+    async def run(self) -> None:
         logger.info("Starting JupyterPythonLoop")
 
         client = JupyterClient(self.user)
