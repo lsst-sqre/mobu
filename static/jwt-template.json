@@ -1,0 +1,55 @@
+{
+  "iss": "https://lsst-lsp-stable.ncsa.illinois.edu",
+  "sub": "http://cilogon.org/serverT/users/1927768",
+  "aud": "https://lsst-lsp-stable.ncsa.illinois.edu",
+  "auth_time": "$issue_time",
+  "exp": $expiration_time,
+  "iat": $issue_time,
+  "email": "${username}@lsst.org",
+  "cert_subject_dn": "/DC=org/DC=cilogon/C=US/O=National Center for Supercomputing Applications/CN=Christine Banek T1927773",
+  "idp": "https://idp.ncsa.illinois.edu/idp/shibboleth",
+  "idp_name": "National Center for Supercomputing Applications",
+  "eppn": "${username}@ncsa.illinois.edu",
+  "eptid": "https://idp.ncsa.illinois.edu/idp/shibboleth!https://cilogon.org/shibboleth!tR6W2m39Dr9BIi13DKcqXy8kuKo=",
+  "name": "$username",
+  "acr": "https://refeds.org/profile/mfa",
+  "uid": "$username",
+  "voPersonExternalID": "${username}@ncsa.illinois.edu",
+  "uidNumber": "$uidnumber",
+  "isMemberOf": [
+    {
+      "name": "lsst_users",
+      "id": 1363
+    },
+    {
+      "name": "lsst_int_lspdev",
+      "id": 1618
+    },
+    {
+      "name": "all_lsst",
+      "id": 1616
+    },
+    {
+      "name": "all_hpc_user_spo",
+      "id": 1098
+    },
+    {
+      "name": "lsst_data",
+      "id": 1367
+    },
+    {
+      "name": "prj_cerb_users",
+      "id": 1301
+    },
+    {
+      "name": "all_users",
+      "id": 1002
+    }
+  ],
+  "scope": "exec:admin read:workspace/user write:workspace/user exec:user read:tap read:image exec:portal exec:notebook read:workspace",
+  "jti": "oauth2_proxy-a7efdff96fd6e3184a0bfdea909e9e2c",
+  "act": {
+    "aud": "cilogon:/client_id/7ae419868b97e81644ced9886ffbcec",
+    "iss": "https://cilogon.org"
+  }
+}

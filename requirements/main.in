@@ -8,6 +8,9 @@
 safir
 aiohttp
 aiodns
+aiojobs
 cchardet
-importlib_metadata
 click
+cryptography
+importlib_metadata
+pyjwt
