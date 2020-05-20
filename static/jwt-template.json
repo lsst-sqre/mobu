@@ -1,7 +1,7 @@
 {
-  "iss": "https://lsst-lsp-stable.ncsa.illinois.edu",
+  "iss": "${environment_url}",
   "sub": "http://cilogon.org/serverT/users/1927768",
-  "aud": "https://lsst-lsp-stable.ncsa.illinois.edu",
+  "aud": "${environment_url}",
   "auth_time": "$issue_time",
   "exp": $expiration_time,
   "iat": $issue_time,

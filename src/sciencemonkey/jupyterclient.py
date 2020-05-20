@@ -16,6 +16,7 @@ from uuid import uuid4
 import structlog
 from aiohttp import ClientSession
 
+from sciencemonkey.config import Configuration
 from sciencemonkey.user import User
 
 
@@ -31,7 +32,7 @@ class JupyterClient:
         self.user = user
         self.log = structlog.get_logger(__name__)
 
-        self.jupyter_url = "https://lsst-lsp-stable.ncsa.illinois.edu/nb/"
+        self.jupyter_url = Configuration.environment_url + "/nb/"
         self.xsrftoken = "".join(
             random.choices(string.ascii_uppercase + string.digits, k=16)
         )
@@ -101,8 +102,12 @@ class JupyterClient:
         spawn_url = self.jupyter_url + "hub/spawn"
         lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
 
+        # DM-23864: Do a get on the spawn URL even if I don't have to.
+        async with self.session.get(spawn_url) as r:
+            await r.text()
+
         async with self.session.post(
-            spawn_url, json=body, allow_redirects=False
+            spawn_url, data=body, allow_redirects=False
         ) as r:
             if r.status != 302:
                 raise Exception(f"Error {r.status} from {r.url}")
