@@ -35,6 +35,7 @@ class User:
         current_time = int(time.time())
 
         token_data = {
+            "environment_url": Configuration.environment_url,
             "username": self.username,
             "uidnumber": self.uidnumber,
             "issue_time": current_time,
