@@ -1,7 +1,9 @@
-"""Behaviors for sciencemonkey users."""
+"""Business logic for sciencemonkeys."""
 
 __all__ = [
-    "Idle",
+    "Business",
+    "JupyterLoginLoop",
+    "JupyterPythonLoop",
 ]
 
 import asyncio
@@ -16,7 +18,7 @@ logger = structlog.get_logger(__name__)
 
 
 @dataclass
-class Idle:
+class Business:
     user: User
 
     async def run(self) -> None:
@@ -26,9 +28,7 @@ class Idle:
 
 
 @dataclass
-class JupyterLoginLoop:
-    user: User
-
+class JupyterLoginLoop(Business):
     async def run(self) -> None:
         logger.info("Starting JupyterLoginLoop")
 
@@ -43,9 +43,7 @@ class JupyterLoginLoop:
 
 
 @dataclass
-class JupyterPythonLoop:
-    user: User
-
+class JupyterPythonLoop(Business):
     async def run(self) -> None:
         logger.info("Starting JupyterPythonLoop")
 

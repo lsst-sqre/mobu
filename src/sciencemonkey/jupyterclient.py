@@ -11,6 +11,7 @@ import asyncio
 import random
 import string
 from dataclasses import dataclass
+from http.cookies import BaseCookie
 from uuid import uuid4
 
 import structlog
@@ -43,7 +44,9 @@ class JupyterClient:
         }
 
         self.session = ClientSession(headers=self.headers)
-        self.session.cookie_jar.update_cookies({"_xsrf": self.xsrftoken})
+        self.session.cookie_jar.update_cookies(
+            BaseCookie({"_xsrf": self.xsrftoken})
+        )
 
     async def hub_login(self) -> None:
         async with self.session.get(self.jupyter_url + "hub/login") as r:

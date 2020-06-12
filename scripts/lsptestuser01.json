@@ -1,5 +1,5 @@
 {
   "username": "lsptestuser01",
   "uidnumber": 60181,
-  "behavior": "JupyterLoginLoop"
+  "business": "JupyterLoginLoop"
 }

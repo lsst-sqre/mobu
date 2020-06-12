@@ -8,13 +8,9 @@ __all__ = [
 ]
 
 from aiohttp import web
-from aiojobs.aiohttp import spawn
 
-from sciencemonkey.behavior import Idle, JupyterLoginLoop, JupyterPythonLoop
 from sciencemonkey.handlers import routes
-from sciencemonkey.user import User
-
-active_users = dict()
+from sciencemonkey.monkeybusinessfactory import MonkeyBusinessFactory
 
 
 @routes.post("/user")
@@ -28,27 +24,10 @@ async def post_user(request: web.Request) -> web.Response:
     body = await request.json()
     logger = request["safir/logger"]
     logger.info(body)
-
-    username = body["username"]
-    uidnumber = body["uidnumber"]
-    behavior = body.get("behavior", None)
-
-    u = User(username, uidnumber)
-
-    if behavior == "Idle":
-        b = Idle(u)
-    elif behavior == "JupyterLoginLoop":
-        b = JupyterLoginLoop(u)
-    elif behavior == "JupyterPythonLoop":
-        b = JupyterPythonLoop(u)
-    else:
-        logger.error(f"Unknown behavior {behavior}")
-        raise web.HTTPBadRequest()
-
-    active_users[username] = b
-    b.job = await spawn(request, b.run())
-
-    data = {"user": username}
+    manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
+    monkey = MonkeyBusinessFactory.create(body)
+    await manager.manage_monkey(monkey)
+    data = {"user": monkey.user.username}
     return web.json_response(data)
 
 
@@ -59,10 +38,9 @@ async def get_users(request: web.Request) -> web.Response:
     Get a list of all the users currently used for load testing.
     """
     data = []
-
-    for username, behavior in active_users.items():
+    manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
+    for username, monkey in manager.monkeys:
         data.append(username)
-
     return web.json_response(data)
 
 
@@ -73,12 +51,11 @@ async def get_user(request: web.Request) -> web.Response:
     Get info on a particular user.
     """
     username = request.match_info["name"]
-
-    if username not in active_users:
+    manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
+    if username not in manager.monkeys:
         raise web.HTTPNotFound()
-
-    behavior = active_users[username]
-    data = {"user": username, "behavior": str(behavior)}
+    monkey = manager.monkeys[username]
+    data = {"user": username, "business": str(monkey)}
     return web.json_response(data)
 
 
@@ -89,10 +66,6 @@ async def delete_user(request: web.Request) -> web.Response:
     Delete a particular user, which will cancel all testing it is doing.
     """
     username = request.match_info["name"]
-
-    if username in active_users:
-        behavior = active_users[username]
-        await behavior.job.close()
-        del active_users[username]
-
+    manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
+    manager.release_monkey(username)
     return web.HTTPOk()
