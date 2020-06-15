@@ -37,11 +37,8 @@ async def get_users(request: web.Request) -> web.Response:
 
     Get a list of all the users currently used for load testing.
     """
-    data = []
     manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
-    for username, monkey in manager.monkeys:
-        data.append(username)
-    return web.json_response(data)
+    return web.json_response(manager.list_monkeys())
 
 
 @routes.get("/user/{name}")
@@ -52,11 +49,12 @@ async def get_user(request: web.Request) -> web.Response:
     """
     username = request.match_info["name"]
     manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
-    if username not in manager.monkeys:
+
+    try:
+        monkey = manager.fetch_monkey(username)
+        return web.json_response(monkey)
+    except KeyError:
         raise web.HTTPNotFound()
-    monkey = manager.monkeys[username]
-    data = {"user": username, "business": str(monkey)}
-    return web.json_response(data)
 
 
 @routes.delete("/user/{name}")
@@ -67,5 +65,5 @@ async def delete_user(request: web.Request) -> web.Response:
     """
     username = request.match_info["name"]
     manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
-    manager.release_monkey(username)
+    await manager.release_monkey(username)
     return web.HTTPOk()
