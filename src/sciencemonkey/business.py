@@ -29,10 +29,21 @@ class Business:
 
     def get_logger(self, name: str) -> BoundLoggerLazyProxy:
         self._logfile = NamedTemporaryFile()
+
+        formatter = logging.Formatter(
+            fmt="%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+        )
         logger = logging.getLogger(self.user.username)
         logger.setLevel(logging.INFO)
-        logger.addHandler(logging.FileHandler(self._logfile.name))
-        logger.addHandler(logging.StreamHandler(stream=sys.stdout))
+
+        fileHandler = logging.FileHandler(self._logfile.name)
+        fileHandler.setFormatter(formatter)
+
+        streamHandler = logging.StreamHandler(stream=sys.stdout)
+        streamHandler.setFormatter(formatter)
+
+        logger.addHandler(fileHandler)
+        logger.addHandler(streamHandler)
         logger.info(f"Starting new file logger {self._logfile.name}")
         return structlog.wrap_logger(logger)
 
