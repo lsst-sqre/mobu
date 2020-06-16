@@ -7,6 +7,8 @@ __all__ = [
     "delete_user",
 ]
 
+from datetime import datetime
+
 from aiohttp import web
 
 from sciencemonkey.handlers import routes
@@ -53,6 +55,24 @@ async def get_user(request: web.Request) -> web.Response:
     try:
         monkey = manager.fetch_monkey(username)
         return web.json_response(monkey)
+    except KeyError:
+        raise web.HTTPNotFound()
+
+
+@routes.get("/user/{name}/log")
+async def get_log(request: web.Request) -> web.Response:
+    """GET /user/{name}/log
+
+    Retrieve the log for a particular user (and only that log).
+    """
+    username = request.match_info["name"]
+    manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
+    download_name = "-".join([username, str(datetime.now())])
+    headers = {"Content-Disposition": f"filename={download_name}"}
+
+    try:
+        monkey = manager.fetch_monkey(username)
+        return web.FileResponse(monkey[0].logfile(), headers=headers)
     except KeyError:
         raise web.HTTPNotFound()
 

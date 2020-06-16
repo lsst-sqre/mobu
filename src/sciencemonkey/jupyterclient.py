@@ -14,8 +14,8 @@ from dataclasses import dataclass
 from http.cookies import BaseCookie
 from uuid import uuid4
 
-import structlog
 from aiohttp import ClientSession
+from structlog._config import BoundLoggerLazyProxy
 
 from sciencemonkey.config import Configuration
 from sciencemonkey.user import User
@@ -23,16 +23,16 @@ from sciencemonkey.user import User
 
 @dataclass
 class JupyterClient:
+    log: BoundLoggerLazyProxy
     user: User
     session: ClientSession
     headers: dict
     xsrftoken: str
     jupyter_url: str
 
-    def __init__(self, user: User):
+    def __init__(self, user: User, log: BoundLoggerLazyProxy):
         self.user = user
-        self.log = structlog.get_logger(__name__)
-
+        self.log = log
         self.jupyter_url = Configuration.environment_url + "/nb/"
         self.xsrftoken = "".join(
             random.choices(string.ascii_uppercase + string.digits, k=16)
