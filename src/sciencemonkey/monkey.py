@@ -4,6 +4,7 @@ __all__ = [
     "Monkey",
 ]
 
+import asyncio
 import logging
 import sys
 from dataclasses import dataclass
@@ -66,6 +67,7 @@ class Monkey:
                 self.log.exception(
                     "Exception thrown while doing monkey business."
                 )
+                await asyncio.sleep(60)
             run = self.restart
 
     async def stop(self) -> None:
