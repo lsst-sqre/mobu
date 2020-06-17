@@ -25,11 +25,13 @@ class Monkey:
     log: BoundLoggerLazyProxy
     business: Business
     restart: bool
+    state: str
 
     _job: Job
     _logfile: NamedTemporaryFile
 
     def __init__(self, user: User):
+        self.state = "IDLE"
         self.user = user
 
         self._logfile = NamedTemporaryFile()
@@ -62,13 +64,16 @@ class Monkey:
         run = True
         while run:
             try:
+                self.state = "RUNNING"
                 await self.business.run()
+                self.state = "FINISHED"
             except Exception:
                 self.log.exception(
                     "Exception thrown while doing monkey business."
                 )
+                self.state = "ERROR"
+                run = self.restart
                 await asyncio.sleep(60)
-            run = self.restart
 
     async def stop(self) -> None:
         await self._job.close()
@@ -77,5 +82,6 @@ class Monkey:
         return {
             "user": self.user.dump(),
             "business": self.business.dump(),
+            "state": self.state,
             "restart": self.restart,
         }
