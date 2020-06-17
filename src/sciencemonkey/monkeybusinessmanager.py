@@ -5,18 +5,17 @@ __all__ = [
 ]
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from aiohttp import web
 from aiojobs import Scheduler, create_scheduler
-from aiojobs._job import Job
 
-from sciencemonkey.business import Business
+from sciencemonkey.monkey import Monkey
 
 
 @dataclass
 class MonkeyBusinessManager:
-    _monkeys: Dict[str, Tuple[Business, Job]] = field(default_factory=dict)
+    _monkeys: Dict[str, Monkey] = field(default_factory=dict)
     _scheduler: Scheduler = None
 
     async def init(self, app: web.Application) -> None:
@@ -25,18 +24,18 @@ class MonkeyBusinessManager:
     async def cleanup(self, app: web.Application) -> None:
         await self._scheduler.close()
 
-    def fetch_monkey(self, username: str) -> Business:
+    def fetch_monkey(self, username: str) -> Monkey:
         return self._monkeys[username]
 
     def list_monkeys(self) -> List[str]:
         return list(self._monkeys.keys())
 
-    async def manage_monkey(self, monkey: Business) -> None:
-        job = await self._scheduler.spawn(monkey.run())
-        self._monkeys[monkey.user.username] = (monkey, job)
+    async def manage_monkey(self, monkey: Monkey) -> None:
+        self._monkeys[monkey.user.username] = monkey
+        await monkey.start(self._scheduler)
 
     async def release_monkey(self, username: str) -> None:
         monkey = self._monkeys.get(username, None)
         if monkey is not None:
-            await monkey[1].close()
+            await monkey.stop()
             del self._monkeys[username]

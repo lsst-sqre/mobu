@@ -7,6 +7,7 @@ __all__ = [
     "delete_user",
 ]
 
+import json
 from datetime import datetime
 
 from aiohttp import web
@@ -52,9 +53,12 @@ async def get_user(request: web.Request) -> web.Response:
     username = request.match_info["name"]
     manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
 
+    def json_dump(data):
+        return json.dumps(data, indent=4)
+
     try:
         monkey = manager.fetch_monkey(username)
-        return web.json_response(monkey)
+        return web.json_response(monkey.dump(), dumps=json_dump)
     except KeyError:
         raise web.HTTPNotFound()
 
@@ -72,7 +76,7 @@ async def get_log(request: web.Request) -> web.Response:
 
     try:
         monkey = manager.fetch_monkey(username)
-        return web.FileResponse(monkey[0].logfile(), headers=headers)
+        return web.FileResponse(monkey.logfile(), headers=headers)
     except KeyError:
         raise web.HTTPNotFound()
 

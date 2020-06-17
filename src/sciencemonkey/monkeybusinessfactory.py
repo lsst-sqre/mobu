@@ -11,6 +11,7 @@ from sciencemonkey.business import (
     JupyterLoginLoop,
     JupyterPythonLoop,
 )
+from sciencemonkey.monkey import Monkey
 from sciencemonkey.user import User
 
 
@@ -22,14 +23,15 @@ class MonkeyBusinessFactory:
         business = body.get("business", None)
 
         u = User(username, uidnumber)
+        m = Monkey(u)
 
         if business is None:
-            b = Business(u)
+            m.business = Business(m)
         elif business == "JupyterLoginLoop":
-            b = JupyterLoginLoop(u)
+            m.business = JupyterLoginLoop(m)
         elif business == "JupyterPythonLoop":
-            b = JupyterPythonLoop(u)
+            m.business = JupyterPythonLoop(m)
         else:
             raise ValueError(f"Unknown business {business}")
 
-        return b
+        return m

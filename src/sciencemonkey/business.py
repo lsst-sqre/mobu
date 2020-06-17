@@ -7,68 +7,37 @@ __all__ = [
 ]
 
 import asyncio
-import logging
-import sys
 from dataclasses import dataclass
-from tempfile import NamedTemporaryFile
-
-import structlog
-from structlog._config import BoundLoggerLazyProxy
+from typing import TYPE_CHECKING
 
 from sciencemonkey.jupyterclient import JupyterClient
-from sciencemonkey.user import User
+
+if TYPE_CHECKING:
+    from sciencemonkey.monkey import Monkey
 
 
 @dataclass
 class Business:
-    user: User
-    _logfile: NamedTemporaryFile
-
-    def __init__(self, user: User):
-        self.user = user
-
-    def get_logger(self, name: str) -> BoundLoggerLazyProxy:
-        self._logfile = NamedTemporaryFile()
-
-        formatter = logging.Formatter(
-            fmt="%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-        )
-        logger = logging.getLogger(self.user.username)
-        logger.setLevel(logging.INFO)
-
-        fileHandler = logging.FileHandler(self._logfile.name)
-        fileHandler.setFormatter(formatter)
-
-        streamHandler = logging.StreamHandler(stream=sys.stdout)
-        streamHandler.setFormatter(formatter)
-
-        logger.addHandler(fileHandler)
-        logger.addHandler(streamHandler)
-        logger.info(f"Starting new file logger {self._logfile.name}")
-        return structlog.wrap_logger(logger)
-
-    def logfile(self) -> str:
-        self._logfile.flush()
-        return self._logfile.name
+    monkey: "Monkey"
 
     async def run(self) -> None:
-        logger = self.get_logger("Idle")
+        logger = self.monkey.log
 
         while True:
             logger.info("Idling...")
             await asyncio.sleep(5)
 
+    def dump(self) -> dict:
+        return {"business": "Idle"}
+
 
 @dataclass
 class JupyterLoginLoop(Business):
-    def __init__(self, user: User):
-        self.user = user
-
     async def run(self) -> None:
-        logger = self.get_logger("JupyterLoginLoop")
+        logger = self.monkey.log
         logger.info("Starting up...")
 
-        client = JupyterClient(self.user, logger)
+        client = JupyterClient(self.monkey.user, logger)
         await client.hub_login()
 
         while True:
@@ -78,17 +47,17 @@ class JupyterLoginLoop(Business):
             await asyncio.sleep(60)
             logger.info("Next iteration")
 
+    def dump(self) -> dict:
+        return {"business": "JupyterLoginLoop"}
+
 
 @dataclass
 class JupyterPythonLoop(Business):
-    def __init__(self, user: User):
-        self.user = user
-
     async def run(self) -> None:
-        logger = self.get_logger("JupyterPythonLoop")
+        logger = self.monkey.log
         logger.info("Starting up...")
 
-        client = JupyterClient(self.user, logger)
+        client = JupyterClient(self.monkey.user, logger)
         await client.hub_login()
         await client.ensure_lab()
 
@@ -98,3 +67,6 @@ class JupyterPythonLoop(Business):
             reply = await client.run_python(kernel, "print(2+2)")
             logger.info(reply)
             await asyncio.sleep(60)
+
+    def dump(self) -> dict:
+        return {"business": "JupyterPythonLoop"}
