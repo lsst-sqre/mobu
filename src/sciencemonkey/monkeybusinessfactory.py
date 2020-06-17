@@ -21,9 +21,11 @@ class MonkeyBusinessFactory:
         username = body["username"]
         uidnumber = body["uidnumber"]
         business = body.get("business", None)
+        restart = body.get("restart", False)
 
         u = User(username, uidnumber)
         m = Monkey(u)
+        m.restart = restart
 
         if business is None:
             m.business = Business(m)

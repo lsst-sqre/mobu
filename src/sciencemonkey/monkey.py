@@ -23,6 +23,7 @@ class Monkey:
     user: User
     log: BoundLoggerLazyProxy
     business: Business
+    restart: bool
 
     _job: Job
     _logfile: NamedTemporaryFile
@@ -54,7 +55,18 @@ class Monkey:
         return self._logfile.name
 
     async def start(self, scheduler: Scheduler) -> None:
-        self._job = await scheduler.spawn(self.business.run())
+        self._job = await scheduler.spawn(self._runner())
+
+    async def _runner(self) -> None:
+        run = True
+        while run:
+            try:
+                await self.business.run()
+            except Exception:
+                self.log.exception(
+                    "Exception thrown while doing monkey business."
+                )
+            run = self.restart
 
     async def stop(self) -> None:
         await self._job.close()
@@ -63,4 +75,5 @@ class Monkey:
         return {
             "user": self.user.dump(),
             "business": self.business.dump(),
+            "restart": self.restart,
         }

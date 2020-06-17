@@ -55,8 +55,9 @@ class JupyterLoginLoop(Business):
                 self.success_count += 1
                 logger.info("Lab successfully deleted.")
                 await asyncio.sleep(60)
-        finally:
+        except Exception:
             self.failure_count += 1
+            raise
 
     def dump(self) -> dict:
         return {
