@@ -17,7 +17,7 @@ from sciencemonkey.user import User
 
 class MonkeyBusinessFactory:
     @staticmethod
-    def create(body: Dict) -> Business:
+    def create(body: Dict) -> Monkey:
         username = body["username"]
         uidnumber = body["uidnumber"]
         business = body.get("business", None)

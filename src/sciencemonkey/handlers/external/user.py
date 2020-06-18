@@ -53,7 +53,7 @@ async def get_user(request: web.Request) -> web.Response:
     username = request.match_info["name"]
     manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
 
-    def json_dump(data):
+    def json_dump(data: dict) -> str:
         return json.dumps(data, indent=4)
 
     try:
@@ -64,7 +64,7 @@ async def get_user(request: web.Request) -> web.Response:
 
 
 @routes.get("/user/{name}/log")
-async def get_log(request: web.Request) -> web.Response:
+async def get_log(request: web.Request) -> web.FileResponse:
     """GET /user/{name}/log
 
     Retrieve the log for a particular user (and only that log).

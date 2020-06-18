@@ -9,6 +9,7 @@ import logging
 import sys
 from dataclasses import dataclass
 from tempfile import NamedTemporaryFile
+from typing import IO
 
 import structlog
 from aiojobs import Scheduler
@@ -28,7 +29,7 @@ class Monkey:
     state: str
 
     _job: Job
-    _logfile: NamedTemporaryFile
+    _logfile: IO[bytes]
 
     def __init__(self, user: User):
         self.state = "IDLE"

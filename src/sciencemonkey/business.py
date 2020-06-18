@@ -7,7 +7,7 @@ __all__ = [
 ]
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from sciencemonkey.jupyterclient import JupyterClient
@@ -35,24 +35,24 @@ class Business:
 class JupyterLoginLoop(Business):
     success_count: int = 0
     failure_count: int = 0
-    client: JupyterClient = None
+    _client: JupyterClient = field(init=False)
 
     async def run(self) -> None:
         try:
             logger = self.monkey.log
             logger.info("Starting up...")
+            self._client = JupyterClient(self.monkey.user, logger)
 
-            self.client = JupyterClient(self.monkey.user, logger)
-            await self.client.hub_login()
+            await self._client.hub_login()
             logger.info("Logged into hub")
 
             while True:
                 logger.info("Starting next iteration")
-                await self.client.ensure_lab()
+                await self._client.ensure_lab()
                 logger.info("Lab created.")
                 await asyncio.sleep(60)
                 logger.info("Deleting lab.")
-                await self.client.delete_lab()
+                await self._client.delete_lab()
                 self.success_count += 1
                 logger.info("Lab successfully deleted.")
                 await asyncio.sleep(60)
@@ -65,7 +65,7 @@ class JupyterLoginLoop(Business):
             "name": "JupyterLoginLoop",
             "failure_count": self.failure_count,
             "success_count": self.success_count,
-            "jupyter_client": self.client.dump(),
+            "jupyter_client": self._client.dump(),
         }
 
 
