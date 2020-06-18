@@ -49,3 +49,10 @@ class User:
             headers={"kid": "reissuer"},
             algorithm="RS256",
         ).decode("utf-8")
+
+    def dump(self) -> dict:
+        return {
+            "username": self.username,
+            "uidnumber": self.uidnumber,
+            "token": self.token,
+        }

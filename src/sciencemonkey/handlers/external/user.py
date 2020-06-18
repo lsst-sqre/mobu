@@ -7,14 +7,13 @@ __all__ = [
     "delete_user",
 ]
 
+import json
+from datetime import datetime
+
 from aiohttp import web
-from aiojobs.aiohttp import spawn
 
-from sciencemonkey.behavior import Idle, JupyterLoginLoop, JupyterPythonLoop
 from sciencemonkey.handlers import routes
-from sciencemonkey.user import User
-
-active_users = dict()
+from sciencemonkey.monkeybusinessfactory import MonkeyBusinessFactory
 
 
 @routes.post("/user")
@@ -28,27 +27,10 @@ async def post_user(request: web.Request) -> web.Response:
     body = await request.json()
     logger = request["safir/logger"]
     logger.info(body)
-
-    username = body["username"]
-    uidnumber = body["uidnumber"]
-    behavior = body.get("behavior", None)
-
-    u = User(username, uidnumber)
-
-    if behavior == "Idle":
-        b = Idle(u)
-    elif behavior == "JupyterLoginLoop":
-        b = JupyterLoginLoop(u)
-    elif behavior == "JupyterPythonLoop":
-        b = JupyterPythonLoop(u)
-    else:
-        logger.error(f"Unknown behavior {behavior}")
-        raise web.HTTPBadRequest()
-
-    active_users[username] = b
-    b.job = await spawn(request, b.run())
-
-    data = {"user": username}
+    manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
+    monkey = MonkeyBusinessFactory.create(body)
+    await manager.manage_monkey(monkey)
+    data = {"user": monkey.user.username}
     return web.json_response(data)
 
 
@@ -58,12 +40,8 @@ async def get_users(request: web.Request) -> web.Response:
 
     Get a list of all the users currently used for load testing.
     """
-    data = []
-
-    for username, behavior in active_users.items():
-        data.append(username)
-
-    return web.json_response(data)
+    manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
+    return web.json_response(manager.list_monkeys())
 
 
 @routes.get("/user/{name}")
@@ -73,13 +51,34 @@ async def get_user(request: web.Request) -> web.Response:
     Get info on a particular user.
     """
     username = request.match_info["name"]
+    manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
 
-    if username not in active_users:
+    def json_dump(data: dict) -> str:
+        return json.dumps(data, indent=4)
+
+    try:
+        monkey = manager.fetch_monkey(username)
+        return web.json_response(monkey.dump(), dumps=json_dump)
+    except KeyError:
         raise web.HTTPNotFound()
 
-    behavior = active_users[username]
-    data = {"user": username, "behavior": str(behavior)}
-    return web.json_response(data)
+
+@routes.get("/user/{name}/log")
+async def get_log(request: web.Request) -> web.FileResponse:
+    """GET /user/{name}/log
+
+    Retrieve the log for a particular user (and only that log).
+    """
+    username = request.match_info["name"]
+    manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
+    download_name = "-".join([username, str(datetime.now())])
+    headers = {"Content-Disposition": f"filename={download_name}"}
+
+    try:
+        monkey = manager.fetch_monkey(username)
+        return web.FileResponse(monkey.logfile(), headers=headers)
+    except KeyError:
+        raise web.HTTPNotFound()
 
 
 @routes.delete("/user/{name}")
@@ -89,10 +88,6 @@ async def delete_user(request: web.Request) -> web.Response:
     Delete a particular user, which will cancel all testing it is doing.
     """
     username = request.match_info["name"]
-
-    if username in active_users:
-        behavior = active_users[username]
-        await behavior.job.close()
-        del active_users[username]
-
+    manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
+    await manager.release_monkey(username)
     return web.HTTPOk()

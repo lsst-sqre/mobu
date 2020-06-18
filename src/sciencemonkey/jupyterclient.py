@@ -11,10 +11,11 @@ import asyncio
 import random
 import string
 from dataclasses import dataclass
+from http.cookies import BaseCookie
 from uuid import uuid4
 
-import structlog
 from aiohttp import ClientSession
+from structlog._config import BoundLoggerLazyProxy
 
 from sciencemonkey.config import Configuration
 from sciencemonkey.user import User
@@ -22,16 +23,16 @@ from sciencemonkey.user import User
 
 @dataclass
 class JupyterClient:
+    log: BoundLoggerLazyProxy
     user: User
     session: ClientSession
     headers: dict
     xsrftoken: str
     jupyter_url: str
 
-    def __init__(self, user: User):
+    def __init__(self, user: User, log: BoundLoggerLazyProxy):
         self.user = user
-        self.log = structlog.get_logger(__name__)
-
+        self.log = log
         self.jupyter_url = Configuration.environment_url + "/nb/"
         self.xsrftoken = "".join(
             random.choices(string.ascii_uppercase + string.digits, k=16)
@@ -43,21 +44,20 @@ class JupyterClient:
         }
 
         self.session = ClientSession(headers=self.headers)
-        self.session.cookie_jar.update_cookies({"_xsrf": self.xsrftoken})
+        self.session.cookie_jar.update_cookies(
+            BaseCookie({"_xsrf": self.xsrftoken})
+        )
 
     async def hub_login(self) -> None:
         async with self.session.get(self.jupyter_url + "hub/login") as r:
             if r.status != 200:
-                self.log.error(f"Error {r.status} from {r.url}")
+                raise Exception(f"Error {r.status} from {r.url}")
 
             home_url = self.jupyter_url + "hub/home"
             if str(r.url) != home_url:
-                self.log.error(
+                raise Exception(
                     f"Redirected to {r.url} but expected {home_url}"
                 )
-
-            for cookie in self.session.cookie_jar:
-                self.log.info(cookie)
 
     async def ensure_lab(self) -> None:
         self.log.info("Ensure lab")
@@ -71,12 +71,8 @@ class JupyterClient:
         self.log.info("Logging into lab")
         lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
         async with self.session.get(lab_url) as r:
-            self.log.info(r)
-            self.log.info(r.url)
-            self.log.info(r.status)
-
-            for cookie in self.session.cookie_jar:
-                self.log.info(cookie)
+            if r.status != 200:
+                raise Exception(f"Error {r.status} from {r.url}")
 
     async def is_lab_running(self) -> bool:
         self.log.info("Is lab running?")
@@ -134,7 +130,7 @@ class JupyterClient:
 
         async with self.session.delete(server_url, headers=headers) as r:
             if r.status not in [200, 202, 204]:
-                self.log.error(f"Error {r.status} from {r.url}")
+                raise Exception(f"Error {r.status} from {r.url}")
 
     async def create_kernel(self, kernel_name: str = "python") -> str:
         kernel_url = (
@@ -191,3 +187,8 @@ class JupyterClient:
                     and msg_id == r["parent_header"]["msg_id"]
                 ):
                     return r["content"]["text"]
+
+    def dump(self) -> dict:
+        return {
+            "cookies": [str(cookie) for cookie in self.session.cookie_jar],
+        }
