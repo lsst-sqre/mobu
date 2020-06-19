@@ -1,4 +1,4 @@
-"""The main application definition for sciencemonkey service."""
+"""The main application definition for mobu service."""
 
 __all__ = ["create_app"]
 
@@ -9,9 +9,9 @@ from safir.logging import configure_logging
 from safir.metadata import setup_metadata
 from safir.middleware import bind_logger
 
-from sciencemonkey.config import Configuration
-from sciencemonkey.handlers import init_external_routes, init_internal_routes
-from sciencemonkey.monkeybusinessmanager import MonkeyBusinessManager
+from mobu.config import Configuration
+from mobu.handlers import init_external_routes, init_internal_routes
+from mobu.monkeybusinessmanager import MonkeyBusinessManager
 
 
 def create_app() -> web.Application:
@@ -25,7 +25,7 @@ def create_app() -> web.Application:
 
     root_app = web.Application()
     root_app["safir/config"] = config
-    setup_metadata(package_name="sciencemonkey", app=root_app)
+    setup_metadata(package_name="mobu", app=root_app)
     setup_middleware(root_app)
     root_app.add_routes(init_internal_routes())
     root_app.cleanup_ctx.append(init_http_session)
@@ -33,7 +33,7 @@ def create_app() -> web.Application:
     sub_app = web.Application()
 
     manager = MonkeyBusinessManager()
-    root_app["sciencemonkey/monkeybusinessmanager"] = manager
+    root_app["mobu/monkeybusinessmanager"] = manager
     root_app.on_startup.append(manager.init)
     root_app.on_cleanup.append(manager.cleanup)
     setup_middleware(sub_app)

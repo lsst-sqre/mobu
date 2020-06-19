@@ -17,4 +17,4 @@ update: update-deps init
 
 .PHONY: run
 run:
-	adev runserver --app-factory create_app src/sciencemonkey/app.py
+	adev runserver --app-factory create_app src/mobu/app.py

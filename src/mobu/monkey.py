@@ -16,8 +16,8 @@ from aiojobs import Scheduler
 from aiojobs._job import Job
 from structlog._config import BoundLoggerLazyProxy
 
-from sciencemonkey.business import Business
-from sciencemonkey.user import User
+from mobu.business import Business
+from mobu.user import User
 
 
 @dataclass

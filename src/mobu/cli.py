@@ -7,7 +7,7 @@ from typing import Any, Union
 import click
 from aiohttp.web import run_app
 
-from sciencemonkey.app import create_app
+from mobu.app import create_app
 
 # Add -h as a help shortcut option
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -17,9 +17,9 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.version_option(message="%(version)s")
 @click.pass_context
 def main(ctx: click.Context) -> None:
-    """sciencemonkey
+    """mobu
 
-    Administrative command-line interface for sciencemonkey.
+    Administrative command-line interface for mobu.
     """
     # Subcommands should use the click.pass_obj decorator to get this
     # ctx object as the first argument.

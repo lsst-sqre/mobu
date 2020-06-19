@@ -10,8 +10,8 @@ __all__ = [
     "delete_user",
 ]
 
-from sciencemonkey.handlers.external.index import get_index
-from sciencemonkey.handlers.external.user import (
+from mobu.handlers.external.index import get_index
+from mobu.handlers.external.user import (
     delete_user,
     get_user,
     get_users,

@@ -1,4 +1,4 @@
-"""All the data for a sciencemonkey user."""
+"""All the data for a mobu user."""
 
 __all__ = [
     "User",
@@ -12,7 +12,7 @@ from string import Template
 
 import jwt
 
-from sciencemonkey.config import Configuration
+from mobu.config import Configuration
 
 
 @dataclass

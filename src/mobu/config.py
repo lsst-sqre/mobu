@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 @dataclass
 class Configuration:
-    """Configuration for sciencemonkey."""
+    """Configuration for mobu."""
 
     private_key_path: str = os.getenv(
         "PRIVATE_KEY_PATH", "/etc/keys/signing_key.pem"
@@ -29,7 +29,7 @@ class Configuration:
     Set with the ``ENVIRONMENT_URL`` environment variable.
     """
 
-    name: str = os.getenv("SAFIR_NAME", "sciencemonkey")
+    name: str = os.getenv("SAFIR_NAME", "mobu")
     """The application's name, which doubles as the root HTTP endpoint path.
 
     Set with the ``SAFIR_NAME`` environment variable.
@@ -41,7 +41,7 @@ class Configuration:
     Set with the ``SAFIR_PROFILE`` environment variable.
     """
 
-    logger_name: str = os.getenv("SAFIR_LOGGER", "sciencemonkey")
+    logger_name: str = os.getenv("SAFIR_LOGGER", "mobu")
     """The root name of the application's logger.
 
     Set with the ``SAFIR_LOGGER`` environment variable.

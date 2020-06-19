@@ -12,8 +12,8 @@ from datetime import datetime
 
 from aiohttp import web
 
-from sciencemonkey.handlers import routes
-from sciencemonkey.monkeybusinessfactory import MonkeyBusinessFactory
+from mobu.handlers import routes
+from mobu.monkeybusinessfactory import MonkeyBusinessFactory
 
 
 @routes.post("/user")
@@ -27,7 +27,7 @@ async def post_user(request: web.Request) -> web.Response:
     body = await request.json()
     logger = request["safir/logger"]
     logger.info(body)
-    manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
+    manager = request.config_dict["mobu/monkeybusinessmanager"]
     monkey = MonkeyBusinessFactory.create(body)
     await manager.manage_monkey(monkey)
     data = {"user": monkey.user.username}
@@ -40,7 +40,7 @@ async def get_users(request: web.Request) -> web.Response:
 
     Get a list of all the users currently used for load testing.
     """
-    manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
+    manager = request.config_dict["mobu/monkeybusinessmanager"]
     return web.json_response(manager.list_monkeys())
 
 
@@ -51,7 +51,7 @@ async def get_user(request: web.Request) -> web.Response:
     Get info on a particular user.
     """
     username = request.match_info["name"]
-    manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
+    manager = request.config_dict["mobu/monkeybusinessmanager"]
 
     def json_dump(data: dict) -> str:
         return json.dumps(data, indent=4)
@@ -70,7 +70,7 @@ async def get_log(request: web.Request) -> web.FileResponse:
     Retrieve the log for a particular user (and only that log).
     """
     username = request.match_info["name"]
-    manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
+    manager = request.config_dict["mobu/monkeybusinessmanager"]
     download_name = "-".join([username, str(datetime.now())])
     headers = {"Content-Disposition": f"filename={download_name}"}
 
@@ -88,6 +88,6 @@ async def delete_user(request: web.Request) -> web.Response:
     Delete a particular user, which will cancel all testing it is doing.
     """
     username = request.match_info["name"]
-    manager = request.config_dict["sciencemonkey/monkeybusinessmanager"]
+    manager = request.config_dict["mobu/monkeybusinessmanager"]
     await manager.release_monkey(username)
     return web.HTTPOk()

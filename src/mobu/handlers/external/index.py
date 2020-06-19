@@ -4,7 +4,7 @@ __all__ = ["get_index"]
 
 from aiohttp import web
 
-from sciencemonkey.handlers import routes
+from mobu.handlers import routes
 
 
 @routes.get("/")

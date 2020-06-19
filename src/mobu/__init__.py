@@ -1,4 +1,4 @@
-"""The sciencemonkey service."""
+"""The mobu service."""
 
 __all__ = ["__version__", "metadata"]
 
