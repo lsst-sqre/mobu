@@ -1,8 +1,8 @@
-#############
-sciencemonkey
-#############
+####
+mobu
+####
 
-Framework to generate science user load for testing
+Framework to generate random walking user load for testing services
 
-sciencemonkey is developed with the `Safir <https://safir.lsst.io>`__ framework.
+mobu is developed with the `Safir <https://safir.lsst.io>`__ framework.
 `Get started with development with the tutorial <https://safir.lsst.io/set-up-from-template.html>`__.
