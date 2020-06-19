@@ -1,4 +1,4 @@
-"""Business logic for sciencemonkeys."""
+"""Business logic for mobu."""
 
 __all__ = [
     "Business",
@@ -10,10 +10,10 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from sciencemonkey.jupyterclient import JupyterClient
+from mobu.jupyterclient import JupyterClient
 
 if TYPE_CHECKING:
-    from sciencemonkey.monkey import Monkey
+    from mobu.monkey import Monkey
 
 
 @dataclass

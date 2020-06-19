@@ -6,13 +6,9 @@ __all__ = [
 
 from typing import Dict
 
-from sciencemonkey.business import (
-    Business,
-    JupyterLoginLoop,
-    JupyterPythonLoop,
-)
-from sciencemonkey.monkey import Monkey
-from sciencemonkey.user import User
+from mobu.business import Business, JupyterLoginLoop, JupyterPythonLoop
+from mobu.monkey import Monkey
+from mobu.user import User
 
 
 class MonkeyBusinessFactory:

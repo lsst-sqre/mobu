@@ -60,4 +60,4 @@ USER appuser
 
 EXPOSE 8080
 
-ENTRYPOINT ["sciencemonkey", "run", "--port", "8080"]
+ENTRYPOINT ["mobu", "run", "--port", "8080"]

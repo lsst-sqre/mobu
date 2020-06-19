@@ -10,7 +10,7 @@ from typing import Dict, List
 from aiohttp import web
 from aiojobs import Scheduler, create_scheduler
 
-from sciencemonkey.monkey import Monkey
+from mobu.monkey import Monkey
 
 
 @dataclass

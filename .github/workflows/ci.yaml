@@ -49,22 +49,22 @@ jobs:
 
       - name: Pull previous images
         run: |
-          docker pull lsstsqre/sciencemonkey:deps-${{steps.vars.outputs.tag}} || true
-          docker pull lsstsqre/sciencemonkey:${{steps.vars.outputs.tag}} || true
+          docker pull lsstsqre/mobu:deps-${{steps.vars.outputs.tag}} || true
+          docker pull lsstsqre/mobu:${{steps.vars.outputs.tag}} || true
 
       - name: Build the dependencies Docker image
         run: |
           docker build --target dependencies-image \
-            --cache-from=lsstsqre/sciencemonkey:deps-${{steps.vars.outputs.tag}} \
-            --tag lsstsqre/sciencemonkey:deps-${{steps.vars.outputs.tag}} .
+            --cache-from=lsstsqre/mobu:deps-${{steps.vars.outputs.tag}} \
+            --tag lsstsqre/mobu:deps-${{steps.vars.outputs.tag}} .
 
       - name: Build the runtime Docker image
         run: |
           docker build --target runtime-image \
-            --cache-from=lsstsqre/sciencemonkey:${{steps.vars.outputs.tag}} \
-            --tag lsstsqre/sciencemonkey:${{steps.vars.outputs.tag}} .
+            --cache-from=lsstsqre/mobu:${{steps.vars.outputs.tag}} \
+            --tag lsstsqre/mobu:${{steps.vars.outputs.tag}} .
 
       - name: Push Docker images
         run: |
-          docker push lsstsqre/sciencemonkey:deps-${{steps.vars.outputs.tag}}
-          docker push lsstsqre/sciencemonkey:${{steps.vars.outputs.tag}}
+          docker push lsstsqre/mobu:deps-${{steps.vars.outputs.tag}}
+          docker push lsstsqre/mobu:${{steps.vars.outputs.tag}}

@@ -17,8 +17,8 @@ from uuid import uuid4
 from aiohttp import ClientSession
 from structlog._config import BoundLoggerLazyProxy
 
-from sciencemonkey.config import Configuration
-from sciencemonkey.user import User
+from mobu.config import Configuration
+from mobu.user import User
 
 
 @dataclass

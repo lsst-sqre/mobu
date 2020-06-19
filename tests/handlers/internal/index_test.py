@@ -1,11 +1,11 @@
-"""Tests for the sciencemonkey.handlers.internal.index module and routes.
+"""Tests for the mobu.handlers.internal.index module and routes.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sciencemonkey.app import create_app
+from mobu.app import create_app
 
 if TYPE_CHECKING:
     from aiohttp.pytest_plugin.test_utils import TestClient
