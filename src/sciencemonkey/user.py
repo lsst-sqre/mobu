@@ -5,6 +5,7 @@ __all__ = [
 ]
 
 import json
+import os
 import time
 from dataclasses import dataclass
 from string import Template
@@ -26,7 +27,11 @@ class User:
         self.generate_token()
 
     def generate_token(self) -> None:
-        with open("static/jwt-template.json", "r") as f:
+        template_path = os.path.join(
+            os.path.dirname(__file__), "static/jwt-template.json"
+        )
+
+        with open(template_path, "r") as f:
             token_template = Template(f.read())
 
         with open(Configuration.private_key_path, "r") as f:
