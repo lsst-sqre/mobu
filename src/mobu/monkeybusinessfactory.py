@@ -6,7 +6,9 @@ __all__ = [
 
 from typing import Dict
 
-from mobu.business import Business, JupyterLoginLoop, JupyterPythonLoop
+from mobu.business import Business
+from mobu.jupyterloginloop import JupyterLoginLoop
+from mobu.jupyterpythonloop import JupyterPythonLoop
 from mobu.monkey import Monkey
 from mobu.user import User
 
@@ -23,13 +25,20 @@ class MonkeyBusinessFactory:
         m = Monkey(u)
         m.restart = restart
 
-        if business is None:
-            m.business = Business(m)
-        elif business == "JupyterLoginLoop":
-            m.business = JupyterLoginLoop(m)
-        elif business == "JupyterPythonLoop":
-            m.business = JupyterPythonLoop(m)
-        else:
+        businesses = [
+            Business,
+            JupyterLoginLoop,
+            JupyterPythonLoop,
+        ]
+
+        m.business = None
+
+        for b in businesses:
+            m.log.info(b.__name__)
+            if business == b.__name__:
+                m.business = b(m)
+
+        if not m.business:
             raise ValueError(f"Unknown business {business}")
 
         return m
