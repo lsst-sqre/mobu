@@ -10,6 +10,7 @@ from mobu.business import Business
 from mobu.jupyterloginloop import JupyterLoginLoop
 from mobu.jupyterpythonloop import JupyterPythonLoop
 from mobu.monkey import Monkey
+from mobu.querymonkey import QueryMonkey
 from mobu.user import User
 
 
@@ -29,6 +30,7 @@ class MonkeyBusinessFactory:
             Business,
             JupyterLoginLoop,
             JupyterPythonLoop,
+            QueryMonkey,
         ]
 
         m.business = None

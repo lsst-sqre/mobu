@@ -13,4 +13,6 @@ cchardet
 click
 cryptography
 importlib_metadata
+jinja2
 pyjwt
+pyvo
