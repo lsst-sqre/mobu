@@ -12,11 +12,11 @@ from mobu.business import Business
 from mobu.config import Configuration
 
 
-def limit_dec(x):
+def limit_dec(x: int) -> int:
     return max(min(x, 90), -90)
 
 
-def generate_parameters():
+def generate_parameters() -> dict:
     return {
         "limit_dec": limit_dec,
         "ra": random.uniform(0, 360),

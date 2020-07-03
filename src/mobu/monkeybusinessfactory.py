@@ -33,14 +33,15 @@ class MonkeyBusinessFactory:
             QueryMonkey,
         ]
 
-        m.business = None
+        new_business = None
 
         for b in businesses:
             m.log.info(b.__name__)
             if business == b.__name__:
-                m.business = b(m)
+                new_business = b(m)
 
-        if not m.business:
+        if not new_business:
             raise ValueError(f"Unknown business {business}")
 
+        m.business = new_business
         return m
