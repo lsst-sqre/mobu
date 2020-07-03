@@ -5,6 +5,8 @@ import time
 
 import jinja2
 import pyvo
+import requests
+from pyvo.auth import AuthSession
 
 from mobu.business import Business
 from mobu.config import Configuration
@@ -31,8 +33,23 @@ class QueryMonkey(Business):
     success_count: int = 0
     failure_count: int = 0
 
+    def _client(self) -> pyvo.dal.TAPService:
+        tap_url = Configuration.environment_url + "/api/tap"
+
+        s = requests.Session()
+        s.headers["Authorization"] = "Bearer " + self.monkey.user.token
+        auth = AuthSession()
+        auth.credentials.set("lsst-token", s)
+        auth.add_security_method_for_url(tap_url, "lsst-token")
+        auth.add_security_method_for_url(tap_url + "/sync", "lsst-token")
+        auth.add_security_method_for_url(tap_url + "/async", "lsst-token")
+        auth.add_security_method_for_url(tap_url + "/tables", "lsst-token")
+
+        return pyvo.dal.TAPService(tap_url, auth)
+
     async def run(self) -> None:
         try:
+            loop = asyncio.get_event_loop()
             logger = self.monkey.log
             logger.info("Starting up...")
 
@@ -47,9 +64,7 @@ class QueryMonkey(Business):
                 "Query templates to choose from: %s", env.list_templates()
             )
 
-            service = pyvo.dal.TAPService(
-                Configuration.environment_url + "/api/tap"
-            )
+            service = self._client()
 
             while True:
                 template_name = random.choice(env.list_templates())
@@ -57,7 +72,7 @@ class QueryMonkey(Business):
                 query = template.render(generate_parameters())
                 logger.info("Running: %s", query)
                 start = time.time()
-                service.search(query)
+                await loop.run_in_executor(None, service.search, query)
                 end = time.time()
                 logger.info("Finished, took: %i seconds", end - start)
                 self.success_count += 1
