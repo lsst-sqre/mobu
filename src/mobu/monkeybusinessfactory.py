@@ -36,7 +36,6 @@ class MonkeyBusinessFactory:
         new_business = None
 
         for b in businesses:
-            m.log.info(b.__name__)
             if business == b.__name__:
                 new_business = b(m)
 
