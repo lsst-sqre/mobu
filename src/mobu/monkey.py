@@ -68,6 +68,9 @@ class Monkey:
                 self.state = "RUNNING"
                 await self.business.run()
                 self.state = "FINISHED"
+            except asyncio.CancelledError:
+                self.log.info("Shutting down")
+                run = False
             except Exception:
                 self.log.exception(
                     "Exception thrown while doing monkey business."
@@ -77,7 +80,13 @@ class Monkey:
                 await asyncio.sleep(60)
 
     async def stop(self) -> None:
-        await self._job.close()
+        try:
+            await self._job.close(timeout=0)
+        except asyncio.TimeoutError:
+            # Close will normally wait for a timeout to occur before
+            # throwing a timeout exception, but we'll just shut it down
+            # right away and eat the exception.
+            pass
 
     def dump(self) -> dict:
         return {
