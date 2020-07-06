@@ -48,6 +48,7 @@ class Monkey:
         streamHandler.setFormatter(formatter)
 
         logger = logging.getLogger(self.user.username)
+        logger.handlers.clear()
         logger.setLevel(logging.INFO)
         logger.addHandler(fileHandler)
         logger.addHandler(streamHandler)
