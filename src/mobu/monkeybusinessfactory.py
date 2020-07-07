@@ -6,8 +6,11 @@ __all__ = [
 
 from typing import Dict
 
-from mobu.business import Business, JupyterLoginLoop, JupyterPythonLoop
+from mobu.business import Business
+from mobu.jupyterloginloop import JupyterLoginLoop
+from mobu.jupyterpythonloop import JupyterPythonLoop
 from mobu.monkey import Monkey
+from mobu.querymonkey import QueryMonkey
 from mobu.user import User
 
 
@@ -23,13 +26,21 @@ class MonkeyBusinessFactory:
         m = Monkey(u)
         m.restart = restart
 
-        if business is None:
-            m.business = Business(m)
-        elif business == "JupyterLoginLoop":
-            m.business = JupyterLoginLoop(m)
-        elif business == "JupyterPythonLoop":
-            m.business = JupyterPythonLoop(m)
-        else:
+        businesses = [
+            Business,
+            JupyterLoginLoop,
+            JupyterPythonLoop,
+            QueryMonkey,
+        ]
+
+        new_business = None
+
+        for b in businesses:
+            if business == b.__name__:
+                new_business = b(m)
+
+        if not new_business:
             raise ValueError(f"Unknown business {business}")
 
+        m.business = new_business
         return m
