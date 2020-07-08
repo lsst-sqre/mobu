@@ -10,6 +10,14 @@ from dataclasses import dataclass
 class Configuration:
     """Configuration for mobu."""
 
+    alert_hook: str = os.getenv("ALERT_HOOK", "None")
+    """The slack webhook used for alerting exceptions to slack.
+
+    Set with the ``ALERT_HOOK`` environment variable.
+    This is an https URL which should be considered secret.
+    "None" may be provided in a secret to disable this feature.
+    """
+
     private_key_path: str = os.getenv(
         "PRIVATE_KEY_PATH", "/etc/keys/signing_key.pem"
     )
