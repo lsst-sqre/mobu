@@ -60,16 +60,23 @@ class Monkey:
         logger.info(f"Starting new file logger {self._logfile.name}")
         self.log = structlog.wrap_logger(logger)
 
-    def alert(self, msg: str) -> None:
+    async def alert(self, msg: str) -> None:
         try:
             time = datetime.now().strftime(DATE_FORMAT)
             alert_msg = f"{time} {self.user.username} {msg}"
             self.log.error(f"Slack Alert: {alert_msg}")
-            if Configuration.alert_hook != "None":
-                session = ClientSession()
-                session.post(
-                    Configuration.alert_hook, data={"text": alert_msg}
-                )
+            if Configuration.alert_hook == "None":
+                self.log.info("Alert hook isn't set, so not sending to slack.")
+                return
+
+            async with ClientSession() as s:
+                async with s.post(
+                    Configuration.alert_hook, json={"text": alert_msg}
+                ) as r:
+                    if r.status != 200:
+                        self.log.error(
+                            f"Error {r.status} trying to send alert to slack"
+                        )
         except Exception:
             self.log.exception("Exception thrown while trying to alert!")
 
@@ -97,7 +104,7 @@ class Monkey:
                 )
                 # Just pass the exception message - the callstack will
                 # be logged but will probably be too spammy to report.
-                self.alert(str(e))
+                await self.alert(str(e))
                 run = self.restart
                 await asyncio.sleep(60)
 

@@ -21,6 +21,7 @@ deps =
     -r{toxinidir}/requirements/dev.txt
 commands =
     coverage run -m pytest {posargs}
+passenv = ALERT_HOOK PRIVATE_KEY_PATH ENVIRONMENT_URL
 
 [testenv:coverage-report]
 description = Compile coverage from each test run.
