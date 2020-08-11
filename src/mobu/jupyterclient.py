@@ -111,14 +111,23 @@ class JupyterClient:
             progress_url = r.url
             self.log.info(f"Watching progress url {progress_url}")
 
-        while True:
+        # Jupyterlab will give up a spawn after 900 seconds, so we shouldn't
+        # wait longer than that.
+        max_poll_secs = 900
+        poll_interval = 15
+        retries = max_poll_secs / poll_interval
+
+        while retries > 0:
             async with self.session.get(progress_url) as r:
                 if str(r.url) == lab_url:
                     self.log.info(f"Lab spawned, redirected to {r.url}")
                     return
-                else:
-                    self.log.info(f"Still waiting for lab to spawn {r}")
-                    await asyncio.sleep(15)
+
+                self.log.info(f"Still waiting for lab to spawn {r}")
+                retries -= 1
+                await asyncio.sleep(poll_interval)
+
+        raise Exception("Giving up waiting for lab to spawn!")
 
     async def delete_lab(self) -> None:
         headers = {"Referer": self.jupyter_url + "hub/home"}
