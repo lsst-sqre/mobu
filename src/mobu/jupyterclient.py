@@ -9,6 +9,7 @@ __all__ = [
 
 import asyncio
 import random
+import re
 import string
 from dataclasses import dataclass
 from http.cookies import BaseCookie
@@ -19,6 +20,12 @@ from structlog._config import BoundLoggerLazyProxy
 
 from mobu.config import Configuration
 from mobu.user import User
+
+
+class NotebookException(Exception):
+    """Passing an error back from a remote notebook session."""
+
+    pass
 
 
 @dataclass
@@ -47,6 +54,12 @@ class JupyterClient:
         self.session.cookie_jar.update_cookies(
             BaseCookie({"_xsrf": self.xsrftoken})
         )
+
+    __ansi_reg_exp = re.compile(r"(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]")
+
+    @classmethod
+    def _ansi_escape(cls, line: str) -> str:
+        return cls.__ansi_reg_exp.sub("", line)
 
     async def hub_login(self) -> None:
         async with self.session.get(self.jupyter_url + "hub/login") as r:
@@ -188,14 +201,24 @@ class JupyterClient:
 
             while True:
                 r = await ws.receive_json()
+                self.log.debug(f"Recieved kernel message: {r}")
                 msg_type = r["msg_type"]
                 if msg_type == "error":
-                    raise Exception(f"Error running python {r}")
+                    error_message = "".join(r["content"]["traceback"])
+                    raise NotebookException(self._ansi_escape(error_message))
                 elif (
                     msg_type == "stream"
                     and msg_id == r["parent_header"]["msg_id"]
                 ):
                     return r["content"]["text"]
+                elif msg_type == "execute_reply":
+                    status = r["content"]["status"]
+                    if status == "ok":
+                        return ""
+                    else:
+                        raise NotebookException(
+                            f"Error content status is {status}"
+                        )
 
     def dump(self) -> dict:
         return {
