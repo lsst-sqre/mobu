@@ -87,7 +87,7 @@ class NotebookRunner(Business):
                         f"Success running notebook: {self.notebook.name}"
                     )
 
-                self.success_count += 1
+                    self.success_count += 1
 
         except NotebookException as e:
             logger.error(f"Error running notebook: {self.notebook.name}")
