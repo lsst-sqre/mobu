@@ -66,12 +66,6 @@ class JupyterClient:
             if r.status != 200:
                 raise Exception(f"Error {r.status} from {r.url}")
 
-            home_url = self.jupyter_url + "hub/home"
-            if str(r.url) != home_url:
-                raise Exception(
-                    f"Redirected to {r.url} but expected {home_url}"
-                )
-
     async def ensure_lab(self) -> None:
         self.log.info("Ensure lab")
         running = await self.is_lab_running()
