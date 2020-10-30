@@ -42,7 +42,9 @@ class NotebookRunner(Business):
         try:
             logger = self.monkey.log
 
-            self._client = JupyterClient(self.monkey.user, logger)
+            self._client = JupyterClient(
+                self.monkey.user, logger, self.options
+            )
 
             if not self._repo:
                 self._repo = git.Repo.clone_from(

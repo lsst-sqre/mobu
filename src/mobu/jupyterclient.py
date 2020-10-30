@@ -13,6 +13,7 @@ import re
 import string
 from dataclasses import dataclass
 from http.cookies import BaseCookie
+from typing import Any, Dict
 from uuid import uuid4
 
 from aiohttp import ClientSession
@@ -33,14 +34,18 @@ class JupyterClient:
     log: BoundLoggerLazyProxy
     user: User
     session: ClientSession
-    headers: dict
+    headers: Dict[str, str]
     xsrftoken: str
     jupyter_url: str
 
-    def __init__(self, user: User, log: BoundLoggerLazyProxy):
+    def __init__(
+        self, user: User, log: BoundLoggerLazyProxy, options: Dict[str, Any]
+    ):
         self.user = user
         self.log = log
-        self.jupyter_url = Configuration.environment_url + "/nb/"
+        self.jupyter_url = Configuration.environment_url + options.get(
+            "nb_url", "/nb/"
+        )
         self.xsrftoken = "".join(
             random.choices(string.ascii_uppercase + string.digits, k=16)
         )
