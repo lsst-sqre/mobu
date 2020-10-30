@@ -24,7 +24,9 @@ class JupyterLoginLoop(Business):
         try:
             logger = self.monkey.log
             logger.info("Starting up...")
-            self._client = JupyterClient(self.monkey.user, logger)
+            self._client = JupyterClient(
+                self.monkey.user, logger, self.options
+            )
 
             await self._client.hub_login()
             logger.info("Logged into hub")

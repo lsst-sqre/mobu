@@ -13,6 +13,7 @@ import re
 import string
 from dataclasses import dataclass
 from http.cookies import BaseCookie
+from typing import Any, Dict
 from uuid import uuid4
 
 from aiohttp import ClientSession
@@ -33,14 +34,18 @@ class JupyterClient:
     log: BoundLoggerLazyProxy
     user: User
     session: ClientSession
-    headers: dict
+    headers: Dict[str, str]
     xsrftoken: str
     jupyter_url: str
 
-    def __init__(self, user: User, log: BoundLoggerLazyProxy):
+    def __init__(
+        self, user: User, log: BoundLoggerLazyProxy, options: Dict[str, Any]
+    ):
         self.user = user
         self.log = log
-        self.jupyter_url = Configuration.environment_url + "/nb/"
+        self.jupyter_url = Configuration.environment_url + options.get(
+            "nb_url", "/nb/"
+        )
         self.xsrftoken = "".join(
             random.choices(string.ascii_uppercase + string.digits, k=16)
         )
@@ -65,12 +70,6 @@ class JupyterClient:
         async with self.session.get(self.jupyter_url + "hub/login") as r:
             if r.status != 200:
                 raise Exception(f"Error {r.status} from {r.url}")
-
-            home_url = self.jupyter_url + "hub/home"
-            if str(r.url) != home_url:
-                raise Exception(
-                    f"Redirected to {r.url} but expected {home_url}"
-                )
 
     async def ensure_lab(self) -> None:
         self.log.info("Ensure lab")

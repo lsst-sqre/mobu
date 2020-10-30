@@ -20,7 +20,7 @@ class JupyterPythonLoop(Business):
         logger = self.monkey.log
         logger.info("Starting up...")
 
-        client = JupyterClient(self.monkey.user, logger)
+        client = JupyterClient(self.monkey.user, logger, self.options)
         await client.hub_login()
         await client.ensure_lab()
 

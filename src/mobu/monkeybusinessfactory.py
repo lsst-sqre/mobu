@@ -18,14 +18,16 @@ from mobu.user import User
 class MonkeyBusinessFactory:
     @staticmethod
     def create(body: Dict) -> Monkey:
-        username = body["username"]
-        uidnumber = body["uidnumber"]
-        business = body.get("business", None)
-        restart = body.get("restart", False)
+        name = body["name"]
+        business = body["business"]
+        user = body["user"]
+        options = body.get("options", {})
+
+        username = user["username"]
+        uidnumber = user["uidnumber"]
 
         u = User(username, uidnumber)
-        m = Monkey(u)
-        m.restart = restart
+        m = Monkey(name, u, options)
 
         businesses = [
             Business,
@@ -39,10 +41,10 @@ class MonkeyBusinessFactory:
 
         for b in businesses:
             if business == b.__name__:
-                new_business = b(m)
+                new_business = b(m, options)
 
         if not new_business:
             raise ValueError(f"Unknown business {business}")
 
-        m.business = new_business
+        m.assign_business(new_business)
         return m

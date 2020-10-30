@@ -24,18 +24,19 @@ class MonkeyBusinessManager:
     async def cleanup(self, app: web.Application) -> None:
         await self._scheduler.close()
 
-    def fetch_monkey(self, username: str) -> Monkey:
-        return self._monkeys[username]
+    def fetch_monkey(self, name: str) -> Monkey:
+        return self._monkeys[name]
 
     def list_monkeys(self) -> List[str]:
         return list(self._monkeys.keys())
 
     async def manage_monkey(self, monkey: Monkey) -> None:
-        self._monkeys[monkey.user.username] = monkey
+        await self.release_monkey(monkey.name)
+        self._monkeys[monkey.name] = monkey
         await monkey.start(self._scheduler)
 
-    async def release_monkey(self, username: str) -> None:
-        monkey = self._monkeys.get(username, None)
+    async def release_monkey(self, name: str) -> None:
+        monkey = self._monkeys.get(name, None)
         if monkey is not None:
             await monkey.stop()
-            del self._monkeys[username]
+            del self._monkeys[name]

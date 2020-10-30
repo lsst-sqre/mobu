@@ -1,5 +1,11 @@
 {
-  "username": "cbanek",
-  "uidnumber": 55411,
-  "business": "JupyterLoginLoop"
+  "name": "cbanek",
+  "user": {
+    "username": "cbanek",
+    "uidnumber": 55411
+  },
+  "business": "JupyterLoginLoop",
+  "options": {
+    "restart": true
+  }
 }

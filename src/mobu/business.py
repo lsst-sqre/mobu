@@ -6,7 +6,7 @@ __all__ = [
 
 import asyncio
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
 
 if TYPE_CHECKING:
     from mobu.monkey import Monkey
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 @dataclass
 class Business:
     monkey: "Monkey"
+    options: Dict[str, Any]
 
     async def run(self) -> None:
         logger = self.monkey.log
