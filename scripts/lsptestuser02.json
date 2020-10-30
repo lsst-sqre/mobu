@@ -1,6 +1,11 @@
 {
-  "username": "lsptestuser02",
-  "uidnumber": 60182,
+  "name": "lsptestuser02",
+  "user": {
+    "username": "lsptestuser02",
+    "uidnumber": 60182
+  },
   "business": "JupyterLoginLoop",
-  "restart": true
+  "options": {
+    "restart": true
+  }
 }

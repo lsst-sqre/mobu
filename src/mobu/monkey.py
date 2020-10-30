@@ -10,7 +10,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from tempfile import NamedTemporaryFile
-from typing import IO
+from typing import IO, Any, Dict
 
 import structlog
 from aiohttp import ClientSession
@@ -27,6 +27,7 @@ DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 @dataclass
 class Monkey:
+    name: str
     user: User
     log: BoundLoggerLazyProxy
     business: Business
@@ -36,9 +37,11 @@ class Monkey:
     _job: Job
     _logfile: IO[bytes]
 
-    def __init__(self, user: User):
+    def __init__(self, name: str, user: User, options: Dict[str, Any]):
+        self.name = name
         self.state = "IDLE"
         self.user = user
+        self.restart = options.get("restart", False)
 
         self._logfile = NamedTemporaryFile()
 
@@ -52,7 +55,7 @@ class Monkey:
         streamHandler = logging.StreamHandler(stream=sys.stdout)
         streamHandler.setFormatter(formatter)
 
-        logger = logging.getLogger(self.user.username)
+        logger = logging.getLogger(self.name)
         logger.handlers.clear()
         logger.setLevel(logging.INFO)
         logger.addHandler(fileHandler)
@@ -63,7 +66,7 @@ class Monkey:
     async def alert(self, msg: str) -> None:
         try:
             time = datetime.now().strftime(DATE_FORMAT)
-            alert_msg = f"{time} {self.user.username} {msg}"
+            alert_msg = f"{time} {self.name} {msg}"
             self.log.error(f"Slack Alert: {alert_msg}")
             if Configuration.alert_hook == "None":
                 self.log.info("Alert hook isn't set, so not sending to slack.")
@@ -79,6 +82,10 @@ class Monkey:
                         )
         except Exception:
             self.log.exception("Exception thrown while trying to alert!")
+
+    def assign_business(self, business: Business) -> None:
+        self.business = business
+        business.monkey = self
 
     def logfile(self) -> str:
         self._logfile.flush()

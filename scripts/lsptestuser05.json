@@ -1,6 +1,11 @@
 {
-  "username": "lsptestuser05",
-  "uidnumber": 60185,
+  "name": "Robo-Simon",
+  "user": {
+    "username": "lsptestuser05",
+    "uidnumber": 60185
+  },
   "business": "NotebookRunner",
-  "restart": true
+  "options": {
+    "restart": true
+  }
 }
