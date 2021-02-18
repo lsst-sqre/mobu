@@ -1,8 +1,8 @@
 {
-  "name": "lsptestuser01",
+  "name": "cbanek",
   "user": {
-    "username": "lsptestuser01",
-    "uidnumber": 60181
+    "username": "cbanek",
+    "uidnumber": 55411
   },
   "business": "JupyterLoginLoop",
   "options": {

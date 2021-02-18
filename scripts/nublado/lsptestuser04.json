@@ -6,6 +6,7 @@
   },
   "business": "JupyterLoginLoop",
   "options": {
-    "restart": true
+    "restart": true,
+    "nb_url": "/n2/"
   }
 }

@@ -1,0 +1,12 @@
+{
+  "name": "lsptestuser03",
+  "user": {
+    "username": "lsptestuser03",
+    "uidnumber": 60183
+  },
+  "business": "JupyterLoginLoop",
+  "options": {
+    "restart": true,
+    "nb_url": "/n2/"
+  }
+}
