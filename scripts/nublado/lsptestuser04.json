@@ -7,6 +7,10 @@
   "business": "JupyterLoginLoop",
   "options": {
     "restart": true,
-    "nb_url": "/n2/"
+    "jupyter_options_form": {
+      "kernel_image": "lsstsqre/sciplat-lab:recommended",
+      "image_tag": "latest",
+      "size": "small"
+    }
   }
 }

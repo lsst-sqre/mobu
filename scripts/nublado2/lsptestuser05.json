@@ -6,6 +6,11 @@
   },
   "business": "NotebookRunner",
   "options": {
-    "restart": true
+    "restart": true,
+    "nb_url": "/n2/",
+    "jupyter_options_form": {
+      "image": "registry.hub.docker.com/lsstsqre/sciplat-lab:recommended",
+      "size": "Small"
+    }
   }
 }
