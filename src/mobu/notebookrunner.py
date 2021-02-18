@@ -36,7 +36,7 @@ class NotebookRunner(Business):
     _repo: git.Repo = field(init=False, default=None)
     _notebook_iterator: Iterator = field(init=False)
     notebook: os.DirEntry = field(init=False)
-    code: str = field(init=False)
+    code: str = field(init=False, default="")
 
     async def run(self) -> None:
         try:

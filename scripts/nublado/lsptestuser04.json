@@ -1,0 +1,16 @@
+{
+  "name": "lsptestuser04",
+  "user": {
+    "username": "lsptestuser04",
+    "uidnumber": 60184
+  },
+  "business": "JupyterLoginLoop",
+  "options": {
+    "restart": true,
+    "jupyter_options_form": {
+      "kernel_image": "lsstsqre/sciplat-lab:recommended",
+      "image_tag": "latest",
+      "size": "small"
+    }
+  }
+}

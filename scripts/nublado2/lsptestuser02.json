@@ -1,0 +1,16 @@
+{
+  "name": "lsptestuser02",
+  "user": {
+    "username": "lsptestuser02",
+    "uidnumber": 60182
+  },
+  "business": "JupyterLoginLoop",
+  "options": {
+    "restart": true,
+    "nb_url": "/n2/",
+    "jupyter_options_form": {
+      "image": "registry.hub.docker.com/lsstsqre/sciplat-lab:recommended",
+      "size": "Small"
+    }
+  }
+}
