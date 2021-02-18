@@ -49,6 +49,7 @@ class JupyterClient:
         self.xsrftoken = "".join(
             random.choices(string.ascii_uppercase + string.digits, k=16)
         )
+        self.jupyter_options_form = options.get("jupyter_options_form", {})
 
         self.headers = {
             "Authorization": "Bearer " + user.token,
@@ -101,12 +102,6 @@ class JupyterClient:
         return True
 
     async def spawn_lab(self) -> None:
-        body = {
-            "kernel_image": "lsstsqre/sciplat-lab:recommended",
-            "image_tag": "latest",
-            "size": "small",
-        }
-
         spawn_url = self.jupyter_url + "hub/spawn"
         lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
 
@@ -115,7 +110,7 @@ class JupyterClient:
             await r.text()
 
         async with self.session.post(
-            spawn_url, data=body, allow_redirects=False
+            spawn_url, data=self.jupyter_options_form, allow_redirects=False
         ) as r:
             if r.status != 302:
                 raise Exception(f"Error {r.status} from {r.url}")
