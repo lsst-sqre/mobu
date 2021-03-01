@@ -12,3 +12,7 @@ mypy
 pytest
 pytest-aiohttp
 aiohttp-devtools
+
+# Temporary to avoid a conflict with requirements/main.txt due to the pyvo
+# dependency on idna (by way of requests), which is capped at 2.10.
+idna<=2.10

@@ -53,7 +53,7 @@ class User:
             key=signing_key,
             headers={"kid": "reissuer"},
             algorithm="RS256",
-        ).decode("utf-8")
+        )
 
     def dump(self) -> dict:
         return {
