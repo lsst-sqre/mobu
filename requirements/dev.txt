@@ -145,9 +145,9 @@ flake8==3.8.4 \
     --hash=sha256:749dbbd6bfd0cf1318af27bf97a14e28e5ff548ef8e5b1566ccfb25a11e7c839 \
     --hash=sha256:aadae8761ec651813c24be05c6f7b4680857ef6afaae4651a4eccaef97ce6c3b
     # via -r requirements/dev.in
-identify==2.0.0 \
-    --hash=sha256:9cdd81e5d2b6e76c3006d5226316dd947bd6324fbeebb881bec489202fa09d3a \
-    --hash=sha256:b99aa309329c4fea679463eb35d169f3fbe13e66e9dd6162ad1856cbeb03dcbd
+identify==2.1.0 \
+    --hash=sha256:2179e7359471ab55729f201b3fdf7dc2778e221f868410fedcb0987b791ba552 \
+    --hash=sha256:2a5fdf2f5319cc357eda2550bea713a404392495961022cf2462624ce62f0f46
     # via pre-commit
 idna==2.10 \
     --hash=sha256:b307872f855b18632ce0c21c5e45be78c0ea7ae4c15c828c20788b26921eb3f6 \

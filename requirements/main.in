@@ -13,7 +13,6 @@ cchardet
 click
 cryptography
 gitpython
-importlib_metadata
 jinja2
 pyjwt
 pyvo
