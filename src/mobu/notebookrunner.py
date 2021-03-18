@@ -8,6 +8,7 @@ __all__ = [
     "NotebookRunner",
 ]
 
+import asyncio
 import json
 import os
 from dataclasses import dataclass, field
@@ -64,6 +65,8 @@ class NotebookRunner(Business):
                     await self._client.delete_lab()
 
                 await self._client.ensure_lab()
+
+                await asyncio.sleep(self.options.get("settle_time", 0))
 
                 if self.notebook.path.endswith(".ipynb"):
                     logger.info(f"Starting notebook: {self.notebook.name}")
