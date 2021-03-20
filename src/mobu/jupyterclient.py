@@ -130,6 +130,9 @@ class JupyterClient:
                     self.log.info(f"Lab spawned, redirected to {r.url}")
                     return
 
+                if not r.ok:
+                    raise Exception(f"{progress_url} returned {r.status}")
+
                 self.log.info(f"Still waiting for lab to spawn {r}")
                 retries -= 1
                 await asyncio.sleep(poll_interval)
