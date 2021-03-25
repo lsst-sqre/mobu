@@ -151,7 +151,7 @@ class JupyterClient:
             if r.status not in [200, 202, 204]:
                 raise Exception(f"Error {r.status} from {r.url}")
 
-    async def create_kernel(self, kernel_name: str = "python") -> str:
+    async def create_kernel(self, kernel_name: str = "LSST") -> str:
         kernel_url = (
             self.jupyter_url + f"user/{self.user.username}/api/kernels"
         )
