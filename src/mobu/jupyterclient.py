@@ -159,7 +159,8 @@ class JupyterClient:
 
         async with self.session.post(kernel_url, json=body) as r:
             if r.status != 201:
-                raise Exception(f"Error {r.status} from {r.url}")
+                text = await r.text()
+                raise Exception(f"Error {r.status} from {r.url}: {text}")
 
             response = await r.json()
             return response["id"]
