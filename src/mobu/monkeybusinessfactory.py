@@ -17,7 +17,7 @@ from mobu.user import User
 
 class MonkeyBusinessFactory:
     @staticmethod
-    def create(body: Dict) -> Monkey:
+    async def create(body: Dict) -> Monkey:
         name = body["name"]
         business = body["business"]
         user = body["user"]
@@ -26,7 +26,7 @@ class MonkeyBusinessFactory:
         username = user["username"]
         uidnumber = user["uidnumber"]
 
-        u = User(username, uidnumber)
+        u = await User.create(username, uidnumber)
         m = Monkey(name, u, options)
 
         businesses = [

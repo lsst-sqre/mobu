@@ -4,6 +4,7 @@ __all__ = ["Configuration"]
 
 import os
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
@@ -35,6 +36,15 @@ class Configuration:
     well as fields in the JWT ticket.
 
     Set with the ``ENVIRONMENT_URL`` environment variable.
+    """
+
+    gafaelfawr_token: Optional[str] = os.getenv("GAFAELFAWR_TOKEN", None)
+    """The Gafaelfawr admin token to use to create user tokens.
+
+    If set, this token is used to make an admin API call to Gafaelfawr to get
+    a token for the user.
+
+    Set with the ``GAFAELFAWR_TOKEN`` environment variable.
     """
 
     name: str = os.getenv("SAFIR_NAME", "mobu")
