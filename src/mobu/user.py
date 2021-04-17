@@ -1,5 +1,7 @@
 """All the data for a mobu user."""
 
+from __future__ import annotations
+
 __all__ = [
     "User",
 ]
@@ -11,6 +13,7 @@ from dataclasses import dataclass
 from string import Template
 
 import jwt
+from aiohttp import ClientSession
 
 from mobu.config import Configuration
 
@@ -21,12 +24,37 @@ class User:
     uidnumber: int
     token: str
 
-    def __init__(self, username: str, uidnumber: int):
-        self.username = username
-        self.uidnumber = uidnumber
-        self.generate_token()
+    @classmethod
+    async def create(cls, username: str, uidnumber: int) -> User:
+        token = await cls.generate_token(username, uidnumber)
+        return cls(username=username, uidnumber=uidnumber, token=token)
 
-    def generate_token(self) -> None:
+    @classmethod
+    async def generate_token(cls, username: str, uidnumber: int) -> str:
+        if not Configuration.gafaelfawr_token:
+            return cls.generate_legacy_token(username, uidnumber)
+
+        token_url = f"{Configuration.environment_url}/auth/api/v1/tokens"
+        admin_token = Configuration.gafaelfawr_token
+        async with ClientSession() as s:
+            r = await s.post(
+                token_url,
+                headers={"Authorization": f"bearer {admin_token}"},
+                json={
+                    "username": username,
+                    "token_type": "user",
+                    "token_name": f"mobu {str(int(time.time()))}",
+                    "scopes": ["exec:notebook"],
+                    "expires": int(time.time() + 2419200),
+                    "uid": uidnumber,
+                },
+                raise_for_status=True,
+            )
+            body = await r.json()
+            return body["token"]
+
+    @staticmethod
+    def generate_legacy_token(username: str, uidnumber: int) -> str:
         template_path = os.path.join(
             os.path.dirname(__file__), "static/jwt-template.json"
         )
@@ -41,14 +69,14 @@ class User:
 
         token_data = {
             "environment_url": Configuration.environment_url,
-            "username": self.username,
-            "uidnumber": self.uidnumber,
+            "username": username,
+            "uidnumber": uidnumber,
             "issue_time": current_time,
             "expiration_time": current_time + 2419200,
         }
 
         token_dict = json.loads(token_template.substitute(token_data))
-        self.token = jwt.encode(
+        return jwt.encode(
             token_dict,
             key=signing_key,
             headers={"kid": "reissuer"},

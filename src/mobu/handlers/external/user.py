@@ -29,7 +29,7 @@ async def post_user(request: web.Request) -> web.Response:
         body = await request.json()
         logger.info(body)
         manager = request.config_dict["mobu/monkeybusinessmanager"]
-        monkey = MonkeyBusinessFactory.create(body)
+        monkey = await MonkeyBusinessFactory.create(body)
         await manager.manage_monkey(monkey)
         data = {"user": monkey.user.username}
         return web.json_response(data)
