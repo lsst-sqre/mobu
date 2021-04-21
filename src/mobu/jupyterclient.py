@@ -16,7 +16,7 @@ from http.cookies import BaseCookie
 from typing import Any, Dict
 from uuid import uuid4
 
-from aiohttp import ClientSession
+from aiohttp import ClientResponse, ClientSession
 from structlog._config import BoundLoggerLazyProxy
 
 from mobu.config import Configuration
@@ -70,7 +70,7 @@ class JupyterClient:
     async def hub_login(self) -> None:
         async with self.session.get(self.jupyter_url + "hub/login") as r:
             if r.status != 200:
-                raise Exception(f"Error {r.status} from {r.url}")
+                await self._raise_error("Error logging into hub", r)
 
     async def ensure_lab(self) -> None:
         self.log.info("Ensure lab")
@@ -85,7 +85,7 @@ class JupyterClient:
         lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
         async with self.session.get(lab_url) as r:
             if r.status != 200:
-                raise Exception(f"Error {r.status} from {r.url}")
+                await self._raise_error("Error logging into lab", r)
 
     async def is_lab_running(self) -> bool:
         self.log.info("Is lab running?")
@@ -113,7 +113,10 @@ class JupyterClient:
             spawn_url, data=self.jupyter_options_form, allow_redirects=False
         ) as r:
             if r.status != 302:
-                raise Exception(f"Error {r.status} from {r.url}")
+                await self._raise_error("Spawn did not redirect", r)
+
+            if r.url == spawn_url:
+                await self._raise_error("Spawn redirected back to itself", r)
 
             progress_url = r.url
             self.log.info(f"Watching progress url {progress_url}")
@@ -131,7 +134,7 @@ class JupyterClient:
                     return
 
                 if not r.ok:
-                    raise Exception(f"{progress_url} returned {r.status}")
+                    await self._raise_error("Error spawning", r)
 
                 self.log.info(f"Still waiting for lab to spawn {r}")
                 retries -= 1
@@ -149,7 +152,7 @@ class JupyterClient:
 
         async with self.session.delete(server_url, headers=headers) as r:
             if r.status not in [200, 202, 204]:
-                raise Exception(f"Error {r.status} from {r.url}")
+                await self._raise_error("Error deleting lab", r)
 
     async def create_kernel(self, kernel_name: str = "LSST") -> str:
         kernel_url = (
@@ -159,8 +162,7 @@ class JupyterClient:
 
         async with self.session.post(kernel_url, json=body) as r:
             if r.status != 201:
-                text = await r.text()
-                raise Exception(f"Error {r.status} from {r.url}: {text}")
+                await self._raise_error("Error creating kernel", r)
 
             response = await r.json()
             return response["id"]
@@ -222,3 +224,7 @@ class JupyterClient:
         return {
             "cookies": [str(cookie) for cookie in self.session.cookie_jar],
         }
+
+    async def _raise_error(self, msg: str, r: ClientResponse) -> None:
+        body = await r.text()
+        raise Exception(f"{msg}: {r.status} {r.url}: {r.headers} {body}")
