@@ -7,10 +7,10 @@
   "business": "JupyterLoginLoop",
   "options": {
     "restart": true,
-    "nb_url": "/n2/",
     "jupyter_options_form": {
       "image": "registry.hub.docker.com/lsstsqre/sciplat-lab:recommended",
-      "image_tag": "recommended",
+      "image_list": "registry.hub.docker.com/lsstsqre/sciplat-lab:recommended|Recommended|",
+      "image_dropdown": "use_image_from_dropdown",
       "size": "Small"
     }
   }
