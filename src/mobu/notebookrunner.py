@@ -48,8 +48,11 @@ class NotebookRunner(Business):
             )
 
             if not self._repo:
+                repo_url = self.options.get("repo_url", REPO_URL)
+                repo_branch = self.options.get("repo_branch", REPO_BRANCH)
+
                 self._repo = git.Repo.clone_from(
-                    REPO_URL, self._repo_dir.name, branch=REPO_BRANCH
+                    repo_url, self._repo_dir.name, branch=repo_branch
                 )
 
             self._notebook_iterator = os.scandir(self._repo_dir.name)
