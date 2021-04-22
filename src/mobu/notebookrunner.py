@@ -60,12 +60,10 @@ class NotebookRunner(Business):
             logger.info("Repository cloned and ready")
 
             await self._client.hub_login()
+            await self._client.delete_lab()
 
             while True:
                 self._next_notebook()
-
-                if self.success_count % 100 == 0:
-                    await self._client.delete_lab()
 
                 await self._client.ensure_lab()
 
