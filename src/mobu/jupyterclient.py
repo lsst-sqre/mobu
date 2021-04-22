@@ -43,9 +43,9 @@ class JupyterClient:
     ):
         self.user = user
         self.log = log
-        self.jupyter_url = Configuration.environment_url + options.get(
-            "nb_url", "/nb/"
-        )
+        self.jupyter_base = options.get("nb_url", "/nb/")
+        self.jupyter_url = Configuration.environment_url + self.jupyter_base
+
         self.xsrftoken = "".join(
             random.choices(string.ascii_uppercase + string.digits, k=16)
         )
@@ -103,6 +103,9 @@ class JupyterClient:
 
     async def spawn_lab(self) -> None:
         spawn_url = self.jupyter_url + "hub/spawn"
+        pending_url = (
+            self.jupyter_url + f"hub/spawn-pending/{self.user.username}"
+        )
         lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
 
         # DM-23864: Do a get on the spawn URL even if I don't have to.
@@ -115,11 +118,11 @@ class JupyterClient:
             if r.status != 302:
                 await self._raise_error("Spawn did not redirect", r)
 
-            if r.url == spawn_url:
-                await self._raise_error("Spawn redirected back to itself", r)
-
-            progress_url = r.url
-            self.log.info(f"Watching progress url {progress_url}")
+            redirect_url = (
+                self.jupyter_base + f"hub/spawn-pending/{self.user.username}"
+            )
+            if r.headers["Location"] != redirect_url:
+                await self._raise_error("Spawn didn't redirect to pending", r)
 
         # Jupyterlab will give up a spawn after 900 seconds, so we shouldn't
         # wait longer than that.
@@ -128,7 +131,7 @@ class JupyterClient:
         retries = max_poll_secs / poll_interval
 
         while retries > 0:
-            async with self.session.get(progress_url) as r:
+            async with self.session.get(pending_url) as r:
                 if str(r.url) == lab_url:
                     self.log.info(f"Lab spawned, redirected to {r.url}")
                     return
@@ -226,5 +229,4 @@ class JupyterClient:
         }
 
     async def _raise_error(self, msg: str, r: ClientResponse) -> None:
-        body = await r.text()
-        raise Exception(f"{msg}: {r.status} {r.url}: {r.headers} {body}")
+        raise Exception(f"{msg}: {r.status} {r.url}: {r.headers}")
