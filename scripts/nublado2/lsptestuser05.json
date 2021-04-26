@@ -4,14 +4,9 @@
     "username": "lsptestuser05",
     "uidnumber": 60185,
     "scopes": [
-        "read:workspace/user",
-        "write:workspace/user",
-        "exec:user",
         "read:tap",
-        "read:image",
         "exec:portal",
-        "exec:notebook",
-        "read:workspace"
+        "exec:notebook"
     ]
   },
   "business": "NotebookRunner",
