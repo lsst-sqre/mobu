@@ -2,7 +2,8 @@
   "name": "lsptestuser04",
   "user": {
     "username": "lsptestuser04",
-    "uidnumber": 60184
+    "uidnumber": 60184,
+    "scopes": ["exec:notebook"]
   },
   "business": "JupyterLoginLoop",
   "options": {

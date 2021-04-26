@@ -46,7 +46,7 @@
       "id": 1002
     }
   ],
-  "scope": "exec:admin read:workspace/user write:workspace/user exec:user read:tap read:image exec:portal exec:notebook read:workspace",
+  "scope": "${scopes}",
   "jti": "oauth2_proxy-a7efdff96fd6e3184a0bfdea909e9e2c",
   "act": {
     "aud": "cilogon:/client_id/7ae419868b97e81644ced9886ffbcec",

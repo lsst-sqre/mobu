@@ -25,8 +25,9 @@ class MonkeyBusinessFactory:
 
         username = user["username"]
         uidnumber = user["uidnumber"]
+        scopes = user["scopes"]
 
-        u = await User.create(username, uidnumber)
+        u = await User.create(username, uidnumber, scopes)
         m = Monkey(name, u, options)
 
         businesses = [
