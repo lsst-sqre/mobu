@@ -53,8 +53,9 @@ async def test_generate_token() -> None:
         m.post(
             "https://nublado.lsst.codes/auth/api/v1/tokens", callback=handler
         )
-        user = await User.create("someuser", 1234)
+        user = await User.create("someuser", 1234, ["exec:notebook"])
         assert user.username == "someuser"
         assert user.uidnumber == 1234
+        assert user.scopes == ["exec:notebook"]
         assert user.token.startswith("gt-")
     Configuration.gafaelfawr_token = None

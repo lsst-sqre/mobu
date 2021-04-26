@@ -11,6 +11,7 @@ import os
 import time
 from dataclasses import dataclass
 from string import Template
+from typing import List
 
 import jwt
 from aiohttp import ClientSession
@@ -23,16 +24,26 @@ class User:
     username: str
     uidnumber: int
     token: str
+    scopes: List[str]
 
     @classmethod
-    async def create(cls, username: str, uidnumber: int) -> User:
-        token = await cls.generate_token(username, uidnumber)
-        return cls(username=username, uidnumber=uidnumber, token=token)
+    async def create(
+        cls, username: str, uidnumber: int, scopes: List[str]
+    ) -> User:
+        token = await cls.generate_token(username, uidnumber, scopes)
+        return cls(
+            username=username,
+            uidnumber=uidnumber,
+            token=token,
+            scopes=scopes,
+        )
 
     @classmethod
-    async def generate_token(cls, username: str, uidnumber: int) -> str:
+    async def generate_token(
+        cls, username: str, uidnumber: int, scopes: List[str]
+    ) -> str:
         if not Configuration.gafaelfawr_token:
-            return cls.generate_legacy_token(username, uidnumber)
+            return cls.generate_legacy_token(username, uidnumber, scopes)
 
         token_url = f"{Configuration.environment_url}/auth/api/v1/tokens"
         admin_token = Configuration.gafaelfawr_token
@@ -44,7 +55,7 @@ class User:
                     "username": username,
                     "token_type": "user",
                     "token_name": f"mobu {str(int(time.time()))}",
-                    "scopes": ["exec:notebook"],
+                    "scopes": scopes,
                     "expires": int(time.time() + 2419200),
                     "uid": uidnumber,
                 },
@@ -54,7 +65,9 @@ class User:
             return body["token"]
 
     @staticmethod
-    def generate_legacy_token(username: str, uidnumber: int) -> str:
+    def generate_legacy_token(
+        username: str, uidnumber: int, scopes: List[str]
+    ) -> str:
         template_path = os.path.join(
             os.path.dirname(__file__), "static/jwt-template.json"
         )
@@ -73,6 +86,7 @@ class User:
             "uidnumber": uidnumber,
             "issue_time": current_time,
             "expiration_time": current_time + 2419200,
+            "scopes": " ".join(scopes),
         }
 
         token_dict = json.loads(token_template.substitute(token_data))

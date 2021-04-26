@@ -2,7 +2,12 @@
   "name": "Robo-Simon",
   "user": {
     "username": "lsptestuser05",
-    "uidnumber": 60185
+    "uidnumber": 60185,
+    "scopes": [
+        "read:tap",
+        "exec:portal",
+        "exec:notebook"
+    ]
   },
   "business": "NotebookRunner",
   "options": {
@@ -11,8 +16,10 @@
       "image": "registry.hub.docker.com/lsstsqre/sciplat-lab:recommended",
       "image_list": "registry.hub.docker.com/lsstsqre/sciplat-lab:recommended|Recommended|",
       "image_dropdown": "use_image_from_dropdown",
-      "size": "Small",
-      "settle_time": 45
-    }
+      "size": "Small"
+    },
+    "settle_time": 45,
+    "repo_url": "https://github.com/lsst-sqre/notebook-demo.git",
+    "repo_branch": "robo-simon"
   }
 }
