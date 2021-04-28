@@ -58,4 +58,4 @@ async def test_generate_token() -> None:
         assert user.uidnumber == 1234
         assert user.scopes == ["exec:notebook"]
         assert user.token.startswith("gt-")
-    Configuration.gafaelfawr_token = None
+    Configuration.gafaelfawr_token = "None"

@@ -14,5 +14,4 @@ click
 cryptography
 gitpython
 jinja2
-pyjwt
 pyvo
