@@ -389,10 +389,6 @@ pyerfa==1.7.3 \
     --hash=sha256:d8c3e10f85d44f81432c72a6c38ca7f4880e708f741a46cdf24611462e8de9fa \
     --hash=sha256:e64d5f08b30b62c80530620384894b3c3e0945ad178a47e3e2aec7001cf738c3
     # via astropy
-pyjwt==2.0.1 \
-    --hash=sha256:a5c70a06e1f33d81ef25eecd50d50bd30e34de1ca8b2b9fa3fe0daaabcf69bf7 \
-    --hash=sha256:b70b15f89dc69b993d8a8d32c299032d5355c82f9b5b7e851d1a6d706dffe847
-    # via -r requirements/main.in
 pyvo==1.1 \
     --hash=sha256:e14f527ecbec48b71d57f48f301ec6a809f886096114529cf2d1fdcbaf6deb2b
     # via -r requirements/main.in

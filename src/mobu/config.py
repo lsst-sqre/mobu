@@ -4,7 +4,6 @@ __all__ = ["Configuration"]
 
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -19,14 +18,6 @@ class Configuration:
     "None" may be provided in a secret to disable this feature.
     """
 
-    private_key_path: str = os.getenv(
-        "PRIVATE_KEY_PATH", "/etc/keys/signing_key.pem"
-    )
-    """The private key used for creating JWT tokens.
-
-    Set with the ``PRIVATE_KEY_PATH`` environment variable.
-    """
-
     environment_url: str = os.getenv(
         "ENVIRONMENT_URL", "https://nublado.lsst.codes"
     )
@@ -38,11 +29,11 @@ class Configuration:
     Set with the ``ENVIRONMENT_URL`` environment variable.
     """
 
-    gafaelfawr_token: Optional[str] = os.getenv("GAFAELFAWR_TOKEN", None)
+    gafaelfawr_token: str = os.getenv("GAFAELFAWR_TOKEN", "None")
     """The Gafaelfawr admin token to use to create user tokens.
 
-    If set, this token is used to make an admin API call to Gafaelfawr to get
-    a token for the user.
+    This token is used to make an admin API call to Gafaelfawr to get a token
+    for the user.  mobu will not work if this is not set.
 
     Set with the ``GAFAELFAWR_TOKEN`` environment variable.
     """
