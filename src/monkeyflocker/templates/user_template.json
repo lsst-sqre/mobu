@@ -1,0 +1,18 @@
+{
+  "name": "{{USERNAME}}",
+  "user": {
+    "username": "{{USERNAME}}",
+    "uidnumber": {{UID}},
+    "scopes": ["exec:notebook"]
+  },
+  "business": "JupyterLoginLoop",
+  "options": {
+    "restart": true,
+    "jupyter_options_form": {
+      "image": "registry.hub.docker.com/lsstsqre/sciplat-lab:recommended",
+      "image_list": "registry.hub.docker.com/lsstsqre/sciplat-lab:recommended|Recommended|",
+      "image_dropdown": "use_image_from_dropdown",
+      "size": "Small"
+    }
+  }
+}

@@ -6,6 +6,7 @@ update-deps:
 
 .PHONY: init
 init:
+	pip install --upgrade pip setuptools wheel
 	pip install --editable .
 	pip install --upgrade -r requirements/main.txt -r requirements/dev.txt
 	rm -rf .tox
