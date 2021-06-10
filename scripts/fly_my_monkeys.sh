@@ -1,6 +1,6 @@
 #!/bin/bash -xe
 ENVIRONMENT=${1:-"http://localhost:8000"}
-MONKEY_DIR=${2:-"nublado"}
+MONKEY_DIR=${2:-"nublado2"}
 
 cd $2
 for MONKEY in *
