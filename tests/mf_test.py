@@ -92,7 +92,7 @@ def test_mf_errors() -> None:
     _check_mf_error(result, "Access token must be set")
 
 
-def _check_mf_error(result: Result, err: str):
+def _check_mf_error(result: Result, err: str) -> None:
     assert result.exit_code == 1
     exc = result.exception
     assert type(exc) is MonkeyflockerError

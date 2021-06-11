@@ -332,6 +332,9 @@ toml==0.10.2 \
     #   mypy
     #   pre-commit
     #   pytest
+types-requests==0.1.10 \
+    --hash=sha256:5b1864f1564adb810123c563b4de86236c14058978ec1294b07a988c532cb079
+    # via -r requirements/dev.in
 typing-extensions==3.10.0.0 \
     --hash=sha256:0ac0f89795dd19de6b97debb0c6af1c70987fd80a2d62d1958f7e56fcc31b497 \
     --hash=sha256:50b6f157849174217d0656f99dc82fe932884fb250826c18350e159ec6cdf342 \
