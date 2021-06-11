@@ -73,6 +73,7 @@ def main(
     token: Optional[str],
     template_file: str,
 ) -> None:
+    """monkeyflocker VERB, where VERB is 'start' or 'stop'."""
     verb = verb.lower()
     # Validate our parameters
     if verb not in ["start", "stop"]:
