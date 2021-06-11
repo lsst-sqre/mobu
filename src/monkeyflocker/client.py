@@ -26,11 +26,15 @@ class MonkeyflockerClient:
     template: jinja2.Template
     users: List[MFUser] = field(init=False)
 
-    def __post_init__(self, count, base_username, base_uid) -> None:
+    def __post_init__(
+        self, count: int, base_username: str, base_uid: int
+    ) -> None:
         self.users = self._make_userlist(count, base_username, base_uid)
 
     @staticmethod
-    def _make_userlist(count, base_username, base_uid) -> List[MFUser]:
+    def _make_userlist(
+        count: int, base_username: str, base_uid: int
+    ) -> List[MFUser]:
         userlist: List[MFUser] = []
         numdigits = max(2, int(math.log10(count)))
         r = range(1, (count + 1))
