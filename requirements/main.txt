@@ -379,15 +379,16 @@ pyerfa==2.0.0 \
     --hash=sha256:f904231e1a570f94440e06140799590895107f942847b52a753ce81c9609162d
     # via astropy
 pyvo==1.1 \
+    --hash=sha256:a7a9b4f93b62d23e3d82837aa95877d8dd05e58b31078e08650fd4fa38972491 \
     --hash=sha256:e14f527ecbec48b71d57f48f301ec6a809f886096114529cf2d1fdcbaf6deb2b
     # via -r requirements/main.in
 requests==2.25.1 \
     --hash=sha256:27973dd4a904a4f13b263a19c866c13b92a39ed1c964655f025f3f8d3d75b804 \
     --hash=sha256:c210084e36a42ae6b9219e00e48287def368a26d03a048ddad7bfee44f75871e
     # via pyvo
-safir==0.1.1 \
-    --hash=sha256:6de9adb068a5f32b2c436179685ac6a956450cce2dca80cc40d2ecd988ade879 \
-    --hash=sha256:8a38991e0d334f3eaafc8d0ba6d79dc34ead94585997d0cbaf24e0ef5a07aac3
+safir==0.2.0 \
+    --hash=sha256:240c16ccc43c7a1cb0ee7fcbb94de44a9675d9bf5aef7509cb09c1e49e9d386b \
+    --hash=sha256:fb6c27f1defb13428dde17b7b304d7672955a4b77ae4de9a5ab5f08f3e09e3cc
     # via -r requirements/main.in
 smmap==4.0.0 \
     --hash=sha256:7e65386bd122d45405ddf795637b7f7d2b532e7e401d46bbe3fb49b9986d5182 \
