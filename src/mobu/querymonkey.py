@@ -2,6 +2,7 @@ import asyncio
 import os
 import random
 import time
+from dataclasses import field
 
 import jinja2
 import pyvo
@@ -32,8 +33,9 @@ def generate_parameters() -> dict:
 class QueryMonkey(Business):
     success_count: int = 0
     failure_count: int = 0
+    _client: pyvo.dal.TAPService = field(init=False)
 
-    def _client(self) -> pyvo.dal.TAPService:
+    def _make_client(self) -> pyvo.dal.TAPService:
         tap_url = Configuration.environment_url + "/api/tap"
 
         s = requests.Session()
@@ -64,7 +66,7 @@ class QueryMonkey(Business):
                 "Query templates to choose from: %s", env.list_templates()
             )
 
-            service = self._client()
+            self._client = self._make_client()
 
             while True:
                 template_name = random.choice(env.list_templates())
@@ -72,7 +74,7 @@ class QueryMonkey(Business):
                 query = template.render(generate_parameters())
                 logger.info("Running: %s", query)
                 start = time.time()
-                await loop.run_in_executor(None, service.search, query)
+                await loop.run_in_executor(None, self._client.search, query)
                 end = time.time()
                 logger.info("Finished, took: %i seconds", end - start)
                 self.success_count += 1
@@ -80,6 +82,11 @@ class QueryMonkey(Business):
         except Exception:
             self.failure_count += 1
             raise
+
+    async def stop(self) -> None:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, self._client.abort)
+        await loop.run_in_executor(None, self._client.delete)
 
     def dump(self) -> dict:
         return {
