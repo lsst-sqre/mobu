@@ -104,6 +104,7 @@ class Monkey:
             except asyncio.CancelledError:
                 self.log.info("Shutting down")
                 run = False
+                await self.business.stop()
             except Exception as e:
                 self.state = "ERROR"
                 self.log.exception(
@@ -116,6 +117,10 @@ class Monkey:
                 await asyncio.sleep(60)
 
     async def stop(self) -> None:
+        # If we have a delete_lab method in our business's client, use it.
+        # The base Business class doesn't have a _client, and the
+
+        await self.business.stop()
         try:
             await self._job.close(timeout=0)
         except asyncio.TimeoutError:
