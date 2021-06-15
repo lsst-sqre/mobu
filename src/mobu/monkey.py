@@ -104,6 +104,7 @@ class Monkey:
             except asyncio.CancelledError:
                 self.log.info("Shutting down")
                 run = False
+                await self.business.stop()
             except Exception as e:
                 self.state = "ERROR"
                 self.log.exception(
@@ -116,6 +117,7 @@ class Monkey:
                 await asyncio.sleep(60)
 
     async def stop(self) -> None:
+        await self.business.stop()
         try:
             await self._job.close(timeout=0)
         except asyncio.TimeoutError:
