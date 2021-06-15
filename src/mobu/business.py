@@ -24,8 +24,5 @@ class Business:
             logger.info("Idling...")
             await asyncio.sleep(5)
 
-    async def stop(self) -> None:
-        pass
-
     def dump(self) -> dict:
         return {"name": "Idle"}

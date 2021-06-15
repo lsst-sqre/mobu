@@ -45,9 +45,6 @@ class JupyterLoginLoop(Business):
             self.failure_count += 1
             raise
 
-    async def stop(self) -> None:
-        await self._client.delete_lab()
-
     def dump(self) -> dict:
         return {
             "name": "JupyterLoginLoop",
