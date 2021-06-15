@@ -15,3 +15,4 @@ cryptography
 gitpython
 jinja2
 pyvo
+structlog
