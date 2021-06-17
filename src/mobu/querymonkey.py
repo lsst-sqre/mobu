@@ -9,8 +9,9 @@ import pyvo
 import requests
 from pyvo.auth import AuthSession
 
-from mobu.business import Business
+from mobu.businesstime import BusinessTime
 from mobu.config import Configuration
+from mobu.timing import QueryTimingData, TAPQueryTimingData, TimeInfo
 
 
 def limit_dec(x: int) -> int:
@@ -30,7 +31,7 @@ def generate_parameters() -> dict:
     }
 
 
-class QueryMonkey(Business):
+class QueryMonkey(BusinessTime):
     success_count: int = 0
     failure_count: int = 0
     _client: pyvo.dal.TAPService = field(init=False)
@@ -67,14 +68,17 @@ class QueryMonkey(Business):
             )
 
             self._client = self._make_client()
-
+            stamp = TAPQueryTimingData(start=TimeInfo.stamp())
             while True:
                 template_name = random.choice(env.list_templates())
                 template = env.get_template(template_name)
                 query = template.render(generate_parameters())
                 logger.info("Running: %s", query)
                 start = time.time()
+                qt = QueryTimingData(start=TimeInfo.stamp(), query=query)
+                stamp.query.append(qt)
                 await loop.run_in_executor(None, self._client.search, query)
+                qt.stop = TimeInfo.stamp(previous=qt.start)
                 end = time.time()
                 logger.info("Finished, took: %i seconds", end - start)
                 self.success_count += 1
@@ -89,8 +93,12 @@ class QueryMonkey(Business):
         await loop.run_in_executor(None, self._client.delete)
 
     def dump(self) -> dict:
-        return {
-            "name": "QueryMonkey",
-            "failure_count": self.failure_count,
-            "success_count": self.success_count,
-        }
+        r = super().dump()
+        r.update(
+            {
+                "name": "QueryMonkey",
+                "failure_count": self.failure_count,
+                "success_count": self.success_count,
+            }
+        )
+        return r
