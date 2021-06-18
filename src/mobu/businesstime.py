@@ -11,7 +11,7 @@ from mobu.timing import TimingData
 class BusinessTime(Business):
     timings: list[TimingData] = field(default_factory=list)
 
-    def dump(self):
+    def dump(self) -> dict:
         return {
             "name": "BusinessTime",
             "timings": [x.dump() for x in self.timings],

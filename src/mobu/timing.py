@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, fields
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 
 @dataclass(frozen=True)
@@ -43,7 +43,7 @@ class TimingData:
     stop: Optional[TimeInfo] = None
     name: str = "Timing"
 
-    def dump(self):
+    def dump(self) -> dict:
         """This should work for sane subclasses too.  The magic is in
         _itemdump() (well, and dataclasses.fields())"""
         r = {}
@@ -51,7 +51,7 @@ class TimingData:
             r[t.name] = self._itemdump(t.name)
         return r
 
-    def _itemdump(self, name: str) -> str:
+    def _itemdump(self, name: str) -> Union[None, dict, list, str]:
         """This is a special-purpose serializer, effectively.  An _itemdump()
         of None or a string is itself, a list calls the dump() method of all
         its items, and anything else is presumed to have a dump() method

@@ -139,7 +139,7 @@ class JupyterClient:
                 if not r.ok:
                     await self._raise_error("Error spawning", r)
 
-                self.log.info(f"Still waiting for lab to spawn {r}")
+                self.log.info(f"Still waiting for lab to spawn [{r.status}]")
                 retries -= 1
                 await asyncio.sleep(poll_interval)
 

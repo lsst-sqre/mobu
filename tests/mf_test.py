@@ -34,6 +34,7 @@ async def test_client_creation() -> None:
         base_uid=29029,
         endpoint="https://madeup.fake.name",
         token="dummy-token",
+        output="",
         template=Environment(loader=BaseLoader()).from_string(TEMPLATE),
     )
     userlist = client.users

@@ -39,7 +39,8 @@ class JupyterPythonLoop(JupyterLoginLoop):
             stamp.code.append(runstamp)
             reply = await client.run_python(kernel, code_str)
             runstamp.stop = TimeInfo.stamp(previous=runstamp.start)
-            logger.info(reply)
+            logger.info(f"{code_str} -> {reply}")
+
             # Don't time the sleep
             await asyncio.sleep(60)
 
