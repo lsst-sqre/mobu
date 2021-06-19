@@ -1,25 +1,60 @@
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
 
-@dataclass(frozen=True)
-class TimeInfo:
-    """A metric container for time data and its serialization.  Contains
-    both an absolute timestamp and a time-elapsed-since-previous-timeinfo
-    field."""
+class StopwatchAlreadyStopped(Exception):
+    pass
 
-    absolute: datetime
-    elapsed: timedelta
+
+@dataclass
+class Stopwatch:
+    """A metric container for time data and its serialization.  Create it with
+    start(), stop it with stop().  It will fill out its elapsed field on
+    stop().
+
+    Give it an event (an arbitrary string) and an optional annotation
+    (an arbitrary dict)."""
+
+    start_time: datetime
+    stop_time: Optional[datetime] = field(init=False, default=None)
+    previous: Optional["Stopwatch"]
+    elapsed: timedelta = field(init=False, default=timedelta(0))
+    elapsed_since_previous_stop: timedelta = field(
+        init=False, default=timedelta(0)
+    )
+    event: str
+    annotation: dict
 
     @classmethod
-    def stamp(cls, previous: Optional["TimeInfo"] = None) -> "TimeInfo":
+    def start(
+        cls,
+        event: str,
+        annotation: dict = {},
+        previous: Optional["Stopwatch"] = None,
+    ) -> "Stopwatch":
         now = datetime.now(timezone.utc)
-        if not previous:
-            elapsed = timedelta(0)
-        else:
-            elapsed = now - previous.absolute
-        return cls(absolute=now, elapsed=elapsed)
+        return cls(
+            start_time=now,
+            event=event,
+            annotation=annotation,
+            previous=previous,
+        )
+
+    def __post_init__(self) -> None:
+        if self.previous and self.previous.stop_time:
+            self.elapsed_since_previous_stop = (
+                self.start_time - self.previous.stop_time
+            )
+
+    def stop(self) -> None:
+        if self.stop_time:
+            raise StopwatchAlreadyStopped(
+                f"Stopwatch already stopped at {self.stop_time.isoformat()}"
+            )
+        now = datetime.now(timezone.utc)
+        self.stop_time = now
+        self.elapsed = now - self.start_time
 
     def dump(self) -> Dict[str, Any]:
         """You can't directly JSON-dump datetimes/timedeltas.  So instead
@@ -29,92 +64,15 @@ class TimeInfo:
         Likewise, the elapsed time is a float representing number of
         seconds, which you can just pass to a timedelta constructor.
         """
+        stopstr: Optional[str] = None
+        if self.stop_time is not None:
+            stopstr = self.stop_time.isoformat()
         return {
-            "absolute": self.absolute.isoformat(),
+            "event": self.event,
+            "annotation": self.annotation,
+            "start": self.start_time.isoformat(),
+            "stop": stopstr,
             "elapsed": self.elapsed.total_seconds(),
+            "previous": self.previous,
+            "elapsed_since_previous_stop": self.elapsed_since_previous_stop.total_seconds(),  # noqa: E501
         }
-
-
-@dataclass
-class TimingData:
-    """Base timing class.  Only has start and stop times."""
-
-    start: Optional[TimeInfo] = None
-    stop: Optional[TimeInfo] = None
-    name: str = "Timing"
-
-    def dump(self) -> dict:
-        """This should work for sane subclasses too.  The magic is in
-        _itemdump() (well, and dataclasses.fields())"""
-        r = {}
-        for t in fields(self):
-            r[t.name] = self._itemdump(t.name)
-        return r
-
-    def _itemdump(self, name: str) -> Union[None, dict, list, str]:
-        """This is a special-purpose serializer, effectively.  An _itemdump()
-        of None or a string is itself, a list calls the dump() method of all
-        its items, and anything else is presumed to have a dump() method
-        of its own to call.
-        """
-        item = getattr(self, name, None)
-        if item is None or (type(item) is str):
-            return item
-        elif type(item) is list:
-            return [x.dump() for x in item]
-        return item.dump()
-
-
-@dataclass
-class CodeTimingData(TimingData):
-    """Annotates the timing with the code being timed."""
-
-    name: str = "CodeTiming"
-    code: str = ""
-
-
-@dataclass
-class QueryTimingData(TimingData):
-    """Annotates the timing with the query being timed."""
-
-    name: str = "QueryTiming"
-    query: str = ""
-
-
-@dataclass
-class HubLoginTimingData(TimingData):
-    """Used for timing Hub login time."""
-
-    login_complete: Optional[TimeInfo] = None
-    name: str = "HubLoginTiming"
-
-
-@dataclass
-class LabLoopTimingData(HubLoginTimingData):
-    """Used for timing Lab container creation/deletion."""
-
-    lab_created: Optional[TimeInfo] = None
-    lab_complete: Optional[TimeInfo] = None
-    lab_deleted: Optional[TimeInfo] = None
-    name: str = "LabLoopTiming"
-
-
-@dataclass
-class PythonTimingData(LabLoopTimingData):
-    """Used for timing Python kernel creation and execution."""
-
-    kernel_created: Optional[TimeInfo] = None
-    name: str = "PythonTiming"
-    code: list[CodeTimingData] = field(default_factory=list)
-
-
-@dataclass
-class NotebookTimingData(PythonTimingData):
-    name: str = "NotebookTiming"
-    repo_cloned: Optional[TimeInfo] = None
-
-
-@dataclass
-class TAPQueryTimingData(TimingData):
-    name: str = "TAPQueryTiming"
-    query: list[QueryTimingData] = field(default_factory=list)

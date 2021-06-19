@@ -20,7 +20,6 @@ import git
 
 from mobu.jupyterclient import JupyterClient, NotebookException
 from mobu.jupyterloginloop import JupyterLoginLoop
-from mobu.timing import CodeTimingData, NotebookTimingData, TimeInfo
 
 REPO_URL = "https://github.com/lsst-sqre/notebook-demo.git"
 REPO_BRANCH = "prod"
@@ -44,67 +43,62 @@ class NotebookRunner(JupyterLoginLoop):
             self._client = JupyterClient(
                 self.monkey.user, logger, self.options
             )
-            startstamp = NotebookTimingData(start=TimeInfo.stamp())
-            self.timings.append(startstamp)
             if not self._repo:
                 repo_url = self.options.get("repo_url", REPO_URL)
                 repo_branch = self.options.get("repo_branch", REPO_BRANCH)
-
+                self.start_event("clone_repo")
                 self._repo = git.Repo.clone_from(
                     repo_url, self._repo_dir.name, branch=repo_branch
                 )
-                startstamp.repo_cloned = TimeInfo.stamp(
-                    previous=startstamp.start
-                )
+                self.stop_current_event()
 
             self._notebook_iterator = os.scandir(self._repo_dir.name)
 
             logger.info("Repository cloned and ready")
 
-            prev = startstamp.repo_cloned
-            if not prev:
-                prev = startstamp.start
-
+            self.start_event("hub_login")
             await self._client.hub_login()
-            startstamp.login_complete = TimeInfo.stamp(previous=prev)
-
+            self.stop_current_event()
+            self.start_event("initial_delete_lab")
             await self._client.delete_lab()
-            startstamp.lab_deleted = TimeInfo.stamp(startstamp.login_complete)
+            self.stop_current_event()
 
             while True:
                 self._next_notebook()
-
+                self.start_event("ensure_lab")
                 await self._client.ensure_lab()
+                self.stop_current_event()
+                self.start_event("lab_settle")
                 await asyncio.sleep(self.options.get("settle_time", 0))
-
-                # Start timer after settle
-                stamp = NotebookTimingData(start=TimeInfo.stamp())
-                self.timings.append(stamp)
+                self.stop_current_event()
                 if self.notebook.path.endswith(".ipynb"):
                     logger.info(f"Starting notebook: {self.notebook.name}")
+                    self.start_event(f"read_notebook:{self.notebook.name}")
                     notebook_text = Path(self.notebook.path).read_text()
                     cells = json.loads(notebook_text)["cells"]
-
+                    self.stop_current_event()
+                    self.start_event("create_kernel")
                     kernel = await self._client.create_kernel(
                         kernel_name="LSST"
                     )
-                    stamp.kernel_created = TimeInfo.stamp(previous=stamp.start)
+                    self.stop_current_event()
 
                     for cell in cells:
                         if cell["cell_type"] == "code":
                             self.code = "".join(cell["source"])
-                            runstamp = CodeTimingData(start=TimeInfo.stamp())
-                            runstamp.code = self.code
-                            stamp.code.append(runstamp)
                             logger.info("Executing:\n%s\n", self.code)
+                            self.start_event("run_code")
+                            sw = self.get_current_event()
                             reply = await self._client.run_python(
                                 kernel, self.code
                             )
-                            runstamp.stop = TimeInfo.stamp(
-                                previous=runstamp.start
-                            )
-                            if reply:
-                                logger.info(f"Response:\n{reply}\n")
+                            if sw is not None:
+                                sw.annotation = {
+                                    "code": self.code,
+                                    "result": reply,
+                                }
+                            self.stop_current_event()
+                            logger.info(f"Result:\n{reply}\n")
 
                     logger.info(
                         f"Success running notebook: {self.notebook.name}"
@@ -120,9 +114,6 @@ class NotebookRunner(JupyterLoginLoop):
                 f"Running {self.notebook.name}: '"
                 f"```{self.code}``` generated: ```{e}```"
             )
-
-    async def stop(self) -> None:
-        await self._client.delete_lab()
 
     def dump(self) -> dict:
         r = super().dump()

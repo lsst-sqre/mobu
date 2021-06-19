@@ -12,7 +12,6 @@ from dataclasses import dataclass
 
 from mobu.jupyterclient import JupyterClient
 from mobu.jupyterloginloop import JupyterLoginLoop
-from mobu.timing import CodeTimingData, PythonTimingData, TimeInfo
 
 
 @dataclass
@@ -23,29 +22,28 @@ class JupyterPythonLoop(JupyterLoginLoop):
 
         client = JupyterClient(self.monkey.user, logger, self.options)
         self._client = client
-        stamp = PythonTimingData(start=TimeInfo.stamp(previous=None))
-        self.timings.append(stamp)
+        self.start_event("hub_login")
         await self._client.hub_login()
-        stamp.login_complete = TimeInfo.stamp(previous=stamp.start)
+        self.stop_current_event()
+        self.start_event("ensure_lab")
         await client.ensure_lab()
-        stamp.lab_created = TimeInfo.stamp(previous=stamp.login_complete)
+        self.stop_current_event()
+        self.start_event("create_kernel")
         kernel = await client.create_kernel()
-        stamp.kernel_created = TimeInfo.stamp(previous=stamp.lab_created)
+        self.stop_current_event()
 
         while True:
-            runstamp = CodeTimingData(start=TimeInfo.stamp())
+            self.start_event("execute_code")
             code_str = "print(2+2)"
-            runstamp.code = code_str
-            stamp.code.append(runstamp)
             reply = await client.run_python(kernel, code_str)
-            runstamp.stop = TimeInfo.stamp(previous=runstamp.start)
+            sw = self.get_current_event()
+            if sw is not None:
+                sw.annotation = {"code": code_str, "result": reply}
+            self.stop_current_event()
             logger.info(f"{code_str} -> {reply}")
-
-            # Don't time the sleep
+            self.start_event("lab_wait")
             await asyncio.sleep(60)
-
-    async def stop(self) -> None:
-        await self._client.delete_lab()
+            self.stop_current_event()
 
     def dump(self) -> dict:
         r = super().dump()

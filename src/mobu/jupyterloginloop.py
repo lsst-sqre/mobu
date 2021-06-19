@@ -12,7 +12,6 @@ from dataclasses import dataclass, field
 
 from mobu.businesstime import BusinessTime
 from mobu.jupyterclient import JupyterClient
-from mobu.timing import LabLoopTimingData, TimeInfo
 
 
 @dataclass
@@ -28,35 +27,35 @@ class JupyterLoginLoop(BusinessTime):
             self._client = JupyterClient(
                 self.monkey.user, logger, self.options
             )
-            stamp = LabLoopTimingData(start=TimeInfo.stamp(previous=None))
-            self.timings.append(stamp)
+            self.start_event("login")
             await self._client.hub_login()
-            stamp.login_complete = TimeInfo.stamp(previous=stamp.start)
-            logger.info("Logged into hub")
-            last = stamp.login_complete
+            self.stop_current_event()
             while True:
                 logger.info("Starting next iteration")
-                tlc = LabLoopTimingData(start=TimeInfo.stamp(previous=last))
-                self.timings.append(tlc)
+                self.start_event("ensure_lab")
                 await self._client.ensure_lab()
-                tlc.lab_created = TimeInfo.stamp(previous=tlc.start)
+                self.stop_current_event()
                 logger.info("Lab created.")
+                self.start_event("lab_wait")
                 await asyncio.sleep(60)
-                tlc.lab_complete = TimeInfo.stamp(previous=tlc.lab_created)
+                self.stop_current_event()
                 logger.info("Deleting lab.")
+                self.start_event("delete_lab")
                 await self._client.delete_lab()
-                tlc.lab_deleted = TimeInfo.stamp(previous=tlc.lab_complete)
+                self.stop_current_event()
                 self.success_count += 1
                 logger.info("Lab successfully deleted.")
+                self.start_event("no_lab_wait")
                 await asyncio.sleep(60)
-                tlc.stop = TimeInfo.stamp(previous=tlc.lab_deleted)
-                last = tlc.stop
+                self.stop_current_event()
         except Exception:
             self.failure_count += 1
             raise
 
     async def stop(self) -> None:
+        self.start_event("delete_lab_on_stop")
         await self._client.delete_lab()
+        self.stop_current_event()
 
     def dump(self) -> dict:
         r = super().dump()
