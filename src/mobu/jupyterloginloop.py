@@ -27,7 +27,7 @@ class JupyterLoginLoop(BusinessTime):
             self._client = JupyterClient(
                 self.monkey.user, logger, self.options
             )
-            self.start_event("login")
+            self.start_event("hub_login")
             await self._client.hub_login()
             self.stop_current_event()
             while True:

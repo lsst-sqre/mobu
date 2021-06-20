@@ -1,9 +1,6 @@
 """https://youtu.be/WGOohBytKTU
 """
 
-#  import asyncio
-#  from functools import wraps
-
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -39,17 +36,6 @@ class BusinessTime(Business):
         if not self.timings:
             return None
         return self.timings[-1]
-
-    # async def time(self, event_name: str, annotation: dict = {}):
-    #     async def real_timer(func):
-    #         @wraps(func)
-    #         async def wrapper(*args, **kwargs):
-    #             self.start_event(event_name, annotation)
-    #             resp = await func(*args, **kwargs)
-    #             self.stop_current_event()
-    #             return resp
-    #         return wrapper
-    #     return real_timer
 
     def dump(self) -> dict:
         return {

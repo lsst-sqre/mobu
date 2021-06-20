@@ -64,11 +64,11 @@ class Stopwatch:
         Likewise, the elapsed time is a float representing number of
         seconds, which you can just pass to a timedelta constructor.
         """
-        stopstr: Optional[str] = self.stop_time
-        if stopstr is not None:
+        stopstr: Optional[str] = None
+        if self.stop_time is not None:
             stopstr = self.stop_time.isoformat()
-        prev: Optional[dict] = self.previous
-        if prev is not None:
+        prev: Optional[dict] = None
+        if self.previous is not None:
             # Cut it down so we don't get ridiculous recursive chains
             #  of previous events.
             prev = {
