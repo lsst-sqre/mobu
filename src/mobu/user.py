@@ -47,7 +47,7 @@ class User:
                 json={
                     "username": username,
                     "token_type": "user",
-                    "token_name": f"mobu {str(int(time.time()))}",
+                    "token_name": f"mobu {str(float(time.time()))}",
                     "scopes": scopes,
                     "expires": int(time.time() + 2419200),
                     "uid": uidnumber,

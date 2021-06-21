@@ -2,7 +2,7 @@
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import List, Optional
 
 from mobu.business import Business
 from mobu.timing import Stopwatch
@@ -10,7 +10,7 @@ from mobu.timing import Stopwatch
 
 @dataclass
 class BusinessTime(Business):
-    timings: list[Stopwatch] = field(default_factory=list)
+    timings: List[Stopwatch] = field(default_factory=list)
 
     def start_event(
         self,

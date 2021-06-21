@@ -8,6 +8,7 @@ from typing import Dict
 
 from mobu.business import Business
 from mobu.businesstime import BusinessTime
+from mobu.jupyterjitterloginloop import JupyterJitterLoginLoop
 from mobu.jupyterloginloop import JupyterLoginLoop
 from mobu.jupyterpythonloop import JupyterPythonLoop
 from mobu.monkey import Monkey
@@ -35,6 +36,7 @@ class MonkeyBusinessFactory:
             Business,
             BusinessTime,
             JupyterLoginLoop,
+            JupyterJitterLoginLoop,
             JupyterPythonLoop,
             NotebookRunner,
             QueryMonkey,
