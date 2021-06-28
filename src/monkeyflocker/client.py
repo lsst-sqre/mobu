@@ -72,8 +72,10 @@ class MonkeyflockerClient:
         session_timeout = 30
         responses: Dict[str, Dict[str, Optional[aiohttp.ClientResponse]]] = {}
         client = aiohttp.ClientSession(
-            auth=aiohttp.BasicAuth(self.token, ""),
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"bearer {self.token}",
+            },
             raise_for_status=True,
             timeout=aiohttp.ClientTimeout(total=session_timeout),
             connector=aiohttp.TCPConnector(limit=0),
