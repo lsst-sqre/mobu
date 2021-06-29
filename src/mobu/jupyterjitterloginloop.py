@@ -1,25 +1,23 @@
-"""JupyterLoginLoop business logic for mobu.
+"""JupyterJitterLoginLoop business logic for mobu.
 
-This is a loop that will constantly try to spawn new
-jupyter labs on a nublado instance, and then delete it."""
+This is a loop that will constantly try to spawn new JupyterLab
+instances on a nublado instance, with jitter built in to the timing,
+and then delete those instances."""
 
 __all__ = [
-    "JupyterLoginLoop",
+    "JupyterJitterLoginLoop",
 ]
 
 import asyncio
-from dataclasses import dataclass, field
+import random
+from dataclasses import dataclass
 
-from mobu.businesstime import BusinessTime
 from mobu.jupyterclient import JupyterClient
+from mobu.jupyterloginloop import JupyterLoginLoop
 
 
 @dataclass
-class JupyterLoginLoop(BusinessTime):
-    success_count: int = 0
-    failure_count: int = 0
-    _client: JupyterClient = field(init=False)
-
+class JupyterJitterLoginLoop(JupyterLoginLoop):
     async def run(self) -> None:
         try:
             logger = self.monkey.log
@@ -27,9 +25,13 @@ class JupyterLoginLoop(BusinessTime):
             self._client = JupyterClient(
                 self.monkey.user, logger, self.options
             )
+            self.start_event("pre_login_delay")
+            await asyncio.sleep(random.uniform(0, 30))
+            self.stop_current_event()
             self.start_event("hub_login")
             await self._client.hub_login()
             self.stop_current_event()
+            await asyncio.sleep(random.uniform(10, 30))
             while True:
                 logger.info("Starting next iteration")
                 self.start_event("ensure_lab")
@@ -37,7 +39,8 @@ class JupyterLoginLoop(BusinessTime):
                 self.stop_current_event()
                 logger.info("Lab created.")
                 self.start_event("lab_wait")
-                await asyncio.sleep(60)
+                # await asyncio.sleep(30 + random.uniform(0, 60))
+                await asyncio.sleep(1200 + random.uniform(0, 600))
                 self.stop_current_event()
                 logger.info("Deleting lab.")
                 self.start_event("delete_lab")
@@ -46,35 +49,17 @@ class JupyterLoginLoop(BusinessTime):
                 self.success_count += 1
                 logger.info("Lab successfully deleted.")
                 self.start_event("no_lab_wait")
-                await asyncio.sleep(60)
+                await asyncio.sleep(30 + random.uniform(0, 60))
                 self.stop_current_event()
         except Exception:
             self.failure_count += 1
             raise
 
-    async def stop(self) -> None:
-        self.start_event("delete_lab_on_stop")
-        await self._client.delete_lab()
-        self.stop_current_event()
-
     def dump(self) -> dict:
         r = super().dump()
         r.update(
             {
-                "name": "JupyterLoginLoop",
-                "failure_count": self.failure_count,
-                "success_count": self.success_count,
+                "name": "JupyterJitterLoginLoop",
             }
         )
-        # Under heavy load, we seem to get lost before monkey.py can
-        #  call start(), and the client isn't present when we try to dump
-        #  for report.
-        if hasattr(self, "_client") and self._client:
-            r.update(
-                {
-                    "jupyter_client": self._client.dump(),
-                }
-            )
-        else:
-            r.update({"jupyter_client": None})
         return r

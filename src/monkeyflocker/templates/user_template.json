@@ -5,7 +5,7 @@
     "uidnumber": {{UID}},
     "scopes": ["exec:notebook"]
   },
-  "business": "JupyterLoginLoop",
+  "business": "JupyterJitterLoginLoop",
   "options": {
     "restart": true,
     "jupyter_options_form": {

@@ -19,7 +19,7 @@ class MonkeyBusinessManager:
     _scheduler: Scheduler = None
 
     async def init(self, app: web.Application) -> None:
-        self._scheduler = await create_scheduler()
+        self._scheduler = await create_scheduler(limit=1000, pending_limit=0)
 
     async def cleanup(self, app: web.Application) -> None:
         await self._scheduler.close()

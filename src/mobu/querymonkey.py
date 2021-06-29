@@ -1,7 +1,6 @@
 import asyncio
 import os
 import random
-import time
 from dataclasses import field
 
 import jinja2
@@ -9,7 +8,7 @@ import pyvo
 import requests
 from pyvo.auth import AuthSession
 
-from mobu.business import Business
+from mobu.businesstime import BusinessTime
 from mobu.config import Configuration
 
 
@@ -30,7 +29,7 @@ def generate_parameters() -> dict:
     }
 
 
-class QueryMonkey(Business):
+class QueryMonkey(BusinessTime):
     success_count: int = 0
     failure_count: int = 0
     _client: pyvo.dal.TAPService = field(init=False)
@@ -66,17 +65,23 @@ class QueryMonkey(Business):
                 "Query templates to choose from: %s", env.list_templates()
             )
 
+            self.start_event("make_tap_client")
             self._client = self._make_client()
-
+            self.stop_current_event()
             while True:
                 template_name = random.choice(env.list_templates())
                 template = env.get_template(template_name)
                 query = template.render(generate_parameters())
                 logger.info("Running: %s", query)
-                start = time.time()
+                self.start_event("execute_query")
                 await loop.run_in_executor(None, self._client.search, query)
-                end = time.time()
-                logger.info("Finished, took: %i seconds", end - start)
+                sw = self.get_current_event()
+                elapsed = "???"
+                if sw is not None:
+                    sw.annotation = {"query": query}
+                    elapsed = str(sw.elapsed)
+                self.stop_current_event()
+                logger.info(f"Query finished after {elapsed} seconds")
                 self.success_count += 1
                 await asyncio.sleep(60)
         except Exception:
@@ -85,12 +90,18 @@ class QueryMonkey(Business):
 
     async def stop(self) -> None:
         loop = asyncio.get_event_loop()
+        self.start_event("delete_tap_client_on_stop")
         await loop.run_in_executor(None, self._client.abort)
         await loop.run_in_executor(None, self._client.delete)
+        self.stop_current_event()
 
     def dump(self) -> dict:
-        return {
-            "name": "QueryMonkey",
-            "failure_count": self.failure_count,
-            "success_count": self.success_count,
-        }
+        r = super().dump()
+        r.update(
+            {
+                "name": "QueryMonkey",
+                "failure_count": self.failure_count,
+                "success_count": self.success_count,
+            }
+        )
+        return r

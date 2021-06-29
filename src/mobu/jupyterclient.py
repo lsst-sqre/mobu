@@ -16,7 +16,7 @@ from http.cookies import BaseCookie
 from typing import Any, Dict
 from uuid import uuid4
 
-from aiohttp import ClientResponse, ClientSession
+from aiohttp import ClientResponse, ClientSession, TCPConnector
 from structlog._config import BoundLoggerLazyProxy
 
 from mobu.config import Configuration
@@ -56,7 +56,9 @@ class JupyterClient:
             "x-xsrftoken": self.xsrftoken,
         }
 
-        self.session = ClientSession(headers=self.headers)
+        self.session = ClientSession(
+            headers=self.headers, connector=TCPConnector(limit=10000)
+        )
         self.session.cookie_jar.update_cookies(
             BaseCookie({"_xsrf": self.xsrftoken})
         )
@@ -139,7 +141,7 @@ class JupyterClient:
                 if not r.ok:
                     await self._raise_error("Error spawning", r)
 
-                self.log.info(f"Still waiting for lab to spawn {r}")
+                self.log.info(f"Still waiting for lab to spawn [{r.status}]")
                 retries -= 1
                 await asyncio.sleep(poll_interval)
 

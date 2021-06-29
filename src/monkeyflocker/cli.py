@@ -64,6 +64,14 @@ MF_PREFIX = "MONKEYFLOCKER_"
     envvar=["ACCESS_TOKEN", f"{MF_PREFIX}ACCESS_TOKEN"],
     help="Token to use to drive mobu",
 )
+@click.option(
+    "-o",
+    "--output",
+    "--output-directory",
+    default="",
+    envvar=f"{MF_PREFIX}OUTPUT_DIRECTORY",
+    help="Directory for output on stop",
+)
 def main(
     verb: str,
     count: int,
@@ -72,22 +80,26 @@ def main(
     base_uid: int,
     token: Optional[str],
     template_file: str,
+    output: str,
 ) -> None:
-    """monkeyflocker VERB, where VERB is 'start' or 'stop'."""
+    """monkeyflocker VERB, where VERB is 'start', 'stop', or 'report'."""
     verb = verb.lower()
     # Validate our parameters
-    if verb not in ["start", "stop"]:
-        raise MFError("Verb must be 'start' or 'stop'")
+    if verb not in ["start", "stop", "report"]:
+        raise MFError("Verb must be 'start', 'stop', or 'report'")
     if count < 1:
         raise MFError("Count must be a positive integer")
     if base_uid < 0:
         raise MFError("Base_UID must be a non-negative integer")
     if not token:
         raise MFError("Access token must be set")
-    te = jinja2.Environment(loader=jinja2.FileSystemLoader(searchpath="./"))
+    # Either load relative to cwd or relative to root, so absolute paths work
+    te = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(searchpath=["./", "/"])
+    )
     template = te.get_template(template_file)
     endpoint = f"{base_url}/mobu/user"
     client = MFClient(
-        count, base_username, base_uid, endpoint, token, template
+        count, base_username, base_uid, endpoint, token, template, output
     )
     asyncio.run(client.execute(verb))
