@@ -9,6 +9,7 @@ import logging
 import sys
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum, auto
 from tempfile import NamedTemporaryFile
 from typing import IO, Any, Dict
 
@@ -25,6 +26,14 @@ from mobu.user import User
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
+class MonkeyState(Enum):
+    IDLE = auto()
+    RUNNING = auto()
+    STOPPING = auto()
+    FINISHED = auto()
+    ERROR = auto()
+
+
 @dataclass
 class Monkey:
     name: str
@@ -32,14 +41,14 @@ class Monkey:
     log: BoundLoggerLazyProxy
     business: Business
     restart: bool
-    state: str
+    state: MonkeyState
 
     _job: Job
     _logfile: IO[bytes]
 
     def __init__(self, name: str, user: User, options: Dict[str, Any]):
         self.name = name
-        self.state = "IDLE"
+        self.state = MonkeyState.IDLE
         self.user = user
         self.restart = options.get("restart", False)
 
@@ -64,6 +73,15 @@ class Monkey:
         self.log = structlog.wrap_logger(logger)
 
     async def alert(self, msg: str) -> None:
+        if (
+            self.state == MonkeyState.STOPPING
+            or self.state == MonkeyState.FINISHED
+        ):
+            self.log.info(
+                f"Not sending alert '{msg}' because state is"
+                + f" {self.state.name}"
+            )
+            return
         try:
             time = datetime.now().strftime(DATE_FORMAT)
             alert_msg = f"{time} {self.name} {msg}"
@@ -98,15 +116,17 @@ class Monkey:
         run = True
         while run:
             try:
-                self.state = "RUNNING"
+                self.state = MonkeyState.RUNNING
                 await self.business.run()
-                self.state = "FINISHED"
+                self.state = MonkeyState.FINISHED
             except asyncio.CancelledError:
+                self.state = MonkeyState.STOPPING
                 self.log.info("Shutting down")
                 run = False
                 await self.business.stop()
+                self.state = MonkeyState.FINISHED
             except Exception as e:
-                self.state = "ERROR"
+                self.state = MonkeyState.ERROR
                 self.log.exception(
                     "Exception thrown while doing monkey business."
                 )
@@ -117,6 +137,7 @@ class Monkey:
                 await asyncio.sleep(60)
 
     async def stop(self) -> None:
+        self.state = MonkeyState.STOPPING
         await self.business.stop()
         try:
             await self._job.close(timeout=0)
@@ -125,11 +146,12 @@ class Monkey:
             # throwing a timeout exception, but we'll just shut it down
             # right away and eat the exception.
             pass
+        self.state = MonkeyState.FINISHED
 
     def dump(self) -> dict:
         return {
             "user": self.user.dump(),
             "business": self.business.dump(),
-            "state": self.state,
+            "state": self.state.name,
             "restart": self.restart,
         }
