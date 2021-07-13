@@ -99,7 +99,10 @@ class NotebookRunner(JupyterLoginLoop):
                                 }
                             self.stop_current_event()
                             logger.info(f"Result:\n{reply}\n")
-
+                    logger.info(f"Deleting kernel {kernel}")
+                    self.start_event("delete_kernel")
+                    await self._client.delete_kernel(kernel)
+                    self.stop_current_event()
                     logger.info(
                         f"Success running notebook: {self.notebook.name}"
                     )

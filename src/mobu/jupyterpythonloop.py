@@ -13,6 +13,9 @@ from dataclasses import dataclass
 from mobu.jupyterclient import JupyterClient
 from mobu.jupyterloginloop import JupyterLoginLoop
 
+MAX_EXECUTIONS = 20
+SLEEP_TIME = 1
+
 
 @dataclass
 class JupyterPythonLoop(JupyterLoginLoop):
@@ -20,29 +23,34 @@ class JupyterPythonLoop(JupyterLoginLoop):
         logger = self.monkey.log
         logger.info("Starting up...")
 
-        client = JupyterClient(self.monkey.user, logger, self.options)
-        self._client = client
+        self._client = JupyterClient(self.monkey.user, logger, self.options)
         self.start_event("hub_login")
         await self._client.hub_login()
         self.stop_current_event()
         self.start_event("ensure_lab")
-        await client.ensure_lab()
+        await self._client.ensure_lab()
         self.stop_current_event()
-        self.start_event("create_kernel")
-        kernel = await client.create_kernel()
-        self.stop_current_event()
-
         while True:
-            self.start_event("execute_code")
-            code_str = "print(2+2)"
-            reply = await client.run_python(kernel, code_str)
-            sw = self.get_current_event()
-            if sw is not None:
-                sw.annotation = {"code": code_str, "result": reply}
+            logger.info("create_kernel")
+            self.start_event("create_kernel")
+            kernel = await self._client.create_kernel()
             self.stop_current_event()
-            logger.info(f"{code_str} -> {reply}")
-            self.start_event("lab_wait")
-            await asyncio.sleep(60)
+
+            for count in range(MAX_EXECUTIONS):
+                self.start_event("execute_code")
+                code_str = "print(2+2)"
+                reply = await self._client.run_python(kernel, code_str)
+                sw = self.get_current_event()
+                if sw is not None:
+                    sw.annotation = {"code": code_str, "result": reply}
+                self.stop_current_event()
+                logger.info(f"{code_str} -> {reply}")
+                self.start_event("lab_wait")
+                await asyncio.sleep(SLEEP_TIME)
+                self.stop_current_event()
+            logger.info("delete_kernel")
+            self.start_event("delete_kernel")
+            await self._client.delete_kernel(kernel)
             self.stop_current_event()
 
     def dump(self) -> dict:

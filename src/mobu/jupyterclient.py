@@ -172,6 +172,16 @@ class JupyterClient:
             response = await r.json()
             return response["id"]
 
+    async def delete_kernel(self, kernel_id: str) -> None:
+        kernel_url = (
+            self.jupyter_url
+            + f"user/{self.user.username}/api/kernels/{kernel_id}"
+        )
+        async with self.session.delete(kernel_url, raise_for_status=True) as r:
+            if r.status != 204:
+                self.log.warning(f"Delete kernel {kernel_id}: {r}")
+            return
+
     async def run_python(self, kernel_id: str, code: str) -> str:
         kernel_url = (
             self.jupyter_url
