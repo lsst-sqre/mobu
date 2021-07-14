@@ -13,10 +13,11 @@ import re
 import string
 from dataclasses import dataclass
 from http.cookies import BaseCookie
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from uuid import uuid4
 
 from aiohttp import ClientResponse, ClientSession, TCPConnector
+from aiohttp.client_exceptions import WSServerHandshakeError
 from structlog._config import BoundLoggerLazyProxy
 
 from mobu.config import Configuration
@@ -50,7 +51,8 @@ class JupyterClient:
             random.choices(string.ascii_uppercase + string.digits, k=16)
         )
         self.jupyter_options_form = options.get("jupyter_options_form", {})
-
+        self.kernel_retries = options.get("kernel_retries", 5)
+        self.kernel_retry_delay = options.get("kernel_retry_delay", 0.2)
         self.headers = {
             "Authorization": "Bearer " + user.token,
             "x-xsrftoken": self.xsrftoken,
@@ -164,13 +166,30 @@ class JupyterClient:
             self.jupyter_url + f"user/{self.user.username}/api/kernels"
         )
         body = {"name": kernel_name}
-
-        async with self.session.post(kernel_url, json=body) as r:
+        saved_response: Optional[ClientResponse] = None
+        # Sometimes we get a 403 back from kernel creation.
+        # Warn about it and try in a retry loop, although it appears not
+        #  to be transient.  After enough failures, give up and raise
+        #  an exception.
+        for attempt in range(self.kernel_retries):
+            r = await self.session.post(kernel_url, json=body)
+            if r.status == 403:
+                self.log.warning(
+                    f"Kernel creation attempt {attempt + 1}"
+                    + f"/{self.kernel_retries} failed: {r}"
+                )
+                await asyncio.sleep(self.kernel_retry_delay)
+                saved_response = r
+                continue
             if r.status != 201:
                 await self._raise_error("Error creating kernel", r)
-
             response = await r.json()
             return response["id"]
+        await self._raise_error(
+            f"Kernel creation POST {body} to {kernel_url} failed",
+            saved_response,
+        )
+        return ""  # Not reached; necessary for mypy
 
     async def delete_kernel(self, kernel_id: str) -> None:
         kernel_url = (
@@ -211,34 +230,61 @@ class JupyterClient:
             "buffers": {},
         }
 
-        async with self.session.ws_connect(kernel_url) as ws:
-            await ws.send_json(msg)
+        # We also sometimes get 403s from the ws_connect.  Warn/retry/
+        #  eventually fail and raise.
+        saved_excstr = ""
+        for attempt in range(self.kernel_retries):
+            try:
+                ws = await self.session.ws_connect(kernel_url)
+                await ws.send_json(msg)
 
-            while True:
-                r = await ws.receive_json()
-                self.log.debug(f"Recieved kernel message: {r}")
-                msg_type = r["msg_type"]
-                if msg_type == "error":
-                    error_message = "".join(r["content"]["traceback"])
-                    raise NotebookException(self._ansi_escape(error_message))
-                elif (
-                    msg_type == "stream"
-                    and msg_id == r["parent_header"]["msg_id"]
-                ):
-                    return r["content"]["text"]
-                elif msg_type == "execute_reply":
-                    status = r["content"]["status"]
-                    if status == "ok":
-                        return ""
-                    else:
+                while True:
+                    r = await ws.receive_json()
+                    self.log.debug(f"Recieved kernel message: {r}")
+                    msg_type = r["msg_type"]
+                    if msg_type == "error":
+                        error_message = "".join(r["content"]["traceback"])
                         raise NotebookException(
-                            f"Error content status is {status}"
+                            self._ansi_escape(error_message)
                         )
+                    elif (
+                        msg_type == "stream"
+                        and msg_id == r["parent_header"]["msg_id"]
+                    ):
+                        return r["content"]["text"]
+                    elif msg_type == "execute_reply":
+                        status = r["content"]["status"]
+                        if status == "ok":
+                            return ""
+                        else:
+                            raise NotebookException(
+                                f"Error content status is {status}"
+                            )
+            except WSServerHandshakeError as exc:
+                saved_excstr = f"{exc}"
+                self.log.warning(
+                    f"ws_connect {attempt +1}/{self.kernel_retries} "
+                    + f"failed:{exc}"
+                )
+                await asyncio.sleep(self.kernel_retry_delay)
+                continue
+        # We didn't get a ClientResponse
+        await self._raise_error(
+            f"Could not establish WebSocket connection to {kernel_url}: "
+            + f"{saved_excstr}",
+            None,
+        )
+        return ""  # Not reached; necessary for mypy
 
     def dump(self) -> dict:
         return {
             "cookies": [str(cookie) for cookie in self.session.cookie_jar],
         }
 
-    async def _raise_error(self, msg: str, r: ClientResponse) -> None:
-        raise Exception(f"{msg}: {r.status} {r.url}: {r.headers}")
+    async def _raise_error(
+        self, msg: str, r: Optional[ClientResponse]
+    ) -> None:
+        rstr = ""
+        if r is not None:
+            rstr = f": {r.status} {r.url}: {r.headers}"
+        raise Exception(f"{msg}{rstr}")
