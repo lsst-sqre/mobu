@@ -43,6 +43,7 @@ class NotebookRunner(JupyterLoginLoop):
             self._client = JupyterClient(
                 self.monkey.user, logger, self.options
             )
+            nb_iterations = self.options.get("notebook_iterations", 1)
             if not self._repo:
                 repo_url = self.options.get("repo_url", REPO_URL)
                 repo_branch = self.options.get("repo_branch", REPO_BRANCH)
@@ -82,23 +83,28 @@ class NotebookRunner(JupyterLoginLoop):
                         kernel_name="LSST"
                     )
                     self.stop_current_event()
-
-                    for cell in cells:
-                        if cell["cell_type"] == "code":
-                            self.code = "".join(cell["source"])
-                            logger.info("Executing:\n%s\n", self.code)
-                            self.start_event("run_code")
-                            sw = self.get_current_event()
-                            reply = await self._client.run_python(
-                                kernel, self.code
-                            )
-                            if sw is not None:
-                                sw.annotation = {
-                                    "code": self.code,
-                                    "result": reply,
-                                }
-                            self.stop_current_event()
-                            logger.info(f"Result:\n{reply}\n")
+                    for count in range(nb_iterations):
+                        logger.info(
+                            f"Notebook '{self.notebook.name}'"
+                            + f" iteration {count + 1}"
+                            + f"/{nb_iterations}"
+                        )
+                        for cell in cells:
+                            if cell["cell_type"] == "code":
+                                self.code = "".join(cell["source"])
+                                logger.info("Executing:\n%s\n", self.code)
+                                self.start_event("run_code")
+                                sw = self.get_current_event()
+                                reply = await self._client.run_python(
+                                    kernel, self.code
+                                )
+                                if sw is not None:
+                                    sw.annotation = {
+                                        "code": self.code,
+                                        "result": reply,
+                                    }
+                                self.stop_current_event()
+                                logger.info(f"Result:\n{reply}\n")
                     logger.info(f"Deleting kernel {kernel}")
                     self.start_event("delete_kernel")
                     await self._client.delete_kernel(kernel)
