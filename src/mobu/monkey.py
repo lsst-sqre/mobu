@@ -21,6 +21,7 @@ from structlog._config import BoundLoggerLazyProxy
 
 from mobu.business import Business
 from mobu.config import Configuration
+from mobu.jupyterclient import AuthException
 from mobu.user import User
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -31,6 +32,7 @@ class MonkeyState(Enum):
     RUNNING = auto()
     STOPPING = auto()
     FINISHED = auto()
+    AUTHERROR = auto()
     ERROR = auto()
 
 
@@ -125,6 +127,11 @@ class Monkey:
                 run = False
                 await self.business.stop()
                 self.state = MonkeyState.FINISHED
+            except AuthException:
+                self.state = MonkeyState.AUTHERROR
+                self.log.error("Authentication Error: restart monkey.")
+                run = self.restart
+                await asyncio.sleep(15)
             except Exception as e:
                 self.state = MonkeyState.ERROR
                 self.log.exception(

@@ -9,6 +9,7 @@ __all__ = [
 ]
 
 import asyncio
+import datetime
 import json
 import os
 from dataclasses import dataclass, field
@@ -18,7 +19,7 @@ from typing import Iterator
 
 import git
 
-from mobu.jupyterclient import JupyterClient, NotebookException
+from mobu.jupyterclient import AuthException, JupyterClient, NotebookException
 from mobu.jupyterloginloop import JupyterLoginLoop
 
 REPO_URL = "https://github.com/lsst-sqre/notebook-demo.git"
@@ -33,6 +34,7 @@ class NotebookRunner(JupyterLoginLoop):
     )
     _repo: git.Repo = field(init=False, default=None)
     _notebook_iterator: Iterator = field(init=False)
+    _last_login: datetime.datetime = field(init=False)
     notebook: os.DirEntry = field(init=False)
     code: str = field(init=False, default="")
 
@@ -60,6 +62,7 @@ class NotebookRunner(JupyterLoginLoop):
             self.start_event("hub_login")
             await self._client.hub_login()
             self.stop_current_event()
+            self._last_login = self._now()
             self.start_event("initial_delete_lab")
             await self._client.delete_lab()
             self.stop_current_event()
@@ -89,6 +92,7 @@ class NotebookRunner(JupyterLoginLoop):
                             + f" iteration {count + 1}"
                             + f"/{nb_iterations}"
                         )
+                        await self._reauth_if_needed()
                         for cell in cells:
                             if cell["cell_type"] == "code":
                                 self.code = "".join(cell["source"])
@@ -123,6 +127,22 @@ class NotebookRunner(JupyterLoginLoop):
                 f"Running {self.notebook.name}: '"
                 f"```{self.code}``` generated: ```{e}```"
             )
+        except AuthException as e:
+            # Eventually we want to let the client handle reauth, and
+            # not re-raise this error, but we don't know how to do that
+            # yet
+            logger.error(f"Auth error: {e}")
+            event = self.get_current_event()
+            if event is not None and event.stop_time is None:
+                event.annotation.update({"interrupted_by_auth_failure": True})
+                self.stop_current_event()
+                # I don't think we should update either success or failure
+                # but I am open to convincing otherwise.
+            logger.warning("Deleting lab after auth exception.")
+            self.start_event("post_auth_exception_delete_lab")
+            await self._client.delete_lab()
+            self.stop_current_event()
+            raise e  # Mobu will now restart the lab, but not send an alert
 
     def dump(self) -> dict:
         r = super().dump()
@@ -147,3 +167,16 @@ class NotebookRunner(JupyterLoginLoop):
             )
             self._notebook_iterator = os.scandir(self._repo_dir.name)
             self._next_notebook()
+
+    def _now(self) -> datetime.datetime:
+        return datetime.datetime.now(datetime.timezone.utc)
+
+    async def _reauth_if_needed(self) -> None:
+        now = self._now()
+        elapsed = now - self._last_login
+        if elapsed > datetime.timedelta(seconds=2700):  # 45 minutes
+            self.monkey.log.info("Reauthenticating to Hub")
+            self.start_event("hub_reauth")
+            await self._client.hub_login()
+            self.stop_current_event()
+            self._last_login = now
