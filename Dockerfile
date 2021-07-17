@@ -14,7 +14,7 @@
 #   - Runs a non-root user.
 #   - Sets up the entrypoint and port.
 
-FROM python:3.9.6-slim-buster AS base-image
+FROM tiangolo/uvicorn-gunicorn:python3.8-slim as base-image
 
 # Update system packages
 COPY scripts/install-base-packages.sh .
@@ -38,30 +38,35 @@ RUN pip install --upgrade --no-cache-dir pip setuptools wheel
 COPY requirements/main.txt ./requirements.txt
 RUN pip install --quiet --no-cache-dir -r requirements.txt
 
-FROM base-image AS install-image
+FROM dependencies-image AS install-image
 
 # Use the virtualenv
-COPY --from=dependencies-image /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-COPY . /app
-WORKDIR /app
+COPY . /workdir
+WORKDIR /workdir
 RUN pip install --no-cache-dir .
 
 FROM base-image AS runtime-image
 
-# Create a non-root user
-RUN useradd --create-home appuser
-WORKDIR /home/appuser
+# Copy the virtualenv
+COPY --from=install-image /opt/venv /opt/venv
 
 # Make sure we use the virtualenv
 ENV PATH="/opt/venv/bin:$PATH"
 
-COPY --from=install-image /opt/venv /opt/venv
+# We use a module name other than app, so tell the base image that.  This
+# does not copy the app into /app as is recommended by the base Docker
+# image documentation and instead relies on the module search path as
+# modified by the virtualenv.
+ENV MODULE_NAME=mobu.main
 
-# Switch to non-root user
-USER appuser
+# The default starts 40 workers, which exhausts the available connections
+# on a micro Cloud SQL PostgreSQL server and seems excessive since we can
+# scale with Kubernetes.  Most of our applications are tiny so cap the
+# workers at 2.
+ENV MAX_WORKERS=2
 
-EXPOSE 8080
-
-ENTRYPOINT ["mobu", "run", "--port", "8080"]
+# Run on port 8080 instead of the FastAPI default to avoid requiring
+# capabilities.
+ENV PORT=8080

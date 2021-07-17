@@ -12,7 +12,7 @@ from typing import List
 
 from aiohttp import ClientSession
 
-from mobu.config import Configuration
+from mobu.config import config
 
 
 @dataclass
@@ -38,12 +38,11 @@ class User:
     async def generate_token(
         cls, username: str, uidnumber: int, scopes: List[str]
     ) -> str:
-        token_url = f"{Configuration.environment_url}/auth/api/v1/tokens"
-        admin_token = Configuration.gafaelfawr_token
+        token_url = f"{config.environment_url}/auth/api/v1/tokens"
         async with ClientSession() as s:
             r = await s.post(
                 token_url,
-                headers={"Authorization": f"bearer {admin_token}"},
+                headers={"Authorization": f"bearer {config.gafaelfawr_token}"},
                 json={
                     "username": username,
                     "token_type": "user",

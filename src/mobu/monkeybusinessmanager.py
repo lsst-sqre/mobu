@@ -7,7 +7,6 @@ __all__ = [
 from dataclasses import dataclass, field
 from typing import Dict, List
 
-from aiohttp import web
 from aiojobs import Scheduler, create_scheduler
 
 from mobu.monkey import Monkey
@@ -18,10 +17,10 @@ class MonkeyBusinessManager:
     _monkeys: Dict[str, Monkey] = field(default_factory=dict)
     _scheduler: Scheduler = None
 
-    async def init(self, app: web.Application) -> None:
+    async def init(self) -> None:
         self._scheduler = await create_scheduler(limit=1000, pending_limit=0)
 
-    async def cleanup(self, app: web.Application) -> None:
+    async def cleanup(self) -> None:
         await self._scheduler.close()
 
     def fetch_monkey(self, name: str) -> Monkey:

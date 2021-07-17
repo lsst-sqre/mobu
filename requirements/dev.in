@@ -7,13 +7,14 @@
 
 -c main.txt
 
-aiohttp-devtools
 aioresponses
+asgi-lifespan
 coverage[toml]
-flake8
+httpx
 mypy
 pre-commit
 pytest
-pytest-aiohttp
 pytest-asyncio
+pytest-cov
+pytest-httpx
 types-requests
