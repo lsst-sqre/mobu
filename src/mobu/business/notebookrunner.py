@@ -19,8 +19,8 @@ from typing import Iterator
 
 import git
 
+from mobu.business.jupyterloginloop import JupyterLoginLoop
 from mobu.jupyterclient import JupyterClient, NotebookException
-from mobu.jupyterloginloop import JupyterLoginLoop
 
 REPO_URL = "https://github.com/lsst-sqre/notebook-demo.git"
 REPO_BRANCH = "prod"

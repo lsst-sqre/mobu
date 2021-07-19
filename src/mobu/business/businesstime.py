@@ -7,7 +7,7 @@ aggregated over many users.
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from mobu.business import Business
+from mobu.business.base import Business
 from mobu.timing import Stopwatch
 
 

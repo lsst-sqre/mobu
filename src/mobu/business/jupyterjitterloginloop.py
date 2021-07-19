@@ -12,8 +12,8 @@ import asyncio
 import random
 from dataclasses import dataclass
 
+from mobu.business.jupyterloginloop import JupyterLoginLoop
 from mobu.jupyterclient import JupyterClient
-from mobu.jupyterloginloop import JupyterLoginLoop
 
 
 @dataclass

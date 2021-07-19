@@ -19,7 +19,7 @@ from aiojobs import Scheduler
 from aiojobs._job import Job
 from structlog._config import BoundLoggerLazyProxy
 
-from mobu.business import Business
+from mobu.business.base import Business
 from mobu.config import Configuration
 from mobu.user import User
 

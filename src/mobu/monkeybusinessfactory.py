@@ -6,14 +6,14 @@ __all__ = [
 
 from typing import Dict
 
-from mobu.business import Business
-from mobu.businesstime import BusinessTime
-from mobu.jupyterjitterloginloop import JupyterJitterLoginLoop
-from mobu.jupyterloginloop import JupyterLoginLoop
-from mobu.jupyterpythonloop import JupyterPythonLoop
+from mobu.business.base import Business
+from mobu.business.businesstime import BusinessTime
+from mobu.business.jupyterjitterloginloop import JupyterJitterLoginLoop
+from mobu.business.jupyterloginloop import JupyterLoginLoop
+from mobu.business.jupyterpythonloop import JupyterPythonLoop
+from mobu.business.notebookrunner import NotebookRunner
+from mobu.business.querymonkey import QueryMonkey
 from mobu.monkey import Monkey
-from mobu.notebookrunner import NotebookRunner
-from mobu.querymonkey import QueryMonkey
 from mobu.user import User
 
 

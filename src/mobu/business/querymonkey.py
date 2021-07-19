@@ -8,7 +8,7 @@ import pyvo
 import requests
 from pyvo.auth import AuthSession
 
-from mobu.businesstime import BusinessTime
+from mobu.business.businesstime import BusinessTime
 from mobu.config import Configuration
 
 

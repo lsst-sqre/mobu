@@ -10,7 +10,7 @@ __all__ = [
 import asyncio
 from dataclasses import dataclass, field
 
-from mobu.businesstime import BusinessTime
+from mobu.business.businesstime import BusinessTime
 from mobu.jupyterclient import JupyterClient
 
 

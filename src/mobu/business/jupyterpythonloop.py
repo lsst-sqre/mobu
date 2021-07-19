@@ -10,8 +10,8 @@ __all__ = [
 import asyncio
 from dataclasses import dataclass
 
+from mobu.business.jupyterloginloop import JupyterLoginLoop
 from mobu.jupyterclient import JupyterClient
-from mobu.jupyterloginloop import JupyterLoginLoop
 
 MAX_EXECUTIONS = 20
 SLEEP_TIME = 1
