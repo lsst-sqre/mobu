@@ -1,11 +1,10 @@
 """AsyncIO client for communicating with Jupyter.
 
-Allows the caller to login to the hub, spawn lab
-containers, and then run jupyter kernels remotely."""
+Allows the caller to login to the hub, spawn lab containers, and then run
+jupyter kernels remotely.
+"""
 
-__all__ = [
-    "JupyterClient",
-]
+from __future__ import annotations
 
 import asyncio
 import random
@@ -13,7 +12,7 @@ import re
 import string
 from dataclasses import dataclass
 from http.cookies import BaseCookie
-from typing import Any, Dict
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from aiohttp import ClientResponse, ClientSession, TCPConnector
@@ -22,6 +21,13 @@ from structlog._config import BoundLoggerLazyProxy
 from mobu.config import Configuration
 from mobu.user import User
 
+if TYPE_CHECKING:
+    from typing import Any, Dict
+
+    from aiohttp.client import _RequestContextManager, _WSRequestContextManager
+
+__all__ = ["JupyterClient"]
+
 
 class NotebookException(Exception):
     """Passing an error back from a remote notebook session."""
@@ -29,11 +35,58 @@ class NotebookException(Exception):
     pass
 
 
+class JupyterClientSession:
+    """Wrapper around `aiohttp.ClientSession` using token authentication.
+
+    Unfortunately, aioresponses does not capture headers set on the session
+    instead of with each individual call, which means that we can't see the
+    token and thus determine what user we should interact with in the test
+    suite.  Work around this with this wrapper class around
+    `aiohttp.ClientSession` that just adds the token header to every call.
+
+    Parameters
+    ----------
+    session : `aiohttp.ClientSession`
+        The session to wrap.
+    token : `str`
+        The token to send.
+    """
+
+    def __init__(self, session: ClientSession, token: str) -> None:
+        self._session = session
+        self._token = token
+
+    def request(
+        self, method: str, url: str, **kwargs: Any
+    ) -> _RequestContextManager:
+        if "headers" not in kwargs:
+            kwargs["headers"] = {}
+        kwargs["headers"]["Authorization"] = f"Bearer {self._token}"
+        return self._session.request(method, url, **kwargs)
+
+    def delete(self, url: str, **kwargs: Any) -> _RequestContextManager:
+        return self.request("delete", url, **kwargs)
+
+    def get(self, url: str, **kwargs: Any) -> _RequestContextManager:
+        return self.request("get", url, **kwargs)
+
+    def post(self, url: str, **kwargs: Any) -> _RequestContextManager:
+        return self.request("post", url, **kwargs)
+
+    def ws_connect(
+        self, *args: Any, **kwargs: Any
+    ) -> _WSRequestContextManager:
+        if "headers" not in kwargs:
+            kwargs["headers"] = {}
+        kwargs["headers"]["Authorization"] = f"Bearer {self._token}"
+        return self._session.ws_connect(*args, **kwargs)
+
+
 @dataclass
 class JupyterClient:
     log: BoundLoggerLazyProxy
     user: User
-    session: ClientSession
+    session: JupyterClientSession
     headers: Dict[str, str]
     xsrftoken: str
     jupyter_url: str
@@ -51,17 +104,15 @@ class JupyterClient:
         )
         self.jupyter_options_form = options.get("jupyter_options_form", {})
 
-        self.headers = {
-            "Authorization": "Bearer " + user.token,
-            "x-xsrftoken": self.xsrftoken,
-        }
+        self.headers = {"x-xsrftoken": self.xsrftoken}
 
-        self.session = ClientSession(
+        session = ClientSession(
             headers=self.headers, connector=TCPConnector(limit=10000)
         )
-        self.session.cookie_jar.update_cookies(
+        session.cookie_jar.update_cookies(
             BaseCookie({"_xsrf": self.xsrftoken})
         )
+        self.session = JupyterClientSession(session, user.token)
 
     __ansi_reg_exp = re.compile(r"(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]")
 
@@ -234,11 +285,6 @@ class JupyterClient:
                         raise NotebookException(
                             f"Error content status is {status}"
                         )
-
-    def dump(self) -> dict:
-        return {
-            "cookies": [str(cookie) for cookie in self.session.cookie_jar],
-        }
 
     async def _raise_error(self, msg: str, r: ClientResponse) -> None:
         raise Exception(f"{msg}: {r.status} {r.url}: {r.headers}")

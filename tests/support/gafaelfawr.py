@@ -20,9 +20,18 @@ if TYPE_CHECKING:
 __all__ = ["make_gafaelfawr_token", "mock_gafaelfawr"]
 
 
-def make_gafaelfawr_token() -> str:
-    """Create a random Gafaelfawr token."""
-    key = base64.urlsafe_b64encode(os.urandom(16)).decode().rstrip("=")
+def make_gafaelfawr_token(user: Optional[str] = None) -> str:
+    """Create a random or user Gafaelfawr token.
+
+    If a user is given, embed the username in the key portion of the token so
+    that we can extract it later.  This means the token no longer follows the
+    format of a valid Gafaelfawr token, but it lets the mock JupyterHub know
+    what user is being authenticated.
+    """
+    if user:
+        key = base64.urlsafe_b64encode(user.encode()).decode()
+    else:
+        key = base64.urlsafe_b64encode(os.urandom(16)).decode().rstrip("=")
     secret = base64.urlsafe_b64encode(os.urandom(16)).decode().rstrip("=")
     return f"gt-{key}.{secret}"
 
@@ -41,7 +50,7 @@ def mock_gafaelfawr(
     assert admin_token.startswith("gt-")
 
     def handler(url: str, **kwargs: Any) -> CallbackResult:
-        assert kwargs["headers"] == {"Authorization": f"bearer {admin_token}"}
+        assert kwargs["headers"] == {"Authorization": f"Bearer {admin_token}"}
         assert kwargs["json"] == {
             "username": ANY,
             "token_type": "user",
@@ -56,7 +65,7 @@ def mock_gafaelfawr(
             assert kwargs["json"]["uid"] == uid
         assert kwargs["json"]["token_name"].startswith("mobu ")
         assert kwargs["json"]["expires"] > time.time()
-        response = {"token": make_gafaelfawr_token()}
+        response = {"token": make_gafaelfawr_token(kwargs["json"]["username"])}
         return CallbackResult(payload=response, status=200)
 
     base_url = config.environment_url

@@ -42,7 +42,7 @@ class User:
         async with ClientSession() as s:
             r = await s.post(
                 token_url,
-                headers={"Authorization": f"bearer {config.gafaelfawr_token}"},
+                headers={"Authorization": f"Bearer {config.gafaelfawr_token}"},
                 json={
                     "username": username,
                     "token_type": "user",

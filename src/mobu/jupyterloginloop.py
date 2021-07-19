@@ -66,15 +66,4 @@ class JupyterLoginLoop(BusinessTime):
                 "success_count": self.success_count,
             }
         )
-        # Under heavy load, we seem to get lost before monkey.py can
-        #  call start(), and the client isn't present when we try to dump
-        #  for report.
-        if hasattr(self, "_client") and self._client:
-            r.update(
-                {
-                    "jupyter_client": self._client.dump(),
-                }
-            )
-        else:
-            r.update({"jupyter_client": None})
         return r

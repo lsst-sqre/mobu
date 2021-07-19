@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from base64 import urlsafe_b64decode
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -10,7 +11,7 @@ from aioresponses import CallbackResult
 from mobu.config import Configuration
 
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, Dict
 
     from aioresponses import aioresponses
 
@@ -34,48 +35,67 @@ class MockJupyterHub:
     making REST calls to the real JupyterHub.
     """
 
-    def __init__(self, user: str) -> None:
-        self.state = JupyterHubState.LOGGED_OUT
-        self.user = user
+    def __init__(self) -> None:
+        self.state: Dict[str, JupyterHubState] = {}
 
     def login(self, url: str, **kwargs: Any) -> CallbackResult:
-        self.state = JupyterHubState.LOGGED_IN
+        user = self._get_user(kwargs["headers"]["Authorization"])
+        self.state[user] = JupyterHubState.LOGGED_IN
         return CallbackResult(status=200)
 
     def hub(self, url: str, **kwargs: Any) -> CallbackResult:
-        if self.state == JupyterHubState.LOGGED_OUT:
+        user = self._get_user(kwargs["headers"]["Authorization"])
+        state = self.state.get(user, JupyterHubState.LOGGED_OUT)
+        if state == JupyterHubState.LOGGED_OUT:
             redirect_to = _url("hub/login")
-        elif self.state == JupyterHubState.LOGGED_IN:
+        elif state == JupyterHubState.LOGGED_IN:
             redirect_to = _url("hub/spawn")
-        elif self.state == JupyterHubState.SPAWN_PENDING:
-            redirect_to = _url(f"hub/spawn-pending/{self.user}")
-        elif self.state == JupyterHubState.LAB_RUNNING:
-            redirect_to = _url(f"hub/spawn-pending/{self.user}")
+        elif state == JupyterHubState.SPAWN_PENDING:
+            redirect_to = _url(f"hub/spawn-pending/{user}")
+        elif state == JupyterHubState.LAB_RUNNING:
+            redirect_to = _url(f"hub/spawn-pending/{user}")
         return CallbackResult(status=307, headers={"Location": redirect_to})
 
     def spawn(self, url: str, **kwargs: Any) -> CallbackResult:
-        assert self.state == JupyterHubState.LOGGED_IN
-        self.state = JupyterHubState.SPAWN_PENDING
+        user = self._get_user(kwargs["headers"]["Authorization"])
+        state = self.state.get(user, JupyterHubState.LOGGED_OUT)
+        assert state == JupyterHubState.LOGGED_IN
+        self.state[user] = JupyterHubState.SPAWN_PENDING
         return CallbackResult(
             status=302,
-            headers={"Location": f"/nb/hub/spawn-pending/{self.user}"},
+            headers={"Location": f"/nb/hub/spawn-pending/{user}"},
         )
 
     def finish_spawn(self, url: str, **kwargs: Any) -> CallbackResult:
-        assert self.state == JupyterHubState.SPAWN_PENDING
-        self.state = JupyterHubState.LAB_RUNNING
+        user = self._get_user(kwargs["headers"]["Authorization"])
+        state = self.state.get(user, JupyterHubState.LOGGED_OUT)
+        assert state == JupyterHubState.SPAWN_PENDING
+        self.state[user] = JupyterHubState.LAB_RUNNING
         return CallbackResult(
-            status=307, headers={"Location": _url(f"user/{self.user}/lab?")}
+            status=307, headers={"Location": _url(f"user/{user}/lab?")}
         )
 
     def lab(self, url: str, **kwargs: Any) -> CallbackResult:
-        assert self.state == JupyterHubState.LAB_RUNNING
+        user = self._get_user(kwargs["headers"]["Authorization"])
+        state = self.state.get(user, JupyterHubState.LOGGED_OUT)
+        assert state == JupyterHubState.LAB_RUNNING
         return CallbackResult(status=200)
 
     def delete_lab(self, url: str, **kwargs: Any) -> CallbackResult:
-        assert self.state == JupyterHubState.LAB_RUNNING
-        self.state = JupyterHubState.LOGGED_OUT
+        user = self._get_user(kwargs["headers"]["Authorization"])
+        state = self.state.get(user, JupyterHubState.LOGGED_OUT)
+        assert state == JupyterHubState.LAB_RUNNING
+        self.state[user] = JupyterHubState.LOGGED_OUT
         return CallbackResult(status=202)
+
+    @staticmethod
+    def _get_user(authorization: str) -> str:
+        """Get the user from the Authorization header."""
+        assert authorization.startswith("Bearer ")
+        token = authorization.split(" ", 1)[1]
+        print(token)
+        user = urlsafe_b64decode(token[3:].split(".", 1)[0].encode())
+        return user.decode()
 
 
 def mock_jupyterhub(mocked: aioresponses, user: str) -> None:
@@ -84,7 +104,7 @@ def mock_jupyterhub(mocked: aioresponses, user: str) -> None:
     Currently only handles a lab spawn and then shutdown.  Behavior will
     eventually be configurable.
     """
-    mock = MockJupyterHub(user)
+    mock = MockJupyterHub()
     mocked.get(_url("hub/login"), callback=mock.login, repeat=True)
     mocked.get(_url("hub"), callback=mock.hub, repeat=True)
     mocked.get(_url("hub/spawn"), repeat=True)

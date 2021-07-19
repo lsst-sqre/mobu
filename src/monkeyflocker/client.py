@@ -74,7 +74,7 @@ class MonkeyflockerClient:
         client = aiohttp.ClientSession(
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"bearer {self.token}",
+                "Authorization": f"Bearer {self.token}",
             },
             raise_for_status=True,
             timeout=aiohttp.ClientTimeout(total=session_timeout),

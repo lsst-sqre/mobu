@@ -9,7 +9,7 @@ import pytest
 from aioresponses import aioresponses
 
 from tests.support.gafaelfawr import mock_gafaelfawr
-from tests.support.jupyter import mock_jupyterhub
+from tests.support.jupyterhub import mock_jupyterhub
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
@@ -40,7 +40,6 @@ async def test_run(client: AsyncClient, admin_token: str) -> None:
         assert r.json() == {
             "business": {
                 "failure_count": 0,
-                "jupyter_client": {"cookies": ANY},
                 "name": "JupyterLoginLoop",
                 "success_count": ANY,
                 "timings": ANY,
