@@ -47,11 +47,9 @@ app.mount(f"/{config.name}", _subapp)
 @app.on_event("startup")
 async def startup_event() -> None:
     app.add_middleware(XForwardedMiddleware)
-    manager = await monkey_business_manager()
-    await manager.init()
+    await monkey_business_manager.init()
 
 
 @app.on_event("shutdown")
 async def shutdown_event() -> None:
-    manager = await monkey_business_manager()
-    await manager.cleanup()
+    await monkey_business_manager.cleanup()
