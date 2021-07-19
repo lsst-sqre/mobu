@@ -29,7 +29,6 @@ class MonkeyBusinessFactory:
         scopes = user["scopes"]
 
         u = await User.create(username, uidnumber, scopes)
-        m = Monkey(name, u, options)
 
         businesses = [
             Business,
@@ -42,8 +41,7 @@ class MonkeyBusinessFactory:
 
         for b in businesses:
             if business == b.__name__:
-                m.assign_business(b, options)
-                return m
+                return Monkey(name, u, b, options)
 
         # If we fell through, we have no matching business class.
         raise ValueError(f"Unknown business {business}")

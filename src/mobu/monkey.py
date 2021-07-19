@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
-from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum, auto
 from tempfile import NamedTemporaryFile
@@ -21,7 +20,7 @@ from mobu.config import Configuration
 from mobu.user import User
 
 if TYPE_CHECKING:
-    from typing import IO, Any, Dict, Type
+    from typing import Any, Dict, Optional, Type
 
 __all__ = ["Monkey"]
 
@@ -36,35 +35,31 @@ class MonkeyState(Enum):
     ERROR = auto()
 
 
-@dataclass
 class Monkey:
-    name: str
-    user: User
-    business: Business
-    restart: bool
-    state: MonkeyState
+    """Runs one business and manages its log and configuration."""
 
-    _job: Job
-    _logfile: IO[bytes]
-
-    def __init__(self, name: str, user: User, options: Dict[str, Any]):
+    def __init__(
+        self,
+        name: str,
+        user: User,
+        business: Type[Business],
+        options: Dict[str, Any],
+    ):
         self.name = name
         self.state = MonkeyState.IDLE
         self.user = user
         self.restart = options.get("restart", False)
 
         self._logfile = NamedTemporaryFile()
+        self._job: Optional[Job] = None
 
         formatter = logging.Formatter(
             fmt="%(asctime)s %(message)s", datefmt=DATE_FORMAT
         )
-
         fileHandler = logging.FileHandler(self._logfile.name)
         fileHandler.setFormatter(formatter)
-
         streamHandler = logging.StreamHandler(stream=sys.stdout)
         streamHandler.setFormatter(formatter)
-
         logger = logging.getLogger(self.name)
         logger.handlers.clear()
         logger.setLevel(logging.INFO)
@@ -72,6 +67,8 @@ class Monkey:
         logger.addHandler(streamHandler)
         logger.info(f"Starting new file logger {self._logfile.name}")
         self.log = structlog.wrap_logger(logger)
+
+        self.business = business(self.log, options, self.user)
 
     async def alert(self, msg: str) -> None:
         if (
@@ -101,11 +98,6 @@ class Monkey:
                         )
         except Exception:
             self.log.exception("Exception thrown while trying to alert!")
-
-    def assign_business(
-        self, business: Type[Business], options: Dict[str, Any]
-    ) -> None:
-        self.business = business(self.log, options, self.user)
 
     def logfile(self) -> str:
         self._logfile.flush()
@@ -141,13 +133,14 @@ class Monkey:
     async def stop(self) -> None:
         self.state = MonkeyState.STOPPING
         await self.business.stop()
-        try:
-            await self._job.close(timeout=0)
-        except asyncio.TimeoutError:
-            # Close will normally wait for a timeout to occur before
-            # throwing a timeout exception, but we'll just shut it down
-            # right away and eat the exception.
-            pass
+        if self._job:
+            try:
+                await self._job.close(timeout=0)
+            except asyncio.TimeoutError:
+                # Close will normally wait for a timeout to occur before
+                # throwing a timeout exception, but we'll just shut it down
+                # right away and eat the exception.
+                pass
         self.state = MonkeyState.FINISHED
 
     def dump(self) -> dict:
