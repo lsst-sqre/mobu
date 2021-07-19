@@ -93,7 +93,6 @@ class MockJupyterHub:
         """Get the user from the Authorization header."""
         assert authorization.startswith("Bearer ")
         token = authorization.split(" ", 1)[1]
-        print(token)
         user = urlsafe_b64decode(token[3:].split(".", 1)[0].encode())
         return user.decode()
 

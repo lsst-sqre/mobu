@@ -16,7 +16,6 @@ from ..dependencies.manager import (
     monkey_business_manager,
 )
 from ..models import Index
-from ..monkeybusinessfactory import MonkeyBusinessFactory
 
 __all__ = ["external_router", "get_index", "get_users", "post_user"]
 
@@ -82,8 +81,7 @@ async def post_user(
 ) -> Dict[str, str]:
     body = await request.json()
     logger.info(body)
-    monkey = await MonkeyBusinessFactory.create(body)
-    await manager.manage_monkey(monkey)
+    monkey = await manager.create_monkey(body)
     return {"user": monkey.user.username}
 
 
