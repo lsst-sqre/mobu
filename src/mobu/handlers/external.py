@@ -11,10 +11,12 @@ from safir.metadata import get_metadata
 from structlog.stdlib import BoundLogger
 
 from ..config import config
-from ..dependencies.manager import monkey_business_manager
+from ..dependencies.manager import (
+    MonkeyBusinessManager,
+    monkey_business_manager,
+)
 from ..models import Index
 from ..monkeybusinessfactory import MonkeyBusinessFactory
-from ..monkeybusinessmanager import MonkeyBusinessManager
 
 __all__ = ["external_router", "get_index", "get_users", "post_user"]
 
