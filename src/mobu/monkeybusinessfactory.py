@@ -7,7 +7,6 @@ __all__ = [
 from typing import Dict
 
 from mobu.business.base import Business
-from mobu.business.businesstime import BusinessTime
 from mobu.business.jupyterjitterloginloop import JupyterJitterLoginLoop
 from mobu.business.jupyterloginloop import JupyterLoginLoop
 from mobu.business.jupyterpythonloop import JupyterPythonLoop
@@ -34,7 +33,6 @@ class MonkeyBusinessFactory:
 
         businesses = [
             Business,
-            BusinessTime,
             JupyterLoginLoop,
             JupyterJitterLoginLoop,
             JupyterPythonLoop,
@@ -42,14 +40,10 @@ class MonkeyBusinessFactory:
             QueryMonkey,
         ]
 
-        new_business = None
-
         for b in businesses:
             if business == b.__name__:
-                new_business = b(m, options)
+                m.assign_business(b, options)
+                return m
 
-        if not new_business:
-            raise ValueError(f"Unknown business {business}")
-
-        m.assign_business(new_business)
-        return m
+        # If we fell through, we have no matching business class.
+        raise ValueError(f"Unknown business {business}")

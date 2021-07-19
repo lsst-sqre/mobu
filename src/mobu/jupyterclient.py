@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from aiohttp import ClientResponse, ClientSession, TCPConnector
-from structlog._config import BoundLoggerLazyProxy
 
 from mobu.config import Configuration
 from mobu.user import User
@@ -25,6 +24,7 @@ if TYPE_CHECKING:
     from typing import Any, Dict
 
     from aiohttp.client import _RequestContextManager, _WSRequestContextManager
+    from structlog import BoundLogger
 
 __all__ = ["JupyterClient"]
 
@@ -84,34 +84,21 @@ class JupyterClientSession:
 
 @dataclass
 class JupyterClient:
-    log: BoundLoggerLazyProxy
-    user: User
-    session: JupyterClientSession
-    headers: Dict[str, str]
-    xsrftoken: str
-    jupyter_url: str
-
-    def __init__(
-        self, user: User, log: BoundLoggerLazyProxy, options: Dict[str, Any]
-    ):
+    def __init__(self, user: User, log: BoundLogger, options: Dict[str, Any]):
         self.user = user
         self.log = log
         self.jupyter_base = options.get("nb_url", "/nb/")
         self.jupyter_url = Configuration.environment_url + self.jupyter_base
-
-        self.xsrftoken = "".join(
-            random.choices(string.ascii_uppercase + string.digits, k=16)
-        )
         self.jupyter_options_form = options.get("jupyter_options_form", {})
 
-        self.headers = {"x-xsrftoken": self.xsrftoken}
-
+        xsrftoken = "".join(
+            random.choices(string.ascii_uppercase + string.digits, k=16)
+        )
+        headers = {"x-xsrftoken": xsrftoken}
         session = ClientSession(
-            headers=self.headers, connector=TCPConnector(limit=10000)
+            headers=headers, connector=TCPConnector(limit=10000)
         )
-        session.cookie_jar.update_cookies(
-            BaseCookie({"_xsrf": self.xsrftoken})
-        )
+        session.cookie_jar.update_cookies(BaseCookie({"_xsrf": xsrftoken}))
         self.session = JupyterClientSession(session, user.token)
 
     __ansi_reg_exp = re.compile(r"(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]")

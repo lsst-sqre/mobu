@@ -1,15 +1,25 @@
+from __future__ import annotations
+
 import asyncio
 import os
 import random
 from dataclasses import field
+from typing import TYPE_CHECKING
 
 import jinja2
 import pyvo
 import requests
 from pyvo.auth import AuthSession
 
-from mobu.business.businesstime import BusinessTime
+from mobu.business.base import Business
 from mobu.config import Configuration
+
+if TYPE_CHECKING:
+    from typing import Any, Dict
+
+    from structlog import BoundLogger
+
+    from ..user import User
 
 
 def limit_dec(x: int) -> int:
@@ -29,16 +39,25 @@ def generate_parameters() -> dict:
     }
 
 
-class QueryMonkey(BusinessTime):
+class QueryMonkey(Business):
     success_count: int = 0
     failure_count: int = 0
     _client: pyvo.dal.TAPService = field(init=False)
 
-    def _make_client(self) -> pyvo.dal.TAPService:
+    def __init__(
+        self, logger: BoundLogger, options: Dict[str, Any], user: User
+    ) -> None:
+        super().__init__(logger, options, user)
+        self.success_count = 0
+        self.failure_count = 0
+        self._client = self._make_client(user.token)
+
+    @staticmethod
+    def _make_client(token: str) -> pyvo.dal.TAPService:
         tap_url = Configuration.environment_url + "/api/tap"
 
         s = requests.Session()
-        s.headers["Authorization"] = "Bearer " + self.monkey.user.token
+        s.headers["Authorization"] = "Bearer " + token
         auth = AuthSession()
         auth.credentials.set("lsst-token", s)
         auth.add_security_method_for_url(tap_url, "lsst-token")
@@ -51,8 +70,7 @@ class QueryMonkey(BusinessTime):
     async def run(self) -> None:
         try:
             loop = asyncio.get_event_loop()
-            logger = self.monkey.log
-            logger.info("Starting up...")
+            self.logger.info("Starting up...")
 
             template_dir = os.path.join(
                 os.path.dirname(__file__), "static/querymonkey/"
@@ -61,18 +79,15 @@ class QueryMonkey(BusinessTime):
                 loader=jinja2.FileSystemLoader(template_dir),
                 undefined=jinja2.StrictUndefined,
             )
-            logger.info(
+            self.logger.info(
                 "Query templates to choose from: %s", env.list_templates()
             )
 
-            self.start_event("make_tap_client")
-            self._client = self._make_client()
-            self.stop_current_event()
             while True:
                 template_name = random.choice(env.list_templates())
                 template = env.get_template(template_name)
                 query = template.render(generate_parameters())
-                logger.info("Running: %s", query)
+                self.logger.info("Running: %s", query)
                 self.start_event("execute_query")
                 await loop.run_in_executor(None, self._client.search, query)
                 sw = self.get_current_event()
@@ -81,7 +96,7 @@ class QueryMonkey(BusinessTime):
                     sw.annotation = {"query": query}
                     elapsed = str(sw.elapsed)
                 self.stop_current_event()
-                logger.info(f"Query finished after {elapsed} seconds")
+                self.logger.info(f"Query finished after {elapsed} seconds")
                 self.success_count += 1
                 await asyncio.sleep(60)
         except Exception:
@@ -99,7 +114,6 @@ class QueryMonkey(BusinessTime):
         r = super().dump()
         r.update(
             {
-                "name": "QueryMonkey",
                 "failure_count": self.failure_count,
                 "success_count": self.success_count,
             }

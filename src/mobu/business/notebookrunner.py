@@ -1,50 +1,54 @@
 """NotebookRunner logic for mobu.
 
-This business pattern will clone a git repo full
-of notebooks, randomly pick the notebooks, and run
-them on the remote jupyter lab."""
+This business pattern will clone a Git repo full of notebooks, randomly pick
+the notebooks, and run them on the remote Jupyter lab.
+"""
 
-__all__ = [
-    "NotebookRunner",
-]
+from __future__ import annotations
 
 import asyncio
-import datetime
 import json
 import os
-from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Iterator
+from typing import TYPE_CHECKING
 
 import git
 
 from mobu.business.jupyterloginloop import JupyterLoginLoop
-from mobu.jupyterclient import JupyterClient, NotebookException
+from mobu.jupyterclient import NotebookException
+
+if TYPE_CHECKING:
+    from typing import Any, Dict, Iterator, List, Optional
+
+    from structlog import BoundLogger
+
+    from ..user import User
+
+__all__ = ["NotebookRunner"]
 
 REPO_URL = "https://github.com/lsst-sqre/notebook-demo.git"
 REPO_BRANCH = "prod"
 
 
-@dataclass
 class NotebookRunner(JupyterLoginLoop):
-    _failed_notebooks: list = field(init=False, default_factory=list)
-    _repo_dir: TemporaryDirectory = field(
-        init=False, default_factory=TemporaryDirectory
-    )
-    _repo: git.Repo = field(init=False, default=None)
-    _last_login: datetime.datetime = field(init=False)
-    _notebook_iterator: Iterator = field(init=False)
-    notebook: os.DirEntry = field(init=False)
-    code: str = field(init=False, default="")
+    """Start a Jupyter lab and run a sequence of notebooks."""
+
+    def __init__(
+        self, logger: BoundLogger, options: Dict[str, Any], user: User
+    ) -> None:
+        super().__init__(logger, options, user)
+        self._failed_notebooks: List[str] = []
+        self._last_login = datetime.fromtimestamp(0, tz=timezone.utc)
+        self._repo_dir = TemporaryDirectory()
+        self._repo: Optional[git.Repo] = None
+        self._notebook_iterator: Optional[Iterator[os.DirEntry]] = None
+        self.notebook: Optional[os.DirEntry] = None
+        self.code = ""
 
     async def run(self) -> None:
         try:
-            logger = self.monkey.log
-
-            self._client = JupyterClient(
-                self.monkey.user, logger, self.options
-            )
             nb_iterations = self.options.get("notebook_iterations", 1)
             if not self._repo:
                 repo_url = self.options.get("repo_url", REPO_URL)
@@ -57,7 +61,7 @@ class NotebookRunner(JupyterLoginLoop):
 
             self._notebook_iterator = os.scandir(self._repo_dir.name)
 
-            logger.info("Repository cloned and ready")
+            self.logger.info("Repository cloned and ready")
 
             self.start_event("hub_login")
             await self._client.hub_login()
@@ -69,6 +73,7 @@ class NotebookRunner(JupyterLoginLoop):
 
             while True:
                 self._next_notebook()
+                assert self.notebook
                 self.start_event("ensure_lab")
                 await self._client.ensure_lab()
                 self.stop_current_event()
@@ -76,7 +81,9 @@ class NotebookRunner(JupyterLoginLoop):
                 await asyncio.sleep(self.options.get("settle_time", 0))
                 self.stop_current_event()
                 if self.notebook.path.endswith(".ipynb"):
-                    logger.info(f"Starting notebook: {self.notebook.name}")
+                    self.logger.info(
+                        f"Starting notebook: {self.notebook.name}"
+                    )
                     self.start_event(f"read_notebook:{self.notebook.name}")
                     notebook_text = Path(self.notebook.path).read_text()
                     cells = json.loads(notebook_text)["cells"]
@@ -87,7 +94,7 @@ class NotebookRunner(JupyterLoginLoop):
                     )
                     self.stop_current_event()
                     for count in range(nb_iterations):
-                        logger.info(
+                        self.logger.info(
                             f"Notebook '{self.notebook.name}'"
                             + f" iteration {count + 1}"
                             + f"/{nb_iterations}"
@@ -96,7 +103,7 @@ class NotebookRunner(JupyterLoginLoop):
                         for cell in cells:
                             if cell["cell_type"] == "code":
                                 self.code = "".join(cell["source"])
-                                logger.info("Executing:\n%s\n", self.code)
+                                self.logger.info("Executing:\n%s\n", self.code)
                                 self.start_event("run_code")
                                 sw = self.get_current_event()
                                 reply = await self._client.run_python(
@@ -108,58 +115,57 @@ class NotebookRunner(JupyterLoginLoop):
                                         "result": reply,
                                     }
                                 self.stop_current_event()
-                                logger.info(f"Result:\n{reply}\n")
-                    logger.info(f"Deleting kernel {kernel}")
+                                self.logger.info(f"Result:\n{reply}\n")
+                    self.logger.info(f"Deleting kernel {kernel}")
                     self.start_event("delete_kernel")
                     await self._client.delete_kernel(kernel)
                     self.stop_current_event()
-                    logger.info(
+                    self.logger.info(
                         f"Success running notebook: {self.notebook.name}"
                     )
 
                     self.success_count += 1
 
         except NotebookException as e:
-            logger.error(f"Error running notebook: {self.notebook.name}")
-            self._failed_notebooks.append(self.notebook.name)
+            notebook_name = "no notebook"
+            if self.notebook:
+                self._failed_notebooks.append(self.notebook.name)
+                notebook_name = self.notebook.name
+            self.logger.error(f"Error running notebook: {notebook_name}")
             self.failure_count += 1
             raise NotebookException(
-                f"Running {self.notebook.name}: '"
+                f"Running {notebook_name}: '"
                 f"```{self.code}``` generated: ```{e}```"
             )
 
     def dump(self) -> dict:
         r = super().dump()
-        r.update(
-            {
-                "name": "NotebookRunner",
-                "running_code": self.code,
-            }
-        )
+        r.update({"running_code": self.code})
         n = None
-        if hasattr(self, "notebook") and self.notebook:
+        if self.notebook:
             n = self.notebook.name
         r.update({"notebook": n})
         return r
 
     def _next_notebook(self) -> None:
+        assert self._notebook_iterator
         try:
             self.notebook = next(self._notebook_iterator)
         except StopIteration:
-            self.monkey.log.info(
+            self.logger.info(
                 "Done with this cycle of notebooks, recreating lab."
             )
             self._notebook_iterator = os.scandir(self._repo_dir.name)
             self._next_notebook()
 
-    def _now(self) -> datetime.datetime:
-        return datetime.datetime.now(datetime.timezone.utc)
+    def _now(self) -> datetime:
+        return datetime.now(timezone.utc)
 
     async def _reauth_if_needed(self) -> None:
         now = self._now()
         elapsed = now - self._last_login
-        if elapsed > datetime.timedelta(seconds=2700):  # 45 minutes
-            self.monkey.log.info("Reauthenticating to Hub")
+        if elapsed > timedelta(minutes=45):
+            self.logger.info("Reauthenticating to Hub")
             self.start_event("hub_reauth")
             await self._client.hub_login()
             self.stop_current_event()

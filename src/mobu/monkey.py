@@ -1,8 +1,6 @@
 """The monkey."""
 
-__all__ = [
-    "Monkey",
-]
+from __future__ import annotations
 
 import asyncio
 import logging
@@ -11,17 +9,21 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum, auto
 from tempfile import NamedTemporaryFile
-from typing import IO, Any, Dict
+from typing import TYPE_CHECKING
 
 import structlog
 from aiohttp import ClientSession
 from aiojobs import Scheduler
 from aiojobs._job import Job
-from structlog._config import BoundLoggerLazyProxy
 
 from mobu.business.base import Business
 from mobu.config import Configuration
 from mobu.user import User
+
+if TYPE_CHECKING:
+    from typing import IO, Any, Dict, Type
+
+__all__ = ["Monkey"]
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -38,7 +40,6 @@ class MonkeyState(Enum):
 class Monkey:
     name: str
     user: User
-    log: BoundLoggerLazyProxy
     business: Business
     restart: bool
     state: MonkeyState
@@ -101,9 +102,10 @@ class Monkey:
         except Exception:
             self.log.exception("Exception thrown while trying to alert!")
 
-    def assign_business(self, business: Business) -> None:
-        self.business = business
-        business.monkey = self
+    def assign_business(
+        self, business: Type[Business], options: Dict[str, Any]
+    ) -> None:
+        self.business = business(self.log, options, self.user)
 
     def logfile(self) -> str:
         self._logfile.flush()
