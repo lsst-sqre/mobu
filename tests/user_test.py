@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from aiohttp import ClientSession
 from aioresponses import aioresponses
 
 from mobu.config import Configuration
@@ -14,7 +15,10 @@ from tests.support.gafaelfawr import mock_gafaelfawr
 async def test_generate_token(admin_token: str) -> None:
     with aioresponses() as mocked:
         mock_gafaelfawr(mocked, "someuser", 1234)
-        user = await User.create("someuser", 1234, ["exec:notebook"])
+        async with ClientSession() as session:
+            user = await User.create(
+                "someuser", 1234, ["exec:notebook"], session
+            )
         assert user.username == "someuser"
         assert user.uidnumber == 1234
         assert user.scopes == ["exec:notebook"]

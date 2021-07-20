@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from aiohttp import ClientSession
 from aiojobs import Scheduler, create_scheduler
 
 from ..business.base import Business
@@ -22,19 +23,24 @@ class MonkeyBusinessManager:
     """Manages all of the running monkeys."""
 
     def __init__(self) -> None:
-        self._scheduler: Optional[Scheduler] = None
         self._monkeys: Dict[str, Monkey] = {}
+        self._scheduler: Optional[Scheduler] = None
+        self._session: Optional[ClientSession] = None
 
     async def __call__(self) -> MonkeyBusinessManager:
         return self
 
     async def init(self) -> None:
         self._scheduler = await create_scheduler(limit=1000, pending_limit=0)
+        self._session = ClientSession()
 
     async def cleanup(self) -> None:
         if self._scheduler is not None:
             await self._scheduler.close()
             self._scheduler = None
+        if self._session:
+            await self._session.close()
+            self._session = None
 
     def fetch_monkey(self, name: str) -> Monkey:
         return self._monkeys[name]
@@ -43,7 +49,7 @@ class MonkeyBusinessManager:
         return list(self._monkeys.keys())
 
     async def create_monkey(self, body: Dict[str, Any]) -> Monkey:
-        if self._scheduler is None:
+        if self._scheduler is None or not self._session:
             raise RuntimeError("MonkeyBusinessManager not initialized")
 
         name = body["name"]
@@ -55,7 +61,7 @@ class MonkeyBusinessManager:
         uidnumber = user_config["uidnumber"]
         scopes = user_config["scopes"]
 
-        user = await User.create(username, uidnumber, scopes)
+        user = await User.create(username, uidnumber, scopes, self._session)
 
         # Find the right business class and create the monkey.
         monkey = None
@@ -69,7 +75,7 @@ class MonkeyBusinessManager:
         ]
         for b in businesses:
             if business == b.__name__:
-                monkey = Monkey(name, user, b, options)
+                monkey = Monkey(name, user, b, options, self._session)
 
         # If we fell through, we have no matching business class.
         if not monkey:

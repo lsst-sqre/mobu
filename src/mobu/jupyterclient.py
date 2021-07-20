@@ -10,7 +10,6 @@ import asyncio
 import random
 import re
 import string
-from dataclasses import dataclass
 from http.cookies import BaseCookie
 from typing import TYPE_CHECKING
 from uuid import uuid4
@@ -56,6 +55,9 @@ class JupyterClientSession:
         self._session = session
         self._token = token
 
+    async def close(self) -> None:
+        await self._session.close()
+
     def request(
         self, method: str, url: str, **kwargs: Any
     ) -> _RequestContextManager:
@@ -82,8 +84,17 @@ class JupyterClientSession:
         return self._session.ws_connect(*args, **kwargs)
 
 
-@dataclass
 class JupyterClient:
+    """Client for talking to JupyterHub.
+
+    Notes
+    -----
+
+    This class creates its own `aiohttp.ClientSession` for each instance,
+    separate from the one used by the rest of the application so that it can
+    add some custom settings.
+    """
+
     def __init__(self, user: User, log: BoundLogger, options: Dict[str, Any]):
         self.user = user
         self.log = log
@@ -106,6 +117,9 @@ class JupyterClient:
     @classmethod
     def _ansi_escape(cls, line: str) -> str:
         return cls.__ansi_reg_exp.sub("", line)
+
+    async def close(self) -> None:
+        await self.session.close()
 
     async def hub_login(self) -> None:
         async with self.session.get(self.jupyter_url + "hub/login") as r:

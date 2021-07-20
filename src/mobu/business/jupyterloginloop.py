@@ -23,7 +23,12 @@ __all__ = ["JupyterLoginLoop"]
 
 
 class JupyterLoginLoop(Business):
-    """Business that logs on to the hub, creates a lab, and deletes it."""
+    """Business that logs on to the hub, creates a lab, and deletes it.
+
+    Once this business has been stopped, it cannot be started again (the
+    `aiohttp.ClientSession` will be closed), and the instance should be
+    dropped after retrieving any status information.
+    """
 
     def __init__(
         self, logger: BoundLogger, options: Dict[str, Any], user: User
@@ -63,3 +68,4 @@ class JupyterLoginLoop(Business):
         self.start_event("delete_lab_on_stop")
         await self._client.delete_lab()
         self.stop_current_event()
+        await self._client.close()

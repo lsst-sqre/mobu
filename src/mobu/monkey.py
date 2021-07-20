@@ -15,12 +15,13 @@ from aiohttp import ClientSession
 from aiojobs import Scheduler
 from aiojobs._job import Job
 
-from mobu.business.base import Business
-from mobu.config import Configuration
-from mobu.user import User
+from .config import config
 
 if TYPE_CHECKING:
     from typing import Any, Dict, Optional, Type
+
+    from .business.base import Business
+    from .user import User
 
 __all__ = ["Monkey"]
 
@@ -44,12 +45,14 @@ class Monkey:
         user: User,
         business: Type[Business],
         options: Dict[str, Any],
+        session: ClientSession,
     ):
         self.name = name
         self.state = MonkeyState.IDLE
         self.user = user
         self.restart = options.get("restart", False)
 
+        self._session = session
         self._logfile = NamedTemporaryFile()
         self._job: Optional[Job] = None
 
@@ -71,31 +74,25 @@ class Monkey:
         self.business = business(self.log, options, self.user)
 
     async def alert(self, msg: str) -> None:
-        if (
-            self.state == MonkeyState.STOPPING
-            or self.state == MonkeyState.FINISHED
-        ):
-            self.log.info(
-                f"Not sending alert '{msg}' because state is"
-                + f" {self.state.name}"
-            )
+        if self.state in (MonkeyState.STOPPING, MonkeyState.FINISHED):
+            state = self.state.name
+            msg = f"Not sending alert '{msg}' because state is {state}"
+            self.log.info(msg)
             return
-        try:
-            time = datetime.now().strftime(DATE_FORMAT)
-            alert_msg = f"{time} {self.name} {msg}"
-            self.log.error(f"Slack Alert: {alert_msg}")
-            if Configuration.alert_hook == "None":
-                self.log.info("Alert hook isn't set, so not sending to slack.")
-                return
 
-            async with ClientSession() as s:
-                async with s.post(
-                    Configuration.alert_hook, json={"text": alert_msg}
-                ) as r:
-                    if r.status != 200:
-                        self.log.error(
-                            f"Error {r.status} trying to send alert to slack"
-                        )
+        time = datetime.now().strftime(DATE_FORMAT)
+        alert_msg = f"{time} {self.name} {msg}"
+        self.log.error(f"Slack Alert: {alert_msg}")
+        if config.alert_hook == "None":
+            self.log.info("Alert hook isn't set, so not sending to slack.")
+            return
+
+        try:
+            alert = {"text": alert_msg}
+            r = await self._session.post(config.alert_hook, json=alert)
+            if r.status != 200:
+                msg = f"Error {r.status} trying to send alert to slack"
+                self.log.error(msg)
         except Exception:
             self.log.exception("Exception thrown while trying to alert!")
 
