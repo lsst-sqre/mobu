@@ -16,7 +16,7 @@ from uuid import uuid4
 
 from aiohttp import ClientResponse, ClientSession, TCPConnector
 
-from .config import Configuration
+from .config import config
 from .user import User
 
 if TYPE_CHECKING:
@@ -99,7 +99,7 @@ class JupyterClient:
         self.user = user
         self.log = log
         self.jupyter_base = options.get("nb_url", "/nb/")
-        self.jupyter_url = Configuration.environment_url + self.jupyter_base
+        self.jupyter_url = config.environment_url + self.jupyter_base
         self.jupyter_options_form = options.get("jupyter_options_form", {})
 
         xsrftoken = "".join(
