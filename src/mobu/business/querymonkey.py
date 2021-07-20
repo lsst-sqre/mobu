@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import random
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import jinja2
@@ -46,6 +46,11 @@ class QueryMonkey(Business):
     ) -> None:
         super().__init__(logger, options, user)
         self._client = self._make_client(user.token)
+        template_path = Path(__file__).parent / "static" / "querymonkey"
+        self._env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(str(template_path)),
+            undefined=jinja2.StrictUndefined,
+        )
 
     @staticmethod
     def _make_client(token: str) -> pyvo.dal.TAPService:
@@ -63,40 +68,34 @@ class QueryMonkey(Business):
         return pyvo.dal.TAPService(tap_url, auth)
 
     async def run(self) -> None:
-        try:
-            loop = asyncio.get_event_loop()
-            self.logger.info("Starting up...")
+        self.logger.info("Starting up...")
+        templates = self._env.list_templates()
+        self.logger.info("Query templates to choose from: %s", templates)
 
-            template_dir = os.path.join(
-                os.path.dirname(__file__), "static/querymonkey/"
-            )
-            env = jinja2.Environment(
-                loader=jinja2.FileSystemLoader(template_dir),
-                undefined=jinja2.StrictUndefined,
-            )
-            self.logger.info(
-                "Query templates to choose from: %s", env.list_templates()
-            )
-
-            while True:
-                template_name = random.choice(env.list_templates())
-                template = env.get_template(template_name)
-                query = template.render(generate_parameters())
-                self.logger.info("Running: %s", query)
-                self.start_event("execute_query")
-                await loop.run_in_executor(None, self._client.search, query)
-                sw = self.get_current_event()
-                elapsed = "???"
-                if sw is not None:
-                    sw.annotation = {"query": query}
-                    elapsed = str(sw.elapsed)
-                self.stop_current_event()
-                self.logger.info(f"Query finished after {elapsed} seconds")
+        while True:
+            template_name = random.choice(self._env.list_templates())
+            template = self._env.get_template(template_name)
+            query = template.render(generate_parameters())
+            try:
+                await self.run_query(query)
                 self.success_count += 1
-                await asyncio.sleep(60)
-        except Exception:
-            self.failure_count += 1
-            raise
+            except Exception:
+                self.failure_count += 1
+                raise
+            await asyncio.sleep(60)
+
+    async def run_query(self, query: str) -> None:
+        self.logger.info("Running: %s", query)
+        loop = asyncio.get_event_loop()
+        self.start_event("execute_query")
+        await loop.run_in_executor(None, self._client.search, query)
+        sw = self.get_current_event()
+        elapsed = "???"
+        if sw is not None:
+            sw.annotation = {"query": query}
+            elapsed = str(sw.elapsed)
+        self.stop_current_event()
+        self.logger.info(f"Query finished after {elapsed} seconds")
 
     async def stop(self) -> None:
         loop = asyncio.get_event_loop()

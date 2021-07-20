@@ -1,7 +1,8 @@
 """JupyterPythonLoop logic for mobu.
 
-This business pattern will start jupyter and run some code
-in a loop over and over again."""
+This business pattern will start a lab and run some code in a loop over and
+over again.
+"""
 
 import asyncio
 from dataclasses import dataclass
@@ -16,34 +17,38 @@ SLEEP_TIME = 1
 
 @dataclass
 class JupyterPythonLoop(JupyterLoginLoop):
-    async def run(self) -> None:
-        self.logger.info("Starting up...")
+    """Run simple Python code in a loop inside a lab kernel."""
 
-        self.start_event("hub_login")
-        await self._client.hub_login()
-        self.stop_current_event()
-        self.start_event("ensure_lab")
-        await self._client.ensure_lab()
-        self.stop_current_event()
-        while True:
-            self.logger.info("create_kernel")
-            self.start_event("create_kernel")
-            kernel = await self._client.create_kernel()
-            self.stop_current_event()
+    async def lab_business(self) -> None:
+        kernel = await self.create_kernel()
+        for count in range(MAX_EXECUTIONS):
+            await self.execute_code(kernel, "2+2")
+            await self.lab_wait()
+        await self.delete_kernel(kernel)
 
-            for count in range(MAX_EXECUTIONS):
-                self.start_event("execute_code")
-                code_str = "print(2+2)"
-                reply = await self._client.run_python(kernel, code_str)
-                sw = self.get_current_event()
-                if sw is not None:
-                    sw.annotation = {"code": code_str, "result": reply}
-                self.stop_current_event()
-                self.logger.info(f"{code_str} -> {reply}")
-                self.start_event("lab_wait")
-                await asyncio.sleep(SLEEP_TIME)
-                self.stop_current_event()
-            self.logger.info("delete_kernel")
-            self.start_event("delete_kernel")
-            await self._client.delete_kernel(kernel)
-            self.stop_current_event()
+    async def create_kernel(self) -> str:
+        self.logger.info("create_kernel")
+        self.start_event("create_kernel")
+        kernel = await self._client.create_kernel()
+        self.stop_current_event()
+        return kernel
+
+    async def execute_code(self, kernel: str, code: str) -> None:
+        self.start_event("execute_code")
+        reply = await self._client.run_python(kernel, code)
+        sw = self.get_current_event()
+        if sw is not None:
+            sw.annotation = {"code": code, "result": reply}
+        self.stop_current_event()
+        self.logger.info(f"{code} -> {reply}")
+
+    async def lab_wait(self) -> None:
+        self.start_event("lab_wait")
+        await asyncio.sleep(SLEEP_TIME)
+        self.stop_current_event()
+
+    async def delete_kernel(self, kernel: str) -> None:
+        self.logger.info("delete_kernel")
+        self.start_event("delete_kernel")
+        await self._client.delete_kernel(kernel)
+        self.stop_current_event()

@@ -47,96 +47,113 @@ class NotebookRunner(JupyterLoginLoop):
         self.notebook: Optional[os.DirEntry] = None
         self.code = ""
 
+    async def setup(self) -> None:
+        if not self._repo:
+            self.clone_repo()
+        self._notebook_iterator = os.scandir(self._repo_dir.name)
+        self.logger.info("Repository cloned and ready")
+        await super().startup()
+        self._last_login = self._now()
+        await self.initial_delete_lab()
+
+    def clone_repo(self) -> None:
+        self.start_event("clone_repo")
+        url = self.options.get("repo_url", REPO_URL)
+        branch = self.options.get("repo_branch", REPO_BRANCH)
+        path = self._repo_dir.name
+        self._repo = git.Repo.clone_from(url, path, branch=branch)
+        self.stop_current_event()
+
+    async def initial_delete_lab(self) -> None:
+        self.start_event("initial_delete_lab")
+        await self._client.delete_lab()
+        self.stop_current_event()
+
+    async def lab_business(self) -> None:
+        self._next_notebook()
+        assert self.notebook
+
+        await self.ensure_lab()
+        await self.lab_settle()
+        kernel = await self.create_kernel()
+
+        self.logger.info(f"Starting notebook: {self.notebook.name}")
+        cells = self.read_notebook(self.notebook.name, self.notebook.path)
+        nb_iterations = self.options.get("notebook_iterations", 1)
+        for count in range(nb_iterations):
+            iteration = f"{count + 1}/{nb_iterations}"
+            msg = f"Notebook '{self.notebook.name}' iteration {iteration}"
+            self.logger.info(msg)
+
+            await self._reauth_if_needed()
+
+            for cell in cells:
+                self.code = "".join(cell["source"])
+                await self.execute_code(kernel, self.code)
+
+        await self.delete_kernel(kernel)
+        self.logger.info(f"Success running notebook: {self.notebook.name}")
+
+    async def lab_settle(self) -> None:
+        self.start_event("lab_settle")
+        await asyncio.sleep(self.options.get("settle_time", 0))
+        self.stop_current_event()
+
+    def read_notebook(self, name: str, path: str) -> List[Dict[str, Any]]:
+        self.start_event(f"read_notebook:{name}")
+        notebook_text = Path(path).read_text()
+        cells = json.loads(notebook_text)["cells"]
+        self.stop_current_event()
+        return [c for c in cells if c["cell_type"] == "code"]
+
+    async def create_kernel(self) -> str:
+        self.logger.info("create_kernel")
+        self.start_event("create_kernel")
+        kernel = await self._client.create_kernel()
+        self.stop_current_event()
+        return kernel
+
+    async def execute_code(self, kernel: str, code: str) -> None:
+        self.start_event("run_code")
+        self.logger.info("Executing:\n%s\n", code)
+        sw = self.get_current_event()
+        reply = await self._client.run_python(kernel, code)
+        if sw is not None:
+            sw.annotation = {
+                "code": code,
+                "result": reply,
+            }
+        self.logger.info(f"Result:\n{reply}\n")
+        self.stop_current_event()
+
+    async def delete_kernel(self, kernel: str) -> None:
+        self.start_event("delete_kernel")
+        self.logger.info(f"Deleting kernel {kernel}")
+        await self._client.delete_kernel(kernel)
+        self.stop_current_event()
+
     async def run(self) -> None:
-        try:
-            nb_iterations = self.options.get("notebook_iterations", 1)
-            if not self._repo:
-                repo_url = self.options.get("repo_url", REPO_URL)
-                repo_branch = self.options.get("repo_branch", REPO_BRANCH)
-                self.start_event("clone_repo")
-                self._repo = git.Repo.clone_from(
-                    repo_url, self._repo_dir.name, branch=repo_branch
+        self.logger.info("Starting up...")
+        await self.startup()
+        while True:
+            self.logger.info("Starting next iteration")
+            try:
+                await self.lab_business()
+                self.success_count += 1
+            except NotebookException as e:
+                notebook_name = "no notebook"
+                if self.notebook:
+                    self._failed_notebooks.append(self.notebook.name)
+                    notebook_name = self.notebook.name
+                self.logger.error(f"Error running notebook: {notebook_name}")
+                self.failure_count += 1
+                raise NotebookException(
+                    f"Running {notebook_name}: '"
+                    f"```{self.code}``` generated: ```{e}```"
                 )
-                self.stop_current_event()
-
-            self._notebook_iterator = os.scandir(self._repo_dir.name)
-
-            self.logger.info("Repository cloned and ready")
-
-            self.start_event("hub_login")
-            await self._client.hub_login()
-            self.stop_current_event()
-            self._last_login = self._now()
-            self.start_event("initial_delete_lab")
-            await self._client.delete_lab()
-            self.stop_current_event()
-
-            while True:
-                self._next_notebook()
-                assert self.notebook
-                self.start_event("ensure_lab")
-                await self._client.ensure_lab()
-                self.stop_current_event()
-                self.start_event("lab_settle")
-                await asyncio.sleep(self.options.get("settle_time", 0))
-                self.stop_current_event()
-                if self.notebook.path.endswith(".ipynb"):
-                    self.logger.info(
-                        f"Starting notebook: {self.notebook.name}"
-                    )
-                    self.start_event(f"read_notebook:{self.notebook.name}")
-                    notebook_text = Path(self.notebook.path).read_text()
-                    cells = json.loads(notebook_text)["cells"]
-                    self.stop_current_event()
-                    self.start_event("create_kernel")
-                    kernel = await self._client.create_kernel(
-                        kernel_name="LSST"
-                    )
-                    self.stop_current_event()
-                    for count in range(nb_iterations):
-                        self.logger.info(
-                            f"Notebook '{self.notebook.name}'"
-                            + f" iteration {count + 1}"
-                            + f"/{nb_iterations}"
-                        )
-                        await self._reauth_if_needed()
-                        for cell in cells:
-                            if cell["cell_type"] == "code":
-                                self.code = "".join(cell["source"])
-                                self.logger.info("Executing:\n%s\n", self.code)
-                                self.start_event("run_code")
-                                sw = self.get_current_event()
-                                reply = await self._client.run_python(
-                                    kernel, self.code
-                                )
-                                if sw is not None:
-                                    sw.annotation = {
-                                        "code": self.code,
-                                        "result": reply,
-                                    }
-                                self.stop_current_event()
-                                self.logger.info(f"Result:\n{reply}\n")
-                    self.logger.info(f"Deleting kernel {kernel}")
-                    self.start_event("delete_kernel")
-                    await self._client.delete_kernel(kernel)
-                    self.stop_current_event()
-                    self.logger.info(
-                        f"Success running notebook: {self.notebook.name}"
-                    )
-
-                    self.success_count += 1
-
-        except NotebookException as e:
-            notebook_name = "no notebook"
-            if self.notebook:
-                self._failed_notebooks.append(self.notebook.name)
-                notebook_name = self.notebook.name
-            self.logger.error(f"Error running notebook: {notebook_name}")
-            self.failure_count += 1
-            raise NotebookException(
-                f"Running {notebook_name}: '"
-                f"```{self.code}``` generated: ```{e}```"
-            )
+            except Exception:
+                self.failure_count += 1
+                raise
 
     def dump(self) -> dict:
         r = super().dump()
@@ -151,6 +168,8 @@ class NotebookRunner(JupyterLoginLoop):
         assert self._notebook_iterator
         try:
             self.notebook = next(self._notebook_iterator)
+            while not self.notebook.path.endswith(".ipynb"):
+                self.notebook = next(self._notebook_iterator)
         except StopIteration:
             self.logger.info(
                 "Done with this cycle of notebooks, recreating lab."
@@ -165,8 +184,11 @@ class NotebookRunner(JupyterLoginLoop):
         now = self._now()
         elapsed = now - self._last_login
         if elapsed > timedelta(minutes=45):
-            self.logger.info("Reauthenticating to Hub")
-            self.start_event("hub_reauth")
-            await self._client.hub_login()
-            self.stop_current_event()
+            await self.hub_reauth()
             self._last_login = now
+
+    async def hub_reauth(self) -> None:
+        self.start_event("hub_reauth")
+        self.logger.info("Reauthenticating to Hub")
+        await self._client.hub_login()
+        self.stop_current_event()

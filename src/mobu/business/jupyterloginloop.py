@@ -37,32 +37,60 @@ class JupyterLoginLoop(Business):
         self._client = JupyterClient(user, logger, options)
 
     async def run(self) -> None:
-        try:
-            self.logger.info("Starting up...")
-            self.start_event("hub_login")
-            await self._client.hub_login()
-            self.stop_current_event()
-            while True:
-                self.logger.info("Starting next iteration")
-                self.start_event("ensure_lab")
-                await self._client.ensure_lab()
-                self.stop_current_event()
-                self.logger.info("Lab created.")
-                self.start_event("lab_wait")
-                await asyncio.sleep(60)
-                self.stop_current_event()
-                self.logger.info("Deleting lab.")
-                self.start_event("delete_lab")
-                await self._client.delete_lab()
-                self.stop_current_event()
+        self.logger.info("Starting up...")
+        await self.startup()
+        while True:
+            self.logger.info("Starting next iteration")
+            try:
+                await self.ensure_lab()
+                await self.lab_business()
+                await self.delete_lab()
                 self.success_count += 1
-                self.logger.info("Lab successfully deleted.")
-                self.start_event("no_lab_wait")
-                await asyncio.sleep(60)
-                self.stop_current_event()
-        except Exception:
-            self.failure_count += 1
-            raise
+            except Exception:
+                self.failure_count += 1
+                raise
+            await self.idle()
+
+    async def startup(self) -> None:
+        """Run before the start of the first iteration and then not again."""
+        await self.hub_login()
+
+    async def hub_login(self) -> None:
+        self.start_event("hub_login")
+        await self._client.hub_login()
+        self.stop_current_event()
+
+    async def ensure_lab(self) -> None:
+        self.start_event("ensure_lab")
+        await self._client.ensure_lab()
+        self.stop_current_event()
+        self.logger.info("Lab created.")
+
+    async def delete_lab(self) -> None:
+        self.logger.info("Deleting lab.")
+        self.start_event("delete_lab")
+        await self._client.delete_lab()
+        self.stop_current_event()
+        self.logger.info("Lab successfully deleted.")
+
+    async def lab_business(self) -> None:
+        """Do whatever business we want to do inside a lab.
+
+        Placeholder function intended to be overridden by subclasses.
+        """
+        self.start_event("lab_wait")
+        await asyncio.sleep(60)
+        self.stop_current_event()
+
+    async def idle(self) -> None:
+        """Executed at the end of each iteration.
+
+        Intended to be overridden by subclasses if they want different idle
+        behavior.
+        """
+        self.start_event("no_lab_wait")
+        await asyncio.sleep(60)
+        self.stop_current_event()
 
     async def stop(self) -> None:
         self.start_event("delete_lab_on_stop")
