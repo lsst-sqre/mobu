@@ -87,19 +87,13 @@ class QueryMonkey(Business):
     async def run_query(self, query: str) -> None:
         self.logger.info("Running: %s", query)
         loop = asyncio.get_event_loop()
-        self.start_event("execute_query")
-        await loop.run_in_executor(None, self._client.search, query)
-        sw = self.get_current_event()
-        elapsed = "???"
-        if sw is not None:
-            sw.annotation = {"query": query}
-            elapsed = str(sw.elapsed)
-        self.stop_current_event()
+        with self.timings.start("execute_query", {"query": query}) as sw:
+            await loop.run_in_executor(None, self._client.search, query)
+            elapsed = sw.elapsed.total_seconds()
         self.logger.info(f"Query finished after {elapsed} seconds")
 
     async def stop(self) -> None:
         loop = asyncio.get_event_loop()
-        self.start_event("delete_tap_client_on_stop")
-        await loop.run_in_executor(None, self._client.abort)
-        await loop.run_in_executor(None, self._client.delete)
-        self.stop_current_event()
+        with self.timings.start("delete_tap_client_on_stop"):
+            await loop.run_in_executor(None, self._client.abort)
+            await loop.run_in_executor(None, self._client.delete)

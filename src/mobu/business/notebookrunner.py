@@ -57,17 +57,15 @@ class NotebookRunner(JupyterLoginLoop):
         await self.initial_delete_lab()
 
     def clone_repo(self) -> None:
-        self.start_event("clone_repo")
         url = self.options.get("repo_url", REPO_URL)
         branch = self.options.get("repo_branch", REPO_BRANCH)
         path = self._repo_dir.name
-        self._repo = git.Repo.clone_from(url, path, branch=branch)
-        self.stop_current_event()
+        with self.timings.start("clone_repo"):
+            self._repo = git.Repo.clone_from(url, path, branch=branch)
 
     async def initial_delete_lab(self) -> None:
-        self.start_event("initial_delete_lab")
-        await self._client.delete_lab()
-        self.stop_current_event()
+        with self.timings.start("initial_delete_lab"):
+            await self._client.delete_lab()
 
     async def lab_business(self) -> None:
         self._next_notebook()
@@ -95,42 +93,32 @@ class NotebookRunner(JupyterLoginLoop):
         self.logger.info(f"Success running notebook: {self.notebook.name}")
 
     async def lab_settle(self) -> None:
-        self.start_event("lab_settle")
-        await asyncio.sleep(self.options.get("settle_time", 0))
-        self.stop_current_event()
+        with self.timings.start("lab_settle"):
+            await asyncio.sleep(self.options.get("settle_time", 0))
 
     def read_notebook(self, name: str, path: str) -> List[Dict[str, Any]]:
-        self.start_event(f"read_notebook:{name}")
-        notebook_text = Path(path).read_text()
-        cells = json.loads(notebook_text)["cells"]
-        self.stop_current_event()
+        with self.timings.start(f"read_notebook:{name}"):
+            notebook_text = Path(path).read_text()
+            cells = json.loads(notebook_text)["cells"]
         return [c for c in cells if c["cell_type"] == "code"]
 
     async def create_kernel(self) -> str:
         self.logger.info("create_kernel")
-        self.start_event("create_kernel")
-        kernel = await self._client.create_kernel()
-        self.stop_current_event()
+        with self.timings.start("create_kernel"):
+            kernel = await self._client.create_kernel()
         return kernel
 
     async def execute_code(self, kernel: str, code: str) -> None:
-        self.start_event("run_code")
         self.logger.info("Executing:\n%s\n", code)
-        sw = self.get_current_event()
-        reply = await self._client.run_python(kernel, code)
-        if sw is not None:
-            sw.annotation = {
-                "code": code,
-                "result": reply,
-            }
+        with self.timings.start("run_code", {"code": code}) as sw:
+            reply = await self._client.run_python(kernel, code)
+            sw.annotation["result"] = reply
         self.logger.info(f"Result:\n{reply}\n")
-        self.stop_current_event()
 
     async def delete_kernel(self, kernel: str) -> None:
-        self.start_event("delete_kernel")
         self.logger.info(f"Deleting kernel {kernel}")
-        await self._client.delete_kernel(kernel)
-        self.stop_current_event()
+        with self.timings.start("delete_kernel"):
+            await self._client.delete_kernel(kernel)
 
     async def run(self) -> None:
         self.logger.info("Starting up...")
@@ -157,11 +145,8 @@ class NotebookRunner(JupyterLoginLoop):
 
     def dump(self) -> dict:
         r = super().dump()
-        r.update({"running_code": self.code})
-        n = None
-        if self.notebook:
-            n = self.notebook.name
-        r.update({"notebook": n})
+        r["running_code"] = self.code
+        r["notebook"] = self.notebook.name if self.notebook else None
         return r
 
     def _next_notebook(self) -> None:
@@ -188,7 +173,6 @@ class NotebookRunner(JupyterLoginLoop):
             self._last_login = now
 
     async def hub_reauth(self) -> None:
-        self.start_event("hub_reauth")
         self.logger.info("Reauthenticating to Hub")
-        await self._client.hub_login()
-        self.stop_current_event()
+        with self.timings.start("hub_reauth"):
+            await self._client.hub_login()

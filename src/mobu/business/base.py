@@ -5,10 +5,10 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from ..stopwatch import Stopwatch
+from ..timings import Timings
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional
+    from typing import Any, Dict
 
     from structlog import BoundLogger
 
@@ -38,46 +38,22 @@ class Business:
         self.user = user
         self.success_count = 0
         self.failure_count = 0
-        self.timings: List[Stopwatch] = []
+        self.timings = Timings()
 
     async def run(self) -> None:
         while True:
             self.logger.info("Idling...")
-            await asyncio.sleep(5)
+            with self.timings.start("idle"):
+                await asyncio.sleep(5)
             self.success_count += 1
 
     async def stop(self) -> None:
         pass
-
-    def start_event(
-        self,
-        event: str,
-        annotation: dict = {},
-        previous: Optional[Stopwatch] = None,
-    ) -> None:
-        # We can intentionally overload previous with a prior event if we
-        #  want, in order to nest events.
-        if not previous:
-            if self.timings:
-                previous = self.timings[-1]
-        watch = Stopwatch.start(
-            event, annotation=annotation, previous=previous
-        )
-        self.timings.append(watch)
-
-    def stop_current_event(self) -> None:
-        if self.timings:
-            self.timings[-1].stop()
-
-    def get_current_event(self) -> Optional[Stopwatch]:
-        if not self.timings:
-            return None
-        return self.timings[-1]
 
     def dump(self) -> Dict[str, Any]:
         return {
             "name": type(self).__name__,
             "failure_count": self.failure_count,
             "success_count": self.success_count,
-            "timings": [x.dump() for x in self.timings],
+            "timings": self.timings.dump(),
         }

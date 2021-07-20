@@ -56,21 +56,18 @@ class JupyterLoginLoop(Business):
         await self.hub_login()
 
     async def hub_login(self) -> None:
-        self.start_event("hub_login")
-        await self._client.hub_login()
-        self.stop_current_event()
+        with self.timings.start("hub_login"):
+            await self._client.hub_login()
 
     async def ensure_lab(self) -> None:
-        self.start_event("ensure_lab")
-        await self._client.ensure_lab()
-        self.stop_current_event()
+        with self.timings.start("ensure_lab"):
+            await self._client.ensure_lab()
         self.logger.info("Lab created.")
 
     async def delete_lab(self) -> None:
         self.logger.info("Deleting lab.")
-        self.start_event("delete_lab")
-        await self._client.delete_lab()
-        self.stop_current_event()
+        with self.timings.start("delete_lab"):
+            await self._client.delete_lab()
         self.logger.info("Lab successfully deleted.")
 
     async def lab_business(self) -> None:
@@ -78,9 +75,8 @@ class JupyterLoginLoop(Business):
 
         Placeholder function intended to be overridden by subclasses.
         """
-        self.start_event("lab_wait")
-        await asyncio.sleep(60)
-        self.stop_current_event()
+        with self.timings.start("lab_wait"):
+            await asyncio.sleep(60)
 
     async def idle(self) -> None:
         """Executed at the end of each iteration.
@@ -88,12 +84,10 @@ class JupyterLoginLoop(Business):
         Intended to be overridden by subclasses if they want different idle
         behavior.
         """
-        self.start_event("no_lab_wait")
-        await asyncio.sleep(60)
-        self.stop_current_event()
+        with self.timings.start("idle"):
+            await asyncio.sleep(60)
 
     async def stop(self) -> None:
-        self.start_event("delete_lab_on_stop")
-        await self._client.delete_lab()
-        self.stop_current_event()
+        with self.timings.start("delete_lab_on_stop"):
+            await self._client.delete_lab()
         await self._client.close()
