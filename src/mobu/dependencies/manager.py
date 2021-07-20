@@ -41,6 +41,7 @@ class MonkeyBusinessManager:
         if self._session:
             await self._session.close()
             self._session = None
+        self._monkeys.clear()
 
     def fetch_monkey(self, name: str) -> Monkey:
         return self._monkeys[name]

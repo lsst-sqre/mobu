@@ -8,7 +8,6 @@ from unittest.mock import ANY
 import pytest
 
 from tests.support.gafaelfawr import mock_gafaelfawr
-from tests.support.jupyterhub import mock_jupyterhub
 
 if TYPE_CHECKING:
     from aioresponses import aioresponses
@@ -17,10 +16,9 @@ if TYPE_CHECKING:
 
 @pytest.mark.asyncio
 async def test_run(
-    client: AsyncClient, mock_aioresponses: aioresponses
+    client: AsyncClient, jupyterhub: None, mock_aioresponses: aioresponses
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
-    mock_jupyterhub(mock_aioresponses)
 
     r = await client.post(
         "/mobu/user",

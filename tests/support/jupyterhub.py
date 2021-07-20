@@ -6,6 +6,7 @@ import re
 from base64 import urlsafe_b64decode
 from enum import Enum
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from aioresponses import CallbackResult
 
@@ -42,6 +43,7 @@ class MockJupyterHub:
     """
 
     def __init__(self) -> None:
+        self.kernels: Dict[str, str] = {}
         self.state: Dict[str, JupyterHubState] = {}
 
     def login(self, url: str, **kwargs: Any) -> CallbackResult:
@@ -97,6 +99,26 @@ class MockJupyterHub:
         self.state[user] = JupyterHubState.LOGGED_OUT
         return CallbackResult(status=202)
 
+    def create_kernel(self, url: str, **kwargs: Any) -> CallbackResult:
+        user = self._get_user(kwargs["headers"]["Authorization"])
+        assert str(url).endswith(f"/user/{user}/api/kernels")
+        assert user not in self.kernels
+        state = self.state.get(user, JupyterHubState.LOGGED_OUT)
+        assert state == JupyterHubState.LAB_RUNNING
+        assert kwargs["json"] == {"name": "LSST"}
+        kernel = uuid4().hex
+        self.kernels[user] = kernel
+        return CallbackResult(status=201, payload={"id": kernel})
+
+    def delete_kernel(self, url: str, **kwargs: Any) -> CallbackResult:
+        user = self._get_user(kwargs["headers"]["Authorization"])
+        kernel = self.kernels[user]
+        assert str(url).endswith(f"/user/{user}/api/kernels/{kernel}")
+        state = self.state.get(user, JupyterHubState.LOGGED_OUT)
+        assert state == JupyterHubState.LAB_RUNNING
+        del self.kernels[user]
+        return CallbackResult(status=204)
+
     @staticmethod
     def _get_user(authorization: str) -> str:
         """Get the user from the Authorization header."""
@@ -128,5 +150,15 @@ def mock_jupyterhub(mocked: aioresponses) -> None:
     mocked.delete(
         _url("hub/api/users/[^/]+/server", regex=True),
         callback=mock.delete_lab,
+        repeat=True,
+    )
+    mocked.post(
+        _url("user/[^/]+/api/kernels", regex=True),
+        callback=mock.create_kernel,
+        repeat=True,
+    )
+    mocked.delete(
+        _url("user/[^/]+/api/kernels/[^/]+$", regex=True),
+        callback=mock.delete_kernel,
         repeat=True,
     )

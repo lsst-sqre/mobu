@@ -128,6 +128,8 @@ class Monkey:
                 await asyncio.sleep(60)
 
     async def stop(self) -> None:
+        if self.state == MonkeyState.FINISHED:
+            return
         self.state = MonkeyState.STOPPING
         await self.business.stop()
         if self._job:
