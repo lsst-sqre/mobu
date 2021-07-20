@@ -47,6 +47,7 @@ async def test_run(client: AsyncClient, admin_token: str) -> None:
             "restart": False,
             "state": "RUNNING",
             "user": {
+                "scopes": ["exec:notebook"],
                 "token": ANY,
                 "uidnumber": 1000,
                 "username": "someuser",

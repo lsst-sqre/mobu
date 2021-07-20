@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-__all__ = [
-    "User",
-]
-
 import time
-from dataclasses import dataclass
-from typing import List
+from dataclasses import asdict, dataclass
+from typing import TYPE_CHECKING
 
 from aiohttp import ClientSession
 
-from mobu.config import config
+from .config import config
+
+if TYPE_CHECKING:
+    from typing import Dict, List, Union
+
+__all__ = ["User"]
 
 
 @dataclass
@@ -56,9 +57,5 @@ class User:
             body = await r.json()
             return body["token"]
 
-    def dump(self) -> dict:
-        return {
-            "username": self.username,
-            "uidnumber": self.uidnumber,
-            "token": self.token,
-        }
+    def dump(self) -> Dict[str, Union[str, int, List[str]]]:
+        return asdict(self)
