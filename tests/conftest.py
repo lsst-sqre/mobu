@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from aioresponses import aioresponses
 from asgi_lifespan import LifespanManager
 from httpx import AsyncClient
 
@@ -18,9 +19,13 @@ if TYPE_CHECKING:
     from fastapi import FastAPI
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def admin_token() -> Iterator[str]:
-    """Create a Gafaelfawr admin token and add it to the configuration."""
+    """Create a Gafaelfawr admin token and add it to the configuration.
+
+    This is an autouse fixture, so it will ensure that each test gets a unique
+    admin token that is replaced after the test runs.
+    """
     admin_token = make_gafaelfawr_token()
     config.gafaelfawr_token = admin_token
     yield admin_token
@@ -43,3 +48,9 @@ async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
     async with AsyncClient(app=app, base_url="https://example.com/") as client:
         yield client
+
+
+@pytest.fixture
+def mock_aioresponses() -> Iterator[aioresponses]:
+    with aioresponses() as mocked:
+        yield mocked
