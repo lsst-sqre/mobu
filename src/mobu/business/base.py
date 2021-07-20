@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from ..timing import Stopwatch
+from ..stopwatch import Stopwatch
 
 if TYPE_CHECKING:
     from typing import Any, Dict, List, Optional
