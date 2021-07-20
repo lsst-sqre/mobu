@@ -9,8 +9,8 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from mobu.business.base import Business
-from mobu.jupyterclient import JupyterClient
+from ..jupyterclient import JupyterClient
+from .base import Business
 
 if TYPE_CHECKING:
     from typing import Any, Dict

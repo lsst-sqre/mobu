@@ -16,8 +16,8 @@ from typing import TYPE_CHECKING
 
 import git
 
-from mobu.business.jupyterloginloop import JupyterLoginLoop
-from mobu.jupyterclient import NotebookException
+from ..jupyterclient import NotebookException
+from .jupyterloginloop import JupyterLoginLoop
 
 if TYPE_CHECKING:
     from typing import Any, Dict, Iterator, List, Optional

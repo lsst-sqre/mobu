@@ -7,7 +7,7 @@ over again.
 import asyncio
 from dataclasses import dataclass
 
-from mobu.business.jupyterloginloop import JupyterLoginLoop
+from .jupyterloginloop import JupyterLoginLoop
 
 __all__ = ["JupyterPythonLoop"]
 

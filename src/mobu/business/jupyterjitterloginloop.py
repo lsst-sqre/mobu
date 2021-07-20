@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import random
 
-from mobu.business.jupyterloginloop import JupyterLoginLoop
+from .jupyterloginloop import JupyterLoginLoop
 
 __all__ = ["JupyterJitterLoginLoop"]
 

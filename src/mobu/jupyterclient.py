@@ -16,8 +16,8 @@ from uuid import uuid4
 
 from aiohttp import ClientResponse, ClientSession, TCPConnector
 
-from mobu.config import Configuration
-from mobu.user import User
+from .config import Configuration
+from .user import User
 
 if TYPE_CHECKING:
     from typing import Any, Dict

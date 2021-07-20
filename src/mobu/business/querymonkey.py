@@ -10,8 +10,8 @@ import pyvo
 import requests
 from pyvo.auth import AuthSession
 
-from mobu.business.base import Business
-from mobu.config import Configuration
+from ..config import config
+from .base import Business
 
 if TYPE_CHECKING:
     from typing import Any, Dict
@@ -54,7 +54,7 @@ class QueryMonkey(Business):
 
     @staticmethod
     def _make_client(token: str) -> pyvo.dal.TAPService:
-        tap_url = Configuration.environment_url + "/api/tap"
+        tap_url = config.environment_url + "/api/tap"
 
         s = requests.Session()
         s.headers["Authorization"] = "Bearer " + token
