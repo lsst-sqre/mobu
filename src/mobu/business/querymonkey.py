@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import os
 import random
-from dataclasses import field
 from typing import TYPE_CHECKING
 
 import jinja2
@@ -40,16 +39,12 @@ def generate_parameters() -> dict:
 
 
 class QueryMonkey(Business):
-    success_count: int = 0
-    failure_count: int = 0
-    _client: pyvo.dal.TAPService = field(init=False)
+    """Run queries against TAP."""
 
     def __init__(
         self, logger: BoundLogger, options: Dict[str, Any], user: User
     ) -> None:
         super().__init__(logger, options, user)
-        self.success_count = 0
-        self.failure_count = 0
         self._client = self._make_client(user.token)
 
     @staticmethod
@@ -109,13 +104,3 @@ class QueryMonkey(Business):
         await loop.run_in_executor(None, self._client.abort)
         await loop.run_in_executor(None, self._client.delete)
         self.stop_current_event()
-
-    def dump(self) -> dict:
-        r = super().dump()
-        r.update(
-            {
-                "failure_count": self.failure_count,
-                "success_count": self.success_count,
-            }
-        )
-        return r

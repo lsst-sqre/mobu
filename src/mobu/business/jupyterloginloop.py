@@ -29,8 +29,6 @@ class JupyterLoginLoop(Business):
         self, logger: BoundLogger, options: Dict[str, Any], user: User
     ) -> None:
         super().__init__(logger, options, user)
-        self.success_count = 0
-        self.failure_count = 0
         self._client = JupyterClient(user, logger, options)
 
     async def run(self) -> None:
@@ -65,13 +63,3 @@ class JupyterLoginLoop(Business):
         self.start_event("delete_lab_on_stop")
         await self._client.delete_lab()
         self.stop_current_event()
-
-    def dump(self) -> Dict[str, Any]:
-        r = super().dump()
-        r.update(
-            {
-                "failure_count": self.failure_count,
-                "success_count": self.success_count,
-            }
-        )
-        return r

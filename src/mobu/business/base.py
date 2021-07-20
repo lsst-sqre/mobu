@@ -36,12 +36,15 @@ class Business:
         self.logger = logger
         self.options = options
         self.user = user
+        self.success_count = 0
+        self.failure_count = 0
         self.timings: List[Stopwatch] = []
 
     async def run(self) -> None:
         while True:
             self.logger.info("Idling...")
             await asyncio.sleep(5)
+            self.success_count += 1
 
     async def stop(self) -> None:
         pass
@@ -74,5 +77,7 @@ class Business:
     def dump(self) -> Dict[str, Any]:
         return {
             "name": type(self).__name__,
+            "failure_count": self.failure_count,
+            "success_count": self.success_count,
             "timings": [x.dump() for x in self.timings],
         }
