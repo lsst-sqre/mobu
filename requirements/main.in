@@ -13,11 +13,12 @@ starlette
 uvicorn[standard]
 
 # Other dependencies.
+GitPython
 aiohttp
 aiojobs
-GitPython
 click
 jinja2
+pydantic
 pyvo
 safir
 structlog
