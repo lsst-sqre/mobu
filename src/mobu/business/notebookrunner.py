@@ -47,7 +47,30 @@ class NotebookRunner(JupyterLoginLoop):
         self.notebook: Optional[os.DirEntry] = None
         self.code = ""
 
-    async def setup(self) -> None:
+    async def run(self) -> None:
+        self.logger.info("Starting up...")
+        await self.startup()
+        while True:
+            self.logger.info("Starting next iteration")
+            try:
+                await self.lab_business()
+                self.success_count += 1
+            except NotebookException as e:
+                notebook_name = "no notebook"
+                if self.notebook:
+                    self._failed_notebooks.append(self.notebook.name)
+                    notebook_name = self.notebook.name
+                self.logger.error(f"Error running notebook: {notebook_name}")
+                self.failure_count += 1
+                raise NotebookException(
+                    f"Running {notebook_name}: '"
+                    f"```{self.code}``` generated: ```{e}```"
+                )
+            except Exception:
+                self.failure_count += 1
+                raise
+
+    async def startup(self) -> None:
         if not self._repo:
             self.clone_repo()
         self._notebook_iterator = os.scandir(self._repo_dir.name)
@@ -119,29 +142,6 @@ class NotebookRunner(JupyterLoginLoop):
         self.logger.info(f"Deleting kernel {kernel}")
         with self.timings.start("delete_kernel"):
             await self._client.delete_kernel(kernel)
-
-    async def run(self) -> None:
-        self.logger.info("Starting up...")
-        await self.startup()
-        while True:
-            self.logger.info("Starting next iteration")
-            try:
-                await self.lab_business()
-                self.success_count += 1
-            except NotebookException as e:
-                notebook_name = "no notebook"
-                if self.notebook:
-                    self._failed_notebooks.append(self.notebook.name)
-                    notebook_name = self.notebook.name
-                self.logger.error(f"Error running notebook: {notebook_name}")
-                self.failure_count += 1
-                raise NotebookException(
-                    f"Running {notebook_name}: '"
-                    f"```{self.code}``` generated: ```{e}```"
-                )
-            except Exception:
-                self.failure_count += 1
-                raise
 
     def dump(self) -> dict:
         r = super().dump()
