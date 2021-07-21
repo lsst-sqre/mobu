@@ -1,27 +1,29 @@
 """The monkey."""
 
-__all__ = [
-    "Monkey",
-]
+from __future__ import annotations
 
 import asyncio
 import logging
 import sys
-from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum, auto
 from tempfile import NamedTemporaryFile
-from typing import IO, Any, Dict
+from typing import TYPE_CHECKING
 
 import structlog
 from aiohttp import ClientSession
 from aiojobs import Scheduler
 from aiojobs._job import Job
-from structlog._config import BoundLoggerLazyProxy
 
-from mobu.business import Business
-from mobu.config import Configuration
-from mobu.user import User
+from .config import config
+
+if TYPE_CHECKING:
+    from typing import Any, Dict, Optional, Type
+
+    from .business.base import Business
+    from .user import User
+
+__all__ = ["Monkey"]
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -34,36 +36,33 @@ class MonkeyState(Enum):
     ERROR = auto()
 
 
-@dataclass
 class Monkey:
-    name: str
-    user: User
-    log: BoundLoggerLazyProxy
-    business: Business
-    restart: bool
-    state: MonkeyState
+    """Runs one business and manages its log and configuration."""
 
-    _job: Job
-    _logfile: IO[bytes]
-
-    def __init__(self, name: str, user: User, options: Dict[str, Any]):
+    def __init__(
+        self,
+        name: str,
+        user: User,
+        business: Type[Business],
+        options: Dict[str, Any],
+        session: ClientSession,
+    ):
         self.name = name
         self.state = MonkeyState.IDLE
         self.user = user
         self.restart = options.get("restart", False)
 
+        self._session = session
         self._logfile = NamedTemporaryFile()
+        self._job: Optional[Job] = None
 
         formatter = logging.Formatter(
             fmt="%(asctime)s %(message)s", datefmt=DATE_FORMAT
         )
-
         fileHandler = logging.FileHandler(self._logfile.name)
         fileHandler.setFormatter(formatter)
-
         streamHandler = logging.StreamHandler(stream=sys.stdout)
         streamHandler.setFormatter(formatter)
-
         logger = logging.getLogger(self.name)
         logger.handlers.clear()
         logger.setLevel(logging.INFO)
@@ -72,38 +71,30 @@ class Monkey:
         logger.info(f"Starting new file logger {self._logfile.name}")
         self.log = structlog.wrap_logger(logger)
 
-    async def alert(self, msg: str) -> None:
-        if (
-            self.state == MonkeyState.STOPPING
-            or self.state == MonkeyState.FINISHED
-        ):
-            self.log.info(
-                f"Not sending alert '{msg}' because state is"
-                + f" {self.state.name}"
-            )
-            return
-        try:
-            time = datetime.now().strftime(DATE_FORMAT)
-            alert_msg = f"{time} {self.name} {msg}"
-            self.log.error(f"Slack Alert: {alert_msg}")
-            if Configuration.alert_hook == "None":
-                self.log.info("Alert hook isn't set, so not sending to slack.")
-                return
+        self.business = business(self.log, options, self.user)
 
-            async with ClientSession() as s:
-                async with s.post(
-                    Configuration.alert_hook, json={"text": alert_msg}
-                ) as r:
-                    if r.status != 200:
-                        self.log.error(
-                            f"Error {r.status} trying to send alert to slack"
-                        )
+    async def alert(self, msg: str) -> None:
+        if self.state in (MonkeyState.STOPPING, MonkeyState.FINISHED):
+            state = self.state.name
+            msg = f"Not sending alert '{msg}' because state is {state}"
+            self.log.info(msg)
+            return
+
+        time = datetime.now().strftime(DATE_FORMAT)
+        alert_msg = f"{time} {self.name} {msg}"
+        self.log.error(f"Slack Alert: {alert_msg}")
+        if config.alert_hook == "None":
+            self.log.info("Alert hook isn't set, so not sending to slack.")
+            return
+
+        try:
+            alert = {"text": alert_msg}
+            r = await self._session.post(config.alert_hook, json=alert)
+            if r.status != 200:
+                msg = f"Error {r.status} trying to send alert to slack"
+                self.log.error(msg)
         except Exception:
             self.log.exception("Exception thrown while trying to alert!")
-
-    def assign_business(self, business: Business) -> None:
-        self.business = business
-        business.monkey = self
 
     def logfile(self) -> str:
         self._logfile.flush()
@@ -137,15 +128,18 @@ class Monkey:
                 await asyncio.sleep(60)
 
     async def stop(self) -> None:
+        if self.state == MonkeyState.FINISHED:
+            return
         self.state = MonkeyState.STOPPING
         await self.business.stop()
-        try:
-            await self._job.close(timeout=0)
-        except asyncio.TimeoutError:
-            # Close will normally wait for a timeout to occur before
-            # throwing a timeout exception, but we'll just shut it down
-            # right away and eat the exception.
-            pass
+        if self._job:
+            try:
+                await self._job.close(timeout=0)
+            except asyncio.TimeoutError:
+                # Close will normally wait for a timeout to occur before
+                # throwing a timeout exception, but we'll just shut it down
+                # right away and eat the exception.
+                pass
         self.state = MonkeyState.FINISHED
 
     def dump(self) -> dict:

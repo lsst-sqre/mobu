@@ -1,9 +1,11 @@
 """Configuration definition."""
 
-__all__ = ["Configuration"]
+from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+
+__all__ = ["Configuration", "config"]
 
 
 @dataclass
@@ -61,3 +63,7 @@ class Configuration:
 
     Set with the ``SAFIR_LOG_LEVEL`` environment variable.
     """
+
+
+config = Configuration()
+"""Configuration for mobu."""

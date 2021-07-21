@@ -3,6 +3,7 @@
 import json
 import os
 
+import pytest
 from click.testing import CliRunner, Result
 from jinja2 import BaseLoader, Environment
 
@@ -26,6 +27,7 @@ TEMPLATE = """
 """
 
 
+@pytest.mark.asyncio
 async def test_client_creation() -> None:
     """Test client fields get filled in correctly."""
     client = MonkeyflockerClient(

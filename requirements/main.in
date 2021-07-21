@@ -5,14 +5,20 @@
 # After editing, update requirements/main.txt by running:
 #     make update-deps
 
-safir<2
+# These dependencies are for fastapi including some optional features.
+fastapi
+aiofiles
+gunicorn
+starlette
+uvicorn[standard]
+
+# Other dependencies.
+GitPython
 aiohttp
-aiodns
 aiojobs
-cchardet
 click
-cryptography
-gitpython
 jinja2
+pydantic
 pyvo
+safir
 structlog

@@ -8,49 +8,6 @@ build-backend = 'setuptools.build_meta'
 
 [tool.setuptools_scm]
 
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-envlist = py,coverage-report,typing,lint
-isolated_build = True
-
-[testenv]
-description = Run pytest against {envname}.
-deps =
-    -r{toxinidir}/requirements/main.txt
-    -r{toxinidir}/requirements/dev.txt
-commands =
-    coverage run -m pytest {posargs}
-passenv = ALERT_HOOK PRIVATE_KEY_PATH ENVIRONMENT_URL
-
-[testenv:coverage-report]
-description = Compile coverage from each test run.
-skip_install = true
-deps = coverage[toml]>=5.0.2
-depends =
-    py
-commands =
-    coverage combine
-    coverage report
-
-[testenv:typing]
-description = Run mypy.
-commands =
-    mypy src/mobu tests setup.py
-
-[testenv:lint]
-description = Lint codebase by running pre-commit (Black, isort, Flake8).
-skip_install = true
-deps =
-    pre-commit
-commands = pre-commit run --all-files
-
-[testenv:run]
-description = Run the development server with auto-reload for code changes.
-usedevelop = true
-commands = adev runserver --app-factory create_app src/mobu/app.py
-"""
-
 [tool.coverage.run]
 parallel = true
 branch = true
@@ -96,3 +53,15 @@ include_trailing_comma = true
 multi_line_output = 3
 known_first_party = ["mobu", "tests"]
 skip = ["docs/conf.py"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    # Bug in pyvo
+    "ignore:Using or importing the ABCs:DeprecationWarning",
+    # Bugs in aiojobs
+    "ignore:The loop argument is deprecated:DeprecationWarning"
+]
+python_files = [
+    "tests/*.py",
+    "tests/*/*.py"
+]
