@@ -61,11 +61,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 # modified by the virtualenv.
 ENV MODULE_NAME=mobu.main
 
-# The default starts 40 workers, which exhausts the available connections
-# on a micro Cloud SQL PostgreSQL server and seems excessive since we can
-# scale with Kubernetes.  Most of our applications are tiny so cap the
-# workers at 2.
-ENV MAX_WORKERS=2
+# mobu uses an in-memory data store to track all running monkeys, so it
+# only makes sense to run a single process.
+ENV MAX_WORKERS=1
 
 # Run on port 8080 instead of the FastAPI default to avoid requiring
 # capabilities.
