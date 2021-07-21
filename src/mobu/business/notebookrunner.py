@@ -1,6 +1,6 @@
 """NotebookRunner logic for mobu.
 
-This business pattern will clone a Git repo full of notebooks, randomly pick
+This business pattern will clone a Git repo full of notebooks, iterate through
 the notebooks, and run them on the remote Jupyter lab.
 """
 

@@ -85,11 +85,10 @@ class JupyterClientSession:
 
 
 class JupyterClient:
-    """Client for talking to JupyterHub.
+    """Client for talking to JupyterHub and Jupyter labs.
 
     Notes
     -----
-
     This class creates its own `aiohttp.ClientSession` for each instance,
     separate from the one used by the rest of the application so that it can
     add some custom settings.
