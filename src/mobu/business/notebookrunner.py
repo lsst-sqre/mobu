@@ -45,7 +45,7 @@ class NotebookRunner(JupyterLoginLoop):
         self._repo: Optional[git.Repo] = None
         self._notebook_iterator: Optional[Iterator[os.DirEntry]] = None
         self.notebook: Optional[os.DirEntry] = None
-        self.code = ""
+        self.running_code: Optional[str] = None
 
     async def run(self) -> None:
         self.logger.info("Starting up...")
@@ -56,15 +56,17 @@ class NotebookRunner(JupyterLoginLoop):
                 await self.lab_business()
                 self.success_count += 1
             except NotebookException as e:
+                running_code = self.running_code
                 notebook_name = "no notebook"
                 if self.notebook:
                     self._failed_notebooks.append(self.notebook.name)
                     notebook_name = self.notebook.name
                 self.logger.error(f"Error running notebook: {notebook_name}")
+                self.running_code = None
                 self.failure_count += 1
                 raise NotebookException(
                     f"Running {notebook_name}: '"
-                    f"```{self.code}``` generated: ```{e}```"
+                    f"```{running_code}``` generated: ```{e}```"
                 )
             except Exception:
                 self.failure_count += 1
@@ -109,9 +111,10 @@ class NotebookRunner(JupyterLoginLoop):
             await self._reauth_if_needed()
 
             for cell in cells:
-                self.code = "".join(cell["source"])
-                await self.execute_code(kernel, self.code)
+                self.running_code = "".join(cell["source"])
+                await self.execute_code(kernel, self.running_code)
 
+        self.running_code = None
         await self.delete_kernel(kernel)
         self.logger.info(f"Success running notebook: {self.notebook.name}")
 
@@ -145,7 +148,7 @@ class NotebookRunner(JupyterLoginLoop):
 
     def dump(self) -> dict:
         r = super().dump()
-        r["running_code"] = self.code
+        r["running_code"] = self.running_code
         r["notebook"] = self.notebook.name if self.notebook else None
         return r
 
