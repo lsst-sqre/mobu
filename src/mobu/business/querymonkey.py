@@ -93,7 +93,11 @@ class QueryMonkey(Business):
         self.logger.info(f"Query finished after {elapsed} seconds")
 
     async def stop(self) -> None:
-        loop = asyncio.get_event_loop()
-        with self.timings.start("delete_tap_client_on_stop"):
-            await loop.run_in_executor(None, self._client.abort)
-            await loop.run_in_executor(None, self._client.delete)
+        # There's nothing to do since we use synchronous queries.  If we use
+        # async queries, this should do:
+        #
+        # loop = asyncio.get_event_loop()
+        # with self.timings.start("delete_tap_client_on_stop"):
+        #     await loop.run_in_executor(None, self._client.abort)
+        #     await loop.run_in_executor(None, self._client.delete)
+        pass
