@@ -82,16 +82,16 @@ async def post_user(
     body = await request.json()
     logger.info(body)
     monkey = await manager.create_monkey(body)
-    return {"user": monkey.user.username}
+    return {"user": monkey.name}
 
 
-@external_router.get("/user/{username}", response_class=FormattedJSONResponse)
+@external_router.get("/user/{name}", response_class=FormattedJSONResponse)
 async def get_user(
-    username: str,
+    name: str,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
 ) -> Union[Dict[str, Any], JSONResponse]:
     try:
-        monkey = manager.fetch_monkey(username)
+        monkey = manager.fetch_monkey(name)
         return monkey.dump()
     except KeyError:
         return JSONResponse(
@@ -99,8 +99,8 @@ async def get_user(
             content={
                 "detail": [
                     {
-                        "loc": ["path", "username"],
-                        "msg": f"Monkey for {username} not found",
+                        "loc": ["path", "name"],
+                        "msg": f"Monkey for {name} not found",
                         "type": "monkey_not_found",
                     }
                 ]
@@ -108,29 +108,29 @@ async def get_user(
         )
 
 
-@external_router.delete("/user/{username}", status_code=204)
+@external_router.delete("/user/{name}", status_code=204)
 async def delete_user(
-    username: str,
+    name: str,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
 ) -> None:
-    await manager.release_monkey(username)
+    await manager.release_monkey(name)
 
 
-@external_router.get("/user/{username}/log", response_class=FileResponse)
+@external_router.get("/user/{name}/log", response_class=FileResponse)
 async def get_user_log(
-    username: str,
+    name: str,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
 ) -> Union[FileResponse, JSONResponse]:
     try:
-        monkey = manager.fetch_monkey(username)
+        monkey = manager.fetch_monkey(name)
     except KeyError:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={
                 "detail": [
                     {
-                        "loc": ["path", "username"],
-                        "msg": f"Monkey for {username} not found",
+                        "loc": ["path", "name"],
+                        "msg": f"Monkey for {name} not found",
                         "type": "monkey_not_found",
                     }
                 ]
@@ -139,5 +139,5 @@ async def get_user_log(
     return FileResponse(
         path=monkey.logfile(),
         media_type="text/plain",
-        filename=f"{username}-{datetime.now()}",
+        filename=f"{name}-{datetime.now()}",
     )

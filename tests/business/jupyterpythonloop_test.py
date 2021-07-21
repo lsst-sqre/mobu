@@ -32,7 +32,7 @@ async def test_run(
         },
     )
     assert r.status_code == 200
-    assert r.json() == {"user": "someuser"}
+    assert r.json() == {"user": "test"}
 
     # Wait until we've finished at least one loop.  Make sure nothing fails.
     finished = False

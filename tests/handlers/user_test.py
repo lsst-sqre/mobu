@@ -33,7 +33,7 @@ async def test_run(
         },
     )
     assert r.status_code == 200
-    assert r.json() == {"user": "someuser"}
+    assert r.json() == {"user": "test"}
 
     r = await client.get("/mobu/user/test")
     assert r.status_code == 200
