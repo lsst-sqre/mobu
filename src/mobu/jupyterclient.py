@@ -17,6 +17,7 @@ from uuid import uuid4
 from aiohttp import ClientResponse, ClientSession, TCPConnector
 
 from .config import config
+from .exceptions import NotebookException
 
 if TYPE_CHECKING:
     from typing import Any
@@ -28,12 +29,6 @@ if TYPE_CHECKING:
     from .models.user import AuthenticatedUser
 
 __all__ = ["JupyterClient"]
-
-
-class NotebookException(Exception):
-    """Passing an error back from a remote notebook session."""
-
-    pass
 
 
 class JupyterClientSession:

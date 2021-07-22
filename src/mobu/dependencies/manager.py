@@ -13,6 +13,7 @@ from ..business.jupyterloginloop import JupyterLoginLoop
 from ..business.jupyterpythonloop import JupyterPythonLoop
 from ..business.notebookrunner import NotebookRunner
 from ..business.querymonkey import QueryMonkey
+from ..exceptions import MonkeyNotFoundException
 from ..models.monkey import MonkeyConfig
 from ..models.user import AuthenticatedUser
 from ..monkey import Monkey
@@ -54,7 +55,10 @@ class MonkeyBusinessManager:
         self._monkeys.clear()
 
     def fetch_monkey(self, name: str) -> Monkey:
-        return self._monkeys[name]
+        monkey = self._monkeys.get(name)
+        if monkey is None:
+            raise MonkeyNotFoundException(name)
+        return monkey
 
     def list_monkeys(self) -> List[str]:
         return list(self._monkeys.keys())
@@ -81,7 +85,7 @@ class MonkeyBusinessManager:
         return monkey
 
     async def release_monkey(self, name: str) -> None:
-        monkey = self._monkeys.get(name, None)
+        monkey = self._monkeys.get(name)
         if monkey is not None:
             await monkey.stop()
             del self._monkeys[name]

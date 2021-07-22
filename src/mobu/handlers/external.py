@@ -2,10 +2,10 @@
 
 import json
 from datetime import datetime
-from typing import Any, List, Union
+from typing import Any, List
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Response
 from fastapi.responses import FileResponse, JSONResponse
 from safir.dependencies.logger import logger_dependency
 from safir.metadata import get_metadata
@@ -16,6 +16,7 @@ from ..dependencies.manager import (
     MonkeyBusinessManager,
     monkey_business_manager,
 )
+from ..models.error import ErrorModel
 from ..models.index import Index
 from ..models.monkey import MonkeyConfig, MonkeyData
 
@@ -41,10 +42,7 @@ class FormattedJSONResponse(JSONResponse):
 
 @external_router.get(
     "/",
-    description=(
-        "Document the top-level API here. By default it only returns metadata"
-        " about the application."
-    ),
+    description=("Metadata about the running version of mobu"),
     response_model=Index,
     response_model_exclude_none=True,
     summary="Application metadata",
@@ -55,7 +53,7 @@ async def get_index() -> Index:
     Customize this handler to return whatever the top-level resource of your
     application should return. For example, consider listing key API URLs.
     When doing so, also change or customize the response model in
-    mobu.models.metadata.
+    mobu.models.index.
 
     By convention, the root of the external API includes a field called
     ``metadata`` that provides the same Safir-generated metadata as the
@@ -68,7 +66,9 @@ async def get_index() -> Index:
     return Index(metadata=metadata)
 
 
-@external_router.get("/user", response_model=List[str])
+@external_router.get(
+    "/user", response_model=List[str], summary="List running monkeys"
+)
 async def get_users(
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
 ) -> List[str]:
@@ -81,6 +81,7 @@ async def get_users(
     response_model=MonkeyData,
     response_model_exclude_none=True,
     status_code=201,
+    summary="Create a new monkey",
 )
 async def post_user(
     monkey_config: MonkeyConfig,
@@ -99,30 +100,23 @@ async def post_user(
     response_class=FormattedJSONResponse,
     response_model=MonkeyData,
     response_model_exclude_none=True,
+    responses={404: {"description": "Monkey not found", "model": ErrorModel}},
+    summary="Status of monkey",
 )
 async def get_user(
     name: str,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
-) -> Union[MonkeyData, JSONResponse]:
-    try:
-        monkey = manager.fetch_monkey(name)
-        return monkey.dump()
-    except KeyError:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={
-                "detail": [
-                    {
-                        "loc": ["path", "name"],
-                        "msg": f"Monkey for {name} not found",
-                        "type": "monkey_not_found",
-                    }
-                ]
-            },
-        )
+) -> MonkeyData:
+    monkey = manager.fetch_monkey(name)
+    return monkey.dump()
 
 
-@external_router.delete("/user/{name}", status_code=204)
+@external_router.delete(
+    "/user/{name}",
+    responses={404: {"description": "Monkey not found", "model": ErrorModel}},
+    status_code=204,
+    summary="Stop a monkey",
+)
 async def delete_user(
     name: str,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
@@ -130,26 +124,18 @@ async def delete_user(
     await manager.release_monkey(name)
 
 
-@external_router.get("/user/{name}/log", response_class=FileResponse)
+@external_router.get(
+    "/user/{name}/log",
+    description="Returns the monkey log output as a file",
+    response_class=FileResponse,
+    responses={404: {"description": "Monkey not found", "model": ErrorModel}},
+    summary="Log for monkey",
+)
 async def get_user_log(
     name: str,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
-) -> Union[FileResponse, JSONResponse]:
-    try:
-        monkey = manager.fetch_monkey(name)
-    except KeyError:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={
-                "detail": [
-                    {
-                        "loc": ["path", "name"],
-                        "msg": f"Monkey for {name} not found",
-                        "type": "monkey_not_found",
-                    }
-                ]
-            },
-        )
+) -> FileResponse:
+    monkey = manager.fetch_monkey(name)
     return FileResponse(
         path=monkey.logfile(),
         media_type="text/plain",

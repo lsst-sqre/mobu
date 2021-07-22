@@ -9,12 +9,14 @@ called.
 
 from importlib.metadata import metadata
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
 from safir.logging import configure_logging
 from safir.middleware.x_forwarded import XForwardedMiddleware
 
 from .config import config
 from .dependencies.manager import monkey_business_manager
+from .exceptions import MonkeyNotFoundException
 from .handlers.external import external_router
 from .handlers.internal import internal_router
 
@@ -53,3 +55,21 @@ async def startup_event() -> None:
 @app.on_event("shutdown")
 async def shutdown_event() -> None:
     await monkey_business_manager.cleanup()
+
+
+@_subapp.exception_handler(MonkeyNotFoundException)
+async def not_found_exception_handler(
+    request: Request, exc: MonkeyNotFoundException
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+            "detail": [
+                {
+                    "loc": ["path", "name"],
+                    "msg": f"Monkey for {exc.monkey} not found",
+                    "type": "monkey_not_found",
+                }
+            ]
+        },
+    )
