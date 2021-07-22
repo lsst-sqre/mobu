@@ -86,3 +86,7 @@ async def test_run(
     assert r.status_code == 404
     r = await client.get("/mobu/user/test/log")
     assert r.status_code == 404
+
+    r = await client.get("/mobu/user")
+    assert r.status_code == 200
+    assert r.json() == []
