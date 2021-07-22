@@ -2,9 +2,10 @@
 
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Union
+from typing import Any, List, Union
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import FileResponse, JSONResponse
 from safir.dependencies.logger import logger_dependency
 from safir.metadata import get_metadata
@@ -15,7 +16,8 @@ from ..dependencies.manager import (
     MonkeyBusinessManager,
     monkey_business_manager,
 )
-from ..models import Index
+from ..models.index import Index
+from ..models.monkey import MonkeyConfig, MonkeyData
 
 __all__ = ["external_router", "get_index", "get_users", "post_user"]
 
@@ -73,23 +75,35 @@ async def get_users(
     return manager.list_monkeys()
 
 
-@external_router.post("/user", response_model=Dict[str, str])
+@external_router.post(
+    "/user",
+    response_class=FormattedJSONResponse,
+    response_model=MonkeyData,
+    response_model_exclude_none=True,
+    status_code=201,
+)
 async def post_user(
-    request: Request,
+    monkey_config: MonkeyConfig,
+    response: Response,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
     logger: BoundLogger = Depends(logger_dependency),
-) -> Dict[str, str]:
-    body = await request.json()
-    logger.info(body)
-    monkey = await manager.create_monkey(body)
-    return {"user": monkey.name}
+) -> MonkeyData:
+    logger.info("Creating monkey: %s", monkey_config.dict())
+    monkey = await manager.create_monkey(monkey_config)
+    response.headers["Location"] = quote(f"/mobu/user/{monkey.name}")
+    return monkey.dump()
 
 
-@external_router.get("/user/{name}", response_class=FormattedJSONResponse)
+@external_router.get(
+    "/user/{name}",
+    response_class=FormattedJSONResponse,
+    response_model=MonkeyData,
+    response_model_exclude_none=True,
+)
 async def get_user(
     name: str,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
-) -> Union[Dict[str, Any], JSONResponse]:
+) -> Union[MonkeyData, JSONResponse]:
     try:
         monkey = manager.fetch_monkey(name)
         return monkey.dump()

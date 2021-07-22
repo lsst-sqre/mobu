@@ -57,6 +57,7 @@ def mock_gafaelfawr(
             "token_name": ANY,
             "scopes": ["exec:notebook"],
             "expires": ANY,
+            "name": "Mobu Test User",
             "uid": ANY,
         }
         if username:

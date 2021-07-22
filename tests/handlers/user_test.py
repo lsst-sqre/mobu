@@ -32,12 +32,30 @@ async def test_run(
             },
         },
     )
-    assert r.status_code == 200
-    assert r.json() == {"user": "test"}
+    assert r.status_code == 201
+    assert r.json() == {
+        "name": "test",
+        "business": {
+            "failure_count": 0,
+            "name": "JupyterLoginLoop",
+            "success_count": 0,
+            "timings": ANY,
+        },
+        "restart": False,
+        "state": ANY,
+        "user": {
+            "scopes": ["exec:notebook"],
+            "token": ANY,
+            "uidnumber": 1000,
+            "username": "someuser",
+        },
+    }
+    assert r.headers["Location"] == "/mobu/user/test"
 
     r = await client.get("/mobu/user/test")
     assert r.status_code == 200
     assert r.json() == {
+        "name": "test",
         "business": {
             "failure_count": 0,
             "name": "JupyterLoginLoop",

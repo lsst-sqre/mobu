@@ -1,4 +1,4 @@
-"""Models for mobu."""
+"""Data models for the top-level route."""
 
 from pydantic import BaseModel, Field
 from safir.metadata import Metadata as SafirMetadata

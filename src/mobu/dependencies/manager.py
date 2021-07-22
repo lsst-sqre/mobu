@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from aiohttp import ClientSession
 from aiojobs import Scheduler, create_scheduler
@@ -13,10 +13,20 @@ from ..business.jupyterloginloop import JupyterLoginLoop
 from ..business.jupyterpythonloop import JupyterPythonLoop
 from ..business.notebookrunner import NotebookRunner
 from ..business.querymonkey import QueryMonkey
+from ..models.monkey import MonkeyConfig
+from ..models.user import AuthenticatedUser
 from ..monkey import Monkey
-from ..user import User
 
 __all__ = ["MonkeyBusinessManager", "monkey_business_manager"]
+
+_BUSINESS_CLASS = {
+    "Business": Business,
+    "JupyterJItterLoginLoop": JupyterJitterLoginLoop,
+    "JupyterLoginLoop": JupyterLoginLoop,
+    "JupyterPythonLoop": JupyterPythonLoop,
+    "NotebookRunner": NotebookRunner,
+    "QueryMonkey": QueryMonkey,
+}
 
 
 class MonkeyBusinessManager:
@@ -49,38 +59,18 @@ class MonkeyBusinessManager:
     def list_monkeys(self) -> List[str]:
         return list(self._monkeys.keys())
 
-    async def create_monkey(self, body: Dict[str, Any]) -> Monkey:
+    async def create_monkey(self, monkey_config: MonkeyConfig) -> Monkey:
         if self._scheduler is None or not self._session:
             raise RuntimeError("MonkeyBusinessManager not initialized")
 
-        name = body["name"]
-        business = body["business"]
-        user_config = body["user"]
-        options = body.get("options", {})
-
-        username = user_config["username"]
-        uidnumber = user_config["uidnumber"]
-        scopes = user_config["scopes"]
-
-        user = await User.create(username, uidnumber, scopes, self._session)
-
-        # Find the right business class and create the monkey.
-        monkey = None
-        businesses = [
-            Business,
-            JupyterLoginLoop,
-            JupyterJitterLoginLoop,
-            JupyterPythonLoop,
-            NotebookRunner,
-            QueryMonkey,
-        ]
-        for b in businesses:
-            if business == b.__name__:
-                monkey = Monkey(name, user, b, options, self._session)
-
-        # If we fell through, we have no matching business class.
-        if not monkey:
-            raise ValueError(f"Unknown business {business}")
+        # Create the monkey.
+        user = await AuthenticatedUser.create(
+            monkey_config.user, self._session
+        )
+        business_type = _BUSINESS_CLASS.get(monkey_config.business)
+        if not business_type:
+            raise ValueError(f"Unknown business {monkey_config.business}")
+        monkey = Monkey(monkey_config, business_type, user, self._session)
 
         # Start and manage the monkey.
         await self.release_monkey(monkey.name)

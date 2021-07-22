@@ -6,7 +6,6 @@ import asyncio
 import logging
 import sys
 from datetime import datetime
-from enum import Enum, auto
 from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING
 
@@ -16,24 +15,18 @@ from aiojobs import Scheduler
 from aiojobs._job import Job
 
 from .config import config
+from .models.monkey import MonkeyData, MonkeyState
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, Optional, Type
+    from typing import Optional, Type
 
     from .business.base import Business
-    from .user import User
+    from .models.monkey import MonkeyConfig
+    from .models.user import AuthenticatedUser
 
 __all__ = ["Monkey"]
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-
-
-class MonkeyState(Enum):
-    IDLE = auto()
-    RUNNING = auto()
-    STOPPING = auto()
-    FINISHED = auto()
-    ERROR = auto()
 
 
 class Monkey:
@@ -41,16 +34,15 @@ class Monkey:
 
     def __init__(
         self,
-        name: str,
-        user: User,
-        business: Type[Business],
-        options: Dict[str, Any],
+        monkey_config: MonkeyConfig,
+        business_type: Type[Business],
+        user: AuthenticatedUser,
         session: ClientSession,
     ):
-        self.name = name
+        self.name = monkey_config.name
         self.state = MonkeyState.IDLE
         self.user = user
-        self.restart = options.get("restart", False)
+        self.restart = monkey_config.restart
 
         self._session = session
         self._logfile = NamedTemporaryFile()
@@ -71,7 +63,9 @@ class Monkey:
         logger.info(f"Starting new file logger {self._logfile.name}")
         self.log = structlog.wrap_logger(logger)
 
-        self.business = business(self.log, options, self.user)
+        self.business = business_type(
+            self.log, monkey_config.options, self.user
+        )
 
     async def alert(self, msg: str) -> None:
         if self.state in (MonkeyState.STOPPING, MonkeyState.FINISHED):
@@ -142,10 +136,11 @@ class Monkey:
                 pass
         self.state = MonkeyState.FINISHED
 
-    def dump(self) -> dict:
-        return {
-            "user": self.user.dump(),
-            "business": self.business.dump(),
-            "state": self.state.name,
-            "restart": self.restart,
-        }
+    def dump(self) -> MonkeyData:
+        return MonkeyData(
+            name=self.name,
+            business=self.business.dump(),
+            restart=self.restart,
+            state=self.state,
+            user=self.user,
+        )

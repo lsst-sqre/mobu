@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import ANY
 
 import pytest
 
@@ -31,8 +32,24 @@ async def test_run(
             },
         },
     )
-    assert r.status_code == 200
-    assert r.json() == {"user": "test"}
+    assert r.status_code == 201
+    assert r.json() == {
+        "name": "test",
+        "business": {
+            "failure_count": 0,
+            "name": "JupyterPythonLoop",
+            "success_count": 0,
+            "timings": ANY,
+        },
+        "restart": False,
+        "state": ANY,
+        "user": {
+            "scopes": ["exec:notebook"],
+            "token": ANY,
+            "uidnumber": 1000,
+            "username": "someuser",
+        },
+    }
 
     # Wait until we've finished at least one loop.  Make sure nothing fails.
     finished = False
