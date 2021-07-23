@@ -1,105 +1,147 @@
-"""monkeyflocker dispatches or destroys a troop of mobu instances.  This is
-its CLI.
-"""
+"""Command-line client to manage a flock of monkeys."""
+
+from __future__ import annotations
 
 import asyncio
-from typing import Optional
+from functools import wraps
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
-import jinja2
 
-from .client import MonkeyflockerClient as MFClient
-from .error import MonkeyflockerError as MFError
+from .client import MonkeyflockerClient
 
-MF_PREFIX = "MONKEYFLOCKER_"
+if TYPE_CHECKING:
+    from typing import Any, Awaitable, Callable, Optional, TypeVar, Union
 
-# Set up our UI
+    T = TypeVar("T")
 
 
-@click.command()
-@click.argument("verb")
-@click.option(
-    "-n",
-    "--count",
-    envvar=f"{MF_PREFIX}COUNT",
-    type=int,
-    default=5,
-    help="Number of mobu workers to run.",
-)
+def coroutine(f: Callable[..., Awaitable[T]]) -> Callable[..., T]:
+    @wraps(f)
+    def wrapper(*args: Any, **kwargs: Any) -> T:
+        return asyncio.run(f(*args, **kwargs))
+
+    return wrapper
+
+
+@click.group(context_settings={"help_option_names": ["-h", "--help"]})
+@click.version_option(message="%(version)s")
+def main() -> None:
+    """monkeyflocker main.
+
+    Command-line interface to manage mobu monkeys.
+    """
+    pass
+
+
+@main.command()
+@click.argument("topic", default=None, required=False, nargs=1)
+@click.pass_context
+def help(ctx: click.Context, topic: Union[None, str]) -> None:
+    """Show help for any command."""
+    # The help command implementation is taken from
+    # https://www.burgundywall.com/post/having-click-help-subcommand
+    if topic:
+        if topic in main.commands:
+            click.echo(main.commands[topic].get_help(ctx))
+        else:
+            raise click.UsageError(f"Unknown help topic {topic}", ctx)
+    else:
+        assert ctx.parent
+        click.echo(ctx.parent.get_help())
+
+
+@main.command()
 @click.option(
     "-e",
     "--base-url",
-    "--base-url-endpoint",
-    envvar=f"{MF_PREFIX}BASE_URL",
+    envvar="MONKEYFLOCKER_BASE_URL",
     default="http://localhost:8000",
     help="URL of RSP instance to dispatch mobu workers on",
 )
 @click.option(
-    "-l",
-    "--base-username",
-    default="lsptestuser",
-    envvar=f"{MF_PREFIX}BASE_USERNAME",
-    help="Base user name (without sequence number) for mobu workers",
-)
-@click.option(
-    "-u",
-    "--base-uid",
-    type=int,
-    default=60180,
-    envvar=f"{MF_PREFIX}BASE_UID",
-    help="Base UID (0-indexed) for mobu workers",
-)
-@click.option(
-    "-t",
-    "--template-file",
-    "--user-template-file",
-    default="./user-template.json",
-    envvar=f"{MF_PREFIX}USER_TEMPLATE",
-    help="User template JSON file for mobu workers",
+    "-f",
+    "--spec-file",
+    required=True,
+    type=click.Path(exists=True, path_type=Path),
+    envvar="MONKEYFLOCKER_SPEC_FILE",
+    help="YAML spec for a monkey flock to start",
 )
 @click.option(
     "-k",
     "--token",
-    "--access-token",
-    envvar=["ACCESS_TOKEN", f"{MF_PREFIX}ACCESS_TOKEN"],
+    required=True,
+    envvar="MONKEYFLOCKER_TOKEN",
+    help="Token to use to drive mobu",
+)
+@coroutine
+async def start(base_url: str, spec_file: Path, token: str) -> None:
+    """Start a flock of monkeys."""
+    async with MonkeyflockerClient(base_url, token) as client:
+        await client.start(spec_file)
+
+
+@main.command()
+@click.option(
+    "-e",
+    "--base-url",
+    envvar="MONKEYFLOCKER_BASE_URL",
+    default="http://localhost:8000",
+    help="URL of RSP instance to dispatch mobu workers on",
+)
+@click.option(
+    "-k",
+    "--token",
+    required=True,
+    envvar="MONKEYFLOCKER_TOKEN",
     help="Token to use to drive mobu",
 )
 @click.option(
     "-o",
     "--output",
-    "--output-directory",
-    default="",
-    envvar=f"{MF_PREFIX}OUTPUT_DIRECTORY",
-    help="Directory for output on stop",
+    required=True,
+    type=click.Path(path_type=Path),
+    envvar="MONKEYFLOCKER_OUTPUT",
+    help="Directory in which to store output",
 )
-def main(
-    verb: str,
-    count: int,
-    base_url: str,
-    base_username: str,
-    base_uid: int,
-    token: Optional[str],
-    template_file: str,
-    output: str,
+@click.argument("name")
+@coroutine
+async def report(base_url: str, token: str, output: Path, name: str) -> None:
+    """Generate an output report for a flock."""
+    async with MonkeyflockerClient(base_url, token) as client:
+        await client.report(name, output)
+
+
+@main.command()
+@click.option(
+    "-e",
+    "--base-url",
+    envvar="MONKEYFLOCKER_BASE_URL",
+    default="http://localhost:8000",
+    help="URL of RSP instance to dispatch mobu workers on",
+)
+@click.option(
+    "-k",
+    "--token",
+    required=True,
+    envvar="MONKEYFLOCKER_TOKEN",
+    help="Token to use to drive mobu",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(path_type=Path),
+    envvar="MONKEYFLOCKER_OUTPUT",
+    help="Directory in which to store output",
+)
+@click.argument("name")
+@coroutine
+async def stop(
+    base_url: str, token: str, output: Optional[Path], name: str
 ) -> None:
-    """monkeyflocker VERB, where VERB is 'start', 'stop', or 'report'."""
-    verb = verb.lower()
-    # Validate our parameters
-    if verb not in ["start", "stop", "report"]:
-        raise MFError("Verb must be 'start', 'stop', or 'report'")
-    if count < 1:
-        raise MFError("Count must be a positive integer")
-    if base_uid < 0:
-        raise MFError("Base_UID must be a non-negative integer")
-    if not token:
-        raise MFError("Access token must be set")
-    # Either load relative to cwd or relative to root, so absolute paths work
-    te = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(searchpath=["./", "/"])
-    )
-    template = te.get_template(template_file)
-    endpoint = f"{base_url}/mobu/user"
-    client = MFClient(
-        count, base_username, base_uid, endpoint, token, template, output
-    )
-    asyncio.run(client.execute(verb))
+    """Stop a flock."""
+    async with MonkeyflockerClient(base_url, token) as client:
+        if output:
+            await client.report(name, output)
+        await client.stop(name)
