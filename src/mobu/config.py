@@ -18,7 +18,7 @@ class Configuration:
 
     Set with the ``ALERT_HOOK`` environment variable.
     This is an https URL which should be considered secret.
-    If not set, this feature will be disabled.
+    If not set or set to "None", this feature will be disabled.
     """
 
     autostart: Optional[str] = os.getenv("AUTOSTART")
