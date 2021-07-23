@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import math
 from typing import TYPE_CHECKING
 
@@ -81,9 +82,14 @@ class Flock:
             await monkey.start(self._scheduler)
 
     async def stop(self) -> None:
-        """Stop all the monkeys."""
-        for monkey in self._monkeys.values():
-            await monkey.stop()
+        """Stop all the monkeys.
+
+        Stopping a monkey can require waiting for a timeout from JupyterHub if
+        it were in the middle of spawning, so stop them all in parallel to
+        avoid waiting for the sum of all timeouts.
+        """
+        awaits = [m.stop() for m in self._monkeys.values()]
+        await asyncio.gather(*awaits)
 
     def _create_monkey(self, user: AuthenticatedUser) -> Monkey:
         """Create a monkey that will run as a given user."""
