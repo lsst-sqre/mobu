@@ -47,6 +47,7 @@ def mock_gafaelfawr(
     correct.
     """
     admin_token = config.gafaelfawr_token
+    assert admin_token
     assert admin_token.startswith("gt-")
 
     def handler(url: str, **kwargs: Any) -> CallbackResult:

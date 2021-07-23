@@ -48,6 +48,8 @@ app.mount(f"/{config.name}", _subapp)
 
 @app.on_event("startup")
 async def startup_event() -> None:
+    if not config.environment_url:
+        raise RuntimeError("ENVIRONMENT_URL was not set")
     app.add_middleware(XForwardedMiddleware)
     await monkey_business_manager.init()
 

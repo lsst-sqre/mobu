@@ -77,7 +77,7 @@ class Monkey:
         time = datetime.now().strftime(DATE_FORMAT)
         alert_msg = f"{time} {self.name} {msg}"
         self.log.error(f"Slack Alert: {alert_msg}")
-        if config.alert_hook == "None":
+        if not config.alert_hook:
             self.log.info("Alert hook isn't set, so not sending to slack.")
             return
 

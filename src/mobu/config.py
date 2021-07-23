@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from typing import Optional
 
 __all__ = ["Configuration", "config"]
 
@@ -12,26 +13,24 @@ __all__ = ["Configuration", "config"]
 class Configuration:
     """Configuration for mobu."""
 
-    alert_hook: str = os.getenv("ALERT_HOOK", "None")
+    alert_hook: Optional[str] = os.getenv("ALERT_HOOK")
     """The slack webhook used for alerting exceptions to slack.
 
     Set with the ``ALERT_HOOK`` environment variable.
     This is an https URL which should be considered secret.
-    "None" may be provided in a secret to disable this feature.
+    If not set, this feature will be disabled.
     """
 
-    environment_url: str = os.getenv(
-        "ENVIRONMENT_URL", "https://nublado.lsst.codes"
-    )
+    environment_url: str = os.getenv("ENVIRONMENT_URL", "")
     """The URL of the environment to run tests against.
 
-    This is used for creating URLs to services, such as nublado, as
-    well as fields in the JWT ticket.
+    This is used for creating URLs to services, such as JupyterHub.
+    mobu will not work if this is not set.
 
     Set with the ``ENVIRONMENT_URL`` environment variable.
     """
 
-    gafaelfawr_token: str = os.getenv("GAFAELFAWR_TOKEN", "None")
+    gafaelfawr_token: Optional[str] = os.getenv("GAFAELFAWR_TOKEN")
     """The Gafaelfawr admin token to use to create user tokens.
 
     This token is used to make an admin API call to Gafaelfawr to get a token

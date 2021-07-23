@@ -36,7 +36,7 @@ async def test_run(
     # Wait until we've finished at least one loop.  Make sure nothing fails.
     finished = False
     while not finished:
-        asyncio.sleep(1)
+        await asyncio.sleep(1)
         r = await client.get("/mobu/flocks/test/monkeys/testuser1")
         assert r.status_code == 200
         data = r.json()
