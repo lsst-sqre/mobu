@@ -20,5 +20,6 @@ click
 jinja2
 pydantic
 pyvo
+pyyaml
 safir
 structlog

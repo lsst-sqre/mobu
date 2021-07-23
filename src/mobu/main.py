@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from safir.logging import configure_logging
 from safir.middleware.x_forwarded import XForwardedMiddleware
 
+from .autostart import autostart
 from .config import config
 from .dependencies.manager import monkey_business_manager
 from .exceptions import FlockNotFoundException, MonkeyNotFoundException
@@ -52,6 +53,8 @@ async def startup_event() -> None:
         raise RuntimeError("ENVIRONMENT_URL was not set")
     app.add_middleware(XForwardedMiddleware)
     await monkey_business_manager.init()
+    if config.autostart:
+        await autostart()
 
 
 @app.on_event("shutdown")

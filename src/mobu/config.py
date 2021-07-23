@@ -21,6 +21,13 @@ class Configuration:
     If not set, this feature will be disabled.
     """
 
+    autostart: Optional[str] = os.getenv("AUTOSTART")
+    """The path to a YAML file defining what flocks to automatically start.
+
+    The YAML file should, if given, be a list of flock specifications. All
+    flocks specified there will be automatically started when mobu starts.
+    """
+
     environment_url: str = os.getenv("ENVIRONMENT_URL", "")
     """The URL of the environment to run tests against.
 
