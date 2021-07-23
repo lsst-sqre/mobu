@@ -1,4 +1,4 @@
-"""Test the JupyterPythonLoop business logic."""
+"""Test the login monkey."""
 
 from __future__ import annotations
 
@@ -28,30 +28,10 @@ async def test_run(
             "count": 1,
             "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
             "scopes": ["exec:notebook"],
-            "business": "JupyterPythonLoop",
+            "business": "JupyterLoginLoop",
         },
     )
     assert r.status_code == 201
-
-    r = await client.get("/mobu/flocks/test/monkeys/testuser1")
-    assert r.status_code == 200
-    assert r.json() == {
-        "name": "testuser1",
-        "business": {
-            "failure_count": 0,
-            "name": "JupyterPythonLoop",
-            "success_count": 0,
-            "timings": ANY,
-        },
-        "restart": False,
-        "state": ANY,
-        "user": {
-            "scopes": ["exec:notebook"],
-            "token": ANY,
-            "uidnumber": 1000,
-            "username": "testuser1",
-        },
-    }
 
     # Wait until we've finished at least one loop.  Make sure nothing fails.
     finished = False
@@ -64,9 +44,29 @@ async def test_run(
         if data["business"]["success_count"] > 0:
             finished = True
 
-    # Get the client log and check no exceptions were thrown.
+    r = await client.get("/mobu/flocks/test/monkeys/testuser1")
+    assert r.status_code == 200
+    assert r.json() == {
+        "name": "testuser1",
+        "business": {
+            "failure_count": 0,
+            "name": "JupyterLoginLoop",
+            "success_count": ANY,
+            "timings": ANY,
+        },
+        "restart": False,
+        "state": "RUNNING",
+        "user": {
+            "scopes": ["exec:notebook"],
+            "token": ANY,
+            "uidnumber": 1000,
+            "username": "testuser1",
+        },
+    }
+
     r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
     assert r.status_code == 200
+    assert "Starting up" in r.text
     assert "Exception thrown" not in r.text
 
     r = await client.delete("/mobu/flocks/test")

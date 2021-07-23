@@ -70,4 +70,6 @@ def mock_gafaelfawr(
         return CallbackResult(payload=response, status=200)
 
     base_url = config.environment_url
-    mocked.post(f"{base_url}/auth/api/v1/tokens", callback=handler)
+    mocked.post(
+        f"{base_url}/auth/api/v1/tokens", callback=handler, repeat=True
+    )

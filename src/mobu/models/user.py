@@ -8,26 +8,43 @@ from pydantic import BaseModel, Field
 
 from ..config import config
 
-__all__ = ["AuthenticatedUser", "UserConfig"]
+__all__ = ["AuthenticatedUser", "User", "UserSpec"]
 
 
-class UserConfig(BaseModel):
+class User(BaseModel):
     """Configuration for the user whose credentials the monkey will use."""
 
     username: str = Field(..., title="Username", example="testuser")
 
     uidnumber: int = Field(..., title="Numeric UID", example=60001)
 
-    scopes: List[str] = Field(
+
+class UserSpec(BaseModel):
+    """Configuration to generate a set of users."""
+
+    username_prefix: str = Field(
         ...,
-        title="Token scopes",
-        description="Must include all scopes required to run the business",
-        example=["exec:notebook", "read:tap"],
+        title="Prefix for usernames",
+        description="Each user will be formed by appending a number to this",
+        example="lsptestuser",
+    )
+
+    uid_start: int = Field(
+        ...,
+        title="Starting UID",
+        description="Users will be given consecutive UIDs starting with this",
+        example=60000,
     )
 
 
-class AuthenticatedUser(UserConfig):
+class AuthenticatedUser(User):
     """Represents an authenticated user with a token."""
+
+    scopes: List[str] = Field(
+        ...,
+        title="Token scopes",
+        example=["exec:notebook", "read:tap"],
+    )
 
     token: str = Field(
         ...,
@@ -37,27 +54,27 @@ class AuthenticatedUser(UserConfig):
 
     @classmethod
     async def create(
-        cls, user_config: UserConfig, session: ClientSession
+        cls, user: User, scopes: List[str], session: ClientSession
     ) -> "AuthenticatedUser":
         token_url = f"{config.environment_url}/auth/api/v1/tokens"
         r = await session.post(
             token_url,
             headers={"Authorization": f"Bearer {config.gafaelfawr_token}"},
             json={
-                "username": user_config.username,
+                "username": user.username,
                 "name": "Mobu Test User",
                 "token_type": "user",
                 "token_name": f"mobu {str(float(time.time()))}",
-                "scopes": user_config.scopes,
+                "scopes": scopes,
                 "expires": int(time.time() + 2419200),
-                "uid": user_config.uidnumber,
+                "uid": user.uidnumber,
             },
             raise_for_status=True,
         )
         body = await r.json()
         return cls(
-            username=user_config.username,
-            uidnumber=user_config.uidnumber,
+            username=user.username,
+            uidnumber=user.uidnumber,
             token=body["token"],
-            scopes=user_config.scopes,
+            scopes=scopes,
         )

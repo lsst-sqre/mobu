@@ -17,10 +17,21 @@ from ..dependencies.manager import (
     monkey_business_manager,
 )
 from ..models.error import ErrorModel
+from ..models.flock import FlockConfig, FlockData
 from ..models.index import Index
-from ..models.monkey import MonkeyConfig, MonkeyData
+from ..models.monkey import MonkeyData
 
-__all__ = ["external_router", "get_index", "get_users", "post_user"]
+__all__ = [
+    "external_router",
+    "delete_flock",
+    "get_flock",
+    "get_flocks",
+    "get_index",
+    "get_monkey",
+    "get_monkeys",
+    "get_monkey_log",
+    "post_flock",
+]
 
 external_router = APIRouter()
 """FastAPI router for all external handlers."""
@@ -67,77 +78,113 @@ async def get_index() -> Index:
 
 
 @external_router.get(
-    "/user", response_model=List[str], summary="List running monkeys"
+    "/flocks", response_model=List[str], summary="List running flocks"
 )
-async def get_users(
+async def get_flocks(
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
 ) -> List[str]:
-    return manager.list_monkeys()
+    return manager.list_flocks()
 
 
 @external_router.post(
-    "/user",
+    "/flocks",
     response_class=FormattedJSONResponse,
-    response_model=MonkeyData,
+    response_model=FlockData,
     response_model_exclude_none=True,
+    response_model_exclude_unset=True,
     status_code=201,
-    summary="Create a new monkey",
+    summary="Create a new flock",
 )
-async def post_user(
-    monkey_config: MonkeyConfig,
+async def post_flock(
+    flock_config: FlockConfig,
     response: Response,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
     logger: BoundLogger = Depends(logger_dependency),
-) -> MonkeyData:
-    logger.info("Creating monkey: %s", monkey_config.dict())
-    monkey = await manager.create_monkey(monkey_config)
-    response.headers["Location"] = quote(f"/mobu/user/{monkey.name}")
-    return monkey.dump()
+) -> FlockData:
+    logger.info("Creating flock: %s", flock_config.dict())
+    flock = await manager.start_flock(flock_config)
+    response.headers["Location"] = quote(f"/mobu/flocks/{flock.name}")
+    return flock.dump()
 
 
 @external_router.get(
-    "/user/{name}",
+    "/flocks/{flock}",
     response_class=FormattedJSONResponse,
-    response_model=MonkeyData,
+    response_model=FlockData,
     response_model_exclude_none=True,
-    responses={404: {"description": "Monkey not found", "model": ErrorModel}},
-    summary="Status of monkey",
+    response_model_exclude_unset=True,
+    responses={404: {"description": "Flock not found", "model": ErrorModel}},
+    summary="Status of flock",
 )
-async def get_user(
-    name: str,
+async def get_flock(
+    flock: str,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
-) -> MonkeyData:
-    monkey = manager.fetch_monkey(name)
-    return monkey.dump()
+) -> FlockData:
+    return manager.get_flock(flock).dump()
 
 
 @external_router.delete(
-    "/user/{name}",
-    responses={404: {"description": "Monkey not found", "model": ErrorModel}},
+    "/flocks/{flock}",
+    responses={404: {"description": "Flock not found", "model": ErrorModel}},
     status_code=204,
-    summary="Stop a monkey",
+    summary="Stop a flock",
 )
-async def delete_user(
-    name: str,
+async def delete_flock(
+    flock: str,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
 ) -> None:
-    await manager.release_monkey(name)
+    await manager.stop_flock(flock)
 
 
 @external_router.get(
-    "/user/{name}/log",
+    "/flocks/{flock}/monkeys",
+    response_class=FormattedJSONResponse,
+    response_model=List[str],
+    responses={404: {"description": "Flock not found", "model": ErrorModel}},
+    summary="Monkeys in flock",
+)
+async def get_monkeys(
+    flock: str,
+    manager: MonkeyBusinessManager = Depends(monkey_business_manager),
+) -> List[str]:
+    return manager.get_flock(flock).list_monkeys()
+
+
+@external_router.get(
+    "/flocks/{flock}/monkeys/{monkey}",
+    response_class=FormattedJSONResponse,
+    response_model=MonkeyData,
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    responses={
+        404: {"description": "Monkey or flock not found", "model": ErrorModel}
+    },
+    summary="Status of monkey",
+)
+async def get_monkey(
+    flock: str,
+    monkey: str,
+    manager: MonkeyBusinessManager = Depends(monkey_business_manager),
+) -> MonkeyData:
+    return manager.get_flock(flock).get_monkey(monkey).dump()
+
+
+@external_router.get(
+    "/flocks/{flock}/monkeys/{monkey}/log",
     description="Returns the monkey log output as a file",
     response_class=FileResponse,
-    responses={404: {"description": "Monkey not found", "model": ErrorModel}},
+    responses={
+        404: {"description": "Monkey or flock not found", "model": ErrorModel}
+    },
     summary="Log for monkey",
 )
-async def get_user_log(
-    name: str,
+async def get_monkey_log(
+    flock: str,
+    monkey: str,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
 ) -> FileResponse:
-    monkey = manager.fetch_monkey(name)
     return FileResponse(
-        path=monkey.logfile(),
+        path=manager.get_flock(flock).get_monkey(monkey).logfile(),
         media_type="text/plain",
-        filename=f"{name}-{datetime.now()}",
+        filename=f"{flock}-{monkey}-{datetime.now()}",
     )

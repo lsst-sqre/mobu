@@ -16,7 +16,7 @@ from safir.middleware.x_forwarded import XForwardedMiddleware
 
 from .config import config
 from .dependencies.manager import monkey_business_manager
-from .exceptions import MonkeyNotFoundException
+from .exceptions import FlockNotFoundException, MonkeyNotFoundException
 from .handlers.external import external_router
 from .handlers.internal import internal_router
 
@@ -57,8 +57,26 @@ async def shutdown_event() -> None:
     await monkey_business_manager.cleanup()
 
 
+@_subapp.exception_handler(FlockNotFoundException)
+async def flock_not_found_exception_handler(
+    request: Request, exc: FlockNotFoundException
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+            "detail": [
+                {
+                    "loc": ["path", "flock"],
+                    "msg": f"Flock for {exc.flock} not found",
+                    "type": "flock_not_found",
+                }
+            ]
+        },
+    )
+
+
 @_subapp.exception_handler(MonkeyNotFoundException)
-async def not_found_exception_handler(
+async def monkey_not_found_exception_handler(
     request: Request, exc: MonkeyNotFoundException
 ) -> JSONResponse:
     return JSONResponse(
@@ -66,7 +84,7 @@ async def not_found_exception_handler(
         content={
             "detail": [
                 {
-                    "loc": ["path", "name"],
+                    "loc": ["path", "monkey"],
                     "msg": f"Monkey for {exc.monkey} not found",
                     "type": "monkey_not_found",
                 }

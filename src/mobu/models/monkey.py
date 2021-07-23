@@ -5,7 +5,7 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 from .business import BusinessConfig, BusinessData
-from .user import AuthenticatedUser, UserConfig
+from .user import AuthenticatedUser
 
 
 class MonkeyConfig(BaseModel):
@@ -16,10 +16,6 @@ class MonkeyConfig(BaseModel):
         title="Name of the monkey",
         description="This need not match the username as which it runs",
         example="monkey01",
-    )
-
-    user: UserConfig = Field(
-        ..., title="User whose credentials the monkey will use"
     )
 
     business: str = Field(..., title="Type of business to run")
