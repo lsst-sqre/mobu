@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 @pytest.mark.asyncio
 async def test_start_stop(
-    client: AsyncClient, jupyterhub: None, mock_aioresponses: aioresponses
+    client: AsyncClient, jupyter: None, mock_aioresponses: aioresponses
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
 
@@ -116,7 +116,7 @@ async def test_start_stop(
 
 @pytest.mark.asyncio
 async def test_user_list(
-    client: AsyncClient, jupyterhub: None, mock_aioresponses: aioresponses
+    client: AsyncClient, jupyter: None, mock_aioresponses: aioresponses
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
 
@@ -195,7 +195,7 @@ async def test_user_list(
 
 @pytest.mark.asyncio
 async def test_errors(
-    client: AsyncClient, jupyterhub: None, mock_aioresponses: aioresponses
+    client: AsyncClient, jupyter: None, mock_aioresponses: aioresponses
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
 
