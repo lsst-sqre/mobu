@@ -20,7 +20,7 @@ class JupyterPythonLoop(JupyterLoginLoop):
     async def lab_business(self) -> None:
         kernel = await self.create_kernel()
         for count in range(MAX_EXECUTIONS):
-            await self.execute_code(kernel, "2+2")
+            await self.execute_code(kernel, "print(2+2, end='')")
             await self.lab_wait()
         await self.delete_kernel(kernel)
 
