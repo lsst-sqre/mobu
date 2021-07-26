@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 import git
 
-from ..jupyterclient import NotebookException
+from ..jupyterclient import JupyterLabSession, NotebookException
 from ..models.business import BusinessData
 from .jupyterloginloop import JupyterLoginLoop
 
@@ -100,7 +100,7 @@ class NotebookRunner(JupyterLoginLoop):
 
         await self.ensure_lab()
         await self.lab_settle()
-        kernel = await self.create_kernel()
+        session = await self.create_session()
 
         self.logger.info(f"Starting notebook: {self.notebook.name}")
         cells = self.read_notebook(self.notebook.name, self.notebook.path)
@@ -113,10 +113,10 @@ class NotebookRunner(JupyterLoginLoop):
 
             for cell in cells:
                 self.running_code = "".join(cell["source"])
-                await self.execute_code(kernel, self.running_code)
+                await self.execute_code(session, self.running_code)
 
         self.running_code = None
-        await self.delete_kernel(kernel)
+        await self.delete_session(session)
         self.logger.info(f"Success running notebook: {self.notebook.name}")
 
     async def lab_settle(self) -> None:
@@ -129,23 +129,30 @@ class NotebookRunner(JupyterLoginLoop):
             cells = json.loads(notebook_text)["cells"]
         return [c for c in cells if c["cell_type"] == "code"]
 
-    async def create_kernel(self) -> str:
-        self.logger.info("create_kernel")
-        with self.timings.start("create_kernel"):
-            kernel = await self._client.create_kernel()
-        return kernel
+    async def create_session(self) -> JupyterLabSession:
+        self.logger.info("create_session")
+        notebook_name = ""
+        if self.notebook:
+            notebook_name = self.notebook.name
+        with self.timings.start("create_session"):
+            session = await self._client.create_labsession(
+                notebook_name=notebook_name,
+            )
+        return session
 
-    async def execute_code(self, kernel: str, code: str) -> None:
+    async def execute_code(
+        self, session: JupyterLabSession, code: str
+    ) -> None:
         self.logger.info("Executing:\n%s\n", code)
         with self.timings.start("run_code", {"code": code}) as sw:
-            reply = await self._client.run_python(kernel, code)
+            reply = await self._client.run_python(session, code)
             sw.annotation["result"] = reply
         self.logger.info(f"Result:\n{reply}\n")
 
-    async def delete_kernel(self, kernel: str) -> None:
-        self.logger.info(f"Deleting kernel {kernel}")
-        with self.timings.start("delete_kernel"):
-            await self._client.delete_kernel(kernel)
+    async def delete_session(self, session: JupyterLabSession) -> None:
+        self.logger.info(f"Deleting session {session}")
+        with self.timings.start("delete_session"):
+            await self._client.delete_labsession(session)
 
     def dump(self) -> BusinessData:
         data = super().dump()
