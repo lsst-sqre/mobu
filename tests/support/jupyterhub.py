@@ -11,6 +11,7 @@ from uuid import uuid4
 from aioresponses import CallbackResult
 
 from mobu.config import config
+from mobu.jupyterclient import JupyterLabSession
 
 if TYPE_CHECKING:
     from re import Pattern
@@ -43,7 +44,7 @@ class MockJupyterHub:
     """
 
     def __init__(self) -> None:
-        self.kernels: Dict[str, str] = {}
+        self.sessions: Dict[str, Any] = {}
         self.state: Dict[str, JupyterHubState] = {}
 
     def login(self, url: str, **kwargs: Any) -> CallbackResult:
@@ -97,24 +98,36 @@ class MockJupyterHub:
         self.state[user] = JupyterHubState.LOGGED_OUT
         return CallbackResult(status=202)
 
-    def create_kernel(self, url: str, **kwargs: Any) -> CallbackResult:
+    def create_session(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
-        assert str(url).endswith(f"/user/{user}/api/kernels")
-        assert user not in self.kernels
+        assert str(url).endswith(f"/user/{user}/api/sessions")
+        assert user not in self.sessions
         state = self.state.get(user, JupyterHubState.LOGGED_OUT)
         assert state == JupyterHubState.LAB_RUNNING
-        assert kwargs["json"] == {"name": "LSST"}
-        kernel = uuid4().hex
-        self.kernels[user] = kernel
-        return CallbackResult(status=201, payload={"id": kernel})
+        assert kwargs["json"]["kernel"]["name"] == "LSST"
+        assert kwargs["json"]["name"] == "(no notebook)"
+        assert kwargs["json"]["type"] == "console"
+        session = JupyterLabSession(
+            session_id=uuid4().hex, kernel_id=uuid4().hex, websocket=None
+        )
+        self.sessions[user] = session
+        return CallbackResult(
+            status=201,
+            payload={
+                "id": session.session_id,
+                "kernel": {"id": session.kernel_id},
+            },
+        )
 
-    def delete_kernel(self, url: str, **kwargs: Any) -> CallbackResult:
+    def delete_session(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
-        kernel = self.kernels[user]
-        assert str(url).endswith(f"/user/{user}/api/kernels/{kernel}")
+        session = self.sessions[user]
+        assert str(url).endswith(
+            f"/user/{user}/api/sessions/{session.session_id}"
+        )
         state = self.state.get(user, JupyterHubState.LOGGED_OUT)
         assert state == JupyterHubState.LAB_RUNNING
-        del self.kernels[user]
+        del self.sessions[user]
         return CallbackResult(status=204)
 
     @staticmethod
@@ -151,12 +164,12 @@ def mock_jupyterhub(mocked: aioresponses) -> None:
         repeat=True,
     )
     mocked.post(
-        _url("user/[^/]+/api/kernels", regex=True),
-        callback=mock.create_kernel,
+        _url("user/[^/]+/api/sessions", regex=True),
+        callback=mock.create_session,
         repeat=True,
     )
     mocked.delete(
-        _url("user/[^/]+/api/kernels/[^/]+$", regex=True),
-        callback=mock.delete_kernel,
+        _url("user/[^/]+/api/sessions/[^/]+$", regex=True),
+        callback=mock.delete_session,
         repeat=True,
     )

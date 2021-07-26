@@ -274,7 +274,7 @@ class JupyterClient:
     async def delete_labsession(self, session: JupyterLabSession) -> None:
         session_url = (
             self.jupyter_url
-            + f"user/{self.user.username}/api/kernels/{session.session_id}"
+            + f"user/{self.user.username}/api/sessions/{session.session_id}"
         )
         async with self.session.delete(
             session_url, raise_for_status=True

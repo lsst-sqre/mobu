@@ -67,7 +67,11 @@ def jupyterhub(mock_aioresponses: aioresponses) -> Iterator[None]:
     # test JupyterClient.run_python.  For now, just mock it out entirely.
     with patch.object(JupyterClient, "run_python") as mock:
         mock.return_value = "4"
-        yield
+        # Same problem, but up a layer now that we're using sessions and
+        # reusing the websocket.
+        with patch.object(JupyterClient, "_websocket_connect") as mock2:
+            mock2.return_value = None
+            yield
 
 
 @pytest.fixture
