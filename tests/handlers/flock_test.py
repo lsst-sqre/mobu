@@ -29,7 +29,7 @@ async def test_start_stop(
         "scopes": ["exec:notebook"],
         "business": "Business",
     }
-    r = await client.post("/mobu/flocks", json=config)
+    r = await client.put("/mobu/flocks", json=config)
     assert r.status_code == 201
     expected: Dict[str, Any] = {
         "name": "test",
@@ -136,7 +136,7 @@ async def test_user_list(
         "scopes": ["exec:notebook"],
         "business": "Business",
     }
-    r = await client.post("/mobu/flocks", json=config)
+    r = await client.put("/mobu/flocks", json=config)
     assert r.status_code == 201
     expected: Dict[str, Any] = {
         "name": "test",
@@ -200,7 +200,7 @@ async def test_errors(
     mock_gafaelfawr(mock_aioresponses)
 
     # Both users and user_spec given.
-    r = await client.post(
+    r = await client.put(
         "/mobu/flocks",
         json={
             "name": "test",
@@ -232,7 +232,7 @@ async def test_errors(
     }
 
     # Neither users nor user_spec given.
-    r = await client.post(
+    r = await client.put(
         "/mobu/flocks",
         json={
             "name": "test",
@@ -253,7 +253,7 @@ async def test_errors(
     }
 
     # Too many users for the size of the flock.
-    r = await client.post(
+    r = await client.put(
         "/mobu/flocks",
         json={
             "name": "test",
@@ -293,7 +293,7 @@ async def test_errors(
     }
 
     # Not enough users for the size of the flock.
-    r = await client.post(
+    r = await client.put(
         "/mobu/flocks",
         json={
             "name": "test",
@@ -325,7 +325,7 @@ async def test_errors(
     }
 
     # Unknown business.
-    r = await client.post(
+    r = await client.put(
         "/mobu/flocks",
         json={
             "name": "test",

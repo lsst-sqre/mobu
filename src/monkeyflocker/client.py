@@ -69,7 +69,7 @@ class MonkeyflockerClient:
             spec = yaml.safe_load(f)
         self._logger.info("Starting flock %s", spec["name"])
         url = urljoin(self._base_url, "/mobu/flocks")
-        await self._session.post(url, json=spec)
+        await self._session.put(url, json=spec)
         self._logger.info("Flock %s started", spec["name"])
 
     async def report(self, name: str, output: Path) -> None:
