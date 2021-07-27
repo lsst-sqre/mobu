@@ -70,7 +70,7 @@ class MonkeyflockerClient:
         self._logger.info(f"Starting flock {spec['name']}")
         url = urljoin(self._base_url, "/mobu/flocks")
         await self._session.put(url, json=spec)
-        self._logger.info("Flock %s started", spec["name"])
+        self._logger.info(f"Flock {spec['name']} started")
 
     async def report(self, name: str, output: Path) -> None:
         """Generate status and output data for all monkeys."""
