@@ -1,4 +1,4 @@
-"""A mock JupyterHub for tests."""
+"""A mock JupyterHub/Lab for tests."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from uuid import uuid4
 from aioresponses import CallbackResult
 
 from mobu.config import config
+from mobu.jupyterclient import JupyterLabSession
 
 if TYPE_CHECKING:
     from re import Pattern
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
     from aioresponses import aioresponses
 
 
-class JupyterHubState(Enum):
+class JupyterState(Enum):
     LOGGED_OUT = "logged out"
     LOGGED_IN = "logged in"
     SPAWN_PENDING = "spawn pending"
@@ -27,7 +28,7 @@ class JupyterHubState(Enum):
 
 
 def _url(route: str, regex: bool = False) -> Union[str, Pattern[str]]:
-    """Construct a URL for JupyterHub."""
+    """Construct a URL for JupyterHub/Proxy."""
     if not regex:
         return f"{config.environment_url}/nb/{route}"
 
@@ -35,40 +36,40 @@ def _url(route: str, regex: bool = False) -> Union[str, Pattern[str]]:
     return re.compile(prefix + route)
 
 
-class MockJupyterHub:
-    """A mock JupyterHub state machine.
+class MockJupyter:
+    """A mock Jupyter state machine.
 
     This should be invoked via mocked HTTP calls so that tests can simulate
-    making REST calls to the real JupyterHub.
+    making REST calls to the real JupyterHub/Lab.
     """
 
     def __init__(self) -> None:
-        self.kernels: Dict[str, str] = {}
-        self.state: Dict[str, JupyterHubState] = {}
+        self.sessions: Dict[str, JupyterLabSession] = {}
+        self.state: Dict[str, JupyterState] = {}
 
     def login(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
-        self.state[user] = JupyterHubState.LOGGED_IN
+        self.state[user] = JupyterState.LOGGED_IN
         return CallbackResult(status=200)
 
     def hub(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
-        state = self.state.get(user, JupyterHubState.LOGGED_OUT)
-        if state == JupyterHubState.LOGGED_OUT:
+        state = self.state.get(user, JupyterState.LOGGED_OUT)
+        if state == JupyterState.LOGGED_OUT:
             redirect_to = _url("hub/login")
-        elif state == JupyterHubState.LOGGED_IN:
+        elif state == JupyterState.LOGGED_IN:
             redirect_to = _url("hub/spawn")
-        elif state == JupyterHubState.SPAWN_PENDING:
+        elif state == JupyterState.SPAWN_PENDING:
             redirect_to = _url(f"hub/spawn-pending/{user}")
-        elif state == JupyterHubState.LAB_RUNNING:
+        elif state == JupyterState.LAB_RUNNING:
             redirect_to = _url(f"hub/spawn-pending/{user}")
         return CallbackResult(status=307, headers={"Location": redirect_to})
 
     def spawn(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
-        state = self.state.get(user, JupyterHubState.LOGGED_OUT)
-        assert state == JupyterHubState.LOGGED_IN
-        self.state[user] = JupyterHubState.SPAWN_PENDING
+        state = self.state.get(user, JupyterState.LOGGED_OUT)
+        assert state == JupyterState.LOGGED_IN
+        self.state[user] = JupyterState.SPAWN_PENDING
         return CallbackResult(
             status=302,
             headers={"Location": f"/nb/hub/spawn-pending/{user}"},
@@ -77,9 +78,9 @@ class MockJupyterHub:
     def finish_spawn(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/hub/spawn-pending/{user}")
-        state = self.state.get(user, JupyterHubState.LOGGED_OUT)
-        assert state == JupyterHubState.SPAWN_PENDING
-        self.state[user] = JupyterHubState.LAB_RUNNING
+        state = self.state.get(user, JupyterState.LOGGED_OUT)
+        assert state == JupyterState.SPAWN_PENDING
+        self.state[user] = JupyterState.LAB_RUNNING
         return CallbackResult(
             status=307, headers={"Location": _url(f"user/{user}/lab")}
         )
@@ -87,34 +88,46 @@ class MockJupyterHub:
     def lab(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/user/{user}/lab")
-        state = self.state.get(user, JupyterHubState.LOGGED_OUT)
-        assert state == JupyterHubState.LAB_RUNNING
+        state = self.state.get(user, JupyterState.LOGGED_OUT)
+        assert state == JupyterState.LAB_RUNNING
         return CallbackResult(status=200)
 
     def delete_lab(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/users/{user}/server")
-        self.state[user] = JupyterHubState.LOGGED_OUT
+        self.state[user] = JupyterState.LOGGED_OUT
         return CallbackResult(status=202)
 
-    def create_kernel(self, url: str, **kwargs: Any) -> CallbackResult:
+    def create_session(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
-        assert str(url).endswith(f"/user/{user}/api/kernels")
-        assert user not in self.kernels
-        state = self.state.get(user, JupyterHubState.LOGGED_OUT)
-        assert state == JupyterHubState.LAB_RUNNING
-        assert kwargs["json"] == {"name": "LSST"}
-        kernel = uuid4().hex
-        self.kernels[user] = kernel
-        return CallbackResult(status=201, payload={"id": kernel})
+        assert str(url).endswith(f"/user/{user}/api/sessions")
+        assert user not in self.sessions
+        state = self.state.get(user, JupyterState.LOGGED_OUT)
+        assert state == JupyterState.LAB_RUNNING
+        assert kwargs["json"]["kernel"]["name"] == "LSST"
+        assert kwargs["json"]["name"] == "(no notebook)"
+        assert kwargs["json"]["type"] == "console"
+        session = JupyterLabSession(
+            session_id=uuid4().hex, kernel_id=uuid4().hex, websocket=None
+        )
+        self.sessions[user] = session
+        return CallbackResult(
+            status=201,
+            payload={
+                "id": session.session_id,
+                "kernel": {"id": session.kernel_id},
+            },
+        )
 
-    def delete_kernel(self, url: str, **kwargs: Any) -> CallbackResult:
+    def delete_session(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
-        kernel = self.kernels[user]
-        assert str(url).endswith(f"/user/{user}/api/kernels/{kernel}")
-        state = self.state.get(user, JupyterHubState.LOGGED_OUT)
-        assert state == JupyterHubState.LAB_RUNNING
-        del self.kernels[user]
+        session = self.sessions[user]
+        assert str(url).endswith(
+            f"/user/{user}/api/sessions/{session.session_id}"
+        )
+        state = self.state.get(user, JupyterState.LOGGED_OUT)
+        assert state == JupyterState.LAB_RUNNING
+        del self.sessions[user]
         return CallbackResult(status=204)
 
     @staticmethod
@@ -126,13 +139,13 @@ class MockJupyterHub:
         return user.decode()
 
 
-def mock_jupyterhub(mocked: aioresponses) -> None:
-    """Set up a mock JupyterHub that always returns success.
+def mock_jupyter(mocked: aioresponses) -> None:
+    """Set up a mock JupyterHub/Lab that always returns success.
 
     Currently only handles a lab spawn and then shutdown.  Behavior will
     eventually be configurable.
     """
-    mock = MockJupyterHub()
+    mock = MockJupyter()
     mocked.get(_url("hub/login"), callback=mock.login, repeat=True)
     mocked.get(_url("hub"), callback=mock.hub, repeat=True)
     mocked.get(_url("hub/spawn"), repeat=True)
@@ -151,12 +164,12 @@ def mock_jupyterhub(mocked: aioresponses) -> None:
         repeat=True,
     )
     mocked.post(
-        _url("user/[^/]+/api/kernels", regex=True),
-        callback=mock.create_kernel,
+        _url("user/[^/]+/api/sessions", regex=True),
+        callback=mock.create_session,
         repeat=True,
     )
     mocked.delete(
-        _url("user/[^/]+/api/kernels/[^/]+$", regex=True),
-        callback=mock.delete_kernel,
+        _url("user/[^/]+/api/sessions/[^/]+$", regex=True),
+        callback=mock.delete_session,
         repeat=True,
     )

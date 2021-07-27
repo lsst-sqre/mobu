@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 from aiohttp import ClientSession
+from aiohttp.client_exceptions import ClientConnectorError
 from aiojobs import Scheduler
 from aiojobs._job import Job
 
@@ -108,7 +109,13 @@ class Monkey:
                 self.state = MonkeyState.STOPPING
                 self.log.info("Shutting down")
                 run = False
-                await self.business.stop()
+                try:
+                    await self.business.stop()
+                except ClientConnectorError:
+                    # Ripping down async sessions can cause various parts of
+                    #  a communication in flight to fail.  Just swallow it,
+                    #  since we're shutting down anyway.
+                    pass
                 self.state = MonkeyState.FINISHED
             except Exception as e:
                 self.state = MonkeyState.ERROR
@@ -129,7 +136,7 @@ class Monkey:
         if self._job:
             try:
                 await self._job.close(timeout=0)
-            except asyncio.TimeoutError:
+            except (asyncio.TimeoutError, asyncio.exceptions.CancelledError):
                 # Close will normally wait for a timeout to occur before
                 # throwing a timeout exception, but we'll just shut it down
                 # right away and eat the exception.

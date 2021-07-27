@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from aioresponses import aioresponses
@@ -14,7 +14,7 @@ from mobu import main
 from mobu.config import config
 from mobu.jupyterclient import JupyterClient
 from tests.support.gafaelfawr import make_gafaelfawr_token
-from tests.support.jupyterhub import mock_jupyterhub
+from tests.support.jupyter import mock_jupyter
 
 if TYPE_CHECKING:
     from typing import AsyncIterator, Iterator
@@ -59,15 +59,19 @@ async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture
-def jupyterhub(mock_aioresponses: aioresponses) -> Iterator[None]:
-    """Mock out JupyterHub."""
-    mock_jupyterhub(mock_aioresponses)
+def jupyter(mock_aioresponses: aioresponses) -> Iterator[None]:
+    """Mock out JupyterHub/Lab."""
+    mock_jupyter(mock_aioresponses)
 
     # aioresponses has no mechanism to mock ws_connect, so we can't properly
     # test JupyterClient.run_python.  For now, just mock it out entirely.
     with patch.object(JupyterClient, "run_python") as mock:
         mock.return_value = "4"
-        yield
+        # Same problem, but up a layer now that we're using sessions and
+        # reusing the websocket.
+        with patch.object(JupyterClient, "_websocket_connect") as mock2:
+            mock2.return_value = AsyncMock()
+            yield
 
 
 @pytest.fixture

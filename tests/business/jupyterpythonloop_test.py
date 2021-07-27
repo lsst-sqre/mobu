@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 @pytest.mark.asyncio
 async def test_run(
-    client: AsyncClient, jupyterhub: None, mock_aioresponses: aioresponses
+    client: AsyncClient, jupyter: None, mock_aioresponses: aioresponses
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
 
@@ -28,6 +28,7 @@ async def test_run(
             "count": 1,
             "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
             "scopes": ["exec:notebook"],
+            "options": {"max_executions": 3},
             "business": "JupyterPythonLoop",
         },
     )
@@ -40,7 +41,7 @@ async def test_run(
         "business": {
             "failure_count": 0,
             "name": "JupyterPythonLoop",
-            "success_count": 0,
+            "success_count": ANY,
             "timings": ANY,
         },
         "restart": False,

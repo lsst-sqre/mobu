@@ -9,14 +9,13 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
 import git
 
-from ..jupyterclient import NotebookException
+from ..jupyterclient import JupyterLabSession, NotebookException
 from ..models.business import BusinessData
 from .jupyterloginloop import JupyterLoginLoop
 
@@ -44,7 +43,6 @@ class NotebookRunner(JupyterLoginLoop):
         self.notebook: Optional[os.DirEntry] = None
         self.running_code: Optional[str] = None
         self._failed_notebooks: List[str] = []
-        self._last_login = datetime.fromtimestamp(0, tz=timezone.utc)
         self._repo_dir = TemporaryDirectory()
         self._repo: Optional[git.Repo] = None
         self._notebook_iterator: Optional[Iterator[os.DirEntry]] = None
@@ -80,7 +78,6 @@ class NotebookRunner(JupyterLoginLoop):
         self._notebook_iterator = os.scandir(self._repo_dir.name)
         self.logger.info("Repository cloned and ready")
         await super().startup()
-        self._last_login = self._now()
         await self.initial_delete_lab()
 
     def clone_repo(self) -> None:
@@ -100,7 +97,7 @@ class NotebookRunner(JupyterLoginLoop):
 
         await self.ensure_lab()
         await self.lab_settle()
-        kernel = await self.create_kernel()
+        session = await self.create_session()
 
         self.logger.info(f"Starting notebook: {self.notebook.name}")
         cells = self.read_notebook(self.notebook.name, self.notebook.path)
@@ -108,15 +105,15 @@ class NotebookRunner(JupyterLoginLoop):
             iteration = f"{count + 1}/{self.config.notebook_iterations}"
             msg = f"Notebook '{self.notebook.name}' iteration {iteration}"
             self.logger.info(msg)
-
-            await self._reauth_if_needed()
+            await self.reauth_if_needed()
 
             for cell in cells:
                 self.running_code = "".join(cell["source"])
-                await self.execute_code(kernel, self.running_code)
+                await self.execute_code(session, self.running_code)
+                await self.execution_idle()
 
         self.running_code = None
-        await self.delete_kernel(kernel)
+        await self.delete_session(session)
         self.logger.info(f"Success running notebook: {self.notebook.name}")
 
     async def lab_settle(self) -> None:
@@ -129,23 +126,28 @@ class NotebookRunner(JupyterLoginLoop):
             cells = json.loads(notebook_text)["cells"]
         return [c for c in cells if c["cell_type"] == "code"]
 
-    async def create_kernel(self) -> str:
-        self.logger.info("create_kernel")
-        with self.timings.start("create_kernel"):
-            kernel = await self._client.create_kernel()
-        return kernel
+    async def create_session(self) -> JupyterLabSession:
+        self.logger.info("create_session")
+        notebook_name = self.notebook.name if self.notebook else None
+        with self.timings.start("create_session"):
+            session = await self._client.create_labsession(
+                notebook_name=notebook_name,
+            )
+        return session
 
-    async def execute_code(self, kernel: str, code: str) -> None:
+    async def execute_code(
+        self, session: JupyterLabSession, code: str
+    ) -> None:
         self.logger.info("Executing:\n%s\n", code)
         with self.timings.start("run_code", {"code": code}) as sw:
-            reply = await self._client.run_python(kernel, code)
+            reply = await self._client.run_python(session, code)
             sw.annotation["result"] = reply
         self.logger.info(f"Result:\n{reply}\n")
 
-    async def delete_kernel(self, kernel: str) -> None:
-        self.logger.info(f"Deleting kernel {kernel}")
-        with self.timings.start("delete_kernel"):
-            await self._client.delete_kernel(kernel)
+    async def delete_session(self, session: JupyterLabSession) -> None:
+        self.logger.info(f"Deleting session {session}")
+        with self.timings.start("delete_session"):
+            await self._client.delete_labsession(session)
 
     def dump(self) -> BusinessData:
         data = super().dump()
@@ -165,18 +167,3 @@ class NotebookRunner(JupyterLoginLoop):
             )
             self._notebook_iterator = os.scandir(self._repo_dir.name)
             self._next_notebook()
-
-    def _now(self) -> datetime:
-        return datetime.now(timezone.utc)
-
-    async def _reauth_if_needed(self) -> None:
-        now = self._now()
-        elapsed = now - self._last_login
-        if elapsed > timedelta(minutes=45):
-            await self.hub_reauth()
-            self._last_login = now
-
-    async def hub_reauth(self) -> None:
-        self.logger.info("Reauthenticating to Hub")
-        with self.timings.start("hub_reauth"):
-            await self._client.hub_login()

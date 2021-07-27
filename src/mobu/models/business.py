@@ -39,6 +39,13 @@ class BusinessConfig(BaseModel):
         example=10,
     )
 
+    code: str = Field(
+        "print(2+2)",
+        title="Python code to execute",
+        description="Only used by JupyterPythonLoop",
+        example="print(2+2)",
+    )
+
     repo_url: str = Field(
         NOTEBOOK_REPO_URL,
         title="Git URL of notebook repository to execute",
@@ -52,10 +59,39 @@ class BusinessConfig(BaseModel):
     )
 
     settle_time: int = Field(
-        0,
+        10,
         title="How long to wait after lab creation in seconds",
         description="Only used by the NotebookRunner",
         example=10,
+    )
+
+    lab_idle_time: int = Field(
+        20,
+        title="How long to wait at end of lab loop in seconds",
+        description="Used by JupyterLoginLoop",
+        example=20,
+    )
+
+    execution_idle_time: int = Field(
+        0,
+        title="How long to wait between cell executions in seconds",
+        description="Used by JupyterPythonLoop and NotebookRunner",
+        example=1,
+    )
+
+    reauth_interval: int = Field(
+        2700,
+        title="Time between reauthentication attempts in seconds",
+        description="Used by JupyterLoginLoop, JupyterPythonLoop, and"
+        " NotebookRunner",
+        example=2700,
+    )
+
+    max_executions: int = Field(
+        25,
+        title="How many cells to execute in a given kernel session",
+        description="Only used by JupyterPythonLoop",
+        example=25,
     )
 
 

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 @pytest.mark.asyncio
 async def test_run(
-    client: AsyncClient, jupyterhub: None, mock_aioresponses: aioresponses
+    client: AsyncClient, jupyter: None, mock_aioresponses: aioresponses
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
 
@@ -28,6 +28,7 @@ async def test_run(
             "count": 1,
             "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
             "scopes": ["exec:notebook"],
+            "options": {"idle_time": 2},
             "business": "JupyterLoginLoop",
         },
     )

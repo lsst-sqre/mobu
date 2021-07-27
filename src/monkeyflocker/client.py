@@ -67,17 +67,17 @@ class MonkeyflockerClient:
         assert self._session, "Must be used as a context manager"
         with spec_file.open("r") as f:
             spec = yaml.safe_load(f)
-        self._logger.info("Starting flock %s", spec["name"])
+        self._logger.info(f"Starting flock {spec['name']}")
         url = urljoin(self._base_url, "/mobu/flocks")
         await self._session.put(url, json=spec)
-        self._logger.info("Flock %s started", spec["name"])
+        self._logger.info(f"Flock {spec['name']} started")
 
     async def report(self, name: str, output: Path) -> None:
         """Generate status and output data for all monkeys."""
         assert self._session, "Must be used as a context manager"
         output.mkdir(parents=True, exist_ok=True)
 
-        self._logger.info("Getting status of monkeys in flock %s", name)
+        self._logger.info(f"Getting status of monkeys in flock {name}")
         flock_url = urljoin(self._base_url, f"/mobu/flocks/{name}")
         async with self._session.get(flock_url) as r:
             data = await r.json()
@@ -85,7 +85,7 @@ class MonkeyflockerClient:
 
         for monkey in monkeys:
             user = monkey["name"]
-            self._logger.info("Requesting log for %s", user)
+            self._logger.info(f"Requesting log for {user}")
             log_url = flock_url + f"/monkeys/{user}/log"
             async with self._session.get(log_url) as r:
                 (output / f"{user}_log.txt").write_text(await r.text())

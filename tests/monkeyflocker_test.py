@@ -30,7 +30,7 @@ from aioresponses import aioresponses
 from mobu.config import config
 from mobu.main import app
 from tests.support.gafaelfawr import make_gafaelfawr_token, mock_gafaelfawr
-from tests.support.jupyterhub import mock_jupyterhub
+from tests.support.jupyter import mock_jupyter
 
 
 @app.on_event("startup")
@@ -39,7 +39,7 @@ async def startup_event() -> None:
     mocked = aioresponses()
     mocked.start()
     mock_gafaelfawr(mocked)
-    mock_jupyterhub(mocked)
+    mock_jupyter(mocked)
 """
 
 FLOCK_CONFIG = """

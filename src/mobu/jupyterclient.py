@@ -10,17 +10,23 @@ import asyncio
 import random
 import re
 import string
+from dataclasses import dataclass
 from http.cookies import BaseCookie
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from aiohttp import ClientResponse, ClientSession, TCPConnector
+from aiohttp import (
+    ClientResponse,
+    ClientSession,
+    ClientWebSocketResponse,
+    TCPConnector,
+)
 
 from .config import config
 from .exceptions import NotebookException
 
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, Optional
 
     from aiohttp.client import _RequestContextManager, _WSRequestContextManager
     from structlog import BoundLogger
@@ -29,6 +35,16 @@ if TYPE_CHECKING:
     from .models.user import AuthenticatedUser
 
 __all__ = ["JupyterClient"]
+
+
+@dataclass(frozen=True)
+class JupyterLabSession:
+    """This holds the information a client needs to talk to the Lab in order
+    to execute code."""
+
+    session_id: str
+    kernel_id: str
+    websocket: Optional[ClientWebSocketResponse]
 
 
 class JupyterClientSession:
@@ -212,42 +228,71 @@ class JupyterClient:
             if r.status not in [200, 202, 204]:
                 await self._raise_error("Error deleting lab", r)
 
-    async def create_kernel(self, kernel_name: str = "LSST") -> str:
-        kernel_url = (
-            self.jupyter_url + f"user/{self.user.username}/api/kernels"
+    async def create_labsession(
+        self, kernel_name: str = "LSST", notebook_name: Optional[str] = None
+    ) -> JupyterLabSession:
+        session_url = (
+            self.jupyter_url + f"user/{self.user.username}/api/sessions"
         )
-        body = {"name": kernel_name}
+        session_type = "notebook" if notebook_name else "console"
+        body = {
+            "kernel": {"name": kernel_name},
+            "name": notebook_name or "(no notebook)",
+            "path": uuid4().hex,
+            "type": session_type,
+        }
 
-        async with self.session.post(kernel_url, json=body) as r:
+        async with self.session.post(session_url, json=body) as r:
             if r.status != 201:
-                await self._raise_error("Error creating kernel", r)
+                await self._raise_error("Error creating session", r)
 
             response = await r.json()
-            return response["id"]
+            session_id = response["id"]
+            kernel_id = response["kernel"]["id"]
+            ws = await self._websocket_connect(kernel_id)
+            labsession = JupyterLabSession(
+                session_id=session_id, kernel_id=kernel_id, websocket=ws
+            )
+            self.log.info(f"Created JupyterLabSession {labsession}")
+            return labsession
 
-    async def delete_kernel(self, kernel_id: str) -> None:
-        kernel_url = (
+    async def _websocket_connect(
+        self, kernel_id: str
+    ) -> ClientWebSocketResponse:
+        channels_url = (
             self.jupyter_url
-            + f"user/{self.user.username}/api/kernels/{kernel_id}"
+            + f"user/{self.user.username}/api/kernels/"
+            + f"{kernel_id}/channels"
         )
-        async with self.session.delete(kernel_url, raise_for_status=True) as r:
+        self.log.info(f"Attempting WebSocket connection to {channels_url}")
+        return await self.session.ws_connect(channels_url)
+
+    async def delete_labsession(self, session: JupyterLabSession) -> None:
+        session_url = (
+            self.jupyter_url
+            + f"user/{self.user.username}/api/sessions/{session.session_id}"
+        )
+        async with self.session.delete(
+            session_url, raise_for_status=True
+        ) as r:
             if r.status != 204:
-                self.log.warning(f"Delete kernel {kernel_id}: {r}")
+                self.log.warning(f"Delete session {session}: {r}")
+            if session.websocket is not None:
+                await session.websocket.close()
             return
 
-    async def run_python(self, kernel_id: str, code: str) -> str:
-        kernel_url = (
-            self.jupyter_url
-            + f"user/{self.user.username}/api/kernels/{kernel_id}/channels"
-        )
+    async def run_python(self, session: JupyterLabSession, code: str) -> str:
+        if not session.websocket:
+            self.log.error("Cannot run_python without a websocket!")
+            raise Exception("No WebSocket for code execution: {session}")
 
         msg_id = uuid4().hex
 
         msg = {
             "header": {
-                "username": "",
+                "username": self.user.username,
                 "version": "5.0",
-                "session": "",
+                "session": session.session_id,
                 "msg_id": msg_id,
                 "msg_type": "execute_request",
             },
@@ -264,29 +309,27 @@ class JupyterClient:
             "buffers": {},
         }
 
-        async with self.session.ws_connect(kernel_url) as ws:
-            await ws.send_json(msg)
+        await session.websocket.send_json(msg)
 
-            while True:
-                r = await ws.receive_json()
-                self.log.debug(f"Recieved kernel message: {r}")
-                msg_type = r["msg_type"]
-                if msg_type == "error":
-                    error_message = "".join(r["content"]["traceback"])
-                    raise NotebookException(self._ansi_escape(error_message))
-                elif (
-                    msg_type == "stream"
-                    and msg_id == r["parent_header"]["msg_id"]
-                ):
-                    return r["content"]["text"]
-                elif msg_type == "execute_reply":
-                    status = r["content"]["status"]
-                    if status == "ok":
-                        return ""
-                    else:
-                        raise NotebookException(
-                            f"Error content status is {status}"
-                        )
+        while True:
+            r = await session.websocket.receive_json()
+            self.log.debug(f"Recieved kernel message: {r}")
+            msg_type = r["msg_type"]
+            if msg_type == "error":
+                error_message = "".join(r["content"]["traceback"])
+                raise NotebookException(self._ansi_escape(error_message))
+            elif (
+                msg_type == "stream" and msg_id == r["parent_header"]["msg_id"]
+            ):
+                return r["content"]["text"]
+            elif msg_type == "execute_reply":
+                status = r["content"]["status"]
+                if status == "ok":
+                    return ""
+                else:
+                    raise NotebookException(
+                        f"Error content status is {status}"
+                    )
 
     async def _raise_error(self, msg: str, r: ClientResponse) -> None:
         raise Exception(f"{msg}: {r.status} {r.url}: {r.headers}")
