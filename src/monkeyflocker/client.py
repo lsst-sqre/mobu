@@ -67,7 +67,7 @@ class MonkeyflockerClient:
         assert self._session, "Must be used as a context manager"
         with spec_file.open("r") as f:
             spec = yaml.safe_load(f)
-        self._logger.info("Starting flock %s", spec["name"])
+        self._logger.info(f"Starting flock {spec['name']}")
         url = urljoin(self._base_url, "/mobu/flocks")
         await self._session.put(url, json=spec)
         self._logger.info("Flock %s started", spec["name"])
