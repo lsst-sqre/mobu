@@ -42,9 +42,9 @@ class JupyterLabSession:
     """This holds the information a client needs to talk to the Lab in order
     to execute code."""
 
-    session_id: str = ""
-    kernel_id: str = ""
-    websocket: Optional[ClientWebSocketResponse] = None
+    session_id: str
+    kernel_id: str
+    websocket: Optional[ClientWebSocketResponse]
 
 
 class JupyterClientSession:
@@ -229,14 +229,12 @@ class JupyterClient:
                 await self._raise_error("Error deleting lab", r)
 
     async def create_labsession(
-        self, kernel_name: str = "LSST", notebook_name: str = ""
+        self, kernel_name: str = "LSST", notebook_name: Optional[str] = None
     ) -> JupyterLabSession:
         session_url = (
             self.jupyter_url + f"user/{self.user.username}/api/sessions"
         )
-        session_type = "console"
-        if notebook_name != "":
-            session_type = "notebook"
+        session_type = "notebook" if notebook_name else "console"
         body = {
             "kernel": {"name": kernel_name},
             "name": notebook_name or "(no notebook)",
@@ -260,9 +258,7 @@ class JupyterClient:
 
     async def _websocket_connect(
         self, kernel_id: str
-    ) -> Optional[ClientWebSocketResponse]:
-        # It's Optional for easier mocking: we will mock out this call in
-        #  the test suite rather than trying to mock the WebSocket itself.
+    ) -> ClientWebSocketResponse:
         channels_url = (
             self.jupyter_url
             + f"user/{self.user.username}/api/kernels/"

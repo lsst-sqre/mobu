@@ -44,7 +44,7 @@ class MockJupyter:
     """
 
     def __init__(self) -> None:
-        self.sessions: Dict[str, Any] = {}
+        self.sessions: Dict[str, JupyterLabSession] = {}
         self.state: Dict[str, JupyterState] = {}
 
     def login(self, url: str, **kwargs: Any) -> CallbackResult:

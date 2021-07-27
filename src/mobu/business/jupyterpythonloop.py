@@ -14,10 +14,11 @@ class JupyterPythonLoop(JupyterLoginLoop):
     """Run simple Python code in a loop inside a lab kernel."""
 
     async def lab_business(self) -> None:
+        await self.reauth_if_needed()
         session = await self.create_session()
         for count in range(self.config.max_executions):
             await self.execute_code(session, self.config.code)
-            await self.idle()
+            await self.execution_idle()
         await self.delete_session(session)
 
     async def create_session(self) -> JupyterLabSession:

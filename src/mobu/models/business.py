@@ -65,12 +65,26 @@ class BusinessConfig(BaseModel):
         example=10,
     )
 
-    idle_time: int = Field(
+    lab_idle_time: int = Field(
         20,
         title="How long to wait at end of lab loop in seconds",
-        description="Used by JupyterLoginLoop, JupyterPythonLoop, "
-        " and NotebookRunner",
+        description="Used by JupyterLoginLoop",
         example=20,
+    )
+
+    execution_idle_time: int = Field(
+        0,
+        title="How long to wait between cell executions in seconds",
+        description="Used by JupyterPythonLoop and NotebookRunner",
+        example=1,
+    )
+
+    reauth_interval: int = Field(
+        2700,
+        title="Time between reauthentication attempts in seconds",
+        description="Used by JupyterLoginLoop, JupyterPythonLoop, and"
+        " NotebookRunner",
+        example=2700,
     )
 
     max_executions: int = Field(
