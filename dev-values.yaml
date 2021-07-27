@@ -1,7 +1,9 @@
-mobu_secrets_path: "secret/k8s_operator/minikube.lsst.codes/mobu"
-environment_url: "https://minikube.lsst.codes"
-host: "minikube.lsst.codes"
+environmentUrl: "https://minikube.lsst.codes"
+vaultSecretsPath: "secret/k8s_operator/minikube.lsst.codes/mobu"
+
+ingress:
+  host: "minikube.lsst.codes"
 
 image:
-  tag: dev
-  pullPolicy: Never
+  tag: "dev"
+  pullPolicy: "Never"

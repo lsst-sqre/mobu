@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 import git
 
 from ..jupyterclient import NotebookException
+from ..models.business import BusinessData
 from .jupyterloginloop import JupyterLoginLoop
 
 if TYPE_CHECKING:
@@ -24,28 +25,29 @@ if TYPE_CHECKING:
 
     from structlog import BoundLogger
 
-    from ..user import User
+    from ..models.business import BusinessConfig
+    from ..models.user import AuthenticatedUser
 
 __all__ = ["NotebookRunner"]
-
-REPO_URL = "https://github.com/lsst-sqre/notebook-demo.git"
-REPO_BRANCH = "prod"
 
 
 class NotebookRunner(JupyterLoginLoop):
     """Start a Jupyter lab and run a sequence of notebooks."""
 
     def __init__(
-        self, logger: BoundLogger, options: Dict[str, Any], user: User
+        self,
+        logger: BoundLogger,
+        business_config: BusinessConfig,
+        user: AuthenticatedUser,
     ) -> None:
-        super().__init__(logger, options, user)
+        super().__init__(logger, business_config, user)
+        self.notebook: Optional[os.DirEntry] = None
+        self.running_code: Optional[str] = None
         self._failed_notebooks: List[str] = []
         self._last_login = datetime.fromtimestamp(0, tz=timezone.utc)
         self._repo_dir = TemporaryDirectory()
         self._repo: Optional[git.Repo] = None
         self._notebook_iterator: Optional[Iterator[os.DirEntry]] = None
-        self.notebook: Optional[os.DirEntry] = None
-        self.running_code: Optional[str] = None
 
     async def run(self) -> None:
         self.logger.info("Starting up...")
@@ -82,8 +84,8 @@ class NotebookRunner(JupyterLoginLoop):
         await self.initial_delete_lab()
 
     def clone_repo(self) -> None:
-        url = self.options.get("repo_url", REPO_URL)
-        branch = self.options.get("repo_branch", REPO_BRANCH)
+        url = self.config.repo_url
+        branch = self.config.repo_branch
         path = self._repo_dir.name
         with self.timings.start("clone_repo"):
             self._repo = git.Repo.clone_from(url, path, branch=branch)
@@ -102,9 +104,8 @@ class NotebookRunner(JupyterLoginLoop):
 
         self.logger.info(f"Starting notebook: {self.notebook.name}")
         cells = self.read_notebook(self.notebook.name, self.notebook.path)
-        nb_iterations = self.options.get("notebook_iterations", 1)
-        for count in range(nb_iterations):
-            iteration = f"{count + 1}/{nb_iterations}"
+        for count in range(self.config.notebook_iterations):
+            iteration = f"{count + 1}/{self.config.notebook_iterations}"
             msg = f"Notebook '{self.notebook.name}' iteration {iteration}"
             self.logger.info(msg)
 
@@ -120,7 +121,7 @@ class NotebookRunner(JupyterLoginLoop):
 
     async def lab_settle(self) -> None:
         with self.timings.start("lab_settle"):
-            await asyncio.sleep(self.options.get("settle_time", 0))
+            await asyncio.sleep(self.config.settle_time)
 
     def read_notebook(self, name: str, path: str) -> List[Dict[str, Any]]:
         with self.timings.start(f"read_notebook:{name}"):
@@ -146,11 +147,11 @@ class NotebookRunner(JupyterLoginLoop):
         with self.timings.start("delete_kernel"):
             await self._client.delete_kernel(kernel)
 
-    def dump(self) -> dict:
-        r = super().dump()
-        r["running_code"] = self.running_code
-        r["notebook"] = self.notebook.name if self.notebook else None
-        return r
+    def dump(self) -> BusinessData:
+        data = super().dump()
+        data.running_code = self.running_code
+        data.notebook = self.notebook.name if self.notebook else None
+        return data
 
     def _next_notebook(self) -> None:
         assert self._notebook_iterator

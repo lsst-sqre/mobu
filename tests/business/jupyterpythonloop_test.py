@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
+from unittest.mock import ANY
 
 import pytest
 
@@ -20,36 +22,52 @@ async def test_run(
     mock_gafaelfawr(mock_aioresponses)
 
     r = await client.post(
-        "/mobu/user",
+        "/mobu/flocks",
         json={
             "name": "test",
+            "count": 1,
+            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "scopes": ["exec:notebook"],
             "business": "JupyterPythonLoop",
-            "user": {
-                "username": "someuser",
-                "uidnumber": 1000,
-                "scopes": ["exec:notebook"],
-            },
         },
     )
+    assert r.status_code == 201
+
+    r = await client.get("/mobu/flocks/test/monkeys/testuser1")
     assert r.status_code == 200
-    assert r.json() == {"user": "test"}
+    assert r.json() == {
+        "name": "testuser1",
+        "business": {
+            "failure_count": 0,
+            "name": "JupyterPythonLoop",
+            "success_count": 0,
+            "timings": ANY,
+        },
+        "restart": False,
+        "state": ANY,
+        "user": {
+            "scopes": ["exec:notebook"],
+            "token": ANY,
+            "uidnumber": 1000,
+            "username": "testuser1",
+        },
+    }
 
     # Wait until we've finished at least one loop.  Make sure nothing fails.
     finished = False
     while not finished:
-        r = await client.get("/mobu/user/test")
+        await asyncio.sleep(1)
+        r = await client.get("/mobu/flocks/test/monkeys/testuser1")
         assert r.status_code == 200
         data = r.json()
         assert data["business"]["failure_count"] == 0
         if data["business"]["success_count"] > 0:
             finished = True
 
-    # Get the client log.
-    r = await client.get("/mobu/user/test/log")
+    # Get the client log and check no exceptions were thrown.
+    r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
     assert r.status_code == 200
-
-    # Check that no exceptions were logged.
     assert "Exception thrown" not in r.text
 
-    # Intentionally do not delete the monkey to check whether aiojobs will
-    # shut down properly when the server is shut down.
+    r = await client.delete("/mobu/flocks/test")
+    assert r.status_code == 204

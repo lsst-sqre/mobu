@@ -17,4 +17,5 @@ pytest
 pytest-asyncio
 pytest-cov
 pytest-httpx
+types-PyYAML
 types-requests

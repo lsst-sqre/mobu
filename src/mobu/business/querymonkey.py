@@ -14,11 +14,10 @@ from ..config import config
 from .base import Business
 
 if TYPE_CHECKING:
-    from typing import Any, Dict
-
     from structlog import BoundLogger
 
-    from ..user import User
+    from ..models.business import BusinessConfig
+    from ..models.user import AuthenticatedUser
 
 
 def limit_dec(x: int) -> int:
@@ -42,9 +41,12 @@ class QueryMonkey(Business):
     """Run queries against TAP."""
 
     def __init__(
-        self, logger: BoundLogger, options: Dict[str, Any], user: User
+        self,
+        logger: BoundLogger,
+        business_config: BusinessConfig,
+        user: AuthenticatedUser,
     ) -> None:
-        super().__init__(logger, options, user)
+        super().__init__(logger, business_config, user)
         self._client = self._make_client(user.token)
         template_path = Path(__file__).parent.parent / "static" / "querymonkey"
         self._env = jinja2.Environment(

@@ -23,16 +23,21 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(autouse=True)
-def admin_token() -> Iterator[str]:
-    """Create a Gafaelfawr admin token and add it to the configuration.
+def configure() -> Iterator[None]:
+    """Set minimal configuration settings.
 
-    This is an autouse fixture, so it will ensure that each test gets a unique
-    admin token that is replaced after the test runs.
+    Add an environment URL for testing purposes and create a Gafaelfawr admin
+    token and add it to the configuration.
+
+    This is an autouse fixture, so it will ensure that each test gets the
+    minimal test configuration and a unique admin token that is replaced after
+    the test runs.
     """
-    admin_token = make_gafaelfawr_token()
-    config.gafaelfawr_token = admin_token
-    yield admin_token
-    config.gafaelfawr_token = "None"
+    config.environment_url = "https://test.example.com/"
+    config.gafaelfawr_token = make_gafaelfawr_token()
+    yield
+    config.environment_url = ""
+    config.gafaelfawr_token = None
 
 
 @pytest.fixture
@@ -67,5 +72,6 @@ def jupyterhub(mock_aioresponses: aioresponses) -> Iterator[None]:
 
 @pytest.fixture
 def mock_aioresponses() -> Iterator[aioresponses]:
+    """Set up aioresponses for aiohttp mocking."""
     with aioresponses() as mocked:
         yield mocked

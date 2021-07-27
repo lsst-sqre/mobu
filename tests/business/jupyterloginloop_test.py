@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 from unittest.mock import ANY
 
@@ -21,23 +22,32 @@ async def test_run(
     mock_gafaelfawr(mock_aioresponses)
 
     r = await client.post(
-        "/mobu/user",
+        "/mobu/flocks",
         json={
             "name": "test",
+            "count": 1,
+            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "scopes": ["exec:notebook"],
             "business": "JupyterLoginLoop",
-            "user": {
-                "username": "someuser",
-                "uidnumber": 1000,
-                "scopes": ["exec:notebook"],
-            },
         },
     )
-    assert r.status_code == 200
-    assert r.json() == {"user": "test"}
+    assert r.status_code == 201
 
-    r = await client.get("/mobu/user/test")
+    # Wait until we've finished at least one loop.  Make sure nothing fails.
+    finished = False
+    while not finished:
+        await asyncio.sleep(1)
+        r = await client.get("/mobu/flocks/test/monkeys/testuser1")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["business"]["failure_count"] == 0
+        if data["business"]["success_count"] > 0:
+            finished = True
+
+    r = await client.get("/mobu/flocks/test/monkeys/testuser1")
     assert r.status_code == 200
     assert r.json() == {
+        "name": "testuser1",
         "business": {
             "failure_count": 0,
             "name": "JupyterLoginLoop",
@@ -50,21 +60,14 @@ async def test_run(
             "scopes": ["exec:notebook"],
             "token": ANY,
             "uidnumber": 1000,
-            "username": "someuser",
+            "username": "testuser1",
         },
     }
 
-    r = await client.get("/mobu/user/test/log")
+    r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
     assert r.status_code == 200
-    assert "text/plain" in r.headers["Content-Type"]
-    assert "filename" in r.headers["Content-Disposition"]
-    assert "test-" in r.headers["Content-Disposition"]
     assert "Starting up" in r.text
+    assert "Exception thrown" not in r.text
 
-    r = await client.delete("/mobu/user/test")
+    r = await client.delete("/mobu/flocks/test")
     assert r.status_code == 204
-
-    r = await client.get("/mobu/user/test")
-    assert r.status_code == 404
-    r = await client.get("/mobu/user/test/log")
-    assert r.status_code == 404

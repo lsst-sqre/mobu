@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from aiohttp import ClientSession
 from aiojobs import Scheduler, create_scheduler
 
-from ..business.base import Business
-from ..business.jupyterjitterloginloop import JupyterJitterLoginLoop
-from ..business.jupyterloginloop import JupyterLoginLoop
-from ..business.jupyterpythonloop import JupyterPythonLoop
-from ..business.notebookrunner import NotebookRunner
-from ..business.querymonkey import QueryMonkey
-from ..monkey import Monkey
-from ..user import User
+from ..exceptions import FlockNotFoundException
+from ..flock import Flock
+from ..models.flock import FlockConfig
 
 __all__ = ["MonkeyBusinessManager", "monkey_business_manager"]
 
@@ -23,7 +18,7 @@ class MonkeyBusinessManager:
     """Manages all of the running monkeys."""
 
     def __init__(self) -> None:
-        self._monkeys: Dict[str, Monkey] = {}
+        self._flocks: Dict[str, Flock] = {}
         self._scheduler: Optional[Scheduler] = None
         self._session: Optional[ClientSession] = None
 
@@ -41,60 +36,33 @@ class MonkeyBusinessManager:
         if self._session:
             await self._session.close()
             self._session = None
-        self._monkeys.clear()
+        self._flocks.clear()
 
-    def fetch_monkey(self, name: str) -> Monkey:
-        return self._monkeys[name]
-
-    def list_monkeys(self) -> List[str]:
-        return list(self._monkeys.keys())
-
-    async def create_monkey(self, body: Dict[str, Any]) -> Monkey:
+    async def start_flock(self, flock_config: FlockConfig) -> Flock:
         if self._scheduler is None or not self._session:
             raise RuntimeError("MonkeyBusinessManager not initialized")
+        flock = Flock(flock_config, self._scheduler, self._session)
+        if flock.name in self._flocks:
+            await self._flocks[flock.name].stop()
+        self._flocks[flock.name] = flock
+        await flock.start()
+        return flock
 
-        name = body["name"]
-        business = body["business"]
-        user_config = body["user"]
-        options = body.get("options", {})
+    def get_flock(self, name: str) -> Flock:
+        flock = self._flocks.get(name)
+        if flock is None:
+            raise FlockNotFoundException(name)
+        return flock
 
-        username = user_config["username"]
-        uidnumber = user_config["uidnumber"]
-        scopes = user_config["scopes"]
+    def list_flocks(self) -> List[str]:
+        return sorted(self._flocks.keys())
 
-        user = await User.create(username, uidnumber, scopes, self._session)
-
-        # Find the right business class and create the monkey.
-        monkey = None
-        businesses = [
-            Business,
-            JupyterLoginLoop,
-            JupyterJitterLoginLoop,
-            JupyterPythonLoop,
-            NotebookRunner,
-            QueryMonkey,
-        ]
-        for b in businesses:
-            if business == b.__name__:
-                monkey = Monkey(name, user, b, options, self._session)
-
-        # If we fell through, we have no matching business class.
-        if not monkey:
-            raise ValueError(f"Unknown business {business}")
-
-        # Start and manage the monkey.
-        await self.release_monkey(monkey.name)
-        self._monkeys[monkey.name] = monkey
-        await monkey.start(self._scheduler)
-
-        # Return the monkey in case the caller wants to examine it.
-        return monkey
-
-    async def release_monkey(self, name: str) -> None:
-        monkey = self._monkeys.get(name, None)
-        if monkey is not None:
-            await monkey.stop()
-            del self._monkeys[name]
+    async def stop_flock(self, name: str) -> None:
+        flock = self._flocks.get(name)
+        if flock is None:
+            raise FlockNotFoundException(name)
+        await flock.stop()
+        del self._flocks[name]
 
 
 monkey_business_manager = MonkeyBusinessManager()

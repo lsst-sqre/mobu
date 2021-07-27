@@ -5,14 +5,14 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
+from ..models.business import BusinessData
 from ..timings import Timings
 
 if TYPE_CHECKING:
-    from typing import Any, Dict
-
     from structlog import BoundLogger
 
-    from ..user import User
+    from ..models.business import BusinessConfig
+    from ..models.user import AuthenticatedUser
 
 __all__ = ["Business"]
 
@@ -31,10 +31,13 @@ class Business:
     """
 
     def __init__(
-        self, logger: BoundLogger, options: Dict[str, Any], user: User
+        self,
+        logger: BoundLogger,
+        business_config: BusinessConfig,
+        user: AuthenticatedUser,
     ) -> None:
         self.logger = logger
-        self.options = options
+        self.config = business_config
         self.user = user
         self.success_count = 0
         self.failure_count = 0
@@ -50,10 +53,11 @@ class Business:
     async def stop(self) -> None:
         pass
 
-    def dump(self) -> Dict[str, Any]:
-        return {
-            "name": type(self).__name__,
-            "failure_count": self.failure_count,
-            "success_count": self.success_count,
-            "timings": self.timings.dump(),
-        }
+    def dump(self) -> BusinessData:
+        return BusinessData(
+            name=type(self).__name__,
+            config=self.config,
+            failure_count=self.failure_count,
+            success_count=self.success_count,
+            timings=self.timings.dump(),
+        )

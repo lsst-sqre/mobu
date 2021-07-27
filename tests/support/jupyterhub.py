@@ -94,8 +94,6 @@ class MockJupyterHub:
     def delete_lab(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/users/{user}/server")
-        state = self.state.get(user, JupyterHubState.LOGGED_OUT)
-        assert state == JupyterHubState.LAB_RUNNING
         self.state[user] = JupyterHubState.LOGGED_OUT
         return CallbackResult(status=202)
 

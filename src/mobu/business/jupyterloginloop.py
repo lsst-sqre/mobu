@@ -13,11 +13,10 @@ from ..jupyterclient import JupyterClient
 from .base import Business
 
 if TYPE_CHECKING:
-    from typing import Any, Dict
-
     from structlog import BoundLogger
 
-    from ..user import User
+    from ..models.business import BusinessConfig
+    from ..user import AuthenticatedUser
 
 __all__ = ["JupyterLoginLoop"]
 
@@ -31,10 +30,13 @@ class JupyterLoginLoop(Business):
     """
 
     def __init__(
-        self, logger: BoundLogger, options: Dict[str, Any], user: User
+        self,
+        logger: BoundLogger,
+        business_config: BusinessConfig,
+        user: AuthenticatedUser,
     ) -> None:
-        super().__init__(logger, options, user)
-        self._client = JupyterClient(user, logger, options)
+        super().__init__(logger, business_config, user)
+        self._client = JupyterClient(user, logger, business_config)
 
     async def run(self) -> None:
         self.logger.info("Starting up...")

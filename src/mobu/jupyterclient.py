@@ -17,21 +17,18 @@ from uuid import uuid4
 from aiohttp import ClientResponse, ClientSession, TCPConnector
 
 from .config import config
-from .user import User
+from .exceptions import NotebookException
 
 if TYPE_CHECKING:
-    from typing import Any, Dict
+    from typing import Any
 
     from aiohttp.client import _RequestContextManager, _WSRequestContextManager
     from structlog import BoundLogger
 
+    from .models.business import BusinessConfig
+    from .models.user import AuthenticatedUser
+
 __all__ = ["JupyterClient"]
-
-
-class NotebookException(Exception):
-    """Passing an error back from a remote notebook session."""
-
-    pass
 
 
 class JupyterClientSession:
@@ -94,12 +91,17 @@ class JupyterClient:
     add some custom settings.
     """
 
-    def __init__(self, user: User, log: BoundLogger, options: Dict[str, Any]):
+    def __init__(
+        self,
+        user: AuthenticatedUser,
+        log: BoundLogger,
+        business_config: BusinessConfig,
+    ) -> None:
         self.user = user
         self.log = log
-        self.jupyter_base = options.get("nb_url", "/nb/")
+        self.jupyter_base = business_config.nb_url
         self.jupyter_url = config.environment_url + self.jupyter_base
-        self.jupyter_options_form = options.get("jupyter_options_form", {})
+        self.jupyter_options_form = business_config.jupyter_options_form
 
         xsrftoken = "".join(
             random.choices(string.ascii_uppercase + string.digits, k=16)
