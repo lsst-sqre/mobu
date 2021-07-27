@@ -30,7 +30,7 @@ __all__ = [
     "get_monkey",
     "get_monkeys",
     "get_monkey_log",
-    "post_flock",
+    "put_flock",
 ]
 
 external_router = APIRouter()
@@ -86,7 +86,7 @@ async def get_flocks(
     return manager.list_flocks()
 
 
-@external_router.post(
+@external_router.put(
     "/flocks",
     response_class=FormattedJSONResponse,
     response_model=FlockData,
@@ -95,7 +95,7 @@ async def get_flocks(
     status_code=201,
     summary="Create a new flock",
 )
-async def post_flock(
+async def put_flock(
     flock_config: FlockConfig,
     response: Response,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),

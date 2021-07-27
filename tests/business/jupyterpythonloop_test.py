@@ -21,7 +21,7 @@ async def test_run(
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
 
-    r = await client.post(
+    r = await client.put(
         "/mobu/flocks",
         json={
             "name": "test",
