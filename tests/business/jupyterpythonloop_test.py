@@ -41,7 +41,7 @@ async def test_run(
         "business": {
             "failure_count": 0,
             "name": "JupyterPythonLoop",
-            "success_count": 0,
+            "success_count": ANY,
             "timings": ANY,
         },
         "restart": False,

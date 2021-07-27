@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from aioresponses import aioresponses
@@ -70,7 +70,7 @@ def jupyter(mock_aioresponses: aioresponses) -> Iterator[None]:
         # Same problem, but up a layer now that we're using sessions and
         # reusing the websocket.
         with patch.object(JupyterClient, "_websocket_connect") as mock2:
-            mock2.return_value = MagicMock()
+            mock2.return_value = AsyncMock()
             yield
 
 
