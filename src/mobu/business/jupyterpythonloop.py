@@ -4,15 +4,10 @@ This business pattern will start a lab and run some code in a loop over and
 over again.
 """
 
-import asyncio
-
 from ..jupyterclient import JupyterLabSession
 from .jupyterloginloop import JupyterLoginLoop
 
 __all__ = ["JupyterPythonLoop"]
-
-MAX_EXECUTIONS = 20
-SLEEP_TIME = 1
 
 
 class JupyterPythonLoop(JupyterLoginLoop):
@@ -20,9 +15,9 @@ class JupyterPythonLoop(JupyterLoginLoop):
 
     async def lab_business(self) -> None:
         session = await self.create_session()
-        for count in range(MAX_EXECUTIONS):
-            await self.execute_code(session, "2+2")
-            await self.lab_wait()
+        for count in range(self.config.max_executions):
+            await self.execute_code(session, self.config.code)
+            await self.idle()
         await self.delete_session(session)
 
     async def create_session(self) -> JupyterLabSession:
@@ -38,10 +33,6 @@ class JupyterPythonLoop(JupyterLoginLoop):
             reply = await self._client.run_python(session, code)
             sw.annotation["result"] = reply
         self.logger.info(f"{code} -> {reply}")
-
-    async def lab_wait(self) -> None:
-        with self.timings.start("lab_wait"):
-            await asyncio.sleep(SLEEP_TIME)
 
     async def delete_session(self, session: JupyterLabSession) -> None:
         self.logger.info("delete_session")

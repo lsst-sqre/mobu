@@ -116,6 +116,7 @@ class NotebookRunner(JupyterLoginLoop):
                 await self.execute_code(session, self.running_code)
 
         self.running_code = None
+        await self.idle()
         await self.delete_session(session)
         self.logger.info(f"Success running notebook: {self.notebook.name}")
 

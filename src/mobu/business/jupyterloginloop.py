@@ -77,8 +77,7 @@ class JupyterLoginLoop(Business):
 
         Placeholder function intended to be overridden by subclasses.
         """
-        with self.timings.start("lab_wait"):
-            await asyncio.sleep(60)
+        await self.idle()
 
     async def idle(self) -> None:
         """Executed at the end of each iteration.
@@ -87,7 +86,7 @@ class JupyterLoginLoop(Business):
         behavior.
         """
         with self.timings.start("idle"):
-            await asyncio.sleep(60)
+            await asyncio.sleep(self.config.idle_time)
 
     async def stop(self) -> None:
         with self.timings.start("delete_lab_on_stop"):
