@@ -116,7 +116,6 @@ class Monkey:
                 run = self.restart and self.state == MonkeyState.RUNNING
                 if self.state == MonkeyState.RUNNING:
                     self.state = MonkeyState.ERROR
-                await self.business.stop()
             if run:
                 await asyncio.sleep(60)
 
