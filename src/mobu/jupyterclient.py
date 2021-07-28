@@ -310,25 +310,25 @@ class JupyterClient:
 
         await session.websocket.send_json(msg)
 
+        result = ""
         while True:
             r = await session.websocket.receive_json()
             self.log.debug(f"Recieved kernel message: {r}")
             msg_type = r["msg_type"]
+            if msg_id != r["parent_header"]["msg_id"]:
+                self.log.warning(f"Unexpected kernel message: {r}", r)
+                continue
             if msg_type == "error":
                 error_message = "".join(r["content"]["traceback"])
                 raise NotebookException(self._ansi_escape(error_message))
-            elif (
-                msg_type == "stream" and msg_id == r["parent_header"]["msg_id"]
-            ):
-                return r["content"]["text"]
+            elif msg_type == "stream":
+                result += r["content"]["text"]
             elif msg_type == "execute_reply":
                 status = r["content"]["status"]
                 if status == "ok":
-                    return ""
+                    return result
                 else:
-                    raise NotebookException(
-                        f"Error content status is {status}"
-                    )
+                    raise NotebookException(f"Result status is {status}")
 
     async def _raise_error(self, msg: str, r: ClientResponse) -> None:
         raise Exception(f"{msg}: {r.status} {r.url}: {r.headers}")
