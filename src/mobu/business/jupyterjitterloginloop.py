@@ -7,7 +7,6 @@ instances.
 
 from __future__ import annotations
 
-import asyncio
 import random
 
 from .jupyterloginloop import JupyterLoginLoop
@@ -20,14 +19,17 @@ class JupyterJitterLoginLoop(JupyterLoginLoop):
 
     async def startup(self) -> None:
         with self.timings.start("pre_login_delay"):
-            await asyncio.sleep(random.uniform(0, 30))
+            await self.pause(random.uniform(0, 30))
+        if self.stopping:
+            return
         await super().startup()
-        await asyncio.sleep(random.uniform(10, 30))
+        await self.pause(random.uniform(10, 30))
 
     async def lab_business(self) -> None:
         with self.timings.start("lab_wait"):
-            await asyncio.sleep(1200 + random.uniform(0, 600))
+            await self.pause(1200 + random.uniform(0, 600))
 
     async def idle(self) -> None:
+        self.logger.info("Idling...")
         with self.timings.start("idle"):
-            await asyncio.sleep(30 + random.uniform(0, 60))
+            await self.pause(30 + random.uniform(0, 60))

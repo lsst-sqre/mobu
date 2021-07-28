@@ -11,15 +11,15 @@ from typing import TYPE_CHECKING
 
 import structlog
 from aiohttp import ClientSession
-from aiohttp.client_exceptions import ClientConnectorError
 from aiojobs import Scheduler
-from aiojobs._job import Job
 
 from .config import config
 from .models.monkey import MonkeyData, MonkeyState
 
 if TYPE_CHECKING:
     from typing import Optional, Type
+
+    from aiojobs._job import Job
 
     from .business.base import Business
     from .models.monkey import MonkeyConfig
@@ -100,33 +100,27 @@ class Monkey:
 
     async def _runner(self) -> None:
         run = True
+
         while run:
             try:
                 self.state = MonkeyState.RUNNING
                 await self.business.run()
-                self.state = MonkeyState.FINISHED
-            except asyncio.CancelledError:
-                self.state = MonkeyState.STOPPING
-                self.log.info("Shutting down")
                 run = False
-                try:
-                    await self.business.stop()
-                except ClientConnectorError:
-                    # Ripping down async sessions can cause various parts of
-                    #  a communication in flight to fail.  Just swallow it,
-                    #  since we're shutting down anyway.
-                    pass
-                self.state = MonkeyState.FINISHED
             except Exception as e:
-                self.state = MonkeyState.ERROR
                 self.log.exception(
                     "Exception thrown while doing monkey business."
                 )
                 # Just pass the exception message - the callstack will
                 # be logged but will probably be too spammy to report.
                 await self.alert(str(e))
-                run = self.restart
+                run = self.restart and self.state == MonkeyState.RUNNING
+                if self.state == MonkeyState.RUNNING:
+                    self.state = MonkeyState.ERROR
+                await self.business.stop()
+            if run:
                 await asyncio.sleep(60)
+
+        self.state = MonkeyState.FINISHED
 
     async def stop(self) -> None:
         if self.state == MonkeyState.FINISHED:
@@ -134,13 +128,7 @@ class Monkey:
         self.state = MonkeyState.STOPPING
         await self.business.stop()
         if self._job:
-            try:
-                await self._job.close(timeout=0)
-            except (asyncio.TimeoutError, asyncio.exceptions.CancelledError):
-                # Close will normally wait for a timeout to occur before
-                # throwing a timeout exception, but we'll just shut it down
-                # right away and eat the exception.
-                pass
+            await self._job.wait()
         self.state = MonkeyState.FINISHED
 
     def dump(self) -> MonkeyData:

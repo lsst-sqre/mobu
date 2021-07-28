@@ -30,13 +30,15 @@ class MonkeyBusinessManager:
         self._session = ClientSession()
 
     async def cleanup(self) -> None:
+        for flock in self._flocks.values():
+            await flock.stop()
+        self._flocks.clear()
         if self._scheduler is not None:
             await self._scheduler.close()
             self._scheduler = None
         if self._session:
             await self._session.close()
             self._session = None
-        self._flocks.clear()
 
     async def start_flock(self, flock_config: FlockConfig) -> Flock:
         if self._scheduler is None or not self._session:

@@ -69,22 +69,15 @@ class QueryMonkey(Business):
 
         return pyvo.dal.TAPService(tap_url, auth)
 
-    async def run(self) -> None:
-        self.logger.info("Starting up...")
+    async def startup(self) -> None:
         templates = self._env.list_templates()
         self.logger.info("Query templates to choose from: %s", templates)
 
-        while True:
-            template_name = random.choice(self._env.list_templates())
-            template = self._env.get_template(template_name)
-            query = template.render(generate_parameters())
-            try:
-                await self.run_query(query)
-                self.success_count += 1
-            except Exception:
-                self.failure_count += 1
-                raise
-            await asyncio.sleep(60)
+    async def execute(self) -> None:
+        template_name = random.choice(self._env.list_templates())
+        template = self._env.get_template(template_name)
+        query = template.render(generate_parameters())
+        await self.run_query(query)
 
     async def run_query(self, query: str) -> None:
         self.logger.info("Running: %s", query)
@@ -93,13 +86,3 @@ class QueryMonkey(Business):
             await loop.run_in_executor(None, self._client.search, query)
             elapsed = sw.elapsed.total_seconds()
         self.logger.info(f"Query finished after {elapsed} seconds")
-
-    async def stop(self) -> None:
-        # There's nothing to do since we use synchronous queries.  If we use
-        # async queries, this should do:
-        #
-        # loop = asyncio.get_event_loop()
-        # with self.timings.start("delete_tap_client_on_stop"):
-        #     await loop.run_in_executor(None, self._client.abort)
-        #     await loop.run_in_executor(None, self._client.delete)
-        pass

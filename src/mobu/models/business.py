@@ -29,16 +29,6 @@ class BusinessConfig(BaseModel):
         default_factory=dict, title="Values to POST to the spawn options form"
     )
 
-    notebook_iterations: int = Field(
-        1,
-        title="How many iterations through the notebooks",
-        description=(
-            "After each iteration, the kernel is restarted."
-            " Only used by the NotebookRunner."
-        ),
-        example=10,
-    )
-
     code: str = Field(
         "print(2+2)",
         title="Python code to execute",
@@ -61,37 +51,71 @@ class BusinessConfig(BaseModel):
     settle_time: int = Field(
         10,
         title="How long to wait after lab creation in seconds",
-        description="Only used by the NotebookRunner",
+        description=(
+            "Only used by the NotebookRunner. It will wait for this long"
+            " after lab creation before trying to create a session."
+        ),
         example=10,
     )
 
-    lab_idle_time: int = Field(
-        20,
-        title="How long to wait at end of lab loop in seconds",
-        description="Used by JupyterLoginLoop",
-        example=20,
+    idle_time: int = Field(
+        60,
+        title="How long to wait between business executions",
+        description=(
+            "AFter each loop executing monkey business, the monkey will"
+            " pause for this long in seconds"
+        ),
+        example=60,
+    )
+
+    login_idle_time: int = Field(
+        60,
+        title="Time to pause after spawning lab",
+        description=(
+            "Only used by JupyterLoginLoop and JupyterJitterLoginLoop."
+            " How long to wait after spawning the lab before destroying"
+            " it again."
+        ),
+        example=60,
     )
 
     execution_idle_time: int = Field(
-        0,
+        1,
         title="How long to wait between cell executions in seconds",
         description="Used by JupyterPythonLoop and NotebookRunner",
         example=1,
     )
 
     reauth_interval: int = Field(
-        2700,
+        30 * 60,
         title="Time between reauthentication attempts in seconds",
-        description="Used by JupyterLoginLoop, JupyterPythonLoop, and"
-        " NotebookRunner",
-        example=2700,
+        description=(
+            "Used by JupyterLoginLoop, JupyterPythonLoop, and NotebookRunner."
+            " JupyterHub appears to issue tokens with a one hour lifetime."
+        ),
+        example=30 * 60,
     )
 
     max_executions: int = Field(
         25,
-        title="How many cells to execute in a given kernel session",
-        description="Only used by JupyterPythonLoop",
+        title="How much to execute in a given lab and session",
+        description=(
+            "For JupyterPythonLoop, this is the number of code snippets to"
+            " execute before restarting the lab. For NotebookRunner, it's"
+            " the number of notebooks."
+        ),
         example=25,
+    )
+
+    delete_lab: bool = Field(
+        True,
+        title="Whether to delete the lab between iterations",
+        description=(
+            "By default, the lab is deleted and recreated after each"
+            " iteration of monkey business involving JupyterLab. Set this"
+            " to False to keep the same lab."
+        ),
+        example=True,
     )
 
 

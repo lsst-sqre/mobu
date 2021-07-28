@@ -49,7 +49,9 @@ class MockJupyter:
 
     def login(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
-        self.state[user] = JupyterState.LOGGED_IN
+        state = self.state.get(user, JupyterState.LOGGED_OUT)
+        if state == JupyterState.LOGGED_OUT:
+            self.state[user] = JupyterState.LOGGED_IN
         return CallbackResult(status=200)
 
     def hub(self, url: str, **kwargs: Any) -> CallbackResult:
@@ -95,7 +97,9 @@ class MockJupyter:
     def delete_lab(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/users/{user}/server")
-        self.state[user] = JupyterState.LOGGED_OUT
+        state = self.state.get(user, JupyterState.LOGGED_OUT)
+        assert state != JupyterState.LOGGED_OUT
+        self.state[user] = JupyterState.LOGGED_IN
         return CallbackResult(status=202)
 
     def create_session(self, url: str, **kwargs: Any) -> CallbackResult:
@@ -139,7 +143,7 @@ class MockJupyter:
         return user.decode()
 
 
-def mock_jupyter(mocked: aioresponses) -> None:
+def mock_jupyter(mocked: aioresponses) -> MockJupyter:
     """Set up a mock JupyterHub/Lab that always returns success.
 
     Currently only handles a lab spawn and then shutdown.  Behavior will
@@ -173,3 +177,4 @@ def mock_jupyter(mocked: aioresponses) -> None:
         callback=mock.delete_session,
         repeat=True,
     )
+    return mock

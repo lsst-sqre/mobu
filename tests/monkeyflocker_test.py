@@ -144,7 +144,7 @@ def test_start_report_stop(tmp_path: Path, app_url: str) -> None:
                 "business": {
                     "failure_count": 0,
                     "name": "Business",
-                    "success_count": 0,
+                    "success_count": ANY,
                     "timings": ANY,
                 },
                 "restart": False,

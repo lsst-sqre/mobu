@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 @pytest.mark.asyncio
 async def test_start_stop(
-    client: AsyncClient, jupyter: None, mock_aioresponses: aioresponses
+    client: AsyncClient, mock_aioresponses: aioresponses
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
 
@@ -46,7 +46,7 @@ async def test_start_stop(
                 "business": {
                     "failure_count": 0,
                     "name": "Business",
-                    "success_count": 0,
+                    "success_count": ANY,
                     "timings": ANY,
                 },
                 "restart": False,
@@ -116,7 +116,7 @@ async def test_start_stop(
 
 @pytest.mark.asyncio
 async def test_user_list(
-    client: AsyncClient, jupyter: None, mock_aioresponses: aioresponses
+    client: AsyncClient, mock_aioresponses: aioresponses
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
 
@@ -147,7 +147,7 @@ async def test_user_list(
                 "business": {
                     "failure_count": 0,
                     "name": "Business",
-                    "success_count": 0,
+                    "success_count": ANY,
                     "timings": ANY,
                 },
                 "restart": False,
@@ -164,7 +164,7 @@ async def test_user_list(
                 "business": {
                     "failure_count": 0,
                     "name": "Business",
-                    "success_count": 0,
+                    "success_count": ANY,
                     "timings": ANY,
                 },
                 "restart": False,
@@ -189,13 +189,13 @@ async def test_user_list(
     assert r.status_code == 200
     assert r.json() == expected["monkeys"][1]
 
-    # Intentionally do not delete the flock to check whether aiojobs will
-    # shut down properly when the server is shut down.
+    # Intentionally do not delete the flock to check whether we shut
+    # everything down properly when the server is shut down.
 
 
 @pytest.mark.asyncio
 async def test_errors(
-    client: AsyncClient, jupyter: None, mock_aioresponses: aioresponses
+    client: AsyncClient, mock_aioresponses: aioresponses
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
 
