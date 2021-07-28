@@ -71,8 +71,6 @@ class NotebookRunner(JupyterPythonLoop):
             msg = f"Notebook '{self.notebook.name}' iteration {iteration}"
             self.logger.info(msg)
 
-            await self.reauth_if_needed()
-
             for cell in cells:
                 self.running_code = "".join(cell["source"])
                 await self.execute_cell(session, self.running_code)

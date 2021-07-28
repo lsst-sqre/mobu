@@ -6,7 +6,6 @@ instance, and then delete them.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 from ..jupyterclient import JupyterClient
@@ -46,7 +45,6 @@ class JupyterLoginLoop(Business):
     ) -> None:
         super().__init__(logger, business_config, user)
         self._client = JupyterClient(user, logger, business_config)
-        self._last_login = datetime.fromtimestamp(0, tz=timezone.utc)
 
     async def startup(self) -> None:
         await self.hub_login()
@@ -54,13 +52,13 @@ class JupyterLoginLoop(Business):
 
     async def execute(self) -> None:
         """The work done in each iteration of the loop."""
-        await self.reauth_if_needed()
         await self.ensure_lab()
         await self.lab_settle()
         if self.stopping:
             return
         await self.lab_business()
         if self.config.delete_lab:
+            await self.hub_login()
             await self.delete_lab()
 
     async def shutdown(self) -> None:
@@ -71,7 +69,6 @@ class JupyterLoginLoop(Business):
         self.logger.info("Logging in to hub")
         with self.timings.start("hub_login"):
             await self._client.hub_login()
-            self._last_login = datetime.now(tz=timezone.utc)
 
     async def ensure_lab(self) -> None:
         with self.timings.start("ensure_lab"):
@@ -102,10 +99,3 @@ class JupyterLoginLoop(Business):
         """
         with self.timings.start("lab_wait"):
             await self.pause(self.config.login_idle_time)
-
-    async def reauth_if_needed(self) -> None:
-        elapsed = datetime.now(tz=timezone.utc) - self._last_login
-        if elapsed > timedelta(self.config.reauth_interval):
-            self.logger.info("Reauthenticating to Hub")
-            with self.timings.start("hub_reauth"):
-                await self._client.hub_login()
