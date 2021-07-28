@@ -268,6 +268,7 @@ class JupyterClient:
         return await self.session.ws_connect(channels_url)
 
     async def delete_labsession(self, session: JupyterLabSession) -> None:
+        await self.lab_login()
         session_url = (
             self.jupyter_url
             + f"user/{self.user.username}/api/sessions/{session.session_id}"
