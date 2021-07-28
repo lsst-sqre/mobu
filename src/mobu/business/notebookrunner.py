@@ -61,14 +61,16 @@ class NotebookRunner(JupyterPythonLoop):
             self._repo = git.Repo.clone_from(url, path, branch=branch)
 
     async def execute_code(self, session: JupyterLabSession) -> None:
-        self._next_notebook()
-        assert self.notebook
-        self.logger.info(f"Starting notebook: {self.notebook.name}")
-        cells = self.read_notebook(self.notebook.name, self.notebook.path)
         for count in range(self.config.max_executions):
+            self._next_notebook()
+            assert self.notebook
+            self.logger.info(f"Starting notebook: {self.notebook.name}")
+            cells = self.read_notebook(self.notebook.name, self.notebook.path)
+
             iteration = f"{count + 1}/{self.config.max_executions}"
             msg = f"Notebook '{self.notebook.name}' iteration {iteration}"
             self.logger.info(msg)
+
             await self.reauth_if_needed()
 
             for cell in cells:
