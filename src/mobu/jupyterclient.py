@@ -315,8 +315,9 @@ class JupyterClient:
             r = await session.websocket.receive_json()
             self.log.debug(f"Recieved kernel message: {r}")
             msg_type = r["msg_type"]
-            if msg_id != r["parent_header"]["msg_id"]:
-                self.log.warning(f"Unexpected kernel message: {r}", r)
+            if r["parent_header"]["msg_id"] != msg_id:
+                # Ignore messages not intended for us. The web socket is
+                # rather chatty with broadcast status messages.
                 continue
             if msg_type == "error":
                 error_message = "".join(r["content"]["traceback"])
