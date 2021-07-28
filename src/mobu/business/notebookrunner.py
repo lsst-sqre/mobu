@@ -52,7 +52,6 @@ class NotebookRunner(JupyterPythonLoop):
         self._notebook_iterator = os.scandir(self._repo_dir.name)
         self.logger.info("Repository cloned and ready")
         await super().startup()
-        await self.initial_delete_lab()
 
     def clone_repo(self) -> None:
         url = self.config.repo_url
