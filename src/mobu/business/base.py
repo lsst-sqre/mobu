@@ -36,7 +36,8 @@ class Business:
 
     Subclasses should override ``startup``, ``execute``, and ``shutdown`` to
     add appropriate behavior.  ``idle`` by default waits for ``idle_time``,
-    which generally does not need to be overridden.
+    which generally does not need to be overridden.  Subclasses should also
+    override ``close`` to shut down any object state created in ``__init__``.
 
     All delays should be done by calling ``pause``, and the caller should
     check ``self.stopping`` and exit any loops if it is `True` after calling
@@ -67,26 +68,33 @@ class Business:
         self.control: Queue[BusinessCommand] = Queue()
         self.stopping = False
 
+    async def close(self) -> None:
+        """Clean up any business state on shutdown."""
+        pass
+
     async def run(self) -> None:
         """The core business logic, run in a background task."""
         self.logger.info("Starting up...")
-        await self.startup()
+        try:
+            await self.startup()
 
-        while not self.stopping:
-            self.logger.info("Starting next iteration")
-            try:
-                await self.execute()
-                self.success_count += 1
-            except Exception:
-                self.failure_count += 1
-                raise
-            await self.idle()
+            while not self.stopping:
+                self.logger.info("Starting next iteration")
+                try:
+                    await self.execute()
+                    self.success_count += 1
+                except Exception:
+                    self.failure_count += 1
+                    raise
+                await self.idle()
 
-        self.logger.info("Shutting down...")
-        await self.shutdown()
-
-        # Tell the control channel we've processed the stop command.
-        self.control.task_done()
+            self.logger.info("Shutting down...")
+            await self.shutdown()
+            await self.close()
+        finally:
+            # Tell the control channel we've processed the stop command.
+            if self.stopping:
+                self.control.task_done()
 
     async def startup(self) -> None:
         """Run before the start of the first iteration and then not again."""
@@ -108,9 +116,11 @@ class Business:
 
     async def stop(self) -> None:
         """Tell the running background task to stop and wait for that."""
+        self.stopping = True
         await self.control.put(BusinessCommand.STOP)
         await self.control.join()
         self.logger.info("Stopped")
+        await self.close()
 
     async def pause(self, seconds: float) -> None:
         """Pause for up to the number of seconds, handling commands."""
@@ -118,14 +128,11 @@ class Business:
             return
         try:
             if seconds:
-                command = await asyncio.wait_for(self.control.get(), seconds)
+                await asyncio.wait_for(self.control.get(), seconds)
             else:
-                command = self.control.get_nowait()
+                self.control.get_nowait()
         except (TimeoutError, QueueEmpty):
             return
-        else:
-            if command == BusinessCommand.STOP:
-                self.stopping = True
 
     def dump(self) -> BusinessData:
         return BusinessData(

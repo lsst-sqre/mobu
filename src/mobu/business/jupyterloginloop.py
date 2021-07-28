@@ -46,6 +46,9 @@ class JupyterLoginLoop(Business):
         super().__init__(logger, business_config, user)
         self._client = JupyterClient(user, logger, business_config)
 
+    async def close(self) -> None:
+        await self._client.close()
+
     async def startup(self) -> None:
         await self.hub_login()
         await self.initial_delete_lab()
@@ -63,7 +66,6 @@ class JupyterLoginLoop(Business):
 
     async def shutdown(self) -> None:
         await self.delete_lab()
-        await self._client.close()
 
     async def hub_login(self) -> None:
         self.logger.info("Logging in to hub")

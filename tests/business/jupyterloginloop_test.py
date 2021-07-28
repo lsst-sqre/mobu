@@ -114,3 +114,33 @@ async def test_reuse_lab(
 
     # Check that the lab is still running between iterations.
     assert jupyter.state["testuser1"] == JupyterState.LAB_RUNNING
+
+
+@pytest.mark.asyncio
+async def test_delayed_lab_delete(
+    client: AsyncClient, jupyter: MockJupyter, mock_aioresponses: aioresponses
+) -> None:
+    mock_gafaelfawr(mock_aioresponses)
+
+    r = await client.put(
+        "/mobu/flocks",
+        json={
+            "name": "test",
+            "count": 5,
+            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "scopes": ["exec:notebook"],
+            "options": {
+                "settle_time": 0,
+                "login_idle_time": 0,
+                "delete_lab": False,
+            },
+            "business": "JupyterLoginLoop",
+        },
+    )
+    assert r.status_code == 201
+
+    # End the test without shutting anything down.  The test asgi-lifespan
+    # wrapper has a shutdown timeout of ten seconds and delete will take
+    # five seconds, so the test is that everything shuts down cleanly without
+    # throwing exceptions.
+    jupyter.delete_immediate = False

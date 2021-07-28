@@ -164,10 +164,14 @@ class JupyterClient:
         async with self.session.get(hub_url) as r:
             if r.status != 200:
                 self.log.error(f"Error {r.status} from {r.url}")
+                return False
 
             spawn_url = self.jupyter_url + "hub/spawn"
+            spawn_pending_url = (
+                self.jupyter_url + f"hub/spawn-pending/{self.user.username}"
+            )
             self.log.info(f"Going to {hub_url} redirected to {r.url}")
-            if str(r.url) == spawn_url:
+            if str(r.url) in [spawn_url, spawn_pending_url]:
                 return False
 
         return True
@@ -225,6 +229,18 @@ class JupyterClient:
         async with self.session.delete(server_url, headers=headers) as r:
             if r.status not in [200, 202, 204]:
                 await self._raise_error("Error deleting lab", r)
+
+        # Wait for the lab to actually go away.  If we don't do this, we may
+        # try to create a new lab while the old one is still shutting down.
+        count = 0
+        while await self.is_lab_running() and count < 10:
+            self.log.info(f"Waiting for lab deletion ({count}s elapsed)")
+            await asyncio.sleep(1)
+            count += 1
+        if await self.is_lab_running():
+            self.log.warning("Giving up on waiting for lab deletion")
+        else:
+            self.log.info("Lab deleted")
 
     async def create_labsession(
         self, kernel_name: str = "LSST", notebook_name: Optional[str] = None

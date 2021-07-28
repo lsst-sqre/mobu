@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from base64 import urlsafe_b64decode
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import uuid4
@@ -15,7 +16,7 @@ from mobu.jupyterclient import JupyterLabSession
 
 if TYPE_CHECKING:
     from re import Pattern
-    from typing import Any, Dict, Union
+    from typing import Any, Dict, Optional, Union
 
     from aioresponses import aioresponses
 
@@ -46,6 +47,8 @@ class MockJupyter:
     def __init__(self) -> None:
         self.sessions: Dict[str, JupyterLabSession] = {}
         self.state: Dict[str, JupyterState] = {}
+        self.delete_immediate = True
+        self._delete_at: Dict[str, Optional[datetime]] = {}
 
     def login(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
@@ -65,6 +68,11 @@ class MockJupyter:
             redirect_to = _url(f"hub/spawn-pending/{user}")
         elif state == JupyterState.LAB_RUNNING:
             redirect_to = _url(f"user/{user}/lab")
+            delete_at = self._delete_at.get(user)
+            if delete_at and datetime.now(tz=timezone.utc) > delete_at:
+                del self._delete_at[user]
+                self.state[user] = JupyterState.LOGGED_IN
+                redirect_to = _url("hub/spawn")
         return CallbackResult(status=307, headers={"Location": redirect_to})
 
     def spawn(self, url: str, **kwargs: Any) -> CallbackResult:
@@ -99,7 +107,11 @@ class MockJupyter:
         assert str(url).endswith(f"/users/{user}/server")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state != JupyterState.LOGGED_OUT
-        self.state[user] = JupyterState.LOGGED_IN
+        if self.delete_immediate:
+            self.state[user] = JupyterState.LOGGED_IN
+        else:
+            now = datetime.now(tz=timezone.utc)
+            self._delete_at[user] = now + timedelta(seconds=5)
         return CallbackResult(status=202)
 
     def create_session(self, url: str, **kwargs: Any) -> CallbackResult:
@@ -125,10 +137,8 @@ class MockJupyter:
 
     def delete_session(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
-        session = self.sessions[user]
-        assert str(url).endswith(
-            f"/user/{user}/api/sessions/{session.session_id}"
-        )
+        session_id = self.sessions[user].session_id
+        assert str(url).endswith(f"/user/{user}/api/sessions/{session_id}")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state == JupyterState.LAB_RUNNING
         del self.sessions[user]

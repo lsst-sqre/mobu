@@ -52,8 +52,11 @@ async def app(jupyter: MockJupyter) -> AsyncIterator[FastAPI]:
     This must depend on the Jupyter mock since otherwise the JupyterClient
     mocking is undone before the app is shut down, which causes it to try to
     make real web socket calls.
+
+    A tests in business/jupyterloginloop_test.py depends on the exact shutdown
+    timeout.
     """
-    async with LifespanManager(main.app):
+    async with LifespanManager(main.app, shutdown_timeout=10):
         yield main.app
 
 
