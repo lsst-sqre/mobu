@@ -30,10 +30,10 @@ class BusinessConfig(BaseModel):
     )
 
     code: str = Field(
-        "print(2+2)",
+        'print(2+2, end="")',
         title="Python code to execute",
         description="Only used by JupyterPythonLoop",
-        example="print(2+2)",
+        example='print(2+2, end="")',
     )
 
     repo_url: str = Field(
