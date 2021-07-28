@@ -174,9 +174,7 @@ class JupyterClient:
 
     async def spawn_lab(self) -> None:
         spawn_url = self.jupyter_url + "hub/spawn"
-        pending_url = (
-            self.jupyter_url + f"hub/spawn-pending/{self.user.username}"
-        )
+        hub_url = self.jupyter_url + "hub"
         lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
 
         # DM-23864: Do a get on the spawn URL even if I don't have to.
@@ -202,7 +200,7 @@ class JupyterClient:
         retries = max_poll_secs / poll_interval
 
         while retries > 0:
-            async with self.session.get(pending_url) as r:
+            async with self.session.get(hub_url) as r:
                 if str(r.url) == lab_url:
                     self.log.info(f"Lab spawned, redirected to {r.url}")
                     return

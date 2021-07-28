@@ -64,7 +64,7 @@ class MockJupyter:
         elif state == JupyterState.SPAWN_PENDING:
             redirect_to = _url(f"hub/spawn-pending/{user}")
         elif state == JupyterState.LAB_RUNNING:
-            redirect_to = _url(f"hub/spawn-pending/{user}")
+            redirect_to = _url(f"user/{user}/lab")
         return CallbackResult(status=307, headers={"Location": redirect_to})
 
     def spawn(self, url: str, **kwargs: Any) -> CallbackResult:
