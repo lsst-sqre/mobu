@@ -171,7 +171,7 @@ class JupyterClient:
                 self.log.error(f"Error {r.status} from {r.url}")
                 return False
 
-            if str(r.url) in [spawn_url, spawn_pending_url]:
+            if str(r.url) == spawn_url or spawn_pending_url in str(r.url):
                 self.log.info("Lab is not currently running")
                 return False
             elif str(r.url) == lab_url:
@@ -202,7 +202,7 @@ class JupyterClient:
             redirect_url = (
                 self.jupyter_base + f"hub/spawn-pending/{self.user.username}"
             )
-            if r.headers["Location"] != redirect_url:
+            if redirect_url not in r.headers["Location"]:
                 await self._raise_error("Spawn didn't redirect to pending", r)
 
         # Jupyterlab will give up a spawn after 900 seconds, so we shouldn't
