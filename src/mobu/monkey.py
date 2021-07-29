@@ -11,15 +11,15 @@ from typing import TYPE_CHECKING
 
 import structlog
 from aiohttp import ClientSession
-from aiohttp.client_exceptions import ClientConnectorError
 from aiojobs import Scheduler
-from aiojobs._job import Job
 
 from .config import config
 from .models.monkey import MonkeyData, MonkeyState
 
 if TYPE_CHECKING:
     from typing import Optional, Type
+
+    from aiojobs._job import Job
 
     from .business.base import Business
     from .models.monkey import MonkeyConfig
@@ -40,10 +40,12 @@ class Monkey:
         user: AuthenticatedUser,
         session: ClientSession,
     ):
+        self.config = monkey_config
         self.name = monkey_config.name
         self.state = MonkeyState.IDLE
         self.user = user
         self.restart = monkey_config.restart
+        self.business_type = business_type
 
         self._session = session
         self._logfile = NamedTemporaryFile()
@@ -64,9 +66,7 @@ class Monkey:
         logger.info(f"Starting new file logger {self._logfile.name}")
         self.log = structlog.wrap_logger(logger)
 
-        self.business = business_type(
-            self.log, monkey_config.options, self.user
-        )
+        self.business = business_type(self.log, self.config.options, self.user)
 
     async def alert(self, msg: str) -> None:
         if self.state in (MonkeyState.STOPPING, MonkeyState.FINISHED):
@@ -100,47 +100,46 @@ class Monkey:
 
     async def _runner(self) -> None:
         run = True
+
         while run:
             try:
                 self.state = MonkeyState.RUNNING
                 await self.business.run()
-                self.state = MonkeyState.FINISHED
-            except asyncio.CancelledError:
-                self.state = MonkeyState.STOPPING
-                self.log.info("Shutting down")
                 run = False
-                try:
-                    await self.business.stop()
-                except ClientConnectorError:
-                    # Ripping down async sessions can cause various parts of
-                    #  a communication in flight to fail.  Just swallow it,
-                    #  since we're shutting down anyway.
-                    pass
-                self.state = MonkeyState.FINISHED
             except Exception as e:
-                self.state = MonkeyState.ERROR
                 self.log.exception(
                     "Exception thrown while doing monkey business."
                 )
                 # Just pass the exception message - the callstack will
                 # be logged but will probably be too spammy to report.
                 await self.alert(str(e))
-                run = self.restart
+                await self.business.close()
+                run = self.restart and self.state == MonkeyState.RUNNING
+                if self.state == MonkeyState.RUNNING:
+                    self.state = MonkeyState.ERROR
+            if run:
                 await asyncio.sleep(60)
+
+                # Recreate the business since we will have closed global
+                # resources when it aborted with an error.
+                self.business = self.business_type(
+                    self.log, self.config.options, self.user
+                )
+
+        self.state = MonkeyState.FINISHED
 
     async def stop(self) -> None:
         if self.state == MonkeyState.FINISHED:
             return
-        self.state = MonkeyState.STOPPING
-        await self.business.stop()
-        if self._job:
-            try:
-                await self._job.close(timeout=0)
-            except (asyncio.TimeoutError, asyncio.exceptions.CancelledError):
-                # Close will normally wait for a timeout to occur before
-                # throwing a timeout exception, but we'll just shut it down
-                # right away and eat the exception.
-                pass
+        elif self.state == MonkeyState.RUNNING:
+            self.state = MonkeyState.STOPPING
+            await self.business.stop()
+            if self._job:
+                await self._job.wait()
+        elif self.state == MonkeyState.ERROR:
+            await self.business.close()
+            if self._job:
+                await self._job.close()
         self.state = MonkeyState.FINISHED
 
     def dump(self) -> MonkeyData:

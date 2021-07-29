@@ -11,14 +11,20 @@ __all__ = ["JupyterPythonLoop"]
 
 
 class JupyterPythonLoop(JupyterLoginLoop):
-    """Run simple Python code in a loop inside a lab kernel."""
+    """Run simple Python code in a loop inside a lab kernel.
+
+    This can be used as a base class for other JupyterLab code execution
+    monkey business.  Override ``execute_code`` to change what code is
+    executed.  When doing so, be sure to call ``execute_idle`` between each
+    code execution and check ``self.stopping`` after it returns, exiting any
+    loops if ``self.stopping`` is true.
+    """
 
     async def lab_business(self) -> None:
-        await self.reauth_if_needed()
+        if self.stopping:
+            return
         session = await self.create_session()
-        for count in range(self.config.max_executions):
-            await self.execute_code(session, self.config.code)
-            await self.execution_idle()
+        await self.execute_code(session)
         await self.delete_session(session)
 
     async def create_session(self) -> JupyterLabSession:
@@ -27,13 +33,21 @@ class JupyterPythonLoop(JupyterLoginLoop):
             session = await self._client.create_labsession()
         return session
 
-    async def execute_code(
-        self, session: JupyterLabSession, code: str
-    ) -> None:
-        with self.timings.start("execute_code", {"code": code}) as sw:
-            reply = await self._client.run_python(session, code)
-            sw.annotation["result"] = reply
-        self.logger.info(f"{code} -> {reply}")
+    async def execute_code(self, session: JupyterLabSession) -> None:
+        code = self.config.code
+        for count in range(self.config.max_executions):
+            with self.timings.start("execute_code", {"code": code}) as sw:
+                reply = await self._client.run_python(session, code)
+                sw.annotation["result"] = reply
+            self.logger.info(f"{code} -> {reply}")
+            await self.execution_idle()
+            if self.stopping:
+                break
+
+    async def execution_idle(self) -> None:
+        """Executed between each unit of work execution."""
+        with self.timings.start("execution_idle"):
+            await self.pause(self.config.execution_idle_time)
 
     async def delete_session(self, session: JupyterLabSession) -> None:
         self.logger.info("delete_session")

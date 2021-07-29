@@ -159,24 +159,34 @@ class JupyterClient:
                 await self._raise_error("Error logging into lab", r)
 
     async def is_lab_running(self) -> bool:
-        self.log.info("Is lab running?")
         hub_url = self.jupyter_url + "hub"
+        spawn_url = self.jupyter_url + "hub/spawn"
+        spawn_pending_url = (
+            self.jupyter_url + f"hub/spawn-pending/{self.user.username}"
+        )
+        lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
+
         async with self.session.get(hub_url) as r:
             if r.status != 200:
                 self.log.error(f"Error {r.status} from {r.url}")
-
-            spawn_url = self.jupyter_url + "hub/spawn"
-            self.log.info(f"Going to {hub_url} redirected to {r.url}")
-            if str(r.url) == spawn_url:
                 return False
 
-        return True
+            if str(r.url) in [spawn_url, spawn_pending_url]:
+                self.log.info("Lab is not currently running")
+                return False
+            elif str(r.url) == lab_url:
+                self.log.info("Lab is currently running")
+                return True
+            else:
+                self.log.warning(
+                    f"Going to {hub_url} redirected to unexpected URL {r.url}"
+                )
+                self.log.info("Assuming lab is not running")
+                return False
 
     async def spawn_lab(self) -> None:
         spawn_url = self.jupyter_url + "hub/spawn"
-        pending_url = (
-            self.jupyter_url + f"hub/spawn-pending/{self.user.username}"
-        )
+        hub_url = self.jupyter_url + "hub"
         lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
 
         # DM-23864: Do a get on the spawn URL even if I don't have to.
@@ -202,7 +212,7 @@ class JupyterClient:
         retries = max_poll_secs / poll_interval
 
         while retries > 0:
-            async with self.session.get(pending_url) as r:
+            async with self.session.get(hub_url) as r:
                 if str(r.url) == lab_url:
                     self.log.info(f"Lab spawned, redirected to {r.url}")
                     return
@@ -217,16 +227,29 @@ class JupyterClient:
         raise Exception("Giving up waiting for lab to spawn!")
 
     async def delete_lab(self) -> None:
-        headers = {"Referer": self.jupyter_url + "hub/home"}
+        if not await self.is_lab_running():
+            return
 
         server_url = (
             self.jupyter_url + f"hub/api/users/{self.user.username}/server"
         )
         self.log.info(f"Deleting lab for {self.user.username} at {server_url}")
-
+        headers = {"Referer": self.jupyter_url + "hub/home"}
         async with self.session.delete(server_url, headers=headers) as r:
             if r.status not in [200, 202, 204]:
                 await self._raise_error("Error deleting lab", r)
+
+        # Wait for the lab to actually go away.  If we don't do this, we may
+        # try to create a new lab while the old one is still shutting down.
+        count = 0
+        while await self.is_lab_running() and count < 10:
+            self.log.info(f"Waiting for lab deletion ({count}s elapsed)")
+            await asyncio.sleep(1)
+            count += 1
+        if await self.is_lab_running():
+            self.log.warning("Giving up on waiting for lab deletion")
+        else:
+            self.log.info("Lab deleted")
 
     async def create_labsession(
         self, kernel_name: str = "LSST", notebook_name: Optional[str] = None
@@ -268,6 +291,7 @@ class JupyterClient:
         return await self.session.ws_connect(channels_url)
 
     async def delete_labsession(self, session: JupyterLabSession) -> None:
+        await self.lab_login()
         session_url = (
             self.jupyter_url
             + f"user/{self.user.username}/api/sessions/{session.session_id}"
@@ -311,25 +335,26 @@ class JupyterClient:
 
         await session.websocket.send_json(msg)
 
+        result = ""
         while True:
             r = await session.websocket.receive_json()
             self.log.debug(f"Recieved kernel message: {r}")
             msg_type = r["msg_type"]
+            if r["parent_header"]["msg_id"] != msg_id:
+                # Ignore messages not intended for us. The web socket is
+                # rather chatty with broadcast status messages.
+                continue
             if msg_type == "error":
                 error_message = "".join(r["content"]["traceback"])
                 raise NotebookException(self._ansi_escape(error_message))
-            elif (
-                msg_type == "stream" and msg_id == r["parent_header"]["msg_id"]
-            ):
-                return r["content"]["text"]
+            elif msg_type == "stream":
+                result += r["content"]["text"]
             elif msg_type == "execute_reply":
                 status = r["content"]["status"]
                 if status == "ok":
-                    return ""
+                    return result
                 else:
-                    raise NotebookException(
-                        f"Error content status is {status}"
-                    )
+                    raise NotebookException(f"Result status is {status}")
 
     async def _raise_error(self, msg: str, r: ClientResponse) -> None:
         raise Exception(f"{msg}: {r.status} {r.url}: {r.headers}")

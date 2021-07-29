@@ -47,7 +47,7 @@ AUTOSTART_CONFIG = """
 
 @pytest.fixture(autouse=True)
 def configure_autostart(
-    tmp_path: Path, jupyter: None, mock_aioresponses: aioresponses
+    tmp_path: Path, mock_aioresponses: aioresponses
 ) -> Iterator[None]:
     """Set up the autostart configuration."""
     mock_gafaelfawr(mock_aioresponses)

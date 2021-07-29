@@ -14,7 +14,7 @@ from mobu import main
 from mobu.config import config
 from mobu.jupyterclient import JupyterClient
 from tests.support.gafaelfawr import make_gafaelfawr_token
-from tests.support.jupyter import mock_jupyter
+from tests.support.jupyter import MockJupyter, mock_jupyter
 
 if TYPE_CHECKING:
     from typing import AsyncIterator, Iterator
@@ -33,7 +33,7 @@ def configure() -> Iterator[None]:
     minimal test configuration and a unique admin token that is replaced after
     the test runs.
     """
-    config.environment_url = "https://test.example.com/"
+    config.environment_url = "https://test.example.com"
     config.gafaelfawr_token = make_gafaelfawr_token()
     yield
     config.environment_url = ""
@@ -41,13 +41,22 @@ def configure() -> Iterator[None]:
 
 
 @pytest.fixture
-async def app() -> AsyncIterator[FastAPI]:
+async def app(jupyter: MockJupyter) -> AsyncIterator[FastAPI]:
     """Return a configured test application.
 
     Wraps the application in a lifespan manager so that startup and shutdown
     events are sent during test execution.
+
+    Notes
+    -----
+    This must depend on the Jupyter mock since otherwise the JupyterClient
+    mocking is undone before the app is shut down, which causes it to try to
+    make real web socket calls.
+
+    A tests in business/jupyterloginloop_test.py depends on the exact shutdown
+    timeout.
     """
-    async with LifespanManager(main.app):
+    async with LifespanManager(main.app, shutdown_timeout=10):
         yield main.app
 
 
@@ -59,9 +68,9 @@ async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture
-def jupyter(mock_aioresponses: aioresponses) -> Iterator[None]:
+def jupyter(mock_aioresponses: aioresponses) -> Iterator[MockJupyter]:
     """Mock out JupyterHub/Lab."""
-    mock_jupyter(mock_aioresponses)
+    jupyter_mock = mock_jupyter(mock_aioresponses)
 
     # aioresponses has no mechanism to mock ws_connect, so we can't properly
     # test JupyterClient.run_python.  For now, just mock it out entirely.
@@ -71,7 +80,7 @@ def jupyter(mock_aioresponses: aioresponses) -> Iterator[None]:
         # reusing the websocket.
         with patch.object(JupyterClient, "_websocket_connect") as mock2:
             mock2.return_value = AsyncMock()
-            yield
+            yield jupyter_mock
 
 
 @pytest.fixture

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Dict, List, Optional
 
 from aiohttp import ClientSession
@@ -30,13 +31,14 @@ class MonkeyBusinessManager:
         self._session = ClientSession()
 
     async def cleanup(self) -> None:
+        awaits = [self.stop_flock(f) for f in self._flocks]
+        await asyncio.gather(*awaits)
         if self._scheduler is not None:
             await self._scheduler.close()
             self._scheduler = None
         if self._session:
             await self._session.close()
             self._session = None
-        self._flocks.clear()
 
     async def start_flock(self, flock_config: FlockConfig) -> Flock:
         if self._scheduler is None or not self._session:
@@ -61,8 +63,8 @@ class MonkeyBusinessManager:
         flock = self._flocks.get(name)
         if flock is None:
             raise FlockNotFoundException(name)
-        await flock.stop()
         del self._flocks[name]
+        await flock.stop()
 
 
 monkey_business_manager = MonkeyBusinessManager()
