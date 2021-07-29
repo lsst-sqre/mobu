@@ -159,22 +159,30 @@ class JupyterClient:
                 await self._raise_error("Error logging into lab", r)
 
     async def is_lab_running(self) -> bool:
-        self.log.info("Is lab running?")
         hub_url = self.jupyter_url + "hub"
+        spawn_url = self.jupyter_url + "hub/spawn"
+        spawn_pending_url = (
+            self.jupyter_url + f"hub/spawn-pending/{self.user.username}"
+        )
+        lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
+
         async with self.session.get(hub_url) as r:
             if r.status != 200:
                 self.log.error(f"Error {r.status} from {r.url}")
                 return False
 
-            spawn_url = self.jupyter_url + "hub/spawn"
-            spawn_pending_url = (
-                self.jupyter_url + f"hub/spawn-pending/{self.user.username}"
-            )
-            self.log.info(f"Going to {hub_url} redirected to {r.url}")
             if str(r.url) in [spawn_url, spawn_pending_url]:
+                self.log.info("Lab is not currently running")
                 return False
-
-        return True
+            elif str(r.url) == lab_url:
+                self.log.info("Lab is currently running")
+                return True
+            else:
+                self.log.warning(
+                    f"Going to {hub_url} redirected to unexpected URL {r.url}"
+                )
+                self.log.info("Assuming lab is not running")
+                return False
 
     async def spawn_lab(self) -> None:
         spawn_url = self.jupyter_url + "hub/spawn"
@@ -219,13 +227,14 @@ class JupyterClient:
         raise Exception("Giving up waiting for lab to spawn!")
 
     async def delete_lab(self) -> None:
-        headers = {"Referer": self.jupyter_url + "hub/home"}
+        if not await self.is_lab_running():
+            return
 
         server_url = (
             self.jupyter_url + f"hub/api/users/{self.user.username}/server"
         )
         self.log.info(f"Deleting lab for {self.user.username} at {server_url}")
-
+        headers = {"Referer": self.jupyter_url + "hub/home"}
         async with self.session.delete(server_url, headers=headers) as r:
             if r.status not in [200, 202, 204]:
                 await self._raise_error("Error deleting lab", r)
