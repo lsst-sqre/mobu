@@ -52,8 +52,7 @@ class BusinessConfig(BaseModel):
         10,
         title="How long to wait after lab creation in seconds",
         description=(
-            "Only used by the NotebookRunner. It will wait for this long"
-            " after lab creation before trying to create a session."
+            "Wait this long after lag creation before trying to use the lab"
         ),
         example=10,
     )
