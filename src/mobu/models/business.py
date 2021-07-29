@@ -52,7 +52,7 @@ class BusinessConfig(BaseModel):
         10,
         title="How long to wait after lab creation in seconds",
         description=(
-            "Wait this long after lag creation before trying to use the lab"
+            "Wait this long after lab creation before trying to use the lab"
         ),
         example=10,
     )
@@ -101,7 +101,13 @@ class BusinessConfig(BaseModel):
         description=(
             "For JupyterPythonLoop, this is the number of code snippets to"
             " execute before restarting the lab. For NotebookRunner, it's"
-            " the number of notebooks."
+            " the number of complete notebooks. NotebookRunner goes through"
+            " the directory of notebooks one-by-one, running the entirety"
+            " of each one and starting again at the beginning of the list"
+            " when it runs out, until it has executed a total of"
+            " max_executions notebooks. It then closes the session (and"
+            " optionally deletes and recreates the lab, controlled by"
+            " delete_lab), and then picks up where it left off."
         ),
         example=25,
     )
