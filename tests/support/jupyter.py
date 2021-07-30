@@ -7,6 +7,7 @@ from base64 import urlsafe_b64decode
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 from aioresponses import CallbackResult
@@ -57,6 +58,25 @@ class MockJupyter:
             self.state[user] = JupyterState.LOGGED_IN
         return CallbackResult(status=200)
 
+    def home(self, url: str, **kwargs: Any) -> CallbackResult:
+        user = self._get_user(kwargs["headers"]["Authorization"])
+        state = self.state.get(user, JupyterState.LOGGED_OUT)
+        if state == JupyterState.LAB_RUNNING:
+            delete_at = self._delete_at.get(user)
+            if delete_at and datetime.now(tz=timezone.utc) > delete_at:
+                del self._delete_at[user]
+                self.state[user] = JupyterState.LOGGED_IN
+        if state in (JupyterState.SPAWN_PENDING, JupyterState.LAB_RUNNING):
+            return CallbackResult(
+                status=200, body="<p>My Server</p>", content_type="text/html"
+            )
+        else:
+            return CallbackResult(
+                status=200,
+                body="<p>Start My Server</p>",
+                content_type="text/html",
+            )
+
     def hub(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         state = self.state.get(user, JupyterState.LOGGED_OUT)
@@ -68,11 +88,6 @@ class MockJupyter:
             redirect_to = _url(f"hub/spawn-pending/{user}")
         elif state == JupyterState.LAB_RUNNING:
             redirect_to = _url(f"user/{user}/lab")
-            delete_at = self._delete_at.get(user)
-            if delete_at and datetime.now(tz=timezone.utc) > delete_at:
-                del self._delete_at[user]
-                self.state[user] = JupyterState.LOGGED_IN
-                redirect_to = _url("hub/spawn")
         return CallbackResult(status=307, headers={"Location": redirect_to})
 
     def spawn(self, url: str, **kwargs: Any) -> CallbackResult:
@@ -82,25 +97,32 @@ class MockJupyter:
         self.state[user] = JupyterState.SPAWN_PENDING
         return CallbackResult(
             status=302,
-            headers={"Location": f"/nb/hub/spawn-pending/{user}"},
+            headers={"Location": _url(f"hub/spawn-pending/{user}")},
         )
 
-    def finish_spawn(self, url: str, **kwargs: Any) -> CallbackResult:
+    def spawn_pending(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/hub/spawn-pending/{user}")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state == JupyterState.SPAWN_PENDING
         self.state[user] = JupyterState.LAB_RUNNING
-        return CallbackResult(
-            status=307, headers={"Location": _url(f"user/{user}/lab")}
-        )
+        return CallbackResult(status=200)
+
+    def missing_lab(self, url: str, **kwargs: Any) -> CallbackResult:
+        user = self._get_user(kwargs["headers"]["Authorization"])
+        assert str(url).endswith(f"/hub/user/{user}/lab")
+        return CallbackResult(status=503)
 
     def lab(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/user/{user}/lab")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
-        assert state == JupyterState.LAB_RUNNING
-        return CallbackResult(status=200)
+        if state == JupyterState.LAB_RUNNING:
+            return CallbackResult(status=200)
+        else:
+            return CallbackResult(
+                status=302, headers={"Location": _url(f"hub/user/{user}/lab")}
+            )
 
     def delete_lab(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
@@ -124,7 +146,9 @@ class MockJupyter:
         assert kwargs["json"]["name"] == "(no notebook)"
         assert kwargs["json"]["type"] == "console"
         session = JupyterLabSession(
-            session_id=uuid4().hex, kernel_id=uuid4().hex, websocket=None
+            session_id=uuid4().hex,
+            kernel_id=uuid4().hex,
+            websocket=AsyncMock(),
         )
         self.sessions[user] = session
         return CallbackResult(
@@ -162,20 +186,26 @@ def mock_jupyter(mocked: aioresponses) -> MockJupyter:
     mock = MockJupyter()
     mocked.get(_url("hub/login"), callback=mock.login, repeat=True)
     mocked.get(_url("hub"), callback=mock.hub, repeat=True)
+    mocked.get(_url("hub/home"), callback=mock.home, repeat=True)
     mocked.get(_url("hub/spawn"), repeat=True)
     mocked.post(_url("hub/spawn"), callback=mock.spawn, repeat=True)
     mocked.get(
         _url("hub/spawn-pending/[^/]+$", regex=True),
-        callback=mock.finish_spawn,
+        callback=mock.spawn_pending,
         repeat=True,
     )
     mocked.get(
-        _url("user/[^/]+/lab?", regex=True), callback=mock.lab, repeat=True
+        _url("hub/user/[^/]+/lab$", regex=True),
+        callback=mock.missing_lab,
+        repeat=True,
     )
     mocked.delete(
         _url("hub/api/users/[^/]+/server", regex=True),
         callback=mock.delete_lab,
         repeat=True,
+    )
+    mocked.get(
+        _url(r"user/[^/]+/lab", regex=True), callback=mock.lab, repeat=True
     )
     mocked.post(
         _url("user/[^/]+/api/sessions", regex=True),

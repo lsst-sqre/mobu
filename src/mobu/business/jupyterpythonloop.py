@@ -28,7 +28,7 @@ class JupyterPythonLoop(JupyterLoginLoop):
         await self.delete_session(session)
 
     async def create_session(self) -> JupyterLabSession:
-        self.logger.info("create_session")
+        self.logger.info("Creating lab session")
         with self.timings.start("create_session"):
             session = await self._client.create_labsession()
         return session
@@ -50,6 +50,7 @@ class JupyterPythonLoop(JupyterLoginLoop):
             await self.pause(self.config.execution_idle_time)
 
     async def delete_session(self, session: JupyterLabSession) -> None:
-        self.logger.info("delete_session")
+        await self.lab_login()
+        self.logger.info("Deleting lab session")
         with self.timings.start("delete_session"):
             await self._client.delete_labsession(session)

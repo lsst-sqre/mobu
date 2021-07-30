@@ -11,6 +11,10 @@ class FlockNotFoundException(Exception):
         super().__init__(f"Flock {flock} not found")
 
 
+class LabSpawnTimeoutError(Exception):
+    """Timed out waiting for the lab to spawn."""
+
+
 class MonkeyNotFoundException(Exception):
     """The named monkey was not found."""
 

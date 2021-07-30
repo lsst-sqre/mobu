@@ -11,40 +11,40 @@ import random
 import re
 import string
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from http.cookies import BaseCookie
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from aiohttp import (
-    ClientResponse,
-    ClientSession,
-    ClientWebSocketResponse,
-    TCPConnector,
-)
+from aiohttp import ClientResponse, ClientSession, TCPConnector
 
 from .config import config
-from .exceptions import NotebookException
+from .exceptions import LabSpawnTimeoutError, NotebookException
 
 if TYPE_CHECKING:
-    from typing import Any, Optional
+    from typing import Any, NoReturn, Optional
 
+    from aiohttp import ClientWebSocketResponse
     from aiohttp.client import _RequestContextManager, _WSRequestContextManager
     from structlog import BoundLogger
 
     from .models.business import BusinessConfig
     from .models.user import AuthenticatedUser
 
-__all__ = ["JupyterClient"]
+__all__ = ["JupyterClient", "JupyterLabSession"]
 
 
 @dataclass(frozen=True)
 class JupyterLabSession:
-    """This holds the information a client needs to talk to the Lab in order
-    to execute code."""
+    """Represents an open session with a Jupyter Lab.
+
+    This holds the information a client needs to talk to the Lab in order to
+    execute code.
+    """
 
     session_id: str
     kernel_id: str
-    websocket: Optional[ClientWebSocketResponse]
+    websocket: ClientWebSocketResponse
 
 
 class JupyterClientSession:
@@ -62,6 +62,15 @@ class JupyterClientSession:
         The session to wrap.
     token : `str`
         The token to send.
+
+    Notes
+    -----
+    Please do not add any business logic to this class.  It's a workaround for
+    https://github.com/pnuckowski/aioresponses/issues/111 and should expose
+    exactly the same API as `aiohttp.ClientSesssion` except for the
+    constructor.  The goal is to delete it in its entirety and set the
+    ``Authorization`` header in the `aiohttp.ClientSession` once that
+    aioresponses issue is fixed.
     """
 
     def __init__(self, session: ClientSession, token: str) -> None:
@@ -144,12 +153,10 @@ class JupyterClient:
                 await self._raise_error("Error logging into hub", r)
 
     async def ensure_lab(self) -> None:
-        self.log.info("Ensure lab")
-        running = await self.is_lab_running()
-        if running:
-            await self.lab_login()
-        else:
+        if not await self.lab_has_spawned():
+            self.log.info("Lab is not running, spawning")
             await self.spawn_lab()
+            self.log.info("Lab created")
 
     async def lab_login(self) -> None:
         self.log.info("Logging into lab")
@@ -158,82 +165,110 @@ class JupyterClient:
             if r.status != 200:
                 await self._raise_error("Error logging into lab", r)
 
-    async def is_lab_running(self) -> bool:
-        hub_url = self.jupyter_url + "hub"
-        spawn_url = self.jupyter_url + "hub/spawn"
-        spawn_pending_url = (
-            self.jupyter_url + f"hub/spawn-pending/{self.user.username}"
-        )
+    async def lab_is_stopped(self) -> bool:
+        """Determine if the lab is fully stopped.
+
+        Returns
+        -------
+        is_stopped : `bool`
+            `True` if the lab is fully stopped, currently determined by
+            whether ``hub/home`` shows a "Start My Server" button, since that
+            does not appear to happen until the lab is fully stopped.  `False`
+            if it is in any other state, including spawning or stopping.
+
+        Notes
+        -----
+        We have had endless trouble with this interaction with JupyterHub and
+        Jupyter Labs, ranging from infinite redirects to false diagnosis of
+        the lab as running when it was shutting down.  JupyterHub does not
+        appear to provide an API to gather this information, so we're using
+        sketchy checks and heuristics that are flawed at best.
+
+        This method should ideally be replaced with an API call as soon as one
+        is provided by JupyterHub.
+        """
+        home_url = self.jupyter_url + "hub/home"
+        async with self.session.get(home_url) as r:
+            if r.status != 200:
+                msg = "Unexpected reply status when seeing if lab is running"
+                await self._raise_error(msg, r)
+            body = await r.text()
+            return re.search(r"Start\s+My\s+Server", body) is not None
+
+    async def lab_has_spawned(self) -> bool:
+        """Determine if the lab has finished spawning.
+
+        Returns
+        -------
+        has_spawned : `bool`
+            `True` if the lab has finished spawning, determined by a 200
+            response (not a redirect) when going directly to the lab.  `False`
+            otherwise.
+
+        Notes
+        -----
+        As with ``lab_is_stopped``, we've had endless trouble with determining
+        this information and have not been able to find a clean API that will
+        provide it.  This ideally should be replaced with an API call.
+        """
         lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
 
-        async with self.session.get(hub_url) as r:
-            if r.status != 200:
-                self.log.error(f"Error {r.status} from {r.url}")
-                return False
-
-            if str(r.url) == spawn_url or spawn_pending_url in str(r.url):
-                self.log.info("Lab is not currently running")
-                return False
-            elif str(r.url) == lab_url:
-                self.log.info("Lab is currently running")
+        # If the lab is still spawning, we will get a redirect to the
+        # spawn pending page.  If the lab is not running, we will get a
+        # redirect to hub/user/<username>/lab, which returns a 503 with a
+        # button to start the server.
+        async with self.session.get(lab_url) as r:
+            if r.status == 200 and lab_url in str(r.url):
                 return True
-            else:
-                self.log.warning(
-                    f"Going to {hub_url} redirected to unexpected URL {r.url}"
-                )
-                self.log.info("Assuming lab is not running")
+            elif r.status == 503 or "spawn-pending" in str(r.url):
                 return False
+            else:
+                msg = "Unexpected reply when checking if lab spawned"
+                await self._raise_error(msg, r)
 
     async def spawn_lab(self) -> None:
         spawn_url = self.jupyter_url + "hub/spawn"
-        hub_url = self.jupyter_url + "hub"
-        lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
 
-        # DM-23864: Do a get on the spawn URL even if I don't have to.
+        # Retrieving the spawn page before POSTing to it appears to trigger
+        # some necessary internal state construction (and also more accurately
+        # simulates a user interaction).  See DM-23864.
         async with self.session.get(spawn_url) as r:
             await r.text()
 
-        async with self.session.post(
-            spawn_url, data=self.jupyter_options_form, allow_redirects=False
-        ) as r:
-            if r.status != 302:
-                await self._raise_error("Spawn did not redirect", r)
+        # POST the options form to the spawn page.  This should redirect to
+        # the spawn-pending page, which will return a 200.
+        data = self.jupyter_options_form
+        self.log.info(f"Spawning lab for {self.user.username}")
+        async with self.session.post(spawn_url, data=data) as r:
+            if r.status != 200:
+                msg = "Unexpected reply status after spawning"
+                await self._raise_error(msg, r)
 
-            redirect_url = (
-                self.jupyter_base + f"hub/spawn-pending/{self.user.username}"
-            )
-            if redirect_url not in r.headers["Location"]:
-                await self._raise_error("Spawn didn't redirect to pending", r)
-
-        # Jupyterlab will give up a spawn after 900 seconds, so we shouldn't
-        # wait longer than that.
+        # Poll until the lab has spawned.  Jupyterlab will give up a spawn
+        # after 900 seconds, so we shouldn't wait longer than that.
         max_poll_secs = 900
         poll_interval = 15
         retries = max_poll_secs / poll_interval
-
+        start = datetime.now(tz=timezone.utc)
         while retries > 0:
-            async with self.session.get(hub_url) as r:
-                if str(r.url) == lab_url:
-                    self.log.info(f"Lab spawned, redirected to {r.url}")
-                    return
+            if await self.lab_has_spawned():
+                return
+            now = datetime.now(tz=timezone.utc)
+            elapsed = int((now - start).total_seconds())
+            self.log.info(f"Waiting for lab to spawn ({elapsed}s elapsed)")
+            retries -= 1
+            await asyncio.sleep(poll_interval)
 
-                if not r.ok:
-                    await self._raise_error("Error spawning", r)
-
-                self.log.info(f"Still waiting for lab to spawn [{r.status}]")
-                retries -= 1
-                await asyncio.sleep(poll_interval)
-
-        raise Exception("Giving up waiting for lab to spawn!")
+        # Timed out spawning the lab.
+        raise LabSpawnTimeoutError("Lab did not spawn after {max_poll_secs}s")
 
     async def delete_lab(self) -> None:
-        if not await self.is_lab_running():
+        if await self.lab_is_stopped():
             return
 
-        server_url = (
-            self.jupyter_url + f"hub/api/users/{self.user.username}/server"
-        )
-        self.log.info(f"Deleting lab for {self.user.username} at {server_url}")
+        user = self.user.username
+        server_url = self.jupyter_url + f"hub/api/users/{user}/server"
+        self.log.info(f"Deleting lab for {user}")
         headers = {"Referer": self.jupyter_url + "hub/home"}
         async with self.session.delete(server_url, headers=headers) as r:
             if r.status not in [200, 202, 204]:
@@ -242,11 +277,11 @@ class JupyterClient:
         # Wait for the lab to actually go away.  If we don't do this, we may
         # try to create a new lab while the old one is still shutting down.
         count = 0
-        while await self.is_lab_running() and count < 10:
+        while not await self.lab_is_stopped() and count < 10:
             self.log.info(f"Waiting for lab deletion ({count}s elapsed)")
             await asyncio.sleep(1)
             count += 1
-        if await self.is_lab_running():
+        if not await self.lab_is_stopped():
             self.log.warning("Giving up on waiting for lab deletion")
         else:
             self.log.info("Lab deleted")
@@ -268,16 +303,14 @@ class JupyterClient:
         async with self.session.post(session_url, json=body) as r:
             if r.status != 201:
                 await self._raise_error("Error creating session", r)
-
             response = await r.json()
-            session_id = response["id"]
-            kernel_id = response["kernel"]["id"]
-            ws = await self._websocket_connect(kernel_id)
-            labsession = JupyterLabSession(
-                session_id=session_id, kernel_id=kernel_id, websocket=ws
-            )
-            self.log.info(f"Created JupyterLabSession {labsession}")
-            return labsession
+
+        kernel_id = response["kernel"]["id"]
+        return JupyterLabSession(
+            session_id=response["id"],
+            kernel_id=kernel_id,
+            websocket=await self._websocket_connect(kernel_id),
+        )
 
     async def _websocket_connect(
         self, kernel_id: str
@@ -287,31 +320,23 @@ class JupyterClient:
             + f"user/{self.user.username}/api/kernels/"
             + f"{kernel_id}/channels"
         )
-        self.log.info(f"Attempting WebSocket connection to {channels_url}")
+        self.log.info(f"Opening WebSocket connection at {channels_url}")
         return await self.session.ws_connect(channels_url)
 
     async def delete_labsession(self, session: JupyterLabSession) -> None:
-        await self.lab_login()
+        user = self.user.username
         session_url = (
-            self.jupyter_url
-            + f"user/{self.user.username}/api/sessions/{session.session_id}"
+            self.jupyter_url + f"user/{user}/api/sessions/{session.session_id}"
         )
-        async with self.session.delete(
-            session_url, raise_for_status=True
-        ) as r:
+
+        await session.websocket.close()
+        async with self.session.delete(session_url) as r:
             if r.status != 204:
-                self.log.warning(f"Delete session {session}: {r}")
-            if session.websocket is not None:
-                await session.websocket.close()
-            return
+                msg = "Unexpected reply status deleting lab session"
+                self._raise_error(msg, r)
 
     async def run_python(self, session: JupyterLabSession, code: str) -> str:
-        if not session.websocket:
-            self.log.error("Cannot run_python without a websocket!")
-            raise Exception("No WebSocket for code execution: {session}")
-
         msg_id = uuid4().hex
-
         msg = {
             "header": {
                 "username": self.user.username,
@@ -356,5 +381,5 @@ class JupyterClient:
                 else:
                     raise NotebookException(f"Result status is {status}")
 
-    async def _raise_error(self, msg: str, r: ClientResponse) -> None:
+    async def _raise_error(self, msg: str, r: ClientResponse) -> NoReturn:
         raise Exception(f"{msg}: {r.status} {r.url}: {r.headers}")
