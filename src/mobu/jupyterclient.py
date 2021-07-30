@@ -264,11 +264,11 @@ class JupyterClient:
 
     async def delete_lab(self) -> None:
         if await self.lab_is_stopped():
+            self.log.info("Lab is already stopped")
             return
 
         user = self.user.username
         server_url = self.jupyter_url + f"hub/api/users/{user}/server"
-        self.log.info(f"Deleting lab for {user}")
         headers = {"Referer": self.jupyter_url + "hub/home"}
         async with self.session.delete(server_url, headers=headers) as r:
             if r.status not in [200, 202, 204]:
@@ -276,15 +276,18 @@ class JupyterClient:
 
         # Wait for the lab to actually go away.  If we don't do this, we may
         # try to create a new lab while the old one is still shutting down.
-        count = 0
-        while not await self.lab_is_stopped() and count < 10:
-            self.log.info(f"Waiting for lab deletion ({count}s elapsed)")
-            await asyncio.sleep(1)
-            count += 1
+        max_poll_secs = 20
+        poll_interval = 2
+        retries = max_poll_secs / poll_interval
+        start = datetime.now(tz=timezone.utc)
+        while not await self.lab_is_stopped() and retries > 0:
+            now = datetime.now(tz=timezone.utc)
+            elapsed = int((now - start).total_seconds())
+            self.log.info(f"Waiting for lab deletion ({elapsed}s elapsed)")
+            await asyncio.sleep(poll_interval)
+            retries -= 1
         if not await self.lab_is_stopped():
             self.log.warning("Giving up on waiting for lab deletion")
-        else:
-            self.log.info("Lab deleted")
 
     async def create_labsession(
         self, kernel_name: str = "LSST", notebook_name: Optional[str] = None
@@ -320,7 +323,6 @@ class JupyterClient:
             + f"user/{self.user.username}/api/kernels/"
             + f"{kernel_id}/channels"
         )
-        self.log.info(f"Opening WebSocket connection at {channels_url}")
         return await self.session.ws_connect(channels_url)
 
     async def delete_labsession(self, session: JupyterLabSession) -> None:

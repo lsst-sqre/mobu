@@ -91,7 +91,7 @@ class NotebookRunner(JupyterPythonLoop):
 
     async def create_session(self) -> JupyterLabSession:
         """Override create_session to add the notebook name."""
-        self.logger.info("create_session")
+        self.logger.info("Creating lab session")
         notebook_name = self.notebook.name if self.notebook else None
         with self.timings.start("create_session"):
             session = await self._client.create_labsession(
