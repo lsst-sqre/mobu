@@ -201,9 +201,10 @@ class JupyterClient:
         Returns
         -------
         has_spawned : `bool`
-            `True` if the lab has finished spawning, determined by a 200
-            response (not a redirect) when going directly to the lab.  `False`
-            otherwise.
+            `True` if the lab has finished spawning, determined by a request
+            for the user's lab staying on that URL (possibly after a login
+            redirect) and not being redirected to a spawn-pending or error
+            page.  `False` otherwise.
 
         Notes
         -----
