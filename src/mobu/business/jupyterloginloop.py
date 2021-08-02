@@ -59,6 +59,7 @@ class JupyterLoginLoop(Business):
         await self.lab_settle()
         if self.stopping:
             return
+        await self.lab_login()
         await self.lab_business()
         if self.config.delete_lab:
             await self.hub_login()
@@ -75,11 +76,14 @@ class JupyterLoginLoop(Business):
     async def ensure_lab(self) -> None:
         with self.timings.start("ensure_lab"):
             await self._client.ensure_lab()
-        self.logger.info("Lab created")
 
     async def lab_settle(self) -> None:
         with self.timings.start("lab_settle"):
             await self.pause(self.config.settle_time)
+
+    async def lab_login(self) -> None:
+        with self.timings.start("lab_login"):
+            await self._client.lab_login()
 
     async def delete_lab(self) -> None:
         self.logger.info("Deleting lab")
