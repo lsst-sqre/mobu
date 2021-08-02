@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
-from datetime import datetime
 from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING
 
@@ -15,6 +14,7 @@ from aiojobs import Scheduler
 
 from .config import config
 from .models.monkey import MonkeyData, MonkeyState
+from .slack import SlackClient
 
 if TYPE_CHECKING:
     from typing import Optional, Type
@@ -50,6 +50,9 @@ class Monkey:
         self._session = session
         self._logfile = NamedTemporaryFile()
         self._job: Optional[Job] = None
+        self._slack = None
+        if config.alert_hook and config.alert_hook != "None":
+            self._slack = SlackClient(config.alert_hook, session)
 
         formatter = logging.Formatter(
             fmt="%(asctime)s %(message)s", datefmt=DATE_FORMAT
@@ -74,22 +77,15 @@ class Monkey:
             msg = f"Not sending alert '{msg}' because state is {state}"
             self.log.info(msg)
             return
-
-        time = datetime.now().strftime(DATE_FORMAT)
-        alert_msg = f"{time} {self.name} {msg}"
-        self.log.error(f"Slack Alert: {alert_msg}")
-        if not config.alert_hook or config.alert_hook == "None":
-            self.log.info("Alert hook isn't set, so not sending to slack.")
+        if not self._slack:
+            self.log.info("Alert hook isn't set, so not sending to Slack")
             return
 
+        self.log.info("Sending alert to Slack")
         try:
-            alert = {"text": alert_msg}
-            r = await self._session.post(config.alert_hook, json=alert)
-            if r.status != 200:
-                msg = f"Error {r.status} trying to send alert to slack"
-                self.log.error(msg)
+            self._slack.alert(msg, self.name)
         except Exception:
-            self.log.exception("Exception thrown while trying to alert!")
+            self.log.exception("Exception thrown while sending to Slack")
 
     def logfile(self) -> str:
         self._logfile.flush()
@@ -108,7 +104,7 @@ class Monkey:
                 run = False
             except Exception as e:
                 self.log.exception(
-                    "Exception thrown while doing monkey business."
+                    "Exception thrown while doing monkey business"
                 )
                 # Just pass the exception message - the callstack will
                 # be logged but will probably be too spammy to report.
