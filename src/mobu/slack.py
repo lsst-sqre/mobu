@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from .constants import DATE_FORMAT
+from .exceptions import SlackError
 
 if TYPE_CHECKING:
     from aiohttp import ClientSession
@@ -29,10 +30,37 @@ class SlackClient:
         self._hook_url = hook_url
         self._session = session
 
-    async def alert(self, msg: str, name: str) -> None:
-        time = datetime.now().strftime(DATE_FORMAT)
-        alert_msg = f"{time} {name} {msg}"
-        alert = {"text": alert_msg}
+    async def alert(self, user: str, message: str) -> None:
+        date = datetime.now().strftime(DATE_FORMAT)
+        body = {
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": str(self),
+                    },
+                },
+                {
+                    "type": "section",
+                    "fields": [
+                        {
+                            "type": "mrkdwn",
+                            "text": f"*Date*\n{date}",
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": f"*User*\n{user}",
+                        },
+                    ],
+                },
+            ],
+        }
         await self._session.post(
-            self._hook_url, json=alert, raise_for_status=True
+            self._hook_url, json=body, raise_for_status=True
+        )
+
+    async def alert_from_exception(self, e: SlackError) -> None:
+        await self._session.post(
+            self._hook_url, json=e.to_slack(), raise_for_status=True
         )

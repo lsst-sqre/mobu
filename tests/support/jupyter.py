@@ -22,6 +22,18 @@ if TYPE_CHECKING:
     from aioresponses import aioresponses
 
 
+class JupyterAction(Enum):
+    LOGIN = "login"
+    HOME = "home"
+    HUB = "hub"
+    SPAWN = "spawn"
+    SPAWN_PENDING = "spawn_pending"
+    LAB = "lab"
+    DELETE_LAB = "delete_lab"
+    CREATE_SESSION = "create_session"
+    DELETE_SESSION = "delete_session"
+
+
 class JupyterState(Enum):
     LOGGED_OUT = "logged out"
     LOGGED_IN = "logged in"
@@ -50,9 +62,18 @@ class MockJupyter:
         self.state: Dict[str, JupyterState] = {}
         self.delete_immediate = True
         self._delete_at: Dict[str, Optional[datetime]] = {}
+        self._fail: Dict[str, Dict[JupyterAction, bool]] = {}
+
+    def fail(self, user: str, action: JupyterAction) -> None:
+        """Configure the given action to fail for the given user."""
+        if user not in self._fail:
+            self._fail[user] = {}
+        self._fail[user][action] = True
 
     def login(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
+        if JupyterAction.LOGIN in self._fail.get(user, {}):
+            return CallbackResult(status=500)
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         if state == JupyterState.LOGGED_OUT:
             self.state[user] = JupyterState.LOGGED_IN
@@ -60,6 +81,8 @@ class MockJupyter:
 
     def home(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
+        if JupyterAction.HOME in self._fail.get(user, {}):
+            return CallbackResult(status=500)
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         if state == JupyterState.LAB_RUNNING:
             delete_at = self._delete_at.get(user)
@@ -79,6 +102,8 @@ class MockJupyter:
 
     def hub(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
+        if JupyterAction.HUB in self._fail.get(user, {}):
+            return CallbackResult(status=500)
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         if state == JupyterState.LOGGED_OUT:
             redirect_to = _url("hub/login")
@@ -92,6 +117,8 @@ class MockJupyter:
 
     def spawn(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
+        if JupyterAction.SPAWN in self._fail.get(user, {}):
+            return CallbackResult(status=500, method="POST", reason="foo")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state == JupyterState.LOGGED_IN
         self.state[user] = JupyterState.SPAWN_PENDING
@@ -103,6 +130,8 @@ class MockJupyter:
     def spawn_pending(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/hub/spawn-pending/{user}")
+        if JupyterAction.SPAWN_PENDING in self._fail.get(user, {}):
+            return CallbackResult(status=500)
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state == JupyterState.SPAWN_PENDING
         self.state[user] = JupyterState.LAB_RUNNING
@@ -116,6 +145,8 @@ class MockJupyter:
     def lab(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/user/{user}/lab")
+        if JupyterAction.LAB in self._fail.get(user, {}):
+            return CallbackResult(status=500)
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         if state == JupyterState.LAB_RUNNING:
             return CallbackResult(status=200)
@@ -127,6 +158,8 @@ class MockJupyter:
     def delete_lab(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/users/{user}/server")
+        if JupyterAction.DELETE_LAB in self._fail.get(user, {}):
+            return CallbackResult(status=500, method="DELETE")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state != JupyterState.LOGGED_OUT
         if self.delete_immediate:
@@ -140,6 +173,8 @@ class MockJupyter:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/user/{user}/api/sessions")
         assert user not in self.sessions
+        if JupyterAction.CREATE_SESSION in self._fail.get(user, {}):
+            return CallbackResult(status=500, method="POST")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state == JupyterState.LAB_RUNNING
         assert kwargs["json"]["kernel"]["name"] == "LSST"
@@ -163,6 +198,8 @@ class MockJupyter:
         user = self._get_user(kwargs["headers"]["Authorization"])
         session_id = self.sessions[user].session_id
         assert str(url).endswith(f"/user/{user}/api/sessions/{session_id}")
+        if JupyterAction.DELETE_SESSION in self._fail.get(user, {}):
+            return CallbackResult(status=500, method="DELETE")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state == JupyterState.LAB_RUNNING
         del self.sessions[user]

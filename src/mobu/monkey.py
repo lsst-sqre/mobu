@@ -13,6 +13,7 @@ from aiohttp import ClientSession
 from aiojobs import Scheduler
 
 from .config import config
+from .exceptions import SlackError
 from .models.monkey import MonkeyData, MonkeyState
 from .slack import SlackClient
 
@@ -71,11 +72,10 @@ class Monkey:
 
         self.business = business_type(self.log, self.config.options, self.user)
 
-    async def alert(self, msg: str) -> None:
+    async def alert(self, e: Exception) -> None:
         if self.state in (MonkeyState.STOPPING, MonkeyState.FINISHED):
             state = self.state.name
-            msg = f"Not sending alert '{msg}' because state is {state}"
-            self.log.info(msg)
+            self.log.info(f"Not sending alert because state is {state}")
             return
         if not self._slack:
             self.log.info("Alert hook isn't set, so not sending to Slack")
@@ -83,7 +83,10 @@ class Monkey:
 
         self.log.info("Sending alert to Slack")
         try:
-            self._slack.alert(msg, self.name)
+            if isinstance(e, SlackError):
+                await self._slack.alert_from_exception(e)
+            else:
+                await self._slack.alert(self.user.username, str(e))
         except Exception:
             self.log.exception("Exception thrown while sending to Slack")
 
@@ -106,9 +109,7 @@ class Monkey:
                 self.log.exception(
                     "Exception thrown while doing monkey business"
                 )
-                # Just pass the exception message - the callstack will
-                # be logged but will probably be too spammy to report.
-                await self.alert(str(e))
+                await self.alert(e)
                 await self.business.close()
                 run = self.restart and self.state == MonkeyState.RUNNING
                 if self.state == MonkeyState.RUNNING:

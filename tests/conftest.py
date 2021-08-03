@@ -14,12 +14,16 @@ from mobu import main
 from mobu.config import config
 from mobu.jupyterclient import JupyterClient
 from tests.support.gafaelfawr import make_gafaelfawr_token
-from tests.support.jupyter import MockJupyter, mock_jupyter
+from tests.support.jupyter import mock_jupyter
+from tests.support.slack import mock_slack
 
 if TYPE_CHECKING:
     from typing import AsyncIterator, Iterator
 
     from fastapi import FastAPI
+
+    from tests.support.jupyter import MockJupyter
+    from tests.support.slack import MockSlack
 
 
 @pytest.fixture(autouse=True)
@@ -68,6 +72,13 @@ async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture
+def mock_aioresponses() -> Iterator[aioresponses]:
+    """Set up aioresponses for aiohttp mocking."""
+    with aioresponses() as mocked:
+        yield mocked
+
+
+@pytest.fixture
 def jupyter(mock_aioresponses: aioresponses) -> Iterator[MockJupyter]:
     """Mock out JupyterHub/Lab."""
     jupyter_mock = mock_jupyter(mock_aioresponses)
@@ -84,7 +95,8 @@ def jupyter(mock_aioresponses: aioresponses) -> Iterator[MockJupyter]:
 
 
 @pytest.fixture
-def mock_aioresponses() -> Iterator[aioresponses]:
-    """Set up aioresponses for aiohttp mocking."""
-    with aioresponses() as mocked:
-        yield mocked
+def slack(mock_aioresponses: aioresponses) -> Iterator[MockSlack]:
+    """Mock out Slack for alerting."""
+    config.alert_hook = "https://slack.example.com/services/XXXX/YYYYY"
+    yield mock_slack(mock_aioresponses)
+    config.alert_hook = None
