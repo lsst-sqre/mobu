@@ -205,6 +205,10 @@ async def test_alert(
                         },
                         {
                             "type": "mrkdwn",
+                            "text": ANY,
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*User*\ntestuser2",
                         },
                         {

@@ -91,6 +91,7 @@ class Stopwatch:
     ) -> Literal[False]:
         self.stop_time = datetime.now(tz=timezone.utc)
         if exc_val and isinstance(exc_val, SlackError):
+            exc_val.started = self.start_time
             exc_val.event = self.event
         return False
 
