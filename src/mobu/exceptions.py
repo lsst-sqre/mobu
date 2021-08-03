@@ -49,6 +49,7 @@ class SlackError(Exception, metaclass=ABCMeta):
     def __init__(self, user: str, msg: str) -> None:
         self.user = user
         self.timestamp = datetime.now(tz=timezone.utc)
+        self.event: Optional[str] = None
         super().__init__(msg)
 
     @abstractmethod
@@ -58,7 +59,7 @@ class SlackError(Exception, metaclass=ABCMeta):
     def common_fields(self) -> List[Dict[str, str]]:
         """Return common fields to put in any alert."""
         date = self.timestamp.strftime(DATE_FORMAT)
-        return [
+        fields = [
             {
                 "type": "mrkdwn",
                 "text": f"*Date*\n{date}",
@@ -68,6 +69,9 @@ class SlackError(Exception, metaclass=ABCMeta):
                 "text": f"*User*\n{self.user}",
             },
         ]
+        if self.event:
+            fields.append({"type": "mrkdwn", "text": f"*Event*\n{self.event}"})
+        return fields
 
 
 class CodeExecutionError(SlackError):

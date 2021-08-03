@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
+from .exceptions import SlackError
+
 if TYPE_CHECKING:
     from datetime import timedelta
     from types import TracebackType
@@ -88,6 +90,8 @@ class Stopwatch:
         exc_tb: Optional[TracebackType],
     ) -> Literal[False]:
         self.stop_time = datetime.now(tz=timezone.utc)
+        if exc_val and isinstance(exc_val, SlackError):
+            exc_val.event = self.event
         return False
 
     @property

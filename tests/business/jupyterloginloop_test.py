@@ -209,6 +209,10 @@ async def test_alert(
                         },
                         {
                             "type": "mrkdwn",
+                            "text": "*Event*\nensure_lab",
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*Message*\nfoo",
                         },
                     ],
