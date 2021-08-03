@@ -3,26 +3,26 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
+from aiohttp import ClientSession
 from aioresponses import aioresponses
 from asgi_lifespan import LifespanManager
 from httpx import AsyncClient
 
 from mobu import main
 from mobu.config import config
-from mobu.jupyterclient import JupyterClient
 from tests.support.gafaelfawr import make_gafaelfawr_token
-from tests.support.jupyter import mock_jupyter
+from tests.support.jupyter import mock_jupyter, mock_jupyter_websocket
 from tests.support.slack import mock_slack
 
 if TYPE_CHECKING:
-    from typing import AsyncIterator, Iterator
+    from typing import Any, AsyncIterator, Iterator
 
     from fastapi import FastAPI
 
-    from tests.support.jupyter import MockJupyter
+    from tests.support.jupyter import MockJupyter, MockJupyterWebSocket
     from tests.support.slack import MockSlack
 
 
@@ -83,15 +83,14 @@ def jupyter(mock_aioresponses: aioresponses) -> Iterator[MockJupyter]:
     """Mock out JupyterHub/Lab."""
     jupyter_mock = mock_jupyter(mock_aioresponses)
 
-    # aioresponses has no mechanism to mock ws_connect, so we can't properly
-    # test JupyterClient.run_python.  For now, just mock it out entirely.
-    with patch.object(JupyterClient, "run_python") as mock:
-        mock.return_value = "4"
-        # Same problem, but up a layer now that we're using sessions and
-        # reusing the websocket.
-        with patch.object(JupyterClient, "_websocket_connect") as mock2:
-            mock2.return_value = AsyncMock()
-            yield jupyter_mock
+    # aioresponses has no mechanism to mock ws_connect, so we have to do it
+    # ourselves.
+    async def mock_ws_connect(url: str, **kwargs: Any) -> MockJupyterWebSocket:
+        return mock_jupyter_websocket(url, jupyter_mock)
+
+    with patch.object(ClientSession, "ws_connect") as mock:
+        mock.side_effect = mock_ws_connect
+        yield jupyter_mock
 
 
 @pytest.fixture

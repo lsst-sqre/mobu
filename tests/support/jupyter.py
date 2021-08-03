@@ -7,9 +7,10 @@ from base64 import urlsafe_b64decode
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock
+from unittest.mock import ANY, AsyncMock, Mock
 from uuid import uuid4
 
+from aiohttp import ClientWebSocketResponse
 from aioresponses import CallbackResult
 
 from mobu.config import config
@@ -214,6 +215,69 @@ class MockJupyter:
         return user.decode()
 
 
+class MockJupyterWebSocket(Mock):
+    """Simulate the WebSocket connection to a Jupyter Lab.
+
+    Note
+    ----
+    The methods are named the reverse of what you would expect.  For example,
+    ``send_json`` receives a message, and ``receive_json`` returns a message.
+    This is so that this class can be used as a mock of an
+    `~aiohttp.ClientWebSocketResponse`.
+    """
+
+    def __init__(self, user: str, session_id: str) -> None:
+        super().__init__(spec=ClientWebSocketResponse)
+        self.user = user
+        self.session_id = session_id
+        self._header: Optional[Dict[str, str]] = None
+        self._code: Optional[str] = None
+        self._state: Dict[str, Any] = {}
+
+    async def send_json(self, message: Dict[str, Any]) -> None:
+        assert message == {
+            "header": {
+                "username": self.user,
+                "version": "5.0",
+                "session": self.session_id,
+                "msg_id": ANY,
+                "msg_type": "execute_request",
+            },
+            "parent_header": {},
+            "channel": "shell",
+            "content": {
+                "code": ANY,
+                "silent": False,
+                "store_history": False,
+                "user_expressions": {},
+                "allow_stdin": False,
+            },
+            "metadata": {},
+            "buffers": {},
+        }
+        self._header = message["header"]
+        self._code = message["content"]["code"]
+
+    async def receive_json(self) -> Dict[str, Any]:
+        assert self._header
+        if self._code:
+            result = eval(self._code, self._state)
+            self._code = None
+            return {
+                "msg_type": "stream",
+                "parent_header": self._header,
+                "content": {"text": str(result)},
+            }
+        else:
+            result = {
+                "msg_type": "execute_reply",
+                "parent_header": self._header,
+                "content": {"status": "ok"},
+            }
+            self._header = None
+            return result
+
+
 def mock_jupyter(mocked: aioresponses) -> MockJupyter:
     """Set up a mock JupyterHub/Lab that always returns success.
 
@@ -255,3 +319,16 @@ def mock_jupyter(mocked: aioresponses) -> MockJupyter:
         repeat=True,
     )
     return mock
+
+
+def mock_jupyter_websocket(
+    url: str, jupyter: MockJupyter
+) -> MockJupyterWebSocket:
+    """Create a new mock ClientWebSocketResponse that simulates a lab."""
+    match = re.search("/user/([^/]+)/api/kernels/([^/]+)/channels", url)
+    assert match
+    user = match.group(1)
+    assert user
+    session = jupyter.sessions[user]
+    assert match.group(2) == session.kernel_id
+    return MockJupyterWebSocket(user, session.session_id)

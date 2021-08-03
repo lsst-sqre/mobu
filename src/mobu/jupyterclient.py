@@ -304,21 +304,16 @@ class JupyterClient:
             response = await r.json()
 
         kernel_id = response["kernel"]["id"]
-        return JupyterLabSession(
-            session_id=response["id"],
-            kernel_id=kernel_id,
-            websocket=await self._websocket_connect(kernel_id),
-        )
-
-    async def _websocket_connect(
-        self, kernel_id: str
-    ) -> ClientWebSocketResponse:
         channels_url = (
             self.jupyter_url
             + f"user/{self.user.username}/api/kernels/"
             + f"{kernel_id}/channels"
         )
-        return await self.session.ws_connect(channels_url)
+        return JupyterLabSession(
+            session_id=response["id"],
+            kernel_id=kernel_id,
+            websocket=await self.session.ws_connect(channels_url),
+        )
 
     async def delete_labsession(self, session: JupyterLabSession) -> None:
         user = self.user.username
