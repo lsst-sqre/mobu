@@ -254,7 +254,7 @@ class JupyterClient:
             await asyncio.sleep(poll_interval)
 
         # Timed out spawning the lab.
-        msg = "Lab did not spawn after {max_poll_secs}s"
+        msg = f"Lab did not spawn after {max_poll_secs}s"
         raise JupyterTimeoutError(self.user.username, msg)
 
     async def delete_lab(self) -> None:
