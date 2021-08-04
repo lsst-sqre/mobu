@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from aioresponses import aioresponses
     from httpx import AsyncClient
 
+    from tests.support.slack import MockSlack
+
 
 @pytest.mark.asyncio
 async def test_run(
@@ -35,15 +37,14 @@ async def test_run(
     assert r.status_code == 201
 
     # Wait until we've finished at least one loop.  Make sure nothing fails.
-    finished = False
-    while not finished:
+    for _ in range(1, 10):
         await asyncio.sleep(1)
         r = await client.get("/mobu/flocks/test/monkeys/testuser1")
         assert r.status_code == 200
         data = r.json()
         assert data["business"]["failure_count"] == 0
         if data["business"]["success_count"] > 0:
-            finished = True
+            break
 
     r = await client.get("/mobu/flocks/test/monkeys/testuser1")
     assert r.status_code == 200
@@ -98,3 +99,92 @@ async def test_server_shutdown(
 
     # Now end the test without shutting anything down explicitly.  This tests
     # that server shutdown correctly stops everything and cleans up resources.
+
+
+@pytest.mark.asyncio
+async def test_alert(
+    client: AsyncClient, slack: MockSlack, mock_aioresponses: aioresponses
+) -> None:
+    mock_gafaelfawr(mock_aioresponses)
+
+    r = await client.put(
+        "/mobu/flocks",
+        json={
+            "name": "test",
+            "count": 1,
+            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "scopes": ["exec:notebook"],
+            "options": {
+                "code": 'raise Exception("some error")',
+                "settle_time": 0,
+                "max_executions": 1,
+            },
+            "business": "JupyterPythonLoop",
+        },
+    )
+    assert r.status_code == 201
+
+    # Wait until we've finished at least one loop.
+    for _ in range(1, 10):
+        await asyncio.sleep(1)
+        r = await client.get("/mobu/flocks/test/monkeys/testuser1")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["business"]["success_count"] == 0
+        if data["business"]["failure_count"] > 1:
+            break
+
+    # Check that an appropriate error was posted.
+    assert slack.alerts == [
+        {
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "Error while running code",
+                    },
+                },
+                {
+                    "type": "section",
+                    "fields": [
+                        {"type": "mrkdwn", "text": ANY},
+                        {"type": "mrkdwn", "text": ANY},
+                        {"type": "mrkdwn", "text": "*User*\ntestuser1"},
+                        {"type": "mrkdwn", "text": "*Event*\nexecute_code"},
+                    ],
+                },
+            ],
+            "attachments": [
+                {
+                    "color": "good",
+                    "blocks": [
+                        {"type": "header", "text": "Code executed"},
+                        {"type": "divider"},
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": (
+                                    '```\nraise Exception("some error")\n```'
+                                ),
+                            },
+                        },
+                    ],
+                },
+                {
+                    "color": "danger",
+                    "blocks": [
+                        {"type": "header", "text": "Error"},
+                        {"type": "divider"},
+                        {
+                            "type": "section",
+                            "text": {"type": "mrkdwn", "text": ANY},
+                        },
+                    ],
+                },
+            ],
+        }
+    ]
+    error = slack.alerts[0]["attachments"][1]["blocks"][2]["text"]["text"]
+    assert "some error" in error

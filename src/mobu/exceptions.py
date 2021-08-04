@@ -61,14 +61,8 @@ class SlackError(Exception, metaclass=ABCMeta):
         """Return common fields to put in any alert."""
         failed = self.failed.strftime(DATE_FORMAT)
         fields = [
-            {
-                "type": "mrkdwn",
-                "text": f"*Failed at*\n{failed}",
-            },
-            {
-                "type": "mrkdwn",
-                "text": f"*User*\n{self.user}",
-            },
+            {"type": "mrkdwn", "text": f"*Failed at*\n{failed}"},
+            {"type": "mrkdwn", "text": f"*User*\n{self.user}"},
         ]
         if self.started:
             started = self.started.strftime(DATE_FORMAT)
@@ -111,68 +105,62 @@ class CodeExecutionError(SlackError):
 
     def to_slack(self) -> Dict[str, Any]:
         """Format the error as a Slack Block Kit message."""
-        intro = f"Error while running `{self.notebook}`"
+        if self.notebook:
+            intro = f"Error while running `{self.notebook}`"
+        else:
+            intro = "Error while running code"
         if self.status:
             intro += f"\n*Status*: {self.status}"
+
         fields = self.common_fields()
-        message: Dict[str, Any] = {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": intro,
-                    },
-                },
-                {
-                    "type": "section",
-                    "fields": fields,
-                },
-            ],
-            "attachments": [
-                {
-                    "color": "good",
-                    "blocks": [
-                        {
-                            "type": "header",
-                            "text": "Code executed",
-                        },
-                        {
-                            "type": "divider",
-                        },
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": f"```\n{self.code}\n```",
-                            },
-                        },
-                    ],
-                },
-            ],
-        }
-        if self.error:
-            error = {
-                "color": "danger",
+
+        code = self.code
+        if not code.endswith("\n"):
+            code += "\n"
+        attachments = [
+            {
+                "color": "good",
                 "blocks": [
-                    {
-                        "type": "header",
-                        "text": "Error",
-                    },
-                    {
-                        "type": "divider",
-                    },
+                    {"type": "header", "text": "Code executed"},
+                    {"type": "divider"},
                     {
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": f"```\n{self.error}\n```",
+                            "text": f"```\n{code}```",
                         },
                     },
                 ],
             }
-            message["attachments"].append(error)
-        return message
+        ]
+        if self.error:
+            error = self.error
+            if error and not error.endswith("\n"):
+                error += "\n"
+            attachments.append(
+                {
+                    "color": "danger",
+                    "blocks": [
+                        {"type": "header", "text": "Error"},
+                        {"type": "divider"},
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": f"```\n{error}```",
+                            },
+                        },
+                    ],
+                }
+            )
+
+        return {
+            "blocks": [
+                {"type": "section", "text": {"type": "mrkdwn", "text": intro}},
+                {"type": "section", "fields": fields},
+            ],
+            "attachments": attachments,
+        }
 
 
 class JupyterError(SlackError):
@@ -220,25 +208,13 @@ class JupyterError(SlackError):
         fields = self.common_fields()
         if self.reason:
             fields.append(
-                {
-                    "type": "mrkdwn",
-                    "text": f"*Message*\n{self.reason}",
-                }
+                {"type": "mrkdwn", "text": f"*Message*\n{self.reason}"}
             )
         return {
             "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": intro,
-                    },
-                },
-                {
-                    "type": "section",
-                    "fields": fields,
-                },
-            ],
+                {"type": "section", "text": {"type": "mrkdwn", "text": intro}},
+                {"type": "section", "fields": fields},
+            ]
         }
 
 
@@ -251,14 +227,8 @@ class JupyterTimeoutError(SlackError):
             "blocks": [
                 {
                     "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": str(self),
-                    },
+                    "text": {"type": "mrkdwn", "text": str(self)},
                 },
-                {
-                    "type": "section",
-                    "fields": self.common_fields(),
-                },
-            ],
+                {"type": "section", "fields": self.common_fields()},
+            ]
         }

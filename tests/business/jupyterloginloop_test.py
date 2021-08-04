@@ -174,7 +174,7 @@ async def test_alert(
     )
     assert r.status_code == 201
 
-    # Wait until we've finished at least one loop.  Make sure nothing fails.
+    # Wait until we've finished at least one loop.
     for _ in range(1, 10):
         await asyncio.sleep(0.5)
         r = await client.get("/mobu/flocks/test/monkeys/testuser2")
@@ -199,26 +199,11 @@ async def test_alert(
                 {
                     "type": "section",
                     "fields": [
-                        {
-                            "type": "mrkdwn",
-                            "text": ANY,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": ANY,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*User*\ntestuser2",
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Event*\nensure_lab",
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Message*\nfoo",
-                        },
+                        {"type": "mrkdwn", "text": ANY},
+                        {"type": "mrkdwn", "text": ANY},
+                        {"type": "mrkdwn", "text": "*User*\ntestuser2"},
+                        {"type": "mrkdwn", "text": "*Event*\nensure_lab"},
+                        {"type": "mrkdwn", "text": "*Message*\nfoo"},
                     ],
                 },
             ]

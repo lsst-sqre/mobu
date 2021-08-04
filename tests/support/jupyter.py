@@ -6,6 +6,7 @@ import re
 from base64 import urlsafe_b64decode
 from datetime import datetime, timedelta, timezone
 from enum import Enum
+from traceback import format_exc
 from typing import TYPE_CHECKING
 from unittest.mock import ANY, AsyncMock, Mock
 from uuid import uuid4
@@ -261,13 +262,22 @@ class MockJupyterWebSocket(Mock):
     async def receive_json(self) -> Dict[str, Any]:
         assert self._header
         if self._code:
-            result = eval(self._code, self._state)
-            self._code = None
-            return {
-                "msg_type": "stream",
-                "parent_header": self._header,
-                "content": {"text": str(result)},
-            }
+            try:
+                result = eval(self._code, self._state)
+                self._code = None
+                return {
+                    "msg_type": "stream",
+                    "parent_header": self._header,
+                    "content": {"text": str(result)},
+                }
+            except Exception:
+                result = {
+                    "msg_type": "error",
+                    "parent_header": self._header,
+                    "content": {"traceback": format_exc()},
+                }
+                self._header = None
+                return result
         else:
             result = {
                 "msg_type": "execute_reply",
