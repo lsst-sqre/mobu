@@ -33,6 +33,12 @@ if TYPE_CHECKING:
 
 __all__ = ["JupyterClient", "JupyterLabSession"]
 
+_ANSI_REGEX = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
+"""Regex that matches ANSI escape sequences.
+
+See https://stackoverflow.com/questions/14693701/
+"""
+
 
 @dataclass(frozen=True)
 class JupyterLabSession:
@@ -362,10 +368,11 @@ class JupyterClient:
                 # rather chatty with broadcast status messages.
                 continue
             if msg_type == "error":
-                error_message = "".join(r["content"]["traceback"])
+                error = "".join(r["content"]["traceback"])
                 if result:
-                    error_message = result + "\n" + error_message
-                raise CodeExecutionError(username, code, error=error_message)
+                    error = result + "\n" + error
+                error = self._remove_ansi_escapes(error)
+                raise CodeExecutionError(username, code, error=error)
             elif msg_type == "stream":
                 result += r["content"]["text"]
             elif msg_type == "execute_reply":
@@ -374,3 +381,15 @@ class JupyterClient:
                     return result
                 else:
                     raise CodeExecutionError(username, code, status=status)
+
+    @staticmethod
+    def _remove_ansi_escapes(string: str) -> str:
+        """Remove ANSI escape sequences from a string.
+
+        Jupyter Lab likes to format error messages with lots of ANSI escape
+        sequences, and Slack doesn't like that in messages (nor do humans want
+        to see them).  Strip them out.
+
+        See https://stackoverflow.com/questions/14693701/
+        """
+        return _ANSI_REGEX.sub("", string)
