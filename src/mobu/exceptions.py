@@ -217,5 +217,6 @@ class JupyterTimeoutError(SlackError):
                     "text": {"type": "mrkdwn", "text": str(self)},
                 },
                 {"type": "section", "fields": self.common_fields()},
+                {"type": "divider"},
             ]
         }
