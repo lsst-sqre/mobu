@@ -240,8 +240,6 @@ class JupyterClient:
         self.log.info(f"Spawning lab for {self.user.username}")
         async with self.session.post(spawn_url, data=data) as r:
             if r.status != 200:
-                print(r)
-                print(r.method)
                 raise await JupyterError.from_response(self.user.username, r)
 
         # Poll until the lab has spawned.  Jupyterlab will give up a spawn
