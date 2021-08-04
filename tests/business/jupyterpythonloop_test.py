@@ -154,44 +154,24 @@ async def test_alert(
                         {"type": "mrkdwn", "text": "*Event*\nexecute_code"},
                     ],
                 },
-            ],
-            "attachments": [
                 {
-                    "color": "good",
-                    "blocks": [
-                        {
-                            "type": "header",
-                            "text": {
-                                "type": "plain_text",
-                                "text": "Code executed",
-                            },
-                        },
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": (
-                                    '```\nraise Exception("some error")\n```'
-                                ),
-                            },
-                        },
-                    ],
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": (
+                            "*Code executed*\n"
+                            '```\nraise Exception("some error")\n```'
+                        ),
+                        "verbatim": True,
+                    },
                 },
                 {
-                    "color": "danger",
-                    "blocks": [
-                        {
-                            "type": "header",
-                            "text": {"type": "plain_text", "text": "Error"},
-                        },
-                        {
-                            "type": "section",
-                            "text": {"type": "mrkdwn", "text": ANY},
-                        },
-                    ],
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": ANY, "verbatim": True},
                 },
+                {"type": "divider"},
             ],
         }
     ]
-    error = slack.alerts[0]["attachments"][1]["blocks"][1]["text"]["text"]
+    error = slack.alerts[0]["blocks"][3]["text"]["text"]
     assert "some error" in error

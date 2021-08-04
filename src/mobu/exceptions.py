@@ -117,57 +117,36 @@ class CodeExecutionError(SlackError):
         code = self.code
         if not code.endswith("\n"):
             code += "\n"
-        attachments = [
-            {
-                "color": "good",
-                "blocks": [
-                    {
-                        "type": "header",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Code executed",
-                        },
+        result = {
+            "blocks": [
+                {"type": "section", "text": {"type": "mrkdwn", "text": intro}},
+                {"type": "section", "fields": fields},
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Code executed*\n```\n{code}```",
+                        "verbatim": True,
                     },
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": f"```\n{code}```",
-                        },
-                    },
-                ],
-            }
-        ]
+                },
+            ],
+        }
         if self.error:
             error = self.error
             if error and not error.endswith("\n"):
                 error += "\n"
-            attachments.append(
+            result["blocks"].append(
                 {
-                    "color": "danger",
-                    "blocks": [
-                        {
-                            "type": "header",
-                            "text": {"type": "plain_text", "text": "Error"},
-                        },
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": f"```\n{error}```",
-                            },
-                        },
-                    ],
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Error*\n```\n{error}```",
+                        "verbatim": True,
+                    },
                 }
             )
-
-        return {
-            "blocks": [
-                {"type": "section", "text": {"type": "mrkdwn", "text": intro}},
-                {"type": "section", "fields": fields},
-            ],
-            "attachments": attachments,
-        }
+        result["blocks"].append({"type": "divider"})
+        return result
 
 
 class JupyterError(SlackError):
@@ -221,6 +200,7 @@ class JupyterError(SlackError):
             "blocks": [
                 {"type": "section", "text": {"type": "mrkdwn", "text": intro}},
                 {"type": "section", "fields": fields},
+                {"type": "divider"},
             ]
         }
 

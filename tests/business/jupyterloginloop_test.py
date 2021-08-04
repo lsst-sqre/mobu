@@ -206,6 +206,7 @@ async def test_alert(
                         {"type": "mrkdwn", "text": "*Message*\nfoo"},
                     ],
                 },
+                {"type": "divider"},
             ]
         }
     ]
