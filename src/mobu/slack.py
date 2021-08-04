@@ -43,25 +43,16 @@ class SlackClient:
             "blocks": [
                 {
                     "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": str(self),
-                    },
+                    "text": {"type": "mrkdwn", "text": str(self)},
                 },
                 {
                     "type": "section",
                     "fields": [
-                        {
-                            "type": "mrkdwn",
-                            "text": f"*Date*\n{date}",
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": f"*User*\n{user}",
-                        },
+                        {"type": "mrkdwn", "text": f"*Date*\n{date}"},
+                        {"type": "mrkdwn", "text": f"*User*\n{user}"},
                     ],
                 },
-            ],
+            ]
         }
         await self._post_alert(body)
 
