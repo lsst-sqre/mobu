@@ -117,25 +117,32 @@ class CodeExecutionError(SlackError):
         code = self.code
         if not code.endswith("\n"):
             code += "\n"
-        result = {
+        result: Dict[str, Any] = {
             "blocks": [
                 {"type": "section", "text": {"type": "mrkdwn", "text": intro}},
                 {"type": "section", "fields": fields},
+            ],
+            "attachments": [
                 {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"*Code executed*\n```\n{code}```",
-                        "verbatim": True,
-                    },
-                },
+                    "blocks": [
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": f"*Code executed*\n```\n{code}```",
+                                "verbatim": True,
+                            },
+                        }
+                    ],
+                }
             ],
         }
         if self.error:
             error = self.error
             if error and not error.endswith("\n"):
                 error += "\n"
-            result["blocks"].append(
+            result["attachments"][0]["blocks"].insert(
+                0,
                 {
                     "type": "section",
                     "text": {
@@ -143,9 +150,8 @@ class CodeExecutionError(SlackError):
                         "text": f"*Error*\n```\n{error}```",
                         "verbatim": True,
                     },
-                }
+                },
             )
-        result["blocks"].append({"type": "divider"})
         return result
 
 

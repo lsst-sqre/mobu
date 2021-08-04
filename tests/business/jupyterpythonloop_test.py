@@ -154,24 +154,33 @@ async def test_alert(
                         {"type": "mrkdwn", "text": "*Event*\nexecute_code"},
                     ],
                 },
+            ],
+            "attachments": [
                 {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": (
-                            "*Code executed*\n"
-                            '```\nraise Exception("some error")\n```'
-                        ),
-                        "verbatim": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                },
-                {"type": "divider"},
+                    "blocks": [
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": ANY,
+                                "verbatim": True,
+                            },
+                        },
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": (
+                                    "*Code executed*\n"
+                                    '```\nraise Exception("some error")\n```'
+                                ),
+                                "verbatim": True,
+                            },
+                        },
+                    ]
+                }
             ],
         }
     ]
-    error = slack.alerts[0]["blocks"][3]["text"]["text"]
+    error = slack.alerts[0]["attachments"][0]["blocks"][0]["text"]["text"]
     assert "some error" in error
