@@ -159,8 +159,13 @@ async def test_alert(
                 {
                     "color": "good",
                     "blocks": [
-                        {"type": "header", "text": "Code executed"},
-                        {"type": "divider"},
+                        {
+                            "type": "header",
+                            "text": {
+                                "type": "plain_text",
+                                "text": "Code executed",
+                            },
+                        },
                         {
                             "type": "section",
                             "text": {
@@ -175,8 +180,10 @@ async def test_alert(
                 {
                     "color": "danger",
                     "blocks": [
-                        {"type": "header", "text": "Error"},
-                        {"type": "divider"},
+                        {
+                            "type": "header",
+                            "text": {"type": "plain_text", "text": "Error"},
+                        },
                         {
                             "type": "section",
                             "text": {"type": "mrkdwn", "text": ANY},
@@ -186,5 +193,5 @@ async def test_alert(
             ],
         }
     ]
-    error = slack.alerts[0]["attachments"][1]["blocks"][2]["text"]["text"]
+    error = slack.alerts[0]["attachments"][1]["blocks"][1]["text"]["text"]
     assert "some error" in error

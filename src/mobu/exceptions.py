@@ -121,8 +121,13 @@ class CodeExecutionError(SlackError):
             {
                 "color": "good",
                 "blocks": [
-                    {"type": "header", "text": "Code executed"},
-                    {"type": "divider"},
+                    {
+                        "type": "header",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Code executed",
+                        },
+                    },
                     {
                         "type": "section",
                         "text": {
@@ -141,8 +146,10 @@ class CodeExecutionError(SlackError):
                 {
                     "color": "danger",
                     "blocks": [
-                        {"type": "header", "text": "Error"},
-                        {"type": "divider"},
+                        {
+                            "type": "header",
+                            "text": {"type": "plain_text", "text": "Error"},
+                        },
                         {
                             "type": "section",
                             "text": {
