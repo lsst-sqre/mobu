@@ -51,9 +51,6 @@ class Monkey:
         self._session = session
         self._logfile = NamedTemporaryFile()
         self._job: Optional[Job] = None
-        self._slack = None
-        if config.alert_hook and config.alert_hook != "None":
-            self._slack = SlackClient(config.alert_hook, session)
 
         formatter = logging.Formatter(
             fmt="%(asctime)s %(message)s", datefmt=DATE_FORMAT
@@ -70,6 +67,10 @@ class Monkey:
         logger.info(f"Starting new file logger {self._logfile.name}")
         self.log = structlog.wrap_logger(logger)
 
+        self._slack = None
+        if config.alert_hook and config.alert_hook != "None":
+            self._slack = SlackClient(config.alert_hook, session, self.log)
+
         self.business = business_type(self.log, self.config.options, self.user)
 
     async def alert(self, e: Exception) -> None:
@@ -81,14 +82,10 @@ class Monkey:
             self.log.info("Alert hook isn't set, so not sending to Slack")
             return
 
-        self.log.info("Sending alert to Slack")
-        try:
-            if isinstance(e, SlackError):
-                await self._slack.alert_from_exception(e)
-            else:
-                await self._slack.alert(self.user.username, str(e))
-        except Exception:
-            self.log.exception("Exception thrown while sending to Slack")
+        if isinstance(e, SlackError):
+            await self._slack.alert_from_exception(e)
+        else:
+            await self._slack.alert(self.user.username, str(e))
 
     def logfile(self) -> str:
         self._logfile.flush()
