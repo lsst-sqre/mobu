@@ -6,10 +6,12 @@ import re
 from base64 import urlsafe_b64decode
 from datetime import datetime, timedelta, timezone
 from enum import Enum
+from traceback import format_exc
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock
+from unittest.mock import ANY, AsyncMock, Mock
 from uuid import uuid4
 
+from aiohttp import ClientWebSocketResponse
 from aioresponses import CallbackResult
 
 from mobu.config import config
@@ -20,6 +22,18 @@ if TYPE_CHECKING:
     from typing import Any, Dict, Optional, Union
 
     from aioresponses import aioresponses
+
+
+class JupyterAction(Enum):
+    LOGIN = "login"
+    HOME = "home"
+    HUB = "hub"
+    SPAWN = "spawn"
+    SPAWN_PENDING = "spawn_pending"
+    LAB = "lab"
+    DELETE_LAB = "delete_lab"
+    CREATE_SESSION = "create_session"
+    DELETE_SESSION = "delete_session"
 
 
 class JupyterState(Enum):
@@ -50,9 +64,18 @@ class MockJupyter:
         self.state: Dict[str, JupyterState] = {}
         self.delete_immediate = True
         self._delete_at: Dict[str, Optional[datetime]] = {}
+        self._fail: Dict[str, Dict[JupyterAction, bool]] = {}
+
+    def fail(self, user: str, action: JupyterAction) -> None:
+        """Configure the given action to fail for the given user."""
+        if user not in self._fail:
+            self._fail[user] = {}
+        self._fail[user][action] = True
 
     def login(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
+        if JupyterAction.LOGIN in self._fail.get(user, {}):
+            return CallbackResult(status=500)
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         if state == JupyterState.LOGGED_OUT:
             self.state[user] = JupyterState.LOGGED_IN
@@ -60,6 +83,8 @@ class MockJupyter:
 
     def home(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
+        if JupyterAction.HOME in self._fail.get(user, {}):
+            return CallbackResult(status=500)
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         if state == JupyterState.LAB_RUNNING:
             delete_at = self._delete_at.get(user)
@@ -79,6 +104,8 @@ class MockJupyter:
 
     def hub(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
+        if JupyterAction.HUB in self._fail.get(user, {}):
+            return CallbackResult(status=500)
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         if state == JupyterState.LOGGED_OUT:
             redirect_to = _url("hub/login")
@@ -92,6 +119,8 @@ class MockJupyter:
 
     def spawn(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
+        if JupyterAction.SPAWN in self._fail.get(user, {}):
+            return CallbackResult(status=500, method="POST", reason="foo")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state == JupyterState.LOGGED_IN
         self.state[user] = JupyterState.SPAWN_PENDING
@@ -103,6 +132,8 @@ class MockJupyter:
     def spawn_pending(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/hub/spawn-pending/{user}")
+        if JupyterAction.SPAWN_PENDING in self._fail.get(user, {}):
+            return CallbackResult(status=500)
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state == JupyterState.SPAWN_PENDING
         self.state[user] = JupyterState.LAB_RUNNING
@@ -116,6 +147,8 @@ class MockJupyter:
     def lab(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/user/{user}/lab")
+        if JupyterAction.LAB in self._fail.get(user, {}):
+            return CallbackResult(status=500)
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         if state == JupyterState.LAB_RUNNING:
             return CallbackResult(status=200)
@@ -127,6 +160,8 @@ class MockJupyter:
     def delete_lab(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/users/{user}/server")
+        if JupyterAction.DELETE_LAB in self._fail.get(user, {}):
+            return CallbackResult(status=500, method="DELETE")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state != JupyterState.LOGGED_OUT
         if self.delete_immediate:
@@ -140,6 +175,8 @@ class MockJupyter:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/user/{user}/api/sessions")
         assert user not in self.sessions
+        if JupyterAction.CREATE_SESSION in self._fail.get(user, {}):
+            return CallbackResult(status=500, method="POST")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state == JupyterState.LAB_RUNNING
         assert kwargs["json"]["kernel"]["name"] == "LSST"
@@ -163,6 +200,8 @@ class MockJupyter:
         user = self._get_user(kwargs["headers"]["Authorization"])
         session_id = self.sessions[user].session_id
         assert str(url).endswith(f"/user/{user}/api/sessions/{session_id}")
+        if JupyterAction.DELETE_SESSION in self._fail.get(user, {}):
+            return CallbackResult(status=500, method="DELETE")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state == JupyterState.LAB_RUNNING
         del self.sessions[user]
@@ -175,6 +214,78 @@ class MockJupyter:
         token = authorization.split(" ", 1)[1]
         user = urlsafe_b64decode(token[3:].split(".", 1)[0].encode())
         return user.decode()
+
+
+class MockJupyterWebSocket(Mock):
+    """Simulate the WebSocket connection to a Jupyter Lab.
+
+    Note
+    ----
+    The methods are named the reverse of what you would expect.  For example,
+    ``send_json`` receives a message, and ``receive_json`` returns a message.
+    This is so that this class can be used as a mock of an
+    `~aiohttp.ClientWebSocketResponse`.
+    """
+
+    def __init__(self, user: str, session_id: str) -> None:
+        super().__init__(spec=ClientWebSocketResponse)
+        self.user = user
+        self.session_id = session_id
+        self._header: Optional[Dict[str, str]] = None
+        self._code: Optional[str] = None
+        self._state: Dict[str, Any] = {}
+
+    async def send_json(self, message: Dict[str, Any]) -> None:
+        assert message == {
+            "header": {
+                "username": self.user,
+                "version": "5.0",
+                "session": self.session_id,
+                "msg_id": ANY,
+                "msg_type": "execute_request",
+            },
+            "parent_header": {},
+            "channel": "shell",
+            "content": {
+                "code": ANY,
+                "silent": False,
+                "store_history": False,
+                "user_expressions": {},
+                "allow_stdin": False,
+            },
+            "metadata": {},
+            "buffers": {},
+        }
+        self._header = message["header"]
+        self._code = message["content"]["code"]
+
+    async def receive_json(self) -> Dict[str, Any]:
+        assert self._header
+        if self._code:
+            try:
+                result = eval(self._code, self._state)
+                self._code = None
+                return {
+                    "msg_type": "stream",
+                    "parent_header": self._header,
+                    "content": {"text": str(result)},
+                }
+            except Exception:
+                result = {
+                    "msg_type": "error",
+                    "parent_header": self._header,
+                    "content": {"traceback": format_exc()},
+                }
+                self._header = None
+                return result
+        else:
+            result = {
+                "msg_type": "execute_reply",
+                "parent_header": self._header,
+                "content": {"status": "ok"},
+            }
+            self._header = None
+            return result
 
 
 def mock_jupyter(mocked: aioresponses) -> MockJupyter:
@@ -218,3 +329,16 @@ def mock_jupyter(mocked: aioresponses) -> MockJupyter:
         repeat=True,
     )
     return mock
+
+
+def mock_jupyter_websocket(
+    url: str, jupyter: MockJupyter
+) -> MockJupyterWebSocket:
+    """Create a new mock ClientWebSocketResponse that simulates a lab."""
+    match = re.search("/user/([^/]+)/api/kernels/([^/]+)/channels", url)
+    assert match
+    user = match.group(1)
+    assert user
+    session = jupyter.sessions[user]
+    assert match.group(2) == session.kernel_id
+    return MockJupyterWebSocket(user, session.session_id)

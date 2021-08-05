@@ -16,13 +16,13 @@ from http.cookies import BaseCookie
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from aiohttp import ClientResponse, ClientSession, TCPConnector
+from aiohttp import ClientSession, TCPConnector
 
 from .config import config
-from .exceptions import LabSpawnTimeoutError, NotebookException
+from .exceptions import CodeExecutionError, JupyterError, JupyterTimeoutError
 
 if TYPE_CHECKING:
-    from typing import Any, NoReturn, Optional
+    from typing import Any, Optional
 
     from aiohttp import ClientWebSocketResponse
     from aiohttp.client import _RequestContextManager, _WSRequestContextManager
@@ -32,6 +32,12 @@ if TYPE_CHECKING:
     from .models.user import AuthenticatedUser
 
 __all__ = ["JupyterClient", "JupyterLabSession"]
+
+_ANSI_REGEX = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
+"""Regex that matches ANSI escape sequences.
+
+See https://stackoverflow.com/questions/14693701/
+"""
 
 
 @dataclass(frozen=True)
@@ -138,19 +144,13 @@ class JupyterClient:
         session.cookie_jar.update_cookies(BaseCookie({"_xsrf": xsrftoken}))
         self.session = JupyterClientSession(session, user.token)
 
-    __ansi_reg_exp = re.compile(r"(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]")
-
-    @classmethod
-    def _ansi_escape(cls, line: str) -> str:
-        return cls.__ansi_reg_exp.sub("", line)
-
     async def close(self) -> None:
         await self.session.close()
 
     async def hub_login(self) -> None:
         async with self.session.get(self.jupyter_url + "hub/login") as r:
             if r.status != 200:
-                await self._raise_error("Error logging into hub", r)
+                raise await JupyterError.from_response(self.user.username, r)
 
     async def ensure_lab(self) -> None:
         if not await self.lab_has_spawned():
@@ -163,7 +163,7 @@ class JupyterClient:
         lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
         async with self.session.get(lab_url) as r:
             if r.status != 200:
-                await self._raise_error("Error logging into lab", r)
+                raise await JupyterError.from_response(self.user.username, r)
 
     async def lab_is_stopped(self) -> bool:
         """Determine if the lab is fully stopped.
@@ -190,8 +190,7 @@ class JupyterClient:
         home_url = self.jupyter_url + "hub/home"
         async with self.session.get(home_url) as r:
             if r.status != 200:
-                msg = "Unexpected reply status when seeing if lab is running"
-                await self._raise_error(msg, r)
+                raise await JupyterError.from_response(self.user.username, r)
             body = await r.text()
             return re.search(r"Start\s+My\s+Server", body) is not None
 
@@ -224,8 +223,7 @@ class JupyterClient:
             elif r.status == 503 or "spawn-pending" in str(r.url):
                 return False
             else:
-                msg = "Unexpected reply when checking if lab spawned"
-                await self._raise_error(msg, r)
+                raise await JupyterError.from_response(self.user.username, r)
 
     async def spawn_lab(self) -> None:
         spawn_url = self.jupyter_url + "hub/spawn"
@@ -242,8 +240,7 @@ class JupyterClient:
         self.log.info(f"Spawning lab for {self.user.username}")
         async with self.session.post(spawn_url, data=data) as r:
             if r.status != 200:
-                msg = "Unexpected reply status after spawning"
-                await self._raise_error(msg, r)
+                raise await JupyterError.from_response(self.user.username, r)
 
         # Poll until the lab has spawned.  Jupyterlab will give up a spawn
         # after 900 seconds, so we shouldn't wait longer than that.
@@ -261,7 +258,8 @@ class JupyterClient:
             await asyncio.sleep(poll_interval)
 
         # Timed out spawning the lab.
-        raise LabSpawnTimeoutError("Lab did not spawn after {max_poll_secs}s")
+        msg = f"Lab did not spawn after {max_poll_secs}s"
+        raise JupyterTimeoutError(self.user.username, msg)
 
     async def delete_lab(self) -> None:
         if await self.lab_is_stopped():
@@ -273,7 +271,7 @@ class JupyterClient:
         headers = {"Referer": self.jupyter_url + "hub/home"}
         async with self.session.delete(server_url, headers=headers) as r:
             if r.status not in [200, 202, 204]:
-                await self._raise_error("Error deleting lab", r)
+                raise await JupyterError.from_response(self.user.username, r)
 
         # Wait for the lab to actually go away.  If we don't do this, we may
         # try to create a new lab while the old one is still shutting down.
@@ -306,25 +304,20 @@ class JupyterClient:
 
         async with self.session.post(session_url, json=body) as r:
             if r.status != 201:
-                await self._raise_error("Error creating session", r)
+                raise await JupyterError.from_response(self.user.username, r)
             response = await r.json()
 
         kernel_id = response["kernel"]["id"]
-        return JupyterLabSession(
-            session_id=response["id"],
-            kernel_id=kernel_id,
-            websocket=await self._websocket_connect(kernel_id),
-        )
-
-    async def _websocket_connect(
-        self, kernel_id: str
-    ) -> ClientWebSocketResponse:
         channels_url = (
             self.jupyter_url
             + f"user/{self.user.username}/api/kernels/"
             + f"{kernel_id}/channels"
         )
-        return await self.session.ws_connect(channels_url)
+        return JupyterLabSession(
+            session_id=response["id"],
+            kernel_id=kernel_id,
+            websocket=await self.session.ws_connect(channels_url),
+        )
 
     async def delete_labsession(self, session: JupyterLabSession) -> None:
         user = self.user.username
@@ -335,14 +328,14 @@ class JupyterClient:
         await session.websocket.close()
         async with self.session.delete(session_url) as r:
             if r.status != 204:
-                msg = "Unexpected reply status deleting lab session"
-                self._raise_error(msg, r)
+                raise await JupyterError.from_response(self.user.username, r)
 
     async def run_python(self, session: JupyterLabSession, code: str) -> str:
+        username = self.user.username
         msg_id = uuid4().hex
         msg = {
             "header": {
-                "username": self.user.username,
+                "username": username,
                 "version": "5.0",
                 "session": session.session_id,
                 "msg_id": msg_id,
@@ -368,13 +361,16 @@ class JupyterClient:
             r = await session.websocket.receive_json()
             self.log.debug(f"Recieved kernel message: {r}")
             msg_type = r["msg_type"]
-            if r["parent_header"]["msg_id"] != msg_id:
+            if r.get("parent_header", {}).get("msg_id") != msg_id:
                 # Ignore messages not intended for us. The web socket is
                 # rather chatty with broadcast status messages.
                 continue
             if msg_type == "error":
-                error_message = "".join(r["content"]["traceback"])
-                raise NotebookException(self._ansi_escape(error_message))
+                error = "".join(r["content"]["traceback"])
+                if result:
+                    error = result + "\n" + error
+                error = self._remove_ansi_escapes(error)
+                raise CodeExecutionError(username, code, error=error)
             elif msg_type == "stream":
                 result += r["content"]["text"]
             elif msg_type == "execute_reply":
@@ -382,7 +378,16 @@ class JupyterClient:
                 if status == "ok":
                     return result
                 else:
-                    raise NotebookException(f"Result status is {status}")
+                    raise CodeExecutionError(username, code, status=status)
 
-    async def _raise_error(self, msg: str, r: ClientResponse) -> NoReturn:
-        raise Exception(f"{msg}: {r.status} {r.url}: {r.headers}")
+    @staticmethod
+    def _remove_ansi_escapes(string: str) -> str:
+        """Remove ANSI escape sequences from a string.
+
+        Jupyter Lab likes to format error messages with lots of ANSI escape
+        sequences, and Slack doesn't like that in messages (nor do humans want
+        to see them).  Strip them out.
+
+        See https://stackoverflow.com/questions/14693701/
+        """
+        return _ANSI_REGEX.sub("", string)

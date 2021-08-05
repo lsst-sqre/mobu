@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
-from datetime import datetime
 from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING
 
@@ -14,7 +13,9 @@ from aiohttp import ClientSession
 from aiojobs import Scheduler
 
 from .config import config
+from .exceptions import SlackError
 from .models.monkey import MonkeyData, MonkeyState
+from .slack import SlackClient
 
 if TYPE_CHECKING:
     from typing import Optional, Type
@@ -66,30 +67,25 @@ class Monkey:
         logger.info(f"Starting new file logger {self._logfile.name}")
         self.log = structlog.wrap_logger(logger)
 
+        self._slack = None
+        if config.alert_hook and config.alert_hook != "None":
+            self._slack = SlackClient(config.alert_hook, session, self.log)
+
         self.business = business_type(self.log, self.config.options, self.user)
 
-    async def alert(self, msg: str) -> None:
+    async def alert(self, e: Exception) -> None:
         if self.state in (MonkeyState.STOPPING, MonkeyState.FINISHED):
             state = self.state.name
-            msg = f"Not sending alert '{msg}' because state is {state}"
-            self.log.info(msg)
+            self.log.info(f"Not sending alert because state is {state}")
+            return
+        if not self._slack:
+            self.log.info("Alert hook isn't set, so not sending to Slack")
             return
 
-        time = datetime.now().strftime(DATE_FORMAT)
-        alert_msg = f"{time} {self.name} {msg}"
-        self.log.error(f"Slack Alert: {alert_msg}")
-        if not config.alert_hook or config.alert_hook == "None":
-            self.log.info("Alert hook isn't set, so not sending to slack.")
-            return
-
-        try:
-            alert = {"text": alert_msg}
-            r = await self._session.post(config.alert_hook, json=alert)
-            if r.status != 200:
-                msg = f"Error {r.status} trying to send alert to slack"
-                self.log.error(msg)
-        except Exception:
-            self.log.exception("Exception thrown while trying to alert!")
+        if isinstance(e, SlackError):
+            await self._slack.alert_from_exception(e)
+        else:
+            await self._slack.alert(self.user.username, str(e))
 
     def logfile(self) -> str:
         self._logfile.flush()
@@ -108,11 +104,9 @@ class Monkey:
                 run = False
             except Exception as e:
                 self.log.exception(
-                    "Exception thrown while doing monkey business."
+                    "Exception thrown while doing monkey business"
                 )
-                # Just pass the exception message - the callstack will
-                # be logged but will probably be too spammy to report.
-                await self.alert(str(e))
+                await self.alert(e)
                 await self.business.close()
                 run = self.restart and self.state == MonkeyState.RUNNING
                 if self.state == MonkeyState.RUNNING:

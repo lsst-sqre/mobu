@@ -14,7 +14,8 @@ from typing import TYPE_CHECKING
 
 import git
 
-from ..jupyterclient import JupyterLabSession, NotebookException
+from ..exceptions import CodeExecutionError
+from ..jupyterclient import JupyterLabSession
 from ..models.business import BusinessData
 from .jupyterpythonloop import JupyterPythonLoop
 
@@ -108,18 +109,11 @@ class NotebookRunner(JupyterPythonLoop):
                 reply = await self._client.run_python(session, code)
                 sw.annotation["result"] = reply
             self.logger.info(f"Result:\n{reply}\n")
-        except NotebookException as e:
-            running_code = self.running_code
-            notebook_name = "no notebook"
+        except CodeExecutionError as e:
             if self.notebook:
                 self._failed_notebooks.append(self.notebook.name)
-                notebook_name = self.notebook.name
-            self.logger.error(f"Error running notebook: {notebook_name}")
-            self.running_code = None
-            raise NotebookException(
-                f"Running {notebook_name}: '"
-                f"```{running_code}``` generated: ```{e}```"
-            )
+                e.notebook = self.notebook.name
+            raise
 
     def dump(self) -> BusinessData:
         data = super().dump()
