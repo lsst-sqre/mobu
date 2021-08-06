@@ -225,6 +225,27 @@ class JupyterClient:
             data = await r.json()
         return data["servers"] == {}
 
+    async def is_lab_stopped_obsolete(self) -> bool:
+        """Determine if the lab is fully stopped.
+
+        This is the obsolete way of checking if the lab is fully stopped.
+        With JupyterHub 1.3 we get 403 permission denied using the API via
+        is_lab_stopped, so are falling back to this.  Hopefully this is fixed
+        in 1.4.
+
+        Returns
+        -------
+        is_stopped : `bool`
+            `True` if the lab is fully stopped, currently determined by
+            whether ``hub/home`` shows a "Start My Server" button, since that
+            does not appear to happen until the lab is fully stopped.  `False`
+            if it is in any other state, including spawning or stopping.
+        """
+        home_url = self.jupyter_url + "hub/home"
+        async with self.session.get(home_url) as r:
+            body = await r.text()
+            return re.search(r"Start\s+My\s+Server", body) is not None
+
     async def spawn_lab(self) -> None:
         spawn_url = self.jupyter_url + "hub/spawn"
         self.log.info(f"Spawning lab for {self.user.username}")
@@ -260,7 +281,7 @@ class JupyterClient:
                 yield message
 
     async def delete_lab(self) -> None:
-        if await self.is_lab_stopped():
+        if await self.is_lab_stopped_obsolete():
             self.log.info("Lab is already stopped")
             return
         user = self.user.username
