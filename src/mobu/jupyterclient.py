@@ -6,6 +6,7 @@ jupyter kernels remotely.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import random
 import re
@@ -295,7 +296,7 @@ class JupyterClient:
             # delay.
             if message.progress > 0:
                 break
-            asyncio.sleep(1)
+            await asyncio.sleep(1)
             self.log.info("Retrying spawn progress request")
 
     async def delete_lab(self) -> None:

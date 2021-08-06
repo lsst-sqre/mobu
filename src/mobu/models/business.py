@@ -48,11 +48,12 @@ class BusinessConfig(BaseModel):
         description="Only used by the NotebookRunner",
     )
 
-    settle_time: int = Field(
+    spawn_settle_time: int = Field(
         10,
-        title="How long to wait after lab creation in seconds",
+        title="How long to wait before polling spawn progress in seconds",
         description=(
-            "Wait this long after lab creation before trying to use the lab"
+            "Wait this long after triggering a lab spawn before starting to"
+            " poll its progress"
         ),
         example=10,
     )

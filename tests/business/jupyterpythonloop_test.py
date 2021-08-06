@@ -30,7 +30,7 @@ async def test_run(
             "count": 1,
             "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
             "scopes": ["exec:notebook"],
-            "options": {"settle_time": 0, "max_executions": 3},
+            "options": {"spawn_settle_time": 0, "max_executions": 3},
             "business": "JupyterPythonLoop",
         },
     )
@@ -88,7 +88,7 @@ async def test_server_shutdown(
             "count": 20,
             "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
             "scopes": ["exec:notebook"],
-            "options": {"settle_time": 0, "max_executions": 3},
+            "options": {"spawn_settle_time": 0, "max_executions": 3},
             "business": "JupyterPythonLoop",
         },
     )
@@ -116,7 +116,7 @@ async def test_alert(
             "scopes": ["exec:notebook"],
             "options": {
                 "code": 'raise Exception("some error")',
-                "settle_time": 0,
+                "spawn_settle_time": 0,
                 "max_executions": 1,
             },
             "business": "JupyterPythonLoop",

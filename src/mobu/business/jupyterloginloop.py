@@ -71,16 +71,15 @@ class JupyterLoginLoop(Business):
 
     async def startup(self) -> None:
         await self.hub_login()
-        await self.initial_delete_lab()
+        if not await self._client.is_lab_stopped():
+            await self.delete_lab()
 
     async def execute(self) -> None:
         """The work done in each iteration of the loop."""
         if self.config.delete_lab or await self._client.is_lab_stopped():
             await self.spawn_lab()
-            if not self.stopping:
-                await self.lab_settle()
-        if self.stopping:
-            return
+            if self.stopping:
+                return
         await self.lab_login()
         await self.lab_business()
         if self.config.delete_lab:
@@ -99,9 +98,17 @@ class JupyterLoginLoop(Business):
         with self.timings.start("spawn_lab") as sw:
             await self._client.spawn_lab()
 
+            # Pause before using the progress API, since otherwise it may not
+            # have attached to the spawner and will not return a full stream
+            # of events.  (It will definitely take longer than 5s for the lab
+            # to spawn.)
+            await self.pause(self.config.spawn_settle_time)
+            if self.stopping:
+                return
+
             # Watch the progress API until the lab has spawned.
             log_messages = []
-            timeout = self.config.spawn_timeout
+            timeout = self.config.spawn_timeout - self.config.spawn_settle_time
             progress = self._client.spawn_progress()
             async for message in self.iter_with_timeout(progress, timeout):
                 log_messages.append(ProgressLogMessage(message.message))
@@ -119,10 +126,6 @@ class JupyterLoginLoop(Business):
                 raise JupyterTimeoutError(self.user.username, msg, log)
             else:
                 raise JupyterSpawnError(self.user.username, log)
-
-    async def lab_settle(self) -> None:
-        with self.timings.start("lab_settle"):
-            await self.pause(self.config.settle_time)
 
     async def lab_login(self) -> None:
         with self.timings.start("lab_login"):
@@ -153,11 +156,6 @@ class JupyterLoginLoop(Business):
                     return
 
         self.logger.info("Lab successfully deleted")
-
-    async def initial_delete_lab(self) -> None:
-        self.logger.info("Deleting any existing lab")
-        with self.timings.start("initial_delete_lab"):
-            await self._client.delete_lab()
 
     async def lab_business(self) -> None:
         """Do whatever business we want to do inside a lab.
