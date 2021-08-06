@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..exceptions import JupyterTimeoutError
 from ..jupyterclient import JupyterClient
 from .base import Business
 
@@ -55,8 +56,10 @@ class JupyterLoginLoop(Business):
 
     async def execute(self) -> None:
         """The work done in each iteration of the loop."""
-        await self.ensure_lab()
-        await self.lab_settle()
+        if self.config.delete_lab or await self._client.is_lab_stopped():
+            await self.spawn_lab()
+            if not self.stopping:
+                await self.lab_settle()
         if self.stopping:
             return
         await self.lab_login()
@@ -73,9 +76,23 @@ class JupyterLoginLoop(Business):
         with self.timings.start("hub_login"):
             await self._client.hub_login()
 
-    async def ensure_lab(self) -> None:
-        with self.timings.start("ensure_lab"):
-            await self._client.ensure_lab()
+    async def spawn_lab(self) -> None:
+        with self.timings.start("spawn_lab"):
+            await self._client.spawn_lab()
+
+            # Watch the progress API until the lab has spawned.
+            timeout = self.config.spawn_timeout
+            progress = self._client.spawn_progress()
+            async for message in self.iter_with_timeout(progress, timeout):
+                if message.ready:
+                    return
+
+            # We only fall through if the spawn timed out or if we're stopping
+            # the business.
+            if self.stopping:
+                return
+            msg = f"Lab did not spawn after {timeout}s"
+            raise JupyterTimeoutError(self.user.username, msg)
 
     async def lab_settle(self) -> None:
         with self.timings.start("lab_settle"):

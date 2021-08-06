@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import TYPE_CHECKING
 from unittest.mock import ANY
 from urllib.parse import urljoin
@@ -12,6 +11,7 @@ import pytest
 from mobu.config import config
 from tests.support.gafaelfawr import mock_gafaelfawr
 from tests.support.jupyter import JupyterAction, JupyterState
+from tests.support.util import wait_for_business
 
 if TYPE_CHECKING:
     from aioresponses import aioresponses
@@ -40,19 +40,9 @@ async def test_run(
     )
     assert r.status_code == 201
 
-    # Wait until we've finished at least one loop.  Make sure nothing fails.
-    for _ in range(1, 10):
-        await asyncio.sleep(0.5)
-        r = await client.get("/mobu/flocks/test/monkeys/testuser1")
-        assert r.status_code == 200
-        data = r.json()
-        assert data["business"]["failure_count"] == 0
-        if data["business"]["success_count"] > 0:
-            break
-
-    r = await client.get("/mobu/flocks/test/monkeys/testuser1")
-    assert r.status_code == 200
-    assert r.json() == {
+    # Wait until we've finished at least one loop and check the results.
+    data = await wait_for_business(client, "testuser1")
+    assert data == {
         "name": "testuser1",
         "business": {
             "failure_count": 0,
@@ -75,7 +65,11 @@ async def test_run(
 
     r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
     assert r.status_code == 200
+    print(r.text)
     assert "Starting up" in r.text
+    assert ": Server requested" in r.text
+    assert ": Spawning server..." in r.text
+    assert ": Ready" in r.text
     assert "Exception thrown" not in r.text
 
     r = await client.delete("/mobu/flocks/test")
@@ -105,13 +99,9 @@ async def test_reuse_lab(
     )
     assert r.status_code == 201
 
-    # Wait until we've finished at least one loop.  Make sure nothing fails.
-    for _ in range(1, 10):
-        await asyncio.sleep(0.5)
-        r = await client.get("/mobu/flocks/test/monkeys/testuser1")
-        assert r.status_code == 200
-        if r.json()["business"]["success_count"] > 0:
-            break
+    # Wait until we've finished at least one loop.
+    data = await wait_for_business(client, "testuser1")
+    assert data["business"]["failure_count"] == 0
 
     # Check that the lab is still running between iterations.
     assert jupyter.state["testuser1"] == JupyterState.LAB_RUNNING
@@ -175,14 +165,9 @@ async def test_alert(
     assert r.status_code == 201
 
     # Wait until we've finished at least one loop.
-    for _ in range(1, 10):
-        await asyncio.sleep(0.5)
-        r = await client.get("/mobu/flocks/test/monkeys/testuser2")
-        assert r.status_code == 200
-        data = r.json()
-        assert data["business"]["success_count"] == 0
-        if data["business"]["failure_count"] > 0:
-            break
+    data = await wait_for_business(client, "testuser2")
+    assert data["business"]["success_count"] == 0
+    assert data["business"]["failure_count"] > 0
 
     # Check that an appropriate error was posted.
     url = urljoin(config.environment_url, "/nb/hub/spawn")
@@ -202,8 +187,61 @@ async def test_alert(
                         {"type": "mrkdwn", "text": ANY},
                         {"type": "mrkdwn", "text": ANY},
                         {"type": "mrkdwn", "text": "*User*\ntestuser2"},
-                        {"type": "mrkdwn", "text": "*Event*\nensure_lab"},
+                        {"type": "mrkdwn", "text": "*Event*\nspawn_lab"},
                         {"type": "mrkdwn", "text": "*Message*\nfoo"},
+                    ],
+                },
+                {"type": "divider"},
+            ]
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_spawn_timeout(
+    client: AsyncClient,
+    jupyter: MockJupyter,
+    slack: MockSlack,
+    mock_aioresponses: aioresponses,
+) -> None:
+    mock_gafaelfawr(mock_aioresponses)
+    jupyter.spawn_timeout = True
+
+    r = await client.put(
+        "/mobu/flocks",
+        json={
+            "name": "test",
+            "count": 1,
+            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "scopes": ["exec:notebook"],
+            "options": {"settle_time": 0, "spawn_timeout": 1},
+            "business": "JupyterLoginLoop",
+        },
+    )
+    assert r.status_code == 201
+
+    # Wait for one loop to finish.  We should finish with an error fairly
+    # quickly (one second) and post a timeout alert to Slack.
+    data = await wait_for_business(client, "testuser1")
+    assert data["business"]["success_count"] == 0
+    assert data["business"]["failure_count"] > 0
+    assert slack.alerts == [
+        {
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "Lab did not spawn after 1s",
+                    },
+                },
+                {
+                    "type": "section",
+                    "fields": [
+                        {"type": "mrkdwn", "text": ANY},
+                        {"type": "mrkdwn", "text": ANY},
+                        {"type": "mrkdwn", "text": "*User*\ntestuser1"},
+                        {"type": "mrkdwn", "text": "*Event*\nspawn_lab"},
                     ],
                 },
                 {"type": "divider"},

@@ -7,6 +7,7 @@ jupyter kernels remotely.
 from __future__ import annotations
 
 import asyncio
+import json
 import random
 import re
 import string
@@ -19,12 +20,12 @@ from uuid import uuid4
 from aiohttp import ClientSession, TCPConnector
 
 from .config import config
-from .exceptions import CodeExecutionError, JupyterError, JupyterTimeoutError
+from .exceptions import CodeExecutionError, JupyterError
 
 if TYPE_CHECKING:
-    from typing import Any, Optional
+    from typing import Any, AsyncIterator, List, Optional
 
-    from aiohttp import ClientWebSocketResponse
+    from aiohttp import ClientResponse, ClientWebSocketResponse
     from aiohttp.client import _RequestContextManager, _WSRequestContextManager
     from structlog import BoundLogger
 
@@ -51,6 +52,65 @@ class JupyterLabSession:
     session_id: str
     kernel_id: str
     websocket: ClientWebSocketResponse
+
+
+@dataclass(frozen=True)
+class ProgressMessage:
+    """A progress message from lab spawning."""
+
+    progress: int
+    """Percentage progress on spawning."""
+
+    message: str
+    """A progress message."""
+
+    ready: bool
+    """Whether the server is ready."""
+
+
+class JupyterSpawnProgress:
+    """Provides status and polling of lab spawn progress.
+
+    This wraps an ongoing call to the progress API, which is an EventStream
+    API that provides status messages for a spawning lab.
+    """
+
+    def __init__(self, response: ClientResponse, logger: BoundLogger) -> None:
+        self._response = response
+        self._logger = logger
+        self._messages: List[str] = []
+        self._start = datetime.now(tz=timezone.utc)
+
+    def __aiter__(self) -> AsyncIterator[ProgressMessage]:
+        return self.iter()
+
+    async def iter(self) -> AsyncIterator[ProgressMessage]:
+        """Iterate over spawn progress events."""
+        async for line in self._response.content:
+            if not line.startswith(b"data:"):
+                continue
+            raw_event = line[len(b"data:") :].decode().strip()
+
+            # We have a valid event.  Parse it.
+            try:
+                event_dict = json.loads(raw_event)
+                event = ProgressMessage(
+                    progress=event_dict["progress"],
+                    message=event_dict["message"],
+                    ready=event_dict.get("ready", False),
+                )
+            except Exception as e:
+                msg = f"Ignoring invalid progress event: {raw_event}: {str(e)}"
+                self._logger.warning(msg)
+                continue
+
+            # Log the event and yield it.
+            self._messages.append(event.message)
+            now = datetime.now(tz=timezone.utc)
+            elapsed = int((now - self._start).total_seconds())
+            msg = f"Spawn in progress ({elapsed}s elapsed): {event.message}"
+            self._logger.info(msg)
+            yield event
 
 
 class JupyterClientSession:
@@ -152,12 +212,6 @@ class JupyterClient:
             if r.status != 200:
                 raise await JupyterError.from_response(self.user.username, r)
 
-    async def ensure_lab(self) -> None:
-        if not await self.lab_has_spawned():
-            self.log.info("Lab is not running, spawning")
-            await self.spawn_lab()
-            self.log.info("Lab created")
-
     async def lab_login(self) -> None:
         self.log.info("Logging into lab")
         lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
@@ -165,68 +219,18 @@ class JupyterClient:
             if r.status != 200:
                 raise await JupyterError.from_response(self.user.username, r)
 
-    async def lab_is_stopped(self) -> bool:
-        """Determine if the lab is fully stopped.
-
-        Returns
-        -------
-        is_stopped : `bool`
-            `True` if the lab is fully stopped, currently determined by
-            whether ``hub/home`` shows a "Start My Server" button, since that
-            does not appear to happen until the lab is fully stopped.  `False`
-            if it is in any other state, including spawning or stopping.
-
-        Notes
-        -----
-        We have had endless trouble with this interaction with JupyterHub and
-        Jupyter Labs, ranging from infinite redirects to false diagnosis of
-        the lab as running when it was shutting down.  JupyterHub does not
-        appear to provide an API to gather this information, so we're using
-        sketchy checks and heuristics that are flawed at best.
-
-        This method should ideally be replaced with an API call as soon as one
-        is provided by JupyterHub.
-        """
-        home_url = self.jupyter_url + "hub/home"
-        async with self.session.get(home_url) as r:
+    async def is_lab_stopped(self) -> bool:
+        """Determine if the lab is fully stopped."""
+        user_url = self.jupyter_url + f"hub/api/users/{self.user.username}"
+        async with self.session.get(user_url) as r:
             if r.status != 200:
                 raise await JupyterError.from_response(self.user.username, r)
-            body = await r.text()
-            return re.search(r"Start\s+My\s+Server", body) is not None
-
-    async def lab_has_spawned(self) -> bool:
-        """Determine if the lab has finished spawning.
-
-        Returns
-        -------
-        has_spawned : `bool`
-            `True` if the lab has finished spawning, determined by a request
-            for the user's lab staying on that URL (possibly after a login
-            redirect) and not being redirected to a spawn-pending or error
-            page.  `False` otherwise.
-
-        Notes
-        -----
-        As with ``lab_is_stopped``, we've had endless trouble with determining
-        this information and have not been able to find a clean API that will
-        provide it.  This ideally should be replaced with an API call.
-        """
-        lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
-
-        # If the lab is still spawning, we will get a redirect to the
-        # spawn pending page.  If the lab is not running, we will get a
-        # redirect to hub/user/<username>/lab, which returns a 503 with a
-        # button to start the server.
-        async with self.session.get(lab_url) as r:
-            if r.status == 200 and lab_url in str(r.url):
-                return True
-            elif r.status == 503 or "spawn-pending" in str(r.url):
-                return False
-            else:
-                raise await JupyterError.from_response(self.user.username, r)
+            data = await r.json()
+        return data["servers"] == {}
 
     async def spawn_lab(self) -> None:
         spawn_url = self.jupyter_url + "hub/spawn"
+        self.log.info(f"Spawning lab for {self.user.username}")
 
         # Retrieving the spawn page before POSTing to it appears to trigger
         # some necessary internal state construction (and also more accurately
@@ -237,32 +241,29 @@ class JupyterClient:
         # POST the options form to the spawn page.  This should redirect to
         # the spawn-pending page, which will return a 200.
         data = self.jupyter_options_form
-        self.log.info(f"Spawning lab for {self.user.username}")
         async with self.session.post(spawn_url, data=data) as r:
             if r.status != 200:
                 raise await JupyterError.from_response(self.user.username, r)
 
-        # Poll until the lab has spawned.  Jupyterlab will give up a spawn
-        # after 900 seconds, so we shouldn't wait longer than that.
-        max_poll_secs = 900
-        poll_interval = 15
-        retries = max_poll_secs / poll_interval
-        start = datetime.now(tz=timezone.utc)
-        while retries > 0:
-            if await self.lab_has_spawned():
-                return
-            now = datetime.now(tz=timezone.utc)
-            elapsed = int((now - start).total_seconds())
-            self.log.info(f"Waiting for lab to spawn ({elapsed}s elapsed)")
-            retries -= 1
-            await asyncio.sleep(poll_interval)
+    async def spawn_progress(self) -> AsyncIterator[ProgressMessage]:
+        """Monitor lab spawn progress.
 
-        # Timed out spawning the lab.
-        msg = f"Lab did not spawn after {max_poll_secs}s"
-        raise JupyterTimeoutError(self.user.username, msg)
+        This is an EventStream API, which provides a stream of events until
+        the lab is spawned or the spawn fails.
+        """
+        progress_url = (
+            self.jupyter_url
+            + f"hub/api/users/{self.user.username}/server/progress"
+        )
+        async with self.session.get(progress_url) as r:
+            if r.status != 200:
+                raise await JupyterError.from_response(self.user.username, r)
+            progress = JupyterSpawnProgress(r, self.log)
+            async for message in progress:
+                yield message
 
     async def delete_lab(self) -> None:
-        if await self.lab_is_stopped():
+        if await self.is_lab_stopped():
             self.log.info("Lab is already stopped")
             return
 
@@ -279,13 +280,13 @@ class JupyterClient:
         poll_interval = 2
         retries = max_poll_secs / poll_interval
         start = datetime.now(tz=timezone.utc)
-        while not await self.lab_is_stopped() and retries > 0:
+        while not await self.is_lab_stopped() and retries > 0:
             now = datetime.now(tz=timezone.utc)
             elapsed = int((now - start).total_seconds())
             self.log.info(f"Waiting for lab deletion ({elapsed}s elapsed)")
             await asyncio.sleep(poll_interval)
             retries -= 1
-        if not await self.lab_is_stopped():
+        if not await self.is_lab_stopped():
             self.log.warning("Giving up on waiting for lab deletion")
 
     async def create_labsession(
