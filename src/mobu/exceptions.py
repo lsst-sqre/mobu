@@ -6,6 +6,8 @@ from abc import ABCMeta, abstractmethod
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
+from aiohttp import ClientResponseError
+
 from .constants import DATE_FORMAT
 
 if TYPE_CHECKING:
@@ -159,6 +161,18 @@ class JupyterError(SlackError):
     """Web error from JupyterHub or JupyterLab."""
 
     @classmethod
+    def from_exception(
+        cls, user: str, exc: ClientResponseError
+    ) -> JupyterError:
+        return cls(
+            url=str(exc.request_info.url),
+            user=user,
+            status=exc.status,
+            reason=exc.message,
+            method=exc.request_info.method,
+        )
+
+    @classmethod
     async def from_response(
         cls, user: str, response: ClientResponse
     ) -> JupyterError:
@@ -179,7 +193,7 @@ class JupyterError(SlackError):
         status: int,
         reason: Optional[str],
         method: str,
-        body: str,
+        body: Optional[str] = None,
     ) -> None:
         self.url = url
         self.status = status
@@ -189,10 +203,13 @@ class JupyterError(SlackError):
         super().__init__(user, f"Status {status} from {method} {url}")
 
     def __str__(self) -> str:
-        return (
+        result = (
             f"{self.user}: status {self.status} ({self.reason}) from"
-            f" {self.method} {self.url}\nBody:\n{self.body}\n"
+            f" {self.method} {self.url}"
         )
+        if self.body:
+            result += f"\nBody:\n{self.body}\n"
+        return result
 
     def to_slack(self) -> Dict[str, Any]:
         """Format the error as a Slack Block Kit message."""

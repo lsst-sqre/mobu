@@ -16,7 +16,7 @@ from http.cookies import BaseCookie
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from aiohttp import ClientSession, TCPConnector
+from aiohttp import ClientSession, TCPConnector, WSServerHandshakeError
 
 from .config import config
 from .exceptions import CodeExecutionError, JupyterError
@@ -295,10 +295,12 @@ class JupyterClient:
             + f"user/{self.user.username}/api/kernels/"
             + f"{kernel_id}/channels"
         )
+        try:
+            websocket = await self.session.ws_connect(channels_url)
+        except WSServerHandshakeError as e:
+            raise JupyterError.from_exception(self.user.username, e)
         return JupyterLabSession(
-            session_id=response["id"],
-            kernel_id=kernel_id,
-            websocket=await self.session.ws_connect(channels_url),
+            session_id=response["id"], kernel_id=kernel_id, websocket=websocket
         )
 
     async def delete_labsession(self, session: JupyterLabSession) -> None:
