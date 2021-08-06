@@ -114,7 +114,8 @@ class JupyterLoginLoop(Business):
                 return
             log = "\n".join([str(m) for m in log_messages])
             if sw.elapsed.total_seconds() > timeout:
-                msg = f"Lab did not spawn after {timeout}s"
+                elapsed = round(sw.elapsed.total_seconds())
+                msg = f"Lab did not spawn after {elapsed}s"
                 raise JupyterTimeoutError(self.user.username, msg, log)
             else:
                 raise JupyterSpawnError(self.user.username, log)
@@ -131,6 +132,26 @@ class JupyterLoginLoop(Business):
         self.logger.info("Deleting lab")
         with self.timings.start("delete_lab"):
             await self._client.delete_lab()
+
+            # If we're not stopping, wait for the lab to actually go away.  If
+            # we don't do this, we may try to create a new lab while the old
+            # one is still shutting down.
+            if self.stopping:
+                return
+            timeout = self.config.delete_timeout
+            start = datetime.now(tz=timezone.utc)
+            while not await self._client.is_lab_stopped():
+                now = datetime.now(tz=timezone.utc)
+                elapsed = round((now - start).total_seconds())
+                if elapsed > timeout:
+                    msg = f"Lab not deleted after {elapsed}s"
+                    raise JupyterTimeoutError(self.user.username, msg)
+                msg = f"Waiting for lab deletion ({elapsed}s elapsed)"
+                self.logger.info(msg)
+                await self.pause(2)
+                if self.stopping:
+                    return
+
         self.logger.info("Lab successfully deleted")
 
     async def initial_delete_lab(self) -> None:

@@ -314,3 +314,62 @@ async def test_spawn_failed(
         "<ts> - Spawning server...\n"
         "<ts> - Spawn failed!"
     )
+
+
+@pytest.mark.asyncio
+async def test_delete_timeout(
+    client: AsyncClient,
+    jupyter: MockJupyter,
+    slack: MockSlack,
+    mock_aioresponses: aioresponses,
+) -> None:
+    mock_gafaelfawr(mock_aioresponses)
+    jupyter.delete_immediate = False
+
+    # Set delete_timeout to 1s even though we pause in increments of 2s since
+    # this increases the chances we won't go slightly over to 4s.
+    r = await client.put(
+        "/mobu/flocks",
+        json={
+            "name": "test",
+            "count": 1,
+            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "scopes": ["exec:notebook"],
+            "options": {
+                "settle_time": 0,
+                "login_idle_time": 0,
+                "delete_timeout": 1,
+            },
+            "business": "JupyterLoginLoop",
+        },
+    )
+    assert r.status_code == 201
+
+    # Wait for one loop to finish.  We should finish with an error fairly
+    # quickly (one second) and post a delete timeout alert to Slack.
+    data = await wait_for_business(client, "testuser1")
+    assert data["business"]["success_count"] == 0
+    assert data["business"]["failure_count"] > 0
+    assert slack.alerts == [
+        {
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "Lab not deleted after 2s",
+                    },
+                },
+                {
+                    "type": "section",
+                    "fields": [
+                        {"type": "mrkdwn", "text": ANY},
+                        {"type": "mrkdwn", "text": ANY},
+                        {"type": "mrkdwn", "text": "*User*\ntestuser1"},
+                        {"type": "mrkdwn", "text": "*Event*\ndelete_lab"},
+                    ],
+                },
+                {"type": "divider"},
+            ]
+        }
+    ]

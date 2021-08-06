@@ -92,6 +92,13 @@ class BusinessConfig(BaseModel):
         example=900,
     )
 
+    delete_timeout: int = Field(
+        30,
+        title="Timeout for deleting a lab in seconds",
+        description="Used by JupyterLoginLoop and its subclasses",
+        example=30,
+    )
+
     max_executions: int = Field(
         25,
         title="How much to execute in a given lab and session",

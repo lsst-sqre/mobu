@@ -6,7 +6,6 @@ jupyter kernels remotely.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import random
 import re
@@ -264,28 +263,12 @@ class JupyterClient:
         if await self.is_lab_stopped():
             self.log.info("Lab is already stopped")
             return
-
         user = self.user.username
         server_url = self.jupyter_url + f"hub/api/users/{user}/server"
         headers = {"Referer": self.jupyter_url + "hub/home"}
         async with self.session.delete(server_url, headers=headers) as r:
             if r.status not in [200, 202, 204]:
                 raise await JupyterError.from_response(self.user.username, r)
-
-        # Wait for the lab to actually go away.  If we don't do this, we may
-        # try to create a new lab while the old one is still shutting down.
-        max_poll_secs = 20
-        poll_interval = 2
-        retries = max_poll_secs / poll_interval
-        start = datetime.now(tz=timezone.utc)
-        while not await self.is_lab_stopped() and retries > 0:
-            now = datetime.now(tz=timezone.utc)
-            elapsed = int((now - start).total_seconds())
-            self.log.info(f"Waiting for lab deletion ({elapsed}s elapsed)")
-            await asyncio.sleep(poll_interval)
-            retries -= 1
-        if not await self.is_lab_stopped():
-            self.log.warning("Giving up on waiting for lab deletion")
 
     async def create_labsession(
         self, kernel_name: str = "LSST", notebook_name: Optional[str] = None
