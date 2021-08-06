@@ -105,7 +105,11 @@ class JupyterSpawnProgress:
             # Log the event and yield it.
             now = datetime.now(tz=timezone.utc)
             elapsed = int((now - self._start).total_seconds())
-            msg = f"Spawn in progress ({elapsed}s elapsed): {event.message}"
+            if event.ready:
+                status = "complete"
+            else:
+                status = "in progress"
+            msg = f"Spawn {status} ({elapsed}s elapsed): {event.message}"
             self._logger.info(msg)
             yield event
 
@@ -275,12 +279,24 @@ class JupyterClient:
             + f"hub/api/users/{self.user.username}/server/progress"
         )
         headers = {"Referer": self.jupyter_url + "hub/home"}
-        async with self.session.get(progress_url, headers=headers) as r:
-            if r.status != 200:
-                raise await JupyterError.from_response(self.user.username, r)
-            progress = JupyterSpawnProgress(r, self.log)
-            async for message in progress:
-                yield message
+        while True:
+            async with self.session.get(progress_url, headers=headers) as r:
+                if r.status != 200:
+                    raise await JupyterError.from_response(
+                        self.user.username, r
+                    )
+                progress = JupyterSpawnProgress(r, self.log)
+                async for message in progress:
+                    yield message
+
+            # Sometimes we get only the initial request message and then the
+            # progress API immediately closes the connection.  If that
+            # happens, try reconnecting to the progress stream after a short
+            # delay.
+            if message.progress > 0:
+                break
+            asyncio.sleep(1)
+            self.log.info("Retrying spawn progress request")
 
     async def delete_lab(self) -> None:
         if await self.is_lab_stopped():
