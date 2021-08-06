@@ -43,7 +43,7 @@ class SlackClient:
             "blocks": [
                 {
                     "type": "section",
-                    "text": {"type": "mrkdwn", "text": str(self)},
+                    "text": {"type": "mrkdwn", "text": message},
                 },
                 {
                     "type": "section",

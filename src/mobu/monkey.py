@@ -85,7 +85,8 @@ class Monkey:
         if isinstance(e, SlackError):
             await self._slack.alert_from_exception(e)
         else:
-            await self._slack.alert(self.user.username, str(e))
+            msg = f"Unexpected exception {type(e).__name__}: {str(e)}"
+            await self._slack.alert(self.user.username, msg)
 
     def logfile(self) -> str:
         self._logfile.flush()
