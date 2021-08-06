@@ -75,10 +75,7 @@ class JupyterLoginLoop(Business):
 
     async def execute(self) -> None:
         """The work done in each iteration of the loop."""
-        if (
-            self.config.delete_lab
-            or await self._client.is_lab_stopped_obsolete()
-        ):
+        if self.config.delete_lab or await self._client.is_lab_stopped():
             await self.spawn_lab()
             if not self.stopping:
                 await self.lab_settle()
@@ -143,7 +140,7 @@ class JupyterLoginLoop(Business):
                 return
             timeout = self.config.delete_timeout
             start = datetime.now(tz=timezone.utc)
-            while not await self._client.is_lab_stopped_obsolete():
+            while not await self._client.is_lab_stopped():
                 now = datetime.now(tz=timezone.utc)
                 elapsed = round((now - start).total_seconds())
                 if elapsed > timeout:

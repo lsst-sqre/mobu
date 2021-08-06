@@ -219,7 +219,8 @@ class JupyterClient:
     async def is_lab_stopped(self) -> bool:
         """Determine if the lab is fully stopped."""
         user_url = self.jupyter_url + f"hub/api/users/{self.user.username}"
-        async with self.session.get(user_url) as r:
+        headers = {"Referer": self.jupyter_url + "hub/home"}
+        async with self.session.get(user_url, headers=headers) as r:
             if r.status != 200:
                 raise await JupyterError.from_response(self.user.username, r)
             data = await r.json()
@@ -273,7 +274,8 @@ class JupyterClient:
             self.jupyter_url
             + f"hub/api/users/{self.user.username}/server/progress"
         )
-        async with self.session.get(progress_url) as r:
+        headers = {"Referer": self.jupyter_url + "hub/home"}
+        async with self.session.get(progress_url, headers=headers) as r:
             if r.status != 200:
                 raise await JupyterError.from_response(self.user.username, r)
             progress = JupyterSpawnProgress(r, self.log)
@@ -281,7 +283,7 @@ class JupyterClient:
                 yield message
 
     async def delete_lab(self) -> None:
-        if await self.is_lab_stopped_obsolete():
+        if await self.is_lab_stopped():
             self.log.info("Lab is already stopped")
             return
         user = self.user.username
