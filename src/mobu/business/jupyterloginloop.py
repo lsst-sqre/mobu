@@ -6,9 +6,12 @@ instance, and then delete them.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from ..exceptions import JupyterTimeoutError
+from ..constants import DATE_FORMAT
+from ..exceptions import JupyterSpawnError, JupyterTimeoutError
 from ..jupyterclient import JupyterClient
 from .base import Business
 
@@ -18,7 +21,23 @@ if TYPE_CHECKING:
     from ..models.business import BusinessConfig
     from ..user import AuthenticatedUser
 
-__all__ = ["JupyterLoginLoop"]
+__all__ = ["JupyterLoginLoop", "ProgressLogMessage"]
+
+
+@dataclass(frozen=True)
+class ProgressLogMessage:
+    """A single log message with timestamp from spawn progress."""
+
+    message: str
+    """The message."""
+
+    timestamp: datetime = field(
+        default_factory=lambda: datetime.now(tz=timezone.utc)
+    )
+    """When the event was received."""
+
+    def __str__(self) -> str:
+        return f"{self.timestamp.strftime(DATE_FORMAT)} - {self.message}"
 
 
 class JupyterLoginLoop(Business):
@@ -77,22 +96,28 @@ class JupyterLoginLoop(Business):
             await self._client.hub_login()
 
     async def spawn_lab(self) -> None:
-        with self.timings.start("spawn_lab"):
+        with self.timings.start("spawn_lab") as sw:
             await self._client.spawn_lab()
 
             # Watch the progress API until the lab has spawned.
+            log_messages = []
             timeout = self.config.spawn_timeout
             progress = self._client.spawn_progress()
             async for message in self.iter_with_timeout(progress, timeout):
+                log_messages.append(ProgressLogMessage(message.message))
                 if message.ready:
                     return
 
-            # We only fall through if the spawn timed out or if we're stopping
-            # the business.
+            # We only fall through if the spawn failed, timed out, or if we're
+            # stopping the business.
             if self.stopping:
                 return
-            msg = f"Lab did not spawn after {timeout}s"
-            raise JupyterTimeoutError(self.user.username, msg)
+            log = "\n".join([str(m) for m in log_messages])
+            if sw.elapsed.total_seconds() > timeout:
+                msg = f"Lab did not spawn after {timeout}s"
+                raise JupyterTimeoutError(self.user.username, msg, log)
+            else:
+                raise JupyterSpawnError(self.user.username, log)
 
     async def lab_settle(self) -> None:
         with self.timings.start("lab_settle"):

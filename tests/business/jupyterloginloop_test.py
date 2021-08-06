@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 from unittest.mock import ANY
 from urllib.parse import urljoin
@@ -248,3 +249,68 @@ async def test_spawn_timeout(
             ]
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_spawn_failed(
+    client: AsyncClient,
+    jupyter: MockJupyter,
+    slack: MockSlack,
+    mock_aioresponses: aioresponses,
+) -> None:
+    mock_gafaelfawr(mock_aioresponses)
+    jupyter.fail("testuser1", JupyterAction.PROGRESS)
+
+    r = await client.put(
+        "/mobu/flocks",
+        json={
+            "name": "test",
+            "count": 1,
+            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "scopes": ["exec:notebook"],
+            "options": {"settle_time": 0, "spawn_timeout": 1},
+            "business": "JupyterLoginLoop",
+        },
+    )
+    assert r.status_code == 201
+
+    # Wait for one loop to finish.  We should finish with an error fairly
+    # quickly (one second) and post a timeout alert to Slack.
+    data = await wait_for_business(client, "testuser1")
+    assert data["business"]["success_count"] == 0
+    assert data["business"]["failure_count"] > 0
+    assert slack.alerts == [
+        {
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "Spawning lab failed",
+                    },
+                },
+                {
+                    "type": "section",
+                    "fields": [
+                        {"type": "mrkdwn", "text": ANY},
+                        {"type": "mrkdwn", "text": ANY},
+                        {"type": "mrkdwn", "text": "*User*\ntestuser1"},
+                        {"type": "mrkdwn", "text": "*Event*\nspawn_lab"},
+                    ],
+                },
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                },
+                {"type": "divider"},
+            ]
+        }
+    ]
+    log = slack.alerts[0]["blocks"][2]["text"]["text"]
+    log = re.sub(r"\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d", "<ts>", log)
+    assert log == (
+        "*Log*\n"
+        "<ts> - Server requested\n"
+        "<ts> - Spawning server...\n"
+        "<ts> - Spawn failed!"
+    )

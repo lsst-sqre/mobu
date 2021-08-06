@@ -211,8 +211,12 @@ class JupyterError(SlackError):
         }
 
 
-class JupyterTimeoutError(SlackError):
-    """Timed out waiting for the lab to spawn."""
+class JupyterSpawnError(SlackError):
+    """The Jupyter Lab pod failed to spawn."""
+
+    def __init__(self, user: str, log: str) -> None:
+        super().__init__(user, "Spawning lab failed")
+        self.log = log
 
     def to_slack(self) -> Dict[str, Any]:
         """Format the error as a Slack Block Kit message."""
@@ -220,9 +224,50 @@ class JupyterTimeoutError(SlackError):
             "blocks": [
                 {
                     "type": "section",
-                    "text": {"type": "mrkdwn", "text": str(self)},
+                    "text": {"type": "mrkdwn", "text": "Spawning lab failed"},
                 },
                 {"type": "section", "fields": self.common_fields()},
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Log*\n{self.log}",
+                        "verbatim": True,
+                    },
+                },
                 {"type": "divider"},
             ]
         }
+
+
+class JupyterTimeoutError(SlackError):
+    """Timed out waiting for the lab to spawn."""
+
+    def __init__(self, user: str, msg: str, log: Optional[str] = None) -> None:
+        super().__init__(user, msg)
+        self.log = log
+
+    def to_slack(self) -> Dict[str, Any]:
+        """Format the error as a Slack Block Kit message."""
+        result = {
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": str(self)},
+                },
+                {"type": "section", "fields": self.common_fields()},
+            ]
+        }
+        if self.log:
+            result["blocks"].append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Log*\n{self.log}",
+                        "verbatim": True,
+                    },
+                }
+            )
+        result["blocks"].append({"type": "divider"})
+        return result

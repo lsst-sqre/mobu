@@ -23,7 +23,7 @@ from .config import config
 from .exceptions import CodeExecutionError, JupyterError
 
 if TYPE_CHECKING:
-    from typing import Any, AsyncIterator, List, Optional
+    from typing import Any, AsyncIterator, Optional
 
     from aiohttp import ClientResponse, ClientWebSocketResponse
     from aiohttp.client import _RequestContextManager, _WSRequestContextManager
@@ -78,7 +78,6 @@ class JupyterSpawnProgress:
     def __init__(self, response: ClientResponse, logger: BoundLogger) -> None:
         self._response = response
         self._logger = logger
-        self._messages: List[str] = []
         self._start = datetime.now(tz=timezone.utc)
 
     def __aiter__(self) -> AsyncIterator[ProgressMessage]:
@@ -105,7 +104,6 @@ class JupyterSpawnProgress:
                 continue
 
             # Log the event and yield it.
-            self._messages.append(event.message)
             now = datetime.now(tz=timezone.utc)
             elapsed = int((now - self._start).total_seconds())
             msg = f"Spawn in progress ({elapsed}s elapsed): {event.message}"

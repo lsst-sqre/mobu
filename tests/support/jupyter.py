@@ -147,12 +147,16 @@ class MockJupyter:
 
     async def progress(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
-        if JupyterAction.PROGRESS in self._fail.get(user, {}):
-            return CallbackResult(status=500)
         assert str(url).endswith(f"/hub/api/users/{user}/server/progress")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state in (JupyterState.SPAWN_PENDING, JupyterState.LAB_RUNNING)
-        if state == JupyterState.LAB_RUNNING:
+        if JupyterAction.PROGRESS in self._fail.get(user, {}):
+            body = (
+                'data: {"progress": 0, "message": "Server requested"}\n'
+                'data: {"progress": 50, "message": "Spawning server..."}\n'
+                'data: {"progress": 75, "message": "Spawn failed!"}\n'
+            )
+        elif state == JupyterState.LAB_RUNNING:
             body = (
                 'data: {"progress": 100, "ready": true, "message": "Ready"}\n'
             )
