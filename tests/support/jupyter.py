@@ -86,42 +86,6 @@ class MockJupyter:
             self.state[user] = JupyterState.LOGGED_IN
         return CallbackResult(status=200)
 
-    def home(self, url: str, **kwargs: Any) -> CallbackResult:
-        user = self._get_user(kwargs["headers"]["Authorization"])
-        if JupyterAction.HOME in self._fail.get(user, {}):
-            return CallbackResult(status=500)
-        state = self.state.get(user, JupyterState.LOGGED_OUT)
-        if state == JupyterState.LAB_RUNNING:
-            delete_at = self._delete_at.get(user)
-            if delete_at and datetime.now(tz=timezone.utc) > delete_at:
-                del self._delete_at[user]
-                self.state[user] = JupyterState.LOGGED_IN
-        if state in (JupyterState.SPAWN_PENDING, JupyterState.LAB_RUNNING):
-            return CallbackResult(
-                status=200, body="<p>My Server</p>", content_type="text/html"
-            )
-        else:
-            return CallbackResult(
-                status=200,
-                body="<p>Start My Server</p>",
-                content_type="text/html",
-            )
-
-    def hub(self, url: str, **kwargs: Any) -> CallbackResult:
-        user = self._get_user(kwargs["headers"]["Authorization"])
-        if JupyterAction.HUB in self._fail.get(user, {}):
-            return CallbackResult(status=500)
-        state = self.state.get(user, JupyterState.LOGGED_OUT)
-        if state == JupyterState.LOGGED_OUT:
-            redirect_to = _url("hub/login")
-        elif state == JupyterState.LOGGED_IN:
-            redirect_to = _url("hub/spawn")
-        elif state == JupyterState.SPAWN_PENDING:
-            redirect_to = _url(f"hub/spawn-pending/{user}")
-        elif state == JupyterState.LAB_RUNNING:
-            redirect_to = _url(f"user/{user}/lab")
-        return CallbackResult(status=307, headers={"Location": redirect_to})
-
     def user(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         if JupyterAction.USER in self._fail.get(user, {}):
@@ -352,8 +316,6 @@ def mock_jupyter(mocked: aioresponses) -> MockJupyter:
     """
     mock = MockJupyter()
     mocked.get(_url("hub/login"), callback=mock.login, repeat=True)
-    mocked.get(_url("hub"), callback=mock.hub, repeat=True)
-    mocked.get(_url("hub/home"), callback=mock.home, repeat=True)
     mocked.get(_url("hub/spawn"), repeat=True)
     mocked.post(_url("hub/spawn"), callback=mock.spawn, repeat=True)
     mocked.get(
