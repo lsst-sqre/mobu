@@ -80,10 +80,7 @@ class JupyterSpawnProgress:
         self._logger = logger
         self._start = datetime.now(tz=timezone.utc)
 
-    def __aiter__(self) -> AsyncIterator[ProgressMessage]:
-        return self.iter()
-
-    async def iter(self) -> AsyncIterator[ProgressMessage]:
+    async def __aiter__(self) -> AsyncIterator[ProgressMessage]:
         """Iterate over spawn progress events."""
         async for line in self._response.content:
             if not line.startswith(b"data:"):
