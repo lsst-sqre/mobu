@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import re
 from base64 import urlsafe_b64decode
 from datetime import datetime, timedelta, timezone
@@ -28,6 +30,8 @@ class JupyterAction(Enum):
     LOGIN = "login"
     HOME = "home"
     HUB = "hub"
+    USER = "user"
+    PROGRESS = "progress"
     SPAWN = "spawn"
     SPAWN_PENDING = "spawn_pending"
     LAB = "lab"
@@ -63,6 +67,7 @@ class MockJupyter:
         self.sessions: Dict[str, JupyterLabSession] = {}
         self.state: Dict[str, JupyterState] = {}
         self.delete_immediate = True
+        self.spawn_timeout = False
         self._delete_at: Dict[str, Optional[datetime]] = {}
         self._fail: Dict[str, Dict[JupyterAction, bool]] = {}
 
@@ -81,41 +86,57 @@ class MockJupyter:
             self.state[user] = JupyterState.LOGGED_IN
         return CallbackResult(status=200)
 
-    def home(self, url: str, **kwargs: Any) -> CallbackResult:
+    def user(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
-        if JupyterAction.HOME in self._fail.get(user, {}):
+        if JupyterAction.USER in self._fail.get(user, {}):
             return CallbackResult(status=500)
+        assert str(url).endswith(f"/hub/api/users/{user}")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
-        if state == JupyterState.LAB_RUNNING:
+        if state == JupyterState.SPAWN_PENDING:
+            server = {"name": "", "pending": "spawn", "ready": False}
+            body = {"name": user, "servers": {"": server}}
+        elif state == JupyterState.LAB_RUNNING:
             delete_at = self._delete_at.get(user)
             if delete_at and datetime.now(tz=timezone.utc) > delete_at:
                 del self._delete_at[user]
                 self.state[user] = JupyterState.LOGGED_IN
-        if state in (JupyterState.SPAWN_PENDING, JupyterState.LAB_RUNNING):
-            return CallbackResult(
-                status=200, body="<p>My Server</p>", content_type="text/html"
-            )
+            if delete_at:
+                server = {"name": "", "pending": "delete", "ready": False}
+            else:
+                server = {"name": "", "pending": None, "ready": True}
+            body = {"name": user, "servers": {"": server}}
         else:
-            return CallbackResult(
-                status=200,
-                body="<p>Start My Server</p>",
-                content_type="text/html",
-            )
+            body = {"name": user, "servers": {}}
+        return CallbackResult(status=200, body=json.dumps(body))
 
-    def hub(self, url: str, **kwargs: Any) -> CallbackResult:
+    async def progress(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
-        if JupyterAction.HUB in self._fail.get(user, {}):
-            return CallbackResult(status=500)
+        assert str(url).endswith(f"/hub/api/users/{user}/server/progress")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
-        if state == JupyterState.LOGGED_OUT:
-            redirect_to = _url("hub/login")
-        elif state == JupyterState.LOGGED_IN:
-            redirect_to = _url("hub/spawn")
-        elif state == JupyterState.SPAWN_PENDING:
-            redirect_to = _url(f"hub/spawn-pending/{user}")
+        assert state in (JupyterState.SPAWN_PENDING, JupyterState.LAB_RUNNING)
+        if JupyterAction.PROGRESS in self._fail.get(user, {}):
+            body = (
+                'data: {"progress": 0, "message": "Server requested"}\n'
+                'data: {"progress": 50, "message": "Spawning server..."}\n'
+                'data: {"progress": 75, "message": "Spawn failed!"}\n'
+            )
         elif state == JupyterState.LAB_RUNNING:
-            redirect_to = _url(f"user/{user}/lab")
-        return CallbackResult(status=307, headers={"Location": redirect_to})
+            body = (
+                'data: {"progress": 100, "ready": true, "message": "Ready"}\n'
+            )
+        elif self.spawn_timeout:
+            # Cause the spawn to time out by pausing for longer than the test
+            # should run for and then returning nothing.
+            await asyncio.sleep(60)
+            body = ""
+        else:
+            self.state[user] = JupyterState.LAB_RUNNING
+            body = (
+                'data: {"progress": 0, "message": "Server requested"}\n'
+                'data: {"progress": 50, "message": "Spawning server..."}\n'
+                'data: {"progress": 100, "ready": true, "message": "Ready"}\n'
+            )
+        return CallbackResult(status=200, body=body)
 
     def spawn(self, url: str, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
@@ -136,7 +157,6 @@ class MockJupyter:
             return CallbackResult(status=500)
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state == JupyterState.SPAWN_PENDING
-        self.state[user] = JupyterState.LAB_RUNNING
         return CallbackResult(status=200)
 
     def missing_lab(self, url: str, **kwargs: Any) -> CallbackResult:
@@ -296,8 +316,6 @@ def mock_jupyter(mocked: aioresponses) -> MockJupyter:
     """
     mock = MockJupyter()
     mocked.get(_url("hub/login"), callback=mock.login, repeat=True)
-    mocked.get(_url("hub"), callback=mock.hub, repeat=True)
-    mocked.get(_url("hub/home"), callback=mock.home, repeat=True)
     mocked.get(_url("hub/spawn"), repeat=True)
     mocked.post(_url("hub/spawn"), callback=mock.spawn, repeat=True)
     mocked.get(
@@ -308,6 +326,16 @@ def mock_jupyter(mocked: aioresponses) -> MockJupyter:
     mocked.get(
         _url("hub/user/[^/]+/lab$", regex=True),
         callback=mock.missing_lab,
+        repeat=True,
+    )
+    mocked.get(
+        _url("hub/api/users/[^/]+$", regex=True),
+        callback=mock.user,
+        repeat=True,
+    )
+    mocked.get(
+        _url("hub/api/users/[^/]+/server/progress$", regex=True),
+        callback=mock.progress,
         repeat=True,
     )
     mocked.delete(

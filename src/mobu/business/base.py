@@ -4,17 +4,23 @@ from __future__ import annotations
 
 import asyncio
 from asyncio import Queue, QueueEmpty, TimeoutError
+from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING
 
 from ..models.business import BusinessData
 from ..timings import Timings
+from ..util import wait_first
 
 if TYPE_CHECKING:
+    from typing import AsyncIterable, AsyncIterator, TypeVar
+
     from structlog import BoundLogger
 
     from ..models.business import BusinessConfig
     from ..models.user import AuthenticatedUser
+
+    T = TypeVar("T")
 
 __all__ = ["Business"]
 
@@ -133,6 +139,41 @@ class Business:
                 self.control.get_nowait()
         except (TimeoutError, QueueEmpty):
             return
+
+    async def iter_with_timeout(
+        self, iterable: AsyncIterable[T], timeout: float
+    ) -> AsyncIterator[T]:
+        """Run an iterator with a timeout.
+
+        Returns the next element of the iterator on success and ends the
+        iterator on timeout or if the business was told to shut down.  (The
+        latter two can be distinguished by checking ``self.stopping``.)
+
+        Notes
+        -----
+        This is unfortunately somewhat complex because we want to read from an
+        iterator of messages (progress for spawn or WebSocket messages for
+        code execution) while simultaneously checking our control queue for a
+        shutdown message and imposing a timeout.
+
+        Do this by creating two awaitables, one pause that handles the control
+        queue and the timeout and the other that waits on the progress
+        iterator, and then use the ``wait_first`` utility function to wait for
+        the first one that finishes and abort the other one.
+        """
+        iterator = iterable.__aiter__()
+        start = datetime.now(tz=timezone.utc)
+        while True:
+            now = datetime.now(tz=timezone.utc)
+            remaining = timeout - (now - start).total_seconds()
+            if remaining < 0:
+                break
+            pause_await = self.pause(timeout)
+            iter_await = iterator.__anext__()
+            result = await wait_first(iter_await, pause_await)
+            if result is None or self.stopping:
+                break
+            yield result
 
     def dump(self) -> BusinessData:
         return BusinessData(

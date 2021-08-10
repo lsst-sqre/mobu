@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Response
 from fastapi.responses import FileResponse, JSONResponse
 from safir.dependencies.logger import logger_dependency
 from safir.metadata import get_metadata
+from safir.models import ErrorModel
 from structlog.stdlib import BoundLogger
 
 from ..config import config
@@ -16,7 +17,6 @@ from ..dependencies.manager import (
     MonkeyBusinessManager,
     monkey_business_manager,
 )
-from ..models.error import ErrorModel
 from ..models.flock import FlockConfig, FlockData
 from ..models.index import Index
 from ..models.monkey import MonkeyData

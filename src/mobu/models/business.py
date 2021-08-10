@@ -48,11 +48,22 @@ class BusinessConfig(BaseModel):
         description="Only used by the NotebookRunner",
     )
 
-    settle_time: int = Field(
+    spawn_settle_time: int = Field(
         10,
-        title="How long to wait after lab creation in seconds",
+        title="How long to wait before polling spawn progress in seconds",
         description=(
-            "Wait this long after lab creation before trying to use the lab"
+            "Wait this long after triggering a lab spawn before starting to"
+            " poll its progress"
+        ),
+        example=10,
+    )
+
+    lab_settle_time: int = Field(
+        10,
+        title="How long to wait after spawn before using a lab, in seconds",
+        description=(
+            "Wait this long after a lab successfully spawns before starting"
+            " to use it"
         ),
         example=10,
     )
@@ -85,14 +96,18 @@ class BusinessConfig(BaseModel):
         example=1,
     )
 
-    reauth_interval: int = Field(
-        30 * 60,
-        title="Time between reauthentication attempts in seconds",
-        description=(
-            "Used by JupyterLoginLoop, JupyterPythonLoop, and NotebookRunner."
-            " JupyterHub appears to issue tokens with a one hour lifetime."
-        ),
-        example=30 * 60,
+    spawn_timeout: int = Field(
+        900,
+        title="Timeout for spawning a lab in seconds",
+        description="Used by JupyterLoginLoop and its subclasses",
+        example=900,
+    )
+
+    delete_timeout: int = Field(
+        60,
+        title="Timeout for deleting a lab in seconds",
+        description="Used by JupyterLoginLoop and its subclasses",
+        example=60,
     )
 
     max_executions: int = Field(

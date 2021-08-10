@@ -38,7 +38,7 @@ AUTOSTART_CONFIG = """
       image: "registry.hub.docker.com/lsstsqre/sciplat-lab:recommended"
       image_dropdown: use_image_from_dropdown
       size: Small
-    settle_time: 45
+    spawn_settle_time: 10
   scopes: ["exec:notebook"]
   restart: true
   business: JupyterPythonLoop
@@ -123,7 +123,7 @@ async def test_autostart(client: AsyncClient) -> None:
                     "image_dropdown": "use_image_from_dropdown",
                     "size": "Small",
                 },
-                "settle_time": 45,
+                "spawn_settle_time": 10,
             },
         },
         "monkeys": [
