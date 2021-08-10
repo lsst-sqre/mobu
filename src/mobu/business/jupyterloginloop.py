@@ -80,6 +80,9 @@ class JupyterLoginLoop(Business):
             await self.spawn_lab()
             if self.stopping:
                 return
+            await self.lab_settle()
+            if self.stopping:
+                return
         await self.lab_login()
         await self.lab_business()
         if self.config.delete_lab:
@@ -126,6 +129,10 @@ class JupyterLoginLoop(Business):
                 raise JupyterTimeoutError(self.user.username, msg, log)
             else:
                 raise JupyterSpawnError(self.user.username, log)
+
+    async def lab_settle(self) -> None:
+        with self.timings.start("lab_settle"):
+            await self.pause(self.config.lab_settle_time)
 
     async def lab_login(self) -> None:
         with self.timings.start("lab_login"):

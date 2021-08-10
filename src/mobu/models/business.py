@@ -58,6 +58,16 @@ class BusinessConfig(BaseModel):
         example=10,
     )
 
+    lab_settle_time: int = Field(
+        10,
+        title="How long to wait after spawn before using a lab, in seconds",
+        description=(
+            "Wait this long after a lab successfully spawns before starting"
+            " to use it"
+        ),
+        example=10,
+    )
+
     idle_time: int = Field(
         60,
         title="How long to wait between business executions",

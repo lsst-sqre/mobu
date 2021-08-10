@@ -35,7 +35,11 @@ async def test_run(
             "count": 1,
             "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
             "scopes": ["exec:notebook"],
-            "options": {"spawn_settle_time": 0, "login_idle_time": 0},
+            "options": {
+                "spawn_settle_time": 0,
+                "lab_settle_time": 0,
+                "login_idle_time": 0,
+            },
             "business": "JupyterLoginLoop",
         },
     )
@@ -92,6 +96,7 @@ async def test_reuse_lab(
             "scopes": ["exec:notebook"],
             "options": {
                 "spawn_settle_time": 0,
+                "lab_settle_time": 0,
                 "login_idle_time": 0,
                 "delete_lab": False,
             },
@@ -123,6 +128,7 @@ async def test_delayed_lab_delete(
             "scopes": ["exec:notebook"],
             "options": {
                 "spawn_settle_time": 0,
+                "lab_settle_time": 0,
                 "login_idle_time": 0,
                 "delete_lab": False,
             },
@@ -157,6 +163,7 @@ async def test_alert(
             "scopes": ["exec:notebook"],
             "options": {
                 "spawn_settle_time": 0,
+                "lab_settle_time": 0,
                 "login_idle_time": 0,
                 "delete_lab": False,
             },
@@ -215,7 +222,11 @@ async def test_spawn_timeout(
             "count": 1,
             "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
             "scopes": ["exec:notebook"],
-            "options": {"spawn_settle_time": 0, "spawn_timeout": 1},
+            "options": {
+                "spawn_settle_time": 0,
+                "lab_settle_time": 0,
+                "spawn_timeout": 1,
+            },
             "business": "JupyterLoginLoop",
         },
     )
@@ -268,7 +279,11 @@ async def test_spawn_failed(
             "count": 1,
             "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
             "scopes": ["exec:notebook"],
-            "options": {"spawn_settle_time": 0, "spawn_timeout": 1},
+            "options": {
+                "spawn_settle_time": 0,
+                "lab_settle_time": 0,
+                "spawn_timeout": 1,
+            },
             "business": "JupyterLoginLoop",
         },
     )
@@ -337,6 +352,7 @@ async def test_delete_timeout(
             "scopes": ["exec:notebook"],
             "options": {
                 "spawn_settle_time": 0,
+                "lab_settle_time": 0,
                 "login_idle_time": 0,
                 "delete_timeout": 1,
             },
