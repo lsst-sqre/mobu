@@ -306,9 +306,9 @@ pytest-cov==2.12.1 \
     --hash=sha256:261bb9e47e65bd099c89c3edf92972865210c36813f80ede5277dceb77a4a62a \
     --hash=sha256:261ceeb8c227b726249b376b8526b600f38667ee314f910353fa318caa01f4d7
     # via -r requirements/dev.in
-pytest-httpx==0.12.0 \
-    --hash=sha256:1e135b8779060091fa1c87d8aff7904921e8bea95fce5e971a0262764d064b12 \
-    --hash=sha256:e262932f2d3ce380da8273c7bacbcfdc2c94e167fa94da29571caaf1f4d3ba27
+pytest-httpx==0.12.1 \
+    --hash=sha256:703433f65951bde6e08d4b1d8956f8f9dec4b3046c2805414e40adb87908ee7f \
+    --hash=sha256:8c16ff2abba4fc535a505e1df6dab61794bcefde8e7e6a106a366ffc3a04dcc5
     # via -r requirements/dev.in
 pyyaml==5.4.1 \
     --hash=sha256:08682f6b72c722394747bddaf0aa62277e02557c0fd1c42cb853016a38f8dedf \
@@ -387,9 +387,9 @@ typing-extensions==3.10.0.0 \
     #   -c requirements/main.txt
     #   aiohttp
     #   mypy
-virtualenv==20.7.1 \
-    --hash=sha256:57bcb59c5898818bd555b1e0cfcf668bd6204bc2b53ad0e70a52413bd790f9e4 \
-    --hash=sha256:73863dc3be1efe6ee638e77495c0c195a6384ae7b15c561f3ceb2698ae7267c1
+virtualenv==20.7.2 \
+    --hash=sha256:9ef4e8ee4710826e98ff3075c9a4739e2cb1040de6a2a8d35db0055840dc96a0 \
+    --hash=sha256:e4670891b3a03eb071748c569a87cceaefbf643c5bac46d996c5a45c34aa0f06
     # via pre-commit
 yarl==1.6.3 \
     --hash=sha256:00d7ad91b6583602eb9c1d085a2cf281ada267e9a197e8b7cae487dadbfa293e \
