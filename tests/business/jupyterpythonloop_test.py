@@ -9,6 +9,7 @@ from unittest.mock import ANY
 import pytest
 
 from tests.support.gafaelfawr import mock_gafaelfawr
+from tests.support.util import wait_for_business
 
 if TYPE_CHECKING:
     from aioresponses import aioresponses
@@ -41,18 +42,8 @@ async def test_run(
     assert r.status_code == 201
 
     # Wait until we've finished at least one loop.  Make sure nothing fails.
-    for _ in range(1, 10):
-        await asyncio.sleep(1)
-        r = await client.get("/mobu/flocks/test/monkeys/testuser1")
-        assert r.status_code == 200
-        data = r.json()
-        assert data["business"]["failure_count"] == 0
-        if data["business"]["success_count"] > 0:
-            break
-
-    r = await client.get("/mobu/flocks/test/monkeys/testuser1")
-    assert r.status_code == 200
-    assert r.json() == {
+    data = await wait_for_business(client, "testuser1")
+    assert data == {
         "name": "testuser1",
         "business": {
             "failure_count": 0,
@@ -134,14 +125,8 @@ async def test_alert(
     assert r.status_code == 201
 
     # Wait until we've finished at least one loop.
-    for _ in range(1, 10):
-        await asyncio.sleep(1)
-        r = await client.get("/mobu/flocks/test/monkeys/testuser1")
-        assert r.status_code == 200
-        data = r.json()
-        assert data["business"]["success_count"] == 0
-        if data["business"]["failure_count"] > 1:
-            break
+    data = await wait_for_business(client, "testuser1")
+    assert data["business"]["failure_count"] == 1
 
     # Check that an appropriate error was posted.
     assert slack.alerts == [
@@ -192,4 +177,4 @@ async def test_alert(
         }
     ]
     error = slack.alerts[0]["attachments"][0]["blocks"][0]["text"]["text"]
-    assert "some error" in error
+    assert "Exception: some error" in error

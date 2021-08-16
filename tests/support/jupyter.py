@@ -6,8 +6,10 @@ import asyncio
 import json
 import re
 from base64 import urlsafe_b64decode
+from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
 from enum import Enum
+from io import StringIO
 from traceback import format_exc
 from typing import TYPE_CHECKING
 from unittest.mock import ANY, AsyncMock, Mock
@@ -283,12 +285,14 @@ class MockJupyterWebSocket(Mock):
         assert self._header
         if self._code:
             try:
-                result = eval(self._code, self._state)
+                output = StringIO()
+                with redirect_stdout(output):
+                    exec(self._code, self._state)
                 self._code = None
                 return {
                     "msg_type": "stream",
                     "parent_header": self._header,
-                    "content": {"text": str(result)},
+                    "content": {"text": output.getvalue()},
                 }
             except Exception:
                 result = {
