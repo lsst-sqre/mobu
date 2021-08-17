@@ -62,15 +62,16 @@ class NotebookRunner(JupyterPythonLoop):
             self._repo = git.Repo.clone_from(url, path, branch=branch)
 
     def find_notebooks(self) -> List[Path]:
-        notebooks = [
-            p
-            for p in Path(self._repo_dir.name).iterdir()
-            if p.suffix == ".ipynb"
-        ]
-        if not notebooks:
-            msg = "No notebooks found in {self._repo_dir.name}"
-            raise NotebookRepositoryError(msg)
-        SystemRandom().shuffle(notebooks)
+        with self.timings.start("find_notebooks"):
+            notebooks = [
+                p
+                for p in Path(self._repo_dir.name).iterdir()
+                if p.suffix == ".ipynb"
+            ]
+            if not notebooks:
+                msg = "No notebooks found in {self._repo_dir.name}"
+                raise NotebookRepositoryError(msg)
+            SystemRandom().shuffle(notebooks)
         return notebooks
 
     def next_notebook(self) -> None:
