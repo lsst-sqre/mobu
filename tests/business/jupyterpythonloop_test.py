@@ -146,6 +146,7 @@ async def test_alert(
                         {"type": "mrkdwn", "text": ANY},
                         {"type": "mrkdwn", "text": "*User*\ntestuser1"},
                         {"type": "mrkdwn", "text": "*Event*\nexecute_code"},
+                        {"type": "mrkdwn", "text": "*Node*\nsome-node"},
                     ],
                 },
             ],

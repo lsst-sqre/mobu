@@ -16,7 +16,7 @@ def test_timings() -> None:
     now = datetime.now(tz=timezone.utc)
     with timings.start("something") as sw:
         assert sw.event == "something"
-        assert sw.annotation == {}
+        assert sw.annotations == {}
         assert now + timedelta(seconds=5) > sw.start_time >= now
         assert sw.stop_time is None
         assert sw.elapsed <= datetime.now(tz=timezone.utc) - sw.start_time
@@ -30,7 +30,7 @@ def test_timings() -> None:
 
     with pytest.raises(Exception):
         with timings.start("else", {"foo": "bar"}) as sw:
-            assert sw.annotation == {"foo": "bar"}
+            assert sw.annotations == {"foo": "bar"}
             assert sw.stop_time is None
             raise Exception("some exception")
 
@@ -42,14 +42,14 @@ def test_timings() -> None:
     assert timings.dump() == [
         {
             "event": "something",
-            "annotation": {},
+            "annotations": {},
             "start": first_sw.start_time.isoformat(),
             "stop": first_sw.stop_time.isoformat(),
             "elapsed": first_sw.elapsed.total_seconds(),
         },
         {
             "event": "else",
-            "annotation": {"foo": "bar"},
+            "annotations": {"foo": "bar"},
             "start": second_sw.start_time.isoformat(),
             "stop": second_sw.stop_time.isoformat(),
             "elapsed": second_sw.elapsed.total_seconds(),
@@ -67,7 +67,7 @@ def test_timings() -> None:
         dump = timings.dump()
         assert dump[2] == {
             "event": "incomplete",
-            "annotation": {},
+            "annotations": {},
             "start": sw.start_time.isoformat(),
             "stop": None,
             "elapsed": None,

@@ -53,6 +53,7 @@ class SlackError(Exception, metaclass=ABCMeta):
         self.failed = datetime.now(tz=timezone.utc)
         self.started: Optional[datetime] = None
         self.event: Optional[str] = None
+        self.annotations: Optional[Dict[str, str]] = None
         super().__init__(msg)
 
     @abstractmethod
@@ -87,18 +88,20 @@ class CodeExecutionError(SlackError):
         error: Optional[str] = None,
         notebook: Optional[str] = None,
         status: Optional[str] = None,
+        annotations: Optional[Dict[str, str]] = None,
     ) -> None:
         self.code = code
         self.error = error
         self.notebook = notebook
         self.status = status
+        self.annotations = annotations if annotations else {}
         super().__init__(user, "Code execution failed")
 
     def __str__(self) -> str:
         if self.notebook:
             message = f"{self.user}: cell of notebook {self.notebook} failed"
             if self.status:
-                message += f" (status: {self.status}"
+                message += f" (status: {self.status})"
             message += f"\nCode: {self.code}"
         else:
             message = f"{self.user}: running code '{self.code}' block failed"
@@ -115,6 +118,9 @@ class CodeExecutionError(SlackError):
             intro += f"\n*Status*: {self.status}"
 
         fields = self.common_fields()
+        if self.annotations and self.annotations.get("node"):
+            node = self.annotations["node"]
+            fields.append({"type": "mrkdwn", "text": f"*Node*\n{node}"})
 
         code = self.code
         if not code.endswith("\n"):

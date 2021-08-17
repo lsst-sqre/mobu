@@ -18,6 +18,7 @@ from uuid import uuid4
 from aiohttp import ClientWebSocketResponse
 from aioresponses import CallbackResult
 
+from mobu.business.jupyterpythonloop import _GET_NODE
 from mobu.config import config
 from mobu.jupyterclient import JupyterLabSession
 
@@ -283,7 +284,14 @@ class MockJupyterWebSocket(Mock):
 
     async def receive_json(self) -> Dict[str, Any]:
         assert self._header
-        if self._code:
+        if self._code == _GET_NODE:
+            self._code = None
+            return {
+                "msg_type": "stream",
+                "parent_header": self._header,
+                "content": {"text": "some-node"},
+            }
+        elif self._code:
             try:
                 output = StringIO()
                 with redirect_stdout(output):

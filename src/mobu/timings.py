@@ -25,7 +25,7 @@ class Timings:
         self._stopwatches: List[Stopwatch] = []
 
     def start(
-        self, event: str, annotation: Optional[Dict[str, Any]] = None
+        self, event: str, annotations: Optional[Dict[str, Any]] = None
     ) -> Stopwatch:
         """Start a stopwatch.
 
@@ -38,9 +38,9 @@ class Timings:
            with timings.start("event", annotation):
                ...
         """
-        if not annotation:
-            annotation = {}
-        stopwatch = Stopwatch(event, annotation, self._last)
+        if not annotations:
+            annotations = {}
+        stopwatch = Stopwatch(event, annotations, self._last)
         self._stopwatches.append(stopwatch)
         self._last = stopwatch
         return stopwatch
@@ -71,11 +71,11 @@ class Stopwatch:
     def __init__(
         self,
         event: str,
-        annotation: Dict[str, Any],
+        annotations: Dict[str, Any],
         previous: Optional[Stopwatch] = None,
     ) -> None:
         self.event = event
-        self.annotation = annotation
+        self.annotations = annotations
         self.start_time = datetime.now(tz=timezone.utc)
         self.stop_time: Optional[datetime] = None
         self._previous = previous
@@ -93,6 +93,7 @@ class Stopwatch:
         if exc_val and isinstance(exc_val, SlackError):
             exc_val.started = self.start_time
             exc_val.event = self.event
+            exc_val.annotations = self.annotations
         return False
 
     @property
@@ -118,7 +119,7 @@ class Stopwatch:
             elapsed = (self.stop_time - self.start_time).total_seconds()
         data = {
             "event": self.event,
-            "annotation": self.annotation,
+            "annotations": self.annotations,
             "start": self.start_time.isoformat(),
             "stop": self.stop_time.isoformat() if self.stop_time else None,
             "elapsed": elapsed,
