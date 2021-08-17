@@ -41,6 +41,10 @@ class MonkeyNotFoundException(Exception):
         super().__init__(f"Monkey {monkey} not found")
 
 
+class NotebookRepositoryError(Exception):
+    """The repository containing notebooks to run is not valid."""
+
+
 class SlackError(Exception, metaclass=ABCMeta):
     """Represents an exception that can be reported to Slack.
 

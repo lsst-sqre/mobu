@@ -287,7 +287,7 @@ class JupyterClient:
                 raise await JupyterError.from_response(self.user.username, r)
 
     async def create_labsession(
-        self, kernel_name: str = "LSST", notebook_name: Optional[str] = None
+        self, notebook_name: Optional[str] = None, *, kernel_name: str = "LSST"
     ) -> JupyterLabSession:
         session_url = (
             self.jupyter_url + f"user/{self.user.username}/api/sessions"
@@ -296,7 +296,7 @@ class JupyterClient:
         body = {
             "kernel": {"name": kernel_name},
             "name": notebook_name or "(no notebook)",
-            "path": uuid4().hex,
+            "path": notebook_name if notebook_name else uuid4().hex,
             "type": session_type,
         }
 
