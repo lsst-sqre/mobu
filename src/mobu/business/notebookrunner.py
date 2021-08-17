@@ -62,6 +62,12 @@ class NotebookRunner(JupyterPythonLoop):
             self._repo = git.Repo.clone_from(url, path, branch=branch)
 
     async def execute_code(self, session: JupyterLabSession) -> None:
+        if self.config.working_directory:
+            code = f'import os; os.chdir("{self.config.working_directory}")'
+            with self.timings.start("execute_setup", {"code": code}) as sw:
+                reply = await self._client.run_python(session, code)
+                sw.annotation["result"] = reply
+
         for count in range(self.config.max_executions):
             self._next_notebook()
             assert self.notebook

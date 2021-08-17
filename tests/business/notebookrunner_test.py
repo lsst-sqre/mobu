@@ -46,9 +46,11 @@ async def test_run(
             "options": {
                 "spawn_settle_time": 0,
                 "lab_settle_time": 0,
+                "execution_idle_time": 0,
                 "max_executions": 1,
                 "repo_url": str(repo_path),
                 "repo_branch": "main",
+                "working_directory": str(repo_path),
             },
             "business": "NotebookRunner",
         },

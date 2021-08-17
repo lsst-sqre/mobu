@@ -34,6 +34,11 @@ class JupyterPythonLoop(JupyterLoginLoop):
         return session
 
     async def execute_code(self, session: JupyterLabSession) -> None:
+        if self.config.working_directory:
+            code = f'import os; os.chdir("{self.config.working_directory}")'
+            with self.timings.start("execute_setup", {"code": code}) as sw:
+                reply = await self._client.run_python(session, code)
+                sw.annotation["result"] = reply
         code = self.config.code
         for count in range(self.config.max_executions):
             with self.timings.start("execute_code", {"code": code}) as sw:

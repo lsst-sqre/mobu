@@ -48,6 +48,12 @@ class BusinessConfig(BaseModel):
         description="Only used by the NotebookRunner",
     )
 
+    working_directory: Optional[str] = Field(
+        None,
+        title="Working directory when running code",
+        description="Used by JupyterPythonLoop and its subclasses",
+    )
+
     spawn_settle_time: int = Field(
         10,
         title="How long to wait before polling spawn progress in seconds",
