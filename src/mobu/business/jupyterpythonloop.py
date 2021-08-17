@@ -26,6 +26,8 @@ _CHDIR_TEMPLATE = 'import os; os.chdir("{wd}")'
 
 _GET_NODE = """
 from rubin_jupyter_utils.lab.notebook.utils import get_node
+import warnings
+warnings.filterwarnings("ignore")
 print(get_node(), end="")
 """
 """Code to get the node on which the lab is running."""
@@ -62,7 +64,8 @@ class JupyterPythonLoop(JupyterLoginLoop):
         with self.timings.start("create_session"):
             session = await self._client.create_labsession()
         with self.timings.start("execute_setup"):
-            self.node = await self._client.run_python(session, _GET_NODE)
+            if self.config.get_node:
+                self.node = await self._client.run_python(session, _GET_NODE)
             if self.config.working_directory:
                 code = _CHDIR_TEMPLATE.format(wd=self.config.working_directory)
                 await self._client.run_python(session, code)

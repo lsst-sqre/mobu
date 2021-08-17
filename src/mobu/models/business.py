@@ -54,6 +54,16 @@ class BusinessConfig(BaseModel):
         description="Used by JupyterPythonLoop and its subclasses",
     )
 
+    get_node: bool = Field(
+        True,
+        title="Whether to get the node name for error reporting",
+        description=(
+            "Used by JupyterPythonLoop and its subclasses. Requires the lab"
+            " have rubin_jupyter_utils.lab.notebook.utils pre-installed and"
+            " able to make Kubernetes API calls."
+        ),
+    )
+
     spawn_settle_time: int = Field(
         10,
         title="How long to wait before polling spawn progress in seconds",
