@@ -98,14 +98,12 @@ class NotebookRunner(JupyterPythonLoop):
         for count in range(self.config.max_executions):
             self.next_notebook()
             assert self.notebook
-            self.logger.info(f"Starting notebook: {self.notebook.name}")
-            cells = self.read_notebook(self.notebook)
 
             iteration = f"{count + 1}/{self.config.max_executions}"
             msg = f"Notebook {self.notebook.name} iteration {iteration}"
             self.logger.info(msg)
 
-            for cell in cells:
+            for cell in self.read_notebook(self.notebook):
                 self.running_code = "".join(cell["source"])
                 await self.execute_cell(session, self.running_code)
                 self.running_code = None
