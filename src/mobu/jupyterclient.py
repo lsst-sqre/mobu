@@ -20,7 +20,7 @@ from uuid import uuid4
 from aiohttp import ClientSession, TCPConnector, WSServerHandshakeError
 
 from .config import config
-from .exceptions import CodeExecutionError, JupyterError
+from .exceptions import CodeExecutionError, JupyterError, JupyterWebSocketError
 
 if TYPE_CHECKING:
     from typing import Any, AsyncIterator, Optional
@@ -358,7 +358,19 @@ class JupyterClient:
 
         result = ""
         while True:
-            r = await session.websocket.receive_json()
+            try:
+                r = await session.websocket.receive_json()
+            except TypeError as e:
+                # The aiohttp WebSocket code raises the unhelpful error
+                # message TypeError("Received message 257:None is not str")
+                # if the WebSocket connection is abruptly closed.  Translate
+                # this into a useful error that we can annotate.
+                if "Received message 257" in str(e):
+                    error = "WebSocket unexpectedly closed"
+                    raise JupyterWebSocketError(username, error)
+                else:
+                    raise
+
             self.log.debug(f"Recieved kernel message: {r}")
             msg_type = r["msg_type"]
             if r.get("parent_header", {}).get("msg_id") != msg_id:

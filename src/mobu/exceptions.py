@@ -57,7 +57,7 @@ class SlackError(Exception, metaclass=ABCMeta):
         self.failed = datetime.now(tz=timezone.utc)
         self.started: Optional[datetime] = None
         self.event: Optional[str] = None
-        self.annotations: Optional[Dict[str, str]] = None
+        self.annotations: Dict[str, str] = {}
         super().__init__(msg)
 
     @abstractmethod
@@ -91,12 +91,10 @@ class CodeExecutionError(SlackError):
         *,
         error: Optional[str] = None,
         status: Optional[str] = None,
-        annotations: Optional[Dict[str, str]] = None,
     ) -> None:
         self.code = code
         self.error = error
         self.status = status
-        self.annotations: Dict[str, str] = annotations if annotations else {}
         super().__init__(user, "Code execution failed")
 
     def __str__(self) -> str:
@@ -312,3 +310,35 @@ class JupyterTimeoutError(SlackError):
             )
         result["blocks"].append({"type": "divider"})
         return result
+
+
+class JupyterWebSocketError(SlackError):
+    """Unexpected messages on the session WebSocket."""
+
+    def to_slack(self) -> Dict[str, Any]:
+        """Format the error as a Slack Block Kit message."""
+        fields = self.common_fields()
+        if self.annotations.get("cell"):
+            notebook = self.annotations.get("notebook", "(unknown notebook)")
+            cell = self.annotations["cell"]
+            fields.append(
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Cell ID*\n`{notebook}` cell `{cell}`",
+                    "verbatim": True,
+                }
+            )
+        if self.annotations.get("node"):
+            node = self.annotations["node"]
+            fields.append({"type": "mrkdwn", "text": f"*Node*\n{node}"})
+
+        return {
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": str(self)},
+                },
+                {"type": "section", "fields": fields},
+                {"type": "divider"},
+            ]
+        }
