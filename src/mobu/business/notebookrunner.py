@@ -86,13 +86,13 @@ class NotebookRunner(JupyterPythonLoop):
             cells = json.loads(notebook_text)["cells"]
         return [c for c in cells if c["cell_type"] == "code"]
 
-    async def create_session(self) -> JupyterLabSession:
+    async def create_session(
+        self, notebook_name: Optional[str] = None
+    ) -> JupyterLabSession:
         """Override create_session to add the notebook name."""
-        self.logger.info("Creating lab session")
-        notebook_name = self.notebook.name if self.notebook else None
-        with self.timings.start("create_session"):
-            session = await self._client.create_labsession(notebook_name)
-        return session
+        if not notebook_name:
+            notebook_name = self.notebook.name if self.notebook else None
+        return await super().create_session(notebook_name)
 
     async def execute_code(self, session: JupyterLabSession) -> None:
         for count in range(self.config.max_executions):

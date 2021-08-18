@@ -59,10 +59,12 @@ class JupyterPythonLoop(JupyterLoginLoop):
         await self.execute_code(session)
         await self.delete_session(session)
 
-    async def create_session(self) -> JupyterLabSession:
+    async def create_session(
+        self, notebook_name: Optional[str] = None
+    ) -> JupyterLabSession:
         self.logger.info("Creating lab session")
         with self.timings.start("create_session"):
-            session = await self._client.create_labsession()
+            session = await self._client.create_labsession(notebook_name)
         with self.timings.start("execute_setup"):
             if self.config.get_node:
                 self.node = await self._client.run_python(session, _GET_NODE)

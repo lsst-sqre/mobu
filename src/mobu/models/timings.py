@@ -21,7 +21,7 @@ class StopwatchData(BaseModel):
 
     event: str = Field(..., title="Name of the event", example="lab_create")
 
-    annotation: Dict[str, str] = Field(
+    annotations: Dict[str, str] = Field(
         default_factory=dict,
         title="Event annotations",
         example={"notebook": "example.ipynb"},
