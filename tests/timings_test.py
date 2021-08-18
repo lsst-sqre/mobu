@@ -53,13 +53,6 @@ def test_timings() -> None:
             "start": second_sw.start_time.isoformat(),
             "stop": second_sw.stop_time.isoformat(),
             "elapsed": second_sw.elapsed.total_seconds(),
-            "previous": {
-                "event": "something",
-                "start": first_sw.start_time.isoformat(),
-            },
-            "elapsed_since_previous_stop": (
-                second_sw.start_time - first_sw.stop_time
-            ).total_seconds(),
         },
     ]
 
@@ -71,11 +64,4 @@ def test_timings() -> None:
             "start": sw.start_time.isoformat(),
             "stop": None,
             "elapsed": None,
-            "previous": {
-                "event": "else",
-                "start": second_sw.start_time.isoformat(),
-            },
-            "elapsed_since_previous_stop": (
-                sw.start_time - second_sw.stop_time
-            ).total_seconds(),
         }

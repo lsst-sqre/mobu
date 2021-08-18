@@ -124,12 +124,4 @@ class Stopwatch:
             "stop": self.stop_time.isoformat() if self.stop_time else None,
             "elapsed": elapsed,
         }
-        if self._previous:
-            data["previous"] = {
-                "event": self._previous.event,
-                "start": self._previous.start_time.isoformat(),
-            }
-        if self._previous and self._previous.stop_time:
-            idle = (self.start_time - self._previous.stop_time).total_seconds()
-            data["elapsed_since_previous_stop"] = idle
         return data
