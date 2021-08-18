@@ -76,7 +76,8 @@ class JupyterPythonLoop(JupyterLoginLoop):
     async def execute_code(self, session: JupyterLabSession) -> None:
         code = self.config.code
         for count in range(self.config.max_executions):
-            with self.timings.start("execute_code", {"node": self.node}):
+            annotations = {"node": self.node} if self.node else {}
+            with self.timings.start("execute_code", annotations):
                 reply = await self._client.run_python(session, code)
             self.logger.info(f"{code} -> {reply}")
             await self.execution_idle()

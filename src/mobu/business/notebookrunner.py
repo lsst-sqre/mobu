@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 import git
 
-from ..exceptions import CodeExecutionError, NotebookRepositoryError
+from ..exceptions import NotebookRepositoryError
 from ..jupyterclient import JupyterLabSession
 from ..models.business import BusinessData
 from .jupyterpythonloop import JupyterPythonLoop
@@ -42,7 +42,6 @@ class NotebookRunner(JupyterPythonLoop):
         super().__init__(logger, business_config, user)
         self.notebook: Optional[Path] = None
         self.running_code: Optional[str] = None
-        self._failed_notebooks: List[str] = []
         self._repo_dir = TemporaryDirectory()
         self._repo: Optional[git.Repo] = None
         self._notebook_paths: Optional[List[Path]] = None
@@ -81,9 +80,24 @@ class NotebookRunner(JupyterPythonLoop):
         self.notebook = self._notebook_paths.pop()
 
     def read_notebook(self, notebook: Path) -> List[Dict[str, Any]]:
-        with self.timings.start(f"read_notebook:{notebook.name}"):
-            notebook_text = notebook.read_text()
-            cells = json.loads(notebook_text)["cells"]
+        with self.timings.start("read_notebook", {"notebook": notebook.name}):
+            try:
+                notebook_text = notebook.read_text()
+                cells = json.loads(notebook_text)["cells"]
+            except Exception as e:
+                msg = f"Invalid notebook {notebook.name}: {str(e)}"
+                raise NotebookRepositoryError(msg)
+
+        # Add cell numbers to all the cells, which we'll use to name timing
+        # events so that we can find cells that take an excessively long time
+        # to run.  Do this before we strip all non-code cells so that we can
+        # correlate to the original notebook.
+        #
+        # We will prefer to use the id attribute of the cell if present, but
+        # some of our notebooks are in the older format without an id.
+        for i, cell in enumerate(cells, start=1):
+            cell["_index"] = str(i)
+
         return [c for c in cells if c["cell_type"] == "code"]
 
     async def create_session(
@@ -104,9 +118,9 @@ class NotebookRunner(JupyterPythonLoop):
             self.logger.info(msg)
 
             for cell in self.read_notebook(self.notebook):
-                self.running_code = "".join(cell["source"])
-                await self.execute_cell(session, self.running_code)
-                self.running_code = None
+                code = "".join(cell["source"])
+                cell_id = cell.get("id", cell["_index"])
+                await self.execute_cell(session, code, cell_id)
                 await self.execution_idle()
                 if self.stopping:
                     break
@@ -116,18 +130,18 @@ class NotebookRunner(JupyterPythonLoop):
             self.logger.info(f"Success running notebook {self.notebook.name}")
 
     async def execute_cell(
-        self, session: JupyterLabSession, code: str
+        self, session: JupyterLabSession, code: str, cell_id: str
     ) -> None:
+        assert self.notebook
         self.logger.info("Executing:\n%s\n", code)
-        try:
-            with self.timings.start("run_code", {"node": self.node}):
-                reply = await self._client.run_python(session, code)
-            self.logger.info(f"Result:\n{reply}\n")
-        except CodeExecutionError as e:
-            if self.notebook:
-                self._failed_notebooks.append(self.notebook.name)
-                e.notebook = self.notebook.name
-            raise
+        annotations = {"notebook": self.notebook.name, "cell": cell_id}
+        if self.node:
+            annotations["node"] = self.node
+        with self.timings.start("execute_cell", annotations):
+            self.running_code = code
+            reply = await self._client.run_python(session, code)
+            self.running_code = None
+        self.logger.info(f"Result:\n{reply}\n")
 
     def dump(self) -> BusinessData:
         data = super().dump()

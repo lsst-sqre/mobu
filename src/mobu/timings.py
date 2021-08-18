@@ -11,7 +11,7 @@ from .models.timings import StopwatchData
 if TYPE_CHECKING:
     from datetime import timedelta
     from types import TracebackType
-    from typing import Any, Dict, List, Literal, Optional
+    from typing import Dict, List, Literal, Optional
 
 
 class Timings:
@@ -26,7 +26,7 @@ class Timings:
         self._stopwatches: List[Stopwatch] = []
 
     def start(
-        self, event: str, annotations: Optional[Dict[str, Any]] = None
+        self, event: str, annotations: Optional[Dict[str, str]] = None
     ) -> Stopwatch:
         """Start a stopwatch.
 
@@ -72,7 +72,7 @@ class Stopwatch:
     def __init__(
         self,
         event: str,
-        annotations: Dict[str, Any],
+        annotations: Dict[str, str],
         previous: Optional[Stopwatch] = None,
     ) -> None:
         self.event = event
