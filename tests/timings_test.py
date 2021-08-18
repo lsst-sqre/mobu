@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from mobu.models.timings import StopwatchData
 from mobu.timings import Timings
 
 
@@ -40,28 +41,28 @@ def test_timings() -> None:
     assert second_sw.elapsed == second_sw.stop_time - second_sw.start_time
 
     assert timings.dump() == [
-        {
-            "event": "something",
-            "annotations": {},
-            "start": first_sw.start_time.isoformat(),
-            "stop": first_sw.stop_time.isoformat(),
-            "elapsed": first_sw.elapsed.total_seconds(),
-        },
-        {
-            "event": "else",
-            "annotations": {"foo": "bar"},
-            "start": second_sw.start_time.isoformat(),
-            "stop": second_sw.stop_time.isoformat(),
-            "elapsed": second_sw.elapsed.total_seconds(),
-        },
+        StopwatchData(
+            event="something",
+            annotations={},
+            start=first_sw.start_time.isoformat(),
+            stop=first_sw.stop_time.isoformat(),
+            elapsed=first_sw.elapsed.total_seconds(),
+        ),
+        StopwatchData(
+            event="else",
+            annotations={"foo": "bar"},
+            start=second_sw.start_time.isoformat(),
+            stop=second_sw.stop_time.isoformat(),
+            elapsed=second_sw.elapsed.total_seconds(),
+        ),
     ]
 
     with timings.start("incomplete") as sw:
         dump = timings.dump()
-        assert dump[2] == {
-            "event": "incomplete",
-            "annotations": {},
-            "start": sw.start_time.isoformat(),
-            "stop": None,
-            "elapsed": None,
-        }
+        assert dump[2] == StopwatchData(
+            event="incomplete",
+            annotations={},
+            start=sw.start_time.isoformat(),
+            stop=None,
+            elapsed=None,
+        )

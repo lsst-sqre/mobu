@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from .exceptions import SlackError
+from .models.timings import StopwatchData
 
 if TYPE_CHECKING:
     from datetime import timedelta
@@ -45,7 +46,7 @@ class Timings:
         self._last = stopwatch
         return stopwatch
 
-    def dump(self) -> List[Dict[str, Any]]:
+    def dump(self) -> List[StopwatchData]:
         """Convert the stored timings to a dictionary."""
         return [s.dump() for s in self._stopwatches]
 
@@ -104,24 +105,15 @@ class Stopwatch:
         else:
             return datetime.now(tz=timezone.utc) - self.start_time
 
-    def dump(self) -> Dict[str, Any]:
-        """Convert to a dictionary.
-
-        You can't directly JSON-dump datetimes/timedeltas.  So instead
-        we convert the time to its ISO 8601 format.  This can be converted
-        back to a timestamp with datetime.fromisoformat().
-
-        Likewise, the elapsed time is a float representing number of
-        seconds, which you can just pass to a timedelta constructor.
-        """
+    def dump(self) -> StopwatchData:
+        """Convert to a Pydantic model."""
         elapsed = None
         if self.stop_time:
             elapsed = (self.stop_time - self.start_time).total_seconds()
-        data = {
-            "event": self.event,
-            "annotations": self.annotations,
-            "start": self.start_time.isoformat(),
-            "stop": self.stop_time.isoformat() if self.stop_time else None,
-            "elapsed": elapsed,
-        }
-        return data
+        return StopwatchData(
+            event=self.event,
+            annotations=self.annotations,
+            start=self.start_time,
+            stop=self.stop_time,
+            elapsed=elapsed,
+        )
