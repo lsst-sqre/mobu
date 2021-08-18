@@ -11,7 +11,7 @@ from .business.jupyterjitterloginloop import JupyterJitterLoginLoop
 from .business.jupyterloginloop import JupyterLoginLoop
 from .business.jupyterpythonloop import JupyterPythonLoop
 from .business.notebookrunner import NotebookRunner
-from .business.querymonkey import QueryMonkey
+from .business.tapqueryrunner import TAPQueryRunner
 from .exceptions import MonkeyNotFoundException
 from .models.flock import FlockConfig, FlockData
 from .models.user import AuthenticatedUser, User, UserSpec
@@ -31,7 +31,7 @@ _BUSINESS_CLASS = {
     "JupyterLoginLoop": JupyterLoginLoop,
     "JupyterPythonLoop": JupyterPythonLoop,
     "NotebookRunner": NotebookRunner,
-    "QueryMonkey": QueryMonkey,
+    "TAPQueryRunner": TAPQueryRunner,
 }
 
 

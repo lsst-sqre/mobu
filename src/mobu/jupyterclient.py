@@ -325,7 +325,7 @@ class JupyterClient:
         try:
             websocket = await self.session.ws_connect(channels_url)
         except WSServerHandshakeError as e:
-            raise JupyterError.from_exception(self.user.username, e)
+            raise JupyterError.from_exception(self.user.username, e) from None
         return JupyterLabSession(
             session_id=response["id"], kernel_id=kernel_id, websocket=websocket
         )
@@ -378,7 +378,7 @@ class JupyterClient:
                 # this into a useful error that we can annotate.
                 if "Received message 257" in str(e):
                     error = "WebSocket unexpectedly closed"
-                    raise JupyterWebSocketError(username, error)
+                    raise JupyterWebSocketError(username, error) from e
                 else:
                     raise
 

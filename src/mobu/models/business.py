@@ -175,7 +175,7 @@ class BusinessData(BaseModel):
 
     running_code: Optional[str] = Field(
         None,
-        title="Currently running code from the notebook",
+        title="Currently running code",
         description="Will not be present if no code is being executed",
         example='import json\nprint(json.dumps({"foo": "bar"})\n',
     )

@@ -16,7 +16,6 @@ import git
 
 from ..exceptions import NotebookRepositoryError
 from ..jupyterclient import JupyterLabSession
-from ..models.business import BusinessData
 from .jupyterpythonloop import JupyterPythonLoop
 
 if TYPE_CHECKING:
@@ -24,7 +23,7 @@ if TYPE_CHECKING:
 
     from structlog import BoundLogger
 
-    from ..models.business import BusinessConfig
+    from ..models.business import BusinessConfig, BusinessData
     from ..models.user import AuthenticatedUser
 
 __all__ = ["NotebookRunner"]

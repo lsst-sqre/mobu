@@ -89,10 +89,12 @@ class CodeExecutionError(SlackError):
         user: str,
         code: str,
         *,
+        code_type: str = "code",
         error: Optional[str] = None,
         status: Optional[str] = None,
     ) -> None:
         self.code = code
+        self.code_type = code_type
         self.error = error
         self.status = status
         super().__init__(user, "Code execution failed")
@@ -109,7 +111,7 @@ class CodeExecutionError(SlackError):
                 msg += f" (status: {self.status})"
             msg += f"\nCode: {self.code}"
         else:
-            msg = f"{self.user}: running code '{self.code}' block failed"
+            msg = f"{self.user}: running {self.code_type} '{self.code}' failed"
         msg += f"\nError: {self.error}"
         return msg
 
@@ -119,7 +121,7 @@ class CodeExecutionError(SlackError):
             notebook = self.annotations["notebook"]
             intro = f"Error while running `{notebook}`"
         else:
-            intro = "Error while running code"
+            intro = f"Error while running {self.code_type}"
         if self.status:
             intro += f" (status: {self.status})"
 
