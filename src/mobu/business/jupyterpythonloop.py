@@ -26,8 +26,6 @@ _CHDIR_TEMPLATE = 'import os; os.chdir("{wd}")'
 
 _GET_NODE = """
 from rubin_jupyter_utils.lab.notebook.utils import get_node
-import warnings
-warnings.filterwarnings("ignore")
 print(get_node(), end="")
 """
 """Code to get the node on which the lab is running."""
@@ -67,7 +65,10 @@ class JupyterPythonLoop(JupyterLoginLoop):
             session = await self._client.create_labsession(notebook_name)
         with self.timings.start("execute_setup"):
             if self.config.get_node:
-                self.node = await self._client.run_python(session, _GET_NODE)
+                # Our libraries currently spew warning messages when imported.
+                # The node is only the last line of the output.
+                node_data = await self._client.run_python(session, _GET_NODE)
+                self.node = node_data.split("\n")[-1]
             if self.config.working_directory:
                 code = _CHDIR_TEMPLATE.format(wd=self.config.working_directory)
                 await self._client.run_python(session, code)
