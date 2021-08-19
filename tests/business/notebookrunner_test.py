@@ -61,7 +61,7 @@ async def test_run(
     )
     assert r.status_code == 201
 
-    # Wait until we've finished at least one loop and check the results.
+    # Wait until we've finished one loop and check the results.
     data = await wait_for_business(client, "testuser1")
     assert data == {
         "name": "testuser1",
@@ -137,7 +137,7 @@ async def test_alert(
     )
     assert r.status_code == 201
 
-    # Wait until we've finished at least one loop and check the results.
+    # Wait until we've finished one loop and check the results.
     data = await wait_for_business(client, "testuser1")
     assert data == {
         "name": "testuser1",
