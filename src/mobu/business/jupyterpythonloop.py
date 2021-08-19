@@ -69,6 +69,7 @@ class JupyterPythonLoop(JupyterLoginLoop):
                 # The node is only the last line of the output.
                 node_data = await self._client.run_python(session, _GET_NODE)
                 self.node = node_data.split("\n")[-1]
+                self.logger.info(f"Running on node {self.node}")
             if self.config.working_directory:
                 code = _CHDIR_TEMPLATE.format(wd=self.config.working_directory)
                 await self._client.run_python(session, code)
