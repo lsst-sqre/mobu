@@ -6,8 +6,10 @@ import asyncio
 import json
 import re
 from base64 import urlsafe_b64decode
+from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
 from enum import Enum
+from io import StringIO
 from traceback import format_exc
 from typing import TYPE_CHECKING
 from unittest.mock import ANY, AsyncMock, Mock
@@ -16,6 +18,7 @@ from uuid import uuid4
 from aiohttp import ClientWebSocketResponse
 from aioresponses import CallbackResult
 
+from mobu.business.jupyterpythonloop import _GET_NODE
 from mobu.config import config
 from mobu.jupyterclient import JupyterLabSession
 
@@ -281,14 +284,23 @@ class MockJupyterWebSocket(Mock):
 
     async def receive_json(self) -> Dict[str, Any]:
         assert self._header
-        if self._code:
+        if self._code == _GET_NODE:
+            self._code = None
+            return {
+                "msg_type": "stream",
+                "parent_header": self._header,
+                "content": {"text": "some-node"},
+            }
+        elif self._code:
             try:
-                result = eval(self._code, self._state)
+                output = StringIO()
+                with redirect_stdout(output):
+                    exec(self._code, self._state)
                 self._code = None
                 return {
                     "msg_type": "stream",
                     "parent_header": self._header,
-                    "content": {"text": str(result)},
+                    "content": {"text": output.getvalue()},
                 }
             except Exception:
                 result = {

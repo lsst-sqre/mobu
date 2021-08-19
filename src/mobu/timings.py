@@ -6,11 +6,12 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from .exceptions import SlackError
+from .models.timings import StopwatchData
 
 if TYPE_CHECKING:
     from datetime import timedelta
     from types import TracebackType
-    from typing import Any, Dict, List, Literal, Optional
+    from typing import Dict, List, Literal, Optional
 
 
 class Timings:
@@ -25,7 +26,7 @@ class Timings:
         self._stopwatches: List[Stopwatch] = []
 
     def start(
-        self, event: str, annotation: Optional[Dict[str, Any]] = None
+        self, event: str, annotations: Optional[Dict[str, str]] = None
     ) -> Stopwatch:
         """Start a stopwatch.
 
@@ -38,14 +39,14 @@ class Timings:
            with timings.start("event", annotation):
                ...
         """
-        if not annotation:
-            annotation = {}
-        stopwatch = Stopwatch(event, annotation, self._last)
+        if not annotations:
+            annotations = {}
+        stopwatch = Stopwatch(event, annotations, self._last)
         self._stopwatches.append(stopwatch)
         self._last = stopwatch
         return stopwatch
 
-    def dump(self) -> List[Dict[str, Any]]:
+    def dump(self) -> List[StopwatchData]:
         """Convert the stored timings to a dictionary."""
         return [s.dump() for s in self._stopwatches]
 
@@ -71,11 +72,11 @@ class Stopwatch:
     def __init__(
         self,
         event: str,
-        annotation: Dict[str, Any],
+        annotations: Dict[str, str],
         previous: Optional[Stopwatch] = None,
     ) -> None:
         self.event = event
-        self.annotation = annotation
+        self.annotations = annotations
         self.start_time = datetime.now(tz=timezone.utc)
         self.stop_time: Optional[datetime] = None
         self._previous = previous
@@ -93,6 +94,7 @@ class Stopwatch:
         if exc_val and isinstance(exc_val, SlackError):
             exc_val.started = self.start_time
             exc_val.event = self.event
+            exc_val.annotations = self.annotations
         return False
 
     @property
@@ -103,32 +105,15 @@ class Stopwatch:
         else:
             return datetime.now(tz=timezone.utc) - self.start_time
 
-    def dump(self) -> Dict[str, Any]:
-        """Convert to a dictionary.
-
-        You can't directly JSON-dump datetimes/timedeltas.  So instead
-        we convert the time to its ISO 8601 format.  This can be converted
-        back to a timestamp with datetime.fromisoformat().
-
-        Likewise, the elapsed time is a float representing number of
-        seconds, which you can just pass to a timedelta constructor.
-        """
+    def dump(self) -> StopwatchData:
+        """Convert to a Pydantic model."""
         elapsed = None
         if self.stop_time:
             elapsed = (self.stop_time - self.start_time).total_seconds()
-        data = {
-            "event": self.event,
-            "annotation": self.annotation,
-            "start": self.start_time.isoformat(),
-            "stop": self.stop_time.isoformat() if self.stop_time else None,
-            "elapsed": elapsed,
-        }
-        if self._previous:
-            data["previous"] = {
-                "event": self._previous.event,
-                "start": self._previous.start_time.isoformat(),
-            }
-        if self._previous and self._previous.stop_time:
-            idle = (self.start_time - self._previous.stop_time).total_seconds()
-            data["elapsed_since_previous_stop"] = idle
-        return data
+        return StopwatchData(
+            event=self.event,
+            annotations=self.annotations,
+            start=self.start_time,
+            stop=self.stop_time,
+            elapsed=elapsed,
+        )

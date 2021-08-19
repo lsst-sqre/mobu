@@ -113,6 +113,7 @@ class Monkey:
                 if self.state == MonkeyState.RUNNING:
                     self.state = MonkeyState.ERROR
             if run:
+                self.log.warning("Restarting failed monkey after 60s")
                 await asyncio.sleep(60)
 
                 # Recreate the business since we will have closed global
@@ -120,6 +121,8 @@ class Monkey:
                 self.business = self.business_type(
                     self.log, self.config.options, self.user
                 )
+            else:
+                self.log.info("Shutting down monkey")
 
         self.state = MonkeyState.FINISHED
 

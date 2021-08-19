@@ -52,6 +52,7 @@ class SlackClient:
                         {"type": "mrkdwn", "text": f"*User*\n{user}"},
                     ],
                 },
+                {"type": "divider"},
             ]
         }
         await self._post_alert(body)

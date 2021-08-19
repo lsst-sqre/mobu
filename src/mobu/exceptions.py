@@ -11,7 +11,7 @@ from aiohttp import ClientResponseError
 from .constants import DATE_FORMAT
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional
+    from typing import Any, Dict, List, Optional, Union
 
     from aiohttp import ClientResponse
 
@@ -41,6 +41,10 @@ class MonkeyNotFoundException(Exception):
         super().__init__(f"Monkey {monkey} not found")
 
 
+class NotebookRepositoryError(Exception):
+    """The repository containing notebooks to run is not valid."""
+
+
 class SlackError(Exception, metaclass=ABCMeta):
     """Represents an exception that can be reported to Slack.
 
@@ -53,16 +57,17 @@ class SlackError(Exception, metaclass=ABCMeta):
         self.failed = datetime.now(tz=timezone.utc)
         self.started: Optional[datetime] = None
         self.event: Optional[str] = None
+        self.annotations: Dict[str, str] = {}
         super().__init__(msg)
 
     @abstractmethod
     def to_slack(self) -> Dict[str, Any]:
         """Build a Slack message suitable for sending to an incoming webook."""
 
-    def common_fields(self) -> List[Dict[str, str]]:
+    def common_fields(self) -> List[Dict[str, Union[str, bool]]]:
         """Return common fields to put in any alert."""
         failed = self.failed.strftime(DATE_FORMAT)
-        fields = [
+        fields: List[Dict[str, Union[str, bool]]] = [
             {"type": "mrkdwn", "text": f"*Failed at*\n{failed}"},
             {"type": "mrkdwn", "text": f"*User*\n{self.user}"},
         ]
@@ -85,36 +90,52 @@ class CodeExecutionError(SlackError):
         code: str,
         *,
         error: Optional[str] = None,
-        notebook: Optional[str] = None,
         status: Optional[str] = None,
     ) -> None:
         self.code = code
         self.error = error
-        self.notebook = notebook
         self.status = status
         super().__init__(user, "Code execution failed")
 
     def __str__(self) -> str:
-        if self.notebook:
-            message = f"{self.user}: cell of notebook {self.notebook} failed"
+        if self.annotations.get("notebook"):
+            notebook = self.annotations["notebook"]
+            if self.annotations.get("cell"):
+                cell = self.annotations["cell"]
+                msg = f"{self.user}: cell {cell} of notebook {notebook} failed"
+            else:
+                msg = f"{self.user}: cell of notebook {notebook} failed"
             if self.status:
-                message += f" (status: {self.status}"
-            message += f"\nCode: {self.code}"
+                msg += f" (status: {self.status})"
+            msg += f"\nCode: {self.code}"
         else:
-            message = f"{self.user}: running code '{self.code}' block failed"
-        message += f"\nError: {self.error}"
-        return message
+            msg = f"{self.user}: running code '{self.code}' block failed"
+        msg += f"\nError: {self.error}"
+        return msg
 
     def to_slack(self) -> Dict[str, Any]:
         """Format the error as a Slack Block Kit message."""
-        if self.notebook:
-            intro = f"Error while running `{self.notebook}`"
+        if self.annotations.get("notebook"):
+            notebook = self.annotations["notebook"]
+            intro = f"Error while running `{notebook}`"
         else:
             intro = "Error while running code"
         if self.status:
-            intro += f"\n*Status*: {self.status}"
+            intro += f" (status: {self.status})"
 
         fields = self.common_fields()
+        if self.annotations.get("cell"):
+            cell = self.annotations["cell"]
+            fields.append(
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Cell id*\n{cell}",
+                    "verbatim": True,
+                }
+            )
+        if self.annotations.get("node"):
+            node = self.annotations["node"]
+            fields.append({"type": "mrkdwn", "text": f"*Node*\n{node}"})
 
         code = self.code
         if not code.endswith("\n"):
@@ -288,3 +309,34 @@ class JupyterTimeoutError(SlackError):
             )
         result["blocks"].append({"type": "divider"})
         return result
+
+
+class JupyterWebSocketError(SlackError):
+    """Unexpected messages on the session WebSocket."""
+
+    def to_slack(self) -> Dict[str, Any]:
+        """Format the error as a Slack Block Kit message."""
+        fields = self.common_fields()
+        if self.annotations.get("cell"):
+            cell = self.annotations["cell"]
+            fields.append(
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Cell id*\n{cell}",
+                    "verbatim": True,
+                }
+            )
+        if self.annotations.get("node"):
+            node = self.annotations["node"]
+            fields.append({"type": "mrkdwn", "text": f"*Node*\n{node}"})
+
+        return {
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": str(self)},
+                },
+                {"type": "section", "fields": fields},
+                {"type": "divider"},
+            ]
+        }

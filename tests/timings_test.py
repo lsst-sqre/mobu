@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from mobu.models.timings import StopwatchData
 from mobu.timings import Timings
 
 
@@ -16,7 +17,7 @@ def test_timings() -> None:
     now = datetime.now(tz=timezone.utc)
     with timings.start("something") as sw:
         assert sw.event == "something"
-        assert sw.annotation == {}
+        assert sw.annotations == {}
         assert now + timedelta(seconds=5) > sw.start_time >= now
         assert sw.stop_time is None
         assert sw.elapsed <= datetime.now(tz=timezone.utc) - sw.start_time
@@ -30,7 +31,7 @@ def test_timings() -> None:
 
     with pytest.raises(Exception):
         with timings.start("else", {"foo": "bar"}) as sw:
-            assert sw.annotation == {"foo": "bar"}
+            assert sw.annotations == {"foo": "bar"}
             assert sw.stop_time is None
             raise Exception("some exception")
 
@@ -40,42 +41,28 @@ def test_timings() -> None:
     assert second_sw.elapsed == second_sw.stop_time - second_sw.start_time
 
     assert timings.dump() == [
-        {
-            "event": "something",
-            "annotation": {},
-            "start": first_sw.start_time.isoformat(),
-            "stop": first_sw.stop_time.isoformat(),
-            "elapsed": first_sw.elapsed.total_seconds(),
-        },
-        {
-            "event": "else",
-            "annotation": {"foo": "bar"},
-            "start": second_sw.start_time.isoformat(),
-            "stop": second_sw.stop_time.isoformat(),
-            "elapsed": second_sw.elapsed.total_seconds(),
-            "previous": {
-                "event": "something",
-                "start": first_sw.start_time.isoformat(),
-            },
-            "elapsed_since_previous_stop": (
-                second_sw.start_time - first_sw.stop_time
-            ).total_seconds(),
-        },
+        StopwatchData(
+            event="something",
+            annotations={},
+            start=first_sw.start_time.isoformat(),
+            stop=first_sw.stop_time.isoformat(),
+            elapsed=first_sw.elapsed.total_seconds(),
+        ),
+        StopwatchData(
+            event="else",
+            annotations={"foo": "bar"},
+            start=second_sw.start_time.isoformat(),
+            stop=second_sw.stop_time.isoformat(),
+            elapsed=second_sw.elapsed.total_seconds(),
+        ),
     ]
 
     with timings.start("incomplete") as sw:
         dump = timings.dump()
-        assert dump[2] == {
-            "event": "incomplete",
-            "annotation": {},
-            "start": sw.start_time.isoformat(),
-            "stop": None,
-            "elapsed": None,
-            "previous": {
-                "event": "else",
-                "start": second_sw.start_time.isoformat(),
-            },
-            "elapsed_since_previous_stop": (
-                sw.start_time - second_sw.stop_time
-            ).total_seconds(),
-        }
+        assert dump[2] == StopwatchData(
+            event="incomplete",
+            annotations={},
+            start=sw.start_time.isoformat(),
+            stop=None,
+            elapsed=None,
+        )
