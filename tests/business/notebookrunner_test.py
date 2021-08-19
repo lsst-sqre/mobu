@@ -179,9 +179,7 @@ async def test_alert(
                         {"type": "mrkdwn", "text": "*Event*\nexecute_cell"},
                         {
                             "type": "mrkdwn",
-                            "text": (
-                                "*Cell ID*\n`exception.ipynb` cell `ed399c0a`"
-                            ),
+                            "text": "*Cell id*\n`ed399c0a` (#2)",
                             "verbatim": True,
                         },
                         {"type": "mrkdwn", "text": "*Node*\nsome-node"},

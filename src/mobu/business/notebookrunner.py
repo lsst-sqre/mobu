@@ -119,7 +119,10 @@ class NotebookRunner(JupyterPythonLoop):
 
             for cell in self.read_notebook(self.notebook):
                 code = "".join(cell["source"])
-                cell_id = cell.get("id", cell["_index"])
+                if "id" in cell:
+                    cell_id = f'`{cell["id"]}` (#{cell["_index"]})'
+                else:
+                    cell_id = f'#{cell["_index"]}'
                 await self.execute_cell(session, code, cell_id)
                 await self.execution_idle()
                 if self.stopping:

@@ -125,12 +125,11 @@ class CodeExecutionError(SlackError):
 
         fields = self.common_fields()
         if self.annotations.get("cell"):
-            notebook = self.annotations.get("notebook", "(unknown notebook)")
             cell = self.annotations["cell"]
             fields.append(
                 {
                     "type": "mrkdwn",
-                    "text": f"*Cell ID*\n`{notebook}` cell `{cell}`",
+                    "text": f"*Cell id*\n{cell}",
                     "verbatim": True,
                 }
             )
@@ -319,12 +318,11 @@ class JupyterWebSocketError(SlackError):
         """Format the error as a Slack Block Kit message."""
         fields = self.common_fields()
         if self.annotations.get("cell"):
-            notebook = self.annotations.get("notebook", "(unknown notebook)")
             cell = self.annotations["cell"]
             fields.append(
                 {
                     "type": "mrkdwn",
-                    "text": f"*Cell ID*\n`{notebook}` cell `{cell}`",
+                    "text": f"*Cell id*\n{cell}",
                     "verbatim": True,
                 }
             )
