@@ -17,7 +17,7 @@ from ..dependencies.manager import (
     MonkeyBusinessManager,
     monkey_business_manager,
 )
-from ..models.flock import FlockConfig, FlockData
+from ..models.flock import FlockConfig, FlockData, FlockSummary
 from ..models.index import Index
 from ..models.monkey import MonkeyData
 
@@ -188,3 +188,29 @@ async def get_monkey_log(
         media_type="text/plain",
         filename=f"{flock}-{monkey}-{datetime.now()}",
     )
+
+
+@external_router.get(
+    "/flocks/{flock}/summary",
+    response_class=FormattedJSONResponse,
+    response_model=FlockSummary,
+    responses={404: {"description": "Flock not found", "model": ErrorModel}},
+    summary="Summary of statistics for a flock",
+)
+async def get_flock_summary(
+    flock: str,
+    manager: MonkeyBusinessManager = Depends(monkey_business_manager),
+) -> FlockSummary:
+    return manager.get_flock(flock).summary()
+
+
+@external_router.get(
+    "/summary",
+    response_class=FormattedJSONResponse,
+    response_model=List[FlockSummary],
+    summary="Summary of statistics for all flocks",
+)
+async def get_summary(
+    manager: MonkeyBusinessManager = Depends(monkey_business_manager),
+) -> List[FlockSummary]:
+    return manager.summarize_flocks()

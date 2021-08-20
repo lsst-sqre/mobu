@@ -1,5 +1,6 @@
 """Models for a collection of monkeys."""
 
+from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, validator
@@ -99,3 +100,34 @@ class FlockData(BaseModel):
     config: FlockConfig = Field(..., title="Configuration for the flock")
 
     monkeys: List[MonkeyData] = Field(..., title="Monkeys of the flock")
+
+
+class FlockSummary(BaseModel):
+    """Summary statistics about a running flock."""
+
+    name: str = Field(..., title="Name of the flock", example="autostart")
+
+    business: str = Field(
+        ...,
+        title="Name of the business the flock is running",
+        example="NotebookRunner",
+    )
+
+    start_time: Optional[datetime] = Field(
+        ...,
+        title="When the flock was started",
+        description="Will be null if the flock hasn't started",
+        example="2021-07-21T19:43:40.446072+00:00",
+    )
+
+    monkey_count: int = Field(
+        ..., title="Number of monkeys in the flock", example=5
+    )
+
+    success_count: int = Field(
+        ..., title="Total number of monkey successes in flock", example=455
+    )
+
+    failure_count: int = Field(
+        ..., title="Total number of monkey failures in flock", example=4
+    )

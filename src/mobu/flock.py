@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import math
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from .business.base import Business
@@ -13,12 +14,12 @@ from .business.jupyterpythonloop import JupyterPythonLoop
 from .business.notebookrunner import NotebookRunner
 from .business.tapqueryrunner import TAPQueryRunner
 from .exceptions import MonkeyNotFoundException
-from .models.flock import FlockConfig, FlockData
+from .models.flock import FlockConfig, FlockData, FlockSummary
 from .models.user import AuthenticatedUser, User, UserSpec
 from .monkey import Monkey
 
 if TYPE_CHECKING:
-    from typing import Dict, List
+    from typing import Dict, List, Optional
 
     from aiohttp import ClientSession
     from aiojobs import Scheduler
@@ -49,6 +50,7 @@ class Flock:
         self._scheduler = scheduler
         self._session = session
         self._monkeys: Dict[str, Monkey] = {}
+        self._start_time: Optional[datetime] = None
         try:
             self._business_type = _BUSINESS_CLASS[self._config.business]
         except ValueError:
@@ -73,6 +75,24 @@ class Flock:
         """List the names of the monkeys."""
         return sorted(self._monkeys.keys())
 
+    def summary(self) -> FlockSummary:
+        """Return summary statistics about the flock."""
+        count = 0
+        successes = 0
+        failures = 0
+        for monkey in self._monkeys.values():
+            count += 1
+            successes += monkey.business.success_count
+            failures += monkey.business.failure_count
+        return FlockSummary(
+            name=self.name,
+            business=self._config.business,
+            start_time=self._start_time,
+            monkey_count=count,
+            success_count=successes,
+            failure_count=failures,
+        )
+
     async def start(self) -> None:
         """Start all the monkeys."""
         users = await self._create_users()
@@ -80,6 +100,7 @@ class Flock:
             monkey = self._create_monkey(user)
             self._monkeys[user.username] = monkey
             await monkey.start(self._scheduler)
+        self._start_time = datetime.now(tz=timezone.utc)
 
     async def stop(self) -> None:
         """Stop all the monkeys.
