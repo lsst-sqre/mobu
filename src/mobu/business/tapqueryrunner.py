@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 import jinja2
 import pyvo
 import requests
-from pyvo.auth import AuthSession
 
 from ..config import config
 from ..exceptions import CodeExecutionError
@@ -50,7 +49,7 @@ class TAPQueryRunner(Business):
 
         s = requests.Session()
         s.headers["Authorization"] = "Bearer " + token
-        auth = AuthSession()
+        auth = pyvo.auth.AuthSession()
         auth.credentials.set("lsst-token", s)
         auth.add_security_method_for_url(tap_url, "lsst-token")
         auth.add_security_method_for_url(tap_url + "/sync", "lsst-token")
