@@ -37,7 +37,9 @@ class TAPQueryRunner(Business):
         self.running_query: Optional[str] = None
         self._client = self._make_client(user.token)
 
-        template_path = Path(__file__).parent.parent / "static" / "querymonkey"
+        template_path = (
+            Path(__file__).parent.parent / "templates" / "tapqueryrunner"
+        )
         self._env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(str(template_path)),
             undefined=jinja2.StrictUndefined,
