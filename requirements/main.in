@@ -17,6 +17,7 @@ GitPython
 aiohttp
 aiojobs
 click
+fastapi-utils
 jinja2
 pydantic
 pyvo

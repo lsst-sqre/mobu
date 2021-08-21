@@ -9,8 +9,10 @@ called.
 
 from importlib.metadata import metadata
 
+from aiohttp import ClientSession
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
+from fastapi_utils.tasks import repeat_every
 from safir.logging import configure_logging
 from safir.middleware.x_forwarded import XForwardedMiddleware
 
@@ -20,6 +22,7 @@ from .dependencies.manager import monkey_business_manager
 from .exceptions import FlockNotFoundException, MonkeyNotFoundException
 from .handlers.external import external_router
 from .handlers.internal import internal_router
+from .status import post_status
 
 __all__ = ["app", "config"]
 
@@ -60,6 +63,14 @@ async def startup_event() -> None:
 @app.on_event("shutdown")
 async def shutdown_event() -> None:
     await monkey_business_manager.cleanup()
+
+
+@app.on_event("startup")
+@repeat_every(seconds=60 * 60 * 24, wait_first=True)
+async def periodic_status() -> None:
+    async with ClientSession() as session:
+        summaries = monkey_business_manager.summarize_flocks()
+        await post_status(session, summaries)
 
 
 @_subapp.exception_handler(FlockNotFoundException)
