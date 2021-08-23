@@ -92,6 +92,12 @@ chardet==4.0.0 \
     # via
     #   -c requirements/main.txt
     #   aiohttp
+charset-normalizer==2.0.4 \
+    --hash=sha256:0c8911edd15d19223366a194a513099a302055a962bca2cec0f54b8b63175d8b \
+    --hash=sha256:f23667ebe1084be45f6ae0538e4a5a865206544097e4e8bbcacf42cd02a348f3
+    # via
+    #   -c requirements/main.txt
+    #   httpx
 coverage[toml]==5.5 \
     --hash=sha256:004d1880bed2d97151facef49f08e255a20ceb6f9432df75f4eef018fdd5a78c \
     --hash=sha256:01d84219b5cdbfc8122223b39a954820929497a1cb1422824bb86b07b74594b6 \
@@ -168,9 +174,9 @@ httpcore==0.13.6 \
     # via
     #   -c requirements/main.txt
     #   httpx
-httpx==0.18.2 \
-    --hash=sha256:979afafecb7d22a1d10340bafb403cf2cb75aff214426ff206521fc79d26408c \
-    --hash=sha256:9f99c15d33642d38bce8405df088c1c4cfd940284b4290cacbfb02e64f4877c6
+httpx==0.19.0 \
+    --hash=sha256:92ecd2c00c688b529eda11cedb15161eaf02dee9116712f621c70d9a40b2cdd0 \
+    --hash=sha256:9bd728a6c5ec0a9e243932a9983d57d3cc4a87bb4f554e1360fce407f78f9435
     # via
     #   -c requirements/main.txt
     #   -r requirements/dev.in
@@ -306,9 +312,9 @@ pytest-cov==2.12.1 \
     --hash=sha256:261bb9e47e65bd099c89c3edf92972865210c36813f80ede5277dceb77a4a62a \
     --hash=sha256:261ceeb8c227b726249b376b8526b600f38667ee314f910353fa318caa01f4d7
     # via -r requirements/dev.in
-pytest-httpx==0.12.1 \
-    --hash=sha256:703433f65951bde6e08d4b1d8956f8f9dec4b3046c2805414e40adb87908ee7f \
-    --hash=sha256:8c16ff2abba4fc535a505e1df6dab61794bcefde8e7e6a106a366ffc3a04dcc5
+pytest-httpx==0.13.0 \
+    --hash=sha256:3dc8f0deb582b0ab1b042fac0c9a401cd32de3d76cddfbeb1aa0d211107cc9ea \
+    --hash=sha256:6a5f931768bc0a00dc4d3073a9fe82f662c32a6d57fd20c14cb944d96b6d9273
     # via -r requirements/dev.in
 pyyaml==5.4.1 \
     --hash=sha256:08682f6b72c722394747bddaf0aa62277e02557c0fd1c42cb853016a38f8dedf \
