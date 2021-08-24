@@ -218,15 +218,26 @@ class JupyterClient:
             if r.status != 200:
                 raise await JupyterError.from_response(self.user.username, r)
 
-    async def is_lab_stopped(self) -> bool:
-        """Determine if the lab is fully stopped."""
+    async def is_lab_stopped(self, final: bool = False) -> bool:
+        """Determine if the lab is fully stopped.
+
+        Parameters
+        ----------
+        final : `bool`
+            The last attempt, so log some additional information if the lab
+            still isn't gone.
+        """
         user_url = self.jupyter_url + f"hub/api/users/{self.user.username}"
         headers = {"Referer": self.jupyter_url + "hub/home"}
         async with self.session.get(user_url, headers=headers) as r:
             if r.status != 200:
                 raise await JupyterError.from_response(self.user.username, r)
             data = await r.json()
-        return data["servers"] == {}
+        result = data["servers"] == {}
+        if final and not result:
+            msg = f'Server data still shows running lab: {data["servers"]}'
+            self.log.warning(msg)
+        return result
 
     async def spawn_lab(self) -> None:
         spawn_url = self.jupyter_url + "hub/spawn"
