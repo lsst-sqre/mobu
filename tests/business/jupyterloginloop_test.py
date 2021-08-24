@@ -383,6 +383,11 @@ async def test_delete_timeout(
                         {"type": "mrkdwn", "text": ANY},
                         {"type": "mrkdwn", "text": "*User*\ntestuser1"},
                         {"type": "mrkdwn", "text": "*Event*\ndelete_lab"},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Image*\nRecommended (Weekly 2021_33)",
+                            "verbatim": True,
+                        },
                     ],
                 },
                 {"type": "divider"},

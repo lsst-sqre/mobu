@@ -13,6 +13,7 @@ from httpx import AsyncClient
 
 from mobu import main
 from mobu.config import config
+from tests.support.cachemachine import mock_cachemachine
 from tests.support.gafaelfawr import make_gafaelfawr_token
 from tests.support.jupyter import mock_jupyter, mock_jupyter_websocket
 from tests.support.slack import mock_slack
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
 
     from fastapi import FastAPI
 
+    from tests.support.cachemachine import MockCachemachine
     from tests.support.jupyter import MockJupyter, MockJupyterWebSocket
     from tests.support.slack import MockSlack
 
@@ -45,7 +47,9 @@ def configure() -> Iterator[None]:
 
 
 @pytest.fixture
-async def app(jupyter: MockJupyter) -> AsyncIterator[FastAPI]:
+async def app(
+    jupyter: MockJupyter, cachemachine: MockCachemachine
+) -> AsyncIterator[FastAPI]:
     """Return a configured test application.
 
     Wraps the application in a lifespan manager so that startup and shutdown
@@ -76,6 +80,12 @@ def mock_aioresponses() -> Iterator[aioresponses]:
     """Set up aioresponses for aiohttp mocking."""
     with aioresponses() as mocked:
         yield mocked
+
+
+@pytest.fixture
+def cachemachine(mock_aioresponses: aioresponses) -> MockCachemachine:
+    """Mock out cachemachine."""
+    return mock_cachemachine(mock_aioresponses)
 
 
 @pytest.fixture

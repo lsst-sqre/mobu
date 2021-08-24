@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from aiohttp import ClientResponse
 
 __all__ = [
+    "CachemachineError",
     "CodeExecutionError",
     "FlockNotFoundException",
     "JupyterError",
@@ -23,6 +24,10 @@ __all__ = [
     "MonkeyNotFoundException",
     "SlackError",
 ]
+
+
+class CachemachineError(Exception):
+    """Unable to get image information from cachemachine."""
 
 
 class FlockNotFoundException(Exception):
@@ -78,6 +83,27 @@ class SlackError(Exception, metaclass=ABCMeta):
             )
         if self.event:
             fields.append({"type": "mrkdwn", "text": f"*Event*\n{self.event}"})
+        if self.annotations.get("image"):
+            image = self.annotations["image"]
+            fields.append(
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Image*\n{image}",
+                    "verbatim": True,
+                }
+            )
+        if self.annotations.get("node"):
+            node = self.annotations["node"]
+            fields.append({"type": "mrkdwn", "text": f"*Node*\n{node}"})
+        if self.annotations.get("cell"):
+            cell = self.annotations["cell"]
+            fields.append(
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Cell id*\n{cell}",
+                    "verbatim": True,
+                }
+            )
         return fields
 
 
@@ -125,27 +151,13 @@ class CodeExecutionError(SlackError):
         if self.status:
             intro += f" (status: {self.status})"
 
-        fields = self.common_fields()
-        if self.annotations.get("cell"):
-            cell = self.annotations["cell"]
-            fields.append(
-                {
-                    "type": "mrkdwn",
-                    "text": f"*Cell id*\n{cell}",
-                    "verbatim": True,
-                }
-            )
-        if self.annotations.get("node"):
-            node = self.annotations["node"]
-            fields.append({"type": "mrkdwn", "text": f"*Node*\n{node}"})
-
         code = self.code
         if not code.endswith("\n"):
             code += "\n"
         result: Dict[str, Any] = {
             "blocks": [
                 {"type": "section", "text": {"type": "mrkdwn", "text": intro}},
-                {"type": "section", "fields": fields},
+                {"type": "section", "fields": self.common_fields()},
             ],
             "attachments": [
                 {
@@ -318,27 +330,13 @@ class JupyterWebSocketError(SlackError):
 
     def to_slack(self) -> Dict[str, Any]:
         """Format the error as a Slack Block Kit message."""
-        fields = self.common_fields()
-        if self.annotations.get("cell"):
-            cell = self.annotations["cell"]
-            fields.append(
-                {
-                    "type": "mrkdwn",
-                    "text": f"*Cell id*\n{cell}",
-                    "verbatim": True,
-                }
-            )
-        if self.annotations.get("node"):
-            node = self.annotations["node"]
-            fields.append({"type": "mrkdwn", "text": f"*Node*\n{node}"})
-
         return {
             "blocks": [
                 {
                     "type": "section",
                     "text": {"type": "mrkdwn", "text": str(self)},
                 },
-                {"type": "section", "fields": fields},
+                {"type": "section", "fields": self.common_fields()},
                 {"type": "divider"},
             ]
         }
