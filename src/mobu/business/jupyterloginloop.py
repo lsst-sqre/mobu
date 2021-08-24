@@ -72,7 +72,11 @@ class JupyterLoginLoop(Business):
     async def startup(self) -> None:
         await self.hub_login()
         if not await self._client.is_lab_stopped():
-            await self.delete_lab()
+            try:
+                await self.delete_lab()
+            except JupyterTimeoutError:
+                msg = "Unable to delete pre-existing lab, continuing anyway"
+                self.logger.warning(msg)
 
     async def execute(self) -> None:
         """The work done in each iteration of the loop."""
@@ -154,8 +158,9 @@ class JupyterLoginLoop(Business):
                 now = datetime.now(tz=timezone.utc)
                 elapsed = round((now - start).total_seconds())
                 if elapsed > timeout:
-                    msg = f"Lab not deleted after {elapsed}s"
-                    raise JupyterTimeoutError(self.user.username, msg)
+                    if not await self._client.is_lab_stopped(final=True):
+                        msg = f"Lab not deleted after {elapsed}s"
+                        raise JupyterTimeoutError(self.user.username, msg)
                 msg = f"Waiting for lab deletion ({elapsed}s elapsed)"
                 self.logger.info(msg)
                 await self.pause(2)
