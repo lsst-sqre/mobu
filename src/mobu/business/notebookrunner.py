@@ -7,8 +7,8 @@ the notebooks, and run them on the remote Jupyter lab.
 from __future__ import annotations
 
 import json
+import random
 from pathlib import Path
-from random import SystemRandom
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
@@ -16,7 +16,6 @@ import git
 
 from ..exceptions import NotebookRepositoryError
 from ..jupyterclient import JupyterLabSession
-from ..models.business import BusinessData
 from .jupyterpythonloop import JupyterPythonLoop
 
 if TYPE_CHECKING:
@@ -24,7 +23,7 @@ if TYPE_CHECKING:
 
     from structlog import BoundLogger
 
-    from ..models.business import BusinessConfig
+    from ..models.business import BusinessConfig, BusinessData
     from ..models.user import AuthenticatedUser
 
 __all__ = ["NotebookRunner"]
@@ -70,7 +69,7 @@ class NotebookRunner(JupyterPythonLoop):
             if not notebooks:
                 msg = "No notebooks found in {self._repo_dir.name}"
                 raise NotebookRepositoryError(msg)
-            SystemRandom().shuffle(notebooks)
+            random.shuffle(notebooks)
         return notebooks
 
     def next_notebook(self) -> None:

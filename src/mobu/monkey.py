@@ -64,6 +64,7 @@ class Monkey:
         logger.setLevel(logging.INFO)
         logger.addHandler(fileHandler)
         logger.addHandler(streamHandler)
+        logger.propagate = False
         logger.info(f"Starting new file logger {self._logfile.name}")
         self.log = structlog.wrap_logger(logger)
 

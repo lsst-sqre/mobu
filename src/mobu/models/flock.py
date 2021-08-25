@@ -49,7 +49,7 @@ class FlockConfig(BaseModel):
         "JupyterLoginLoop",
         "JupyterPythonLoop",
         "NotebookRunner",
-        "QueryMonkey",
+        "TAPQueryRunner",
     ] = Field(..., title="Type of business to run")
 
     options: BusinessConfig = Field(
