@@ -6,11 +6,25 @@ import asyncio
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Awaitable, Optional, TypeVar
+    from asyncio import Task
+    from typing import Awaitable, Callable, Optional, TypeVar
 
     T = TypeVar("T")
 
 __all__ = ["wait_first"]
+
+
+def schedule_periodic(
+    func: Callable[[], Awaitable[None]], interval_seconds: int
+) -> Task:
+    """Schedule a function to run periodically."""
+
+    async def loop() -> None:
+        while True:
+            await asyncio.sleep(interval_seconds)
+            await func()
+
+    return asyncio.ensure_future(loop())
 
 
 async def wait_first(*args: Awaitable[T]) -> Optional[T]:

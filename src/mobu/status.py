@@ -2,25 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import structlog
+from aiohttp import ClientSession
 
 from .config import config
-from .models.flock import FlockSummary
+from .dependencies.manager import monkey_business_manager
 from .slack import SlackClient
-
-if TYPE_CHECKING:
-    from typing import List
-
-    from aiohttp import ClientSession
 
 __all__ = ["post_status"]
 
 
-async def post_status(
-    session: ClientSession, summaries: List[FlockSummary]
-) -> None:
+async def post_status() -> None:
     """Post a summary of mobu status to Slack.
 
     This is meant to be run periodically.  The primary purpose is to make it
@@ -30,6 +22,7 @@ async def post_status(
     if not config.alert_hook or config.alert_hook == "None":
         return
 
+    summaries = monkey_business_manager.summarize_flocks()
     flock_count = len(summaries)
     flock_plural = "flock" if flock_count == 1 else "flocks"
     text = (
@@ -66,5 +59,6 @@ async def post_status(
     }
 
     logger = structlog.get_logger(config.logger_name)
-    slack = SlackClient(config.alert_hook, session, logger)
-    await slack.post_alert(alert)
+    async with ClientSession() as session:
+        slack = SlackClient(config.alert_hook, session, logger)
+        await slack.post_alert(alert)
