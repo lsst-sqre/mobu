@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import sys
 from tempfile import NamedTemporaryFile
@@ -46,7 +45,6 @@ class Monkey:
         self.state = MonkeyState.IDLE
         self.user = user
         self.restart = monkey_config.restart
-        self.business_type = business_type
 
         self._session = session
         self._logfile = NamedTemporaryFile()
@@ -109,36 +107,28 @@ class Monkey:
                     "Exception thrown while doing monkey business"
                 )
                 await self.alert(e)
-                await self.business.close()
                 run = self.restart and self.state == MonkeyState.RUNNING
                 if self.state == MonkeyState.RUNNING:
                     self.state = MonkeyState.ERROR
             if run:
-                self.log.warning("Restarting failed monkey after 60s")
-                await asyncio.sleep(60)
-
-                # Recreate the business since we will have closed global
-                # resources when it aborted with an error.
-                self.business = self.business_type(
-                    self.log, self.config.options, self.user
-                )
+                await self.business.error_idle()
+                if self.state == MonkeyState.STOPPING:
+                    self.log.info("Shutting down monkey")
+                    run = False
             else:
                 self.log.info("Shutting down monkey")
 
+        await self.business.close()
         self.state = MonkeyState.FINISHED
 
     async def stop(self) -> None:
         if self.state == MonkeyState.FINISHED:
             return
-        elif self.state == MonkeyState.RUNNING:
+        elif self.state in (MonkeyState.RUNNING, MonkeyState.ERROR):
             self.state = MonkeyState.STOPPING
             await self.business.stop()
             if self._job:
                 await self._job.wait()
-        elif self.state == MonkeyState.ERROR:
-            await self.business.close()
-            if self._job:
-                await self._job.close()
         self.state = MonkeyState.FINISHED
 
     def dump(self) -> MonkeyData:

@@ -116,6 +116,19 @@ class Business:
         with self.timings.start("idle"):
             await self.pause(self.config.idle_time)
 
+    async def error_idle(self) -> None:
+        """The idle pause after an error.
+
+        This happens outside of ``run`` and therefore must handle
+        acknowledging a shutdown request.
+        """
+        self.logger.warning("Restarting failed monkey after 60s")
+        try:
+            await self.pause(60)
+        finally:
+            if self.stopping:
+                self.control.task_done()
+
     async def shutdown(self) -> None:
         """Any cleanup to do before exiting after stopping."""
         pass
