@@ -8,6 +8,7 @@ from unittest.mock import ANY
 import pytest
 
 from tests.support.gafaelfawr import mock_gafaelfawr
+from tests.support.util import wait_for_business
 
 if TYPE_CHECKING:
     from typing import Any, Dict
@@ -62,6 +63,7 @@ async def test_start_stop(
     }
     assert r.json() == expected
     assert r.headers["Location"] == "/mobu/flocks/test"
+    await wait_for_business(client, "testuser1")
 
     r = await client.get("/mobu/flocks")
     assert r.status_code == 200
@@ -85,6 +87,22 @@ async def test_start_stop(
     assert "filename" in r.headers["Content-Disposition"]
     assert "test-testuser1-" in r.headers["Content-Disposition"]
     assert "Idling..." in r.text
+
+    r = await client.get("/mobu/flocks/test/summary")
+    assert r.status_code == 200
+    summary = {
+        "name": "test",
+        "business": "Business",
+        "start_time": ANY,
+        "monkey_count": 1,
+        "success_count": 1,
+        "failure_count": 0,
+    }
+    assert r.json() == summary
+
+    r = await client.get("/mobu/summary")
+    assert r.status_code == 200
+    assert r.json() == [summary]
 
     r = await client.get("/mobu/flocks/other")
     assert r.status_code == 404

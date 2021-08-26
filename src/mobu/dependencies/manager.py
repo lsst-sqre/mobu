@@ -10,7 +10,7 @@ from aiojobs import Scheduler, create_scheduler
 
 from ..exceptions import FlockNotFoundException
 from ..flock import Flock
-from ..models.flock import FlockConfig
+from ..models.flock import FlockConfig, FlockSummary
 
 __all__ = ["MonkeyBusinessManager", "monkey_business_manager"]
 
@@ -58,6 +58,9 @@ class MonkeyBusinessManager:
 
     def list_flocks(self) -> List[str]:
         return sorted(self._flocks.keys())
+
+    def summarize_flocks(self) -> List[FlockSummary]:
+        return [f.summary() for _, f in sorted(self._flocks.items())]
 
     async def stop_flock(self, name: str) -> None:
         flock = self._flocks.get(name)

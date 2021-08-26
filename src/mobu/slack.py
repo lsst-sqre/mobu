@@ -55,12 +55,12 @@ class SlackClient:
                 {"type": "divider"},
             ]
         }
-        await self._post_alert(body)
+        await self.post_alert(body)
 
     async def alert_from_exception(self, e: SlackError) -> None:
-        await self._post_alert(e.to_slack())
+        await self.post_alert(e.to_slack())
 
-    async def _post_alert(self, alert: Dict[str, Any]) -> None:
+    async def post_alert(self, alert: Dict[str, Any]) -> None:
         self._logger.info("Sending alert to Slack")
         try:
             await self._session.post(

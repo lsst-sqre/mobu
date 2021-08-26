@@ -7,6 +7,7 @@ constructed when this module is loaded and is not deferred until a function is
 called.
 """
 
+import asyncio
 from importlib.metadata import metadata
 
 from fastapi import FastAPI, Request, status
@@ -20,6 +21,8 @@ from .dependencies.manager import monkey_business_manager
 from .exceptions import FlockNotFoundException, MonkeyNotFoundException
 from .handlers.external import external_router
 from .handlers.internal import internal_router
+from .status import post_status
+from .util import schedule_periodic
 
 __all__ = ["app", "config"]
 
@@ -55,11 +58,17 @@ async def startup_event() -> None:
     await monkey_business_manager.init()
     if config.autostart:
         await autostart()
+    app.state.periodic_status = schedule_periodic(post_status, 60 * 60 * 24)
 
 
 @app.on_event("shutdown")
 async def shutdown_event() -> None:
     await monkey_business_manager.cleanup()
+    app.state.periodic_status.cancel()
+    try:
+        await app.state.periodic_status
+    except asyncio.CancelledError:
+        pass
 
 
 @_subapp.exception_handler(FlockNotFoundException)
