@@ -151,7 +151,7 @@ class CodeExecutionError(SlackError):
         if self.status:
             intro += f" (status: {self.status})"
 
-        code = self.code
+        code = self._trim_block(self.code)
         if not code.endswith("\n"):
             code += "\n"
         result: Dict[str, Any] = {
@@ -175,7 +175,7 @@ class CodeExecutionError(SlackError):
             ],
         }
         if self.error:
-            error = self.error
+            error = self._trim_block(self.error)
             if error and not error.endswith("\n"):
                 error += "\n"
             result["attachments"][0]["blocks"].insert(
@@ -190,6 +190,22 @@ class CodeExecutionError(SlackError):
                 },
             )
         return result
+
+    @staticmethod
+    def _trim_block(string: str) -> str:
+        """Trim a string with newlines to at most 2977 characters.
+
+        Slack limits the mrkdwn section of an attachment to 3001 characters.
+        We add "*Code executed*\n```\n````" at most.
+        """
+        length = len(string)
+        if length < 2977:
+            return string
+        lines = string.split("\n")
+        while length >= 2977:
+            line = lines.pop(0)
+            length -= len(line) + 1
+        return "\n".join(lines)
 
 
 class JupyterError(SlackError):

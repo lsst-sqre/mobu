@@ -291,6 +291,17 @@ class MockJupyterWebSocket(Mock):
                 "parent_header": self._header,
                 "content": {"text": "some-node"},
             }
+        elif self._code == "long_error_for_test()":
+            self._code = None
+            error = ""
+            line = "this is a single line of output to test trimming errors"
+            for i in range(int(3000 / len(line))):
+                error += f"{line} #{i}\n"
+            return {
+                "msg_type": "error",
+                "parent_header": self._header,
+                "content": {"traceback": error},
+            }
         elif self._code:
             try:
                 output = StringIO()
