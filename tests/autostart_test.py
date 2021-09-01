@@ -34,10 +34,9 @@ AUTOSTART_CONFIG = """
     - username: otherpython
       uidnumber: 70000
   options:
-    jupyter_options_form:
-      image: "registry.hub.docker.com/lsstsqre/sciplat-lab:recommended"
-      image_dropdown: use_image_from_dropdown
-      size: Small
+    jupyter:
+      image_class: latest-weekly
+      image_size: Large
     spawn_settle_time: 10
   scopes: ["exec:notebook"]
   restart: true
@@ -115,13 +114,9 @@ async def test_autostart(client: AsyncClient) -> None:
             "restart": True,
             "business": "JupyterPythonLoop",
             "options": {
-                "jupyter_options_form": {
-                    "image": (
-                        "registry.hub.docker.com/lsstsqre/sciplat-lab"
-                        ":recommended"
-                    ),
-                    "image_dropdown": "use_image_from_dropdown",
-                    "size": "Small",
+                "jupyter": {
+                    "image_class": "latest-weekly",
+                    "image_size": "Large",
                 },
                 "spawn_settle_time": 10,
             },
@@ -131,6 +126,14 @@ async def test_autostart(client: AsyncClient) -> None:
                 "name": "python",
                 "business": {
                     "failure_count": 0,
+                    "image": {
+                        "digest": ANY,
+                        "name": "Weekly 2021_35",
+                        "reference": (
+                            "registry.hub.docker.com/lsstsqre/sciplat-lab"
+                            ":w_2021_35"
+                        ),
+                    },
                     "name": "JupyterPythonLoop",
                     "success_count": ANY,
                     "timings": ANY,
@@ -148,6 +151,14 @@ async def test_autostart(client: AsyncClient) -> None:
                 "name": "otherpython",
                 "business": {
                     "failure_count": 0,
+                    "image": {
+                        "digest": ANY,
+                        "name": "Weekly 2021_35",
+                        "reference": (
+                            "registry.hub.docker.com/lsstsqre/sciplat-lab"
+                            ":w_2021_35"
+                        ),
+                    },
                     "name": "JupyterPythonLoop",
                     "success_count": ANY,
                     "timings": ANY,

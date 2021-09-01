@@ -19,17 +19,19 @@ from uuid import uuid4
 
 from aiohttp import ClientSession, TCPConnector, WSServerHandshakeError
 
+from .cachemachine import CachemachineClient
 from .config import config
 from .exceptions import CodeExecutionError, JupyterError, JupyterWebSocketError
+from .models.jupyter import JupyterImage, JupyterImageClass
 
 if TYPE_CHECKING:
-    from typing import Any, AsyncIterator, Optional
+    from typing import Any, AsyncIterator, Dict, Optional
 
     from aiohttp import ClientResponse, ClientWebSocketResponse
     from aiohttp.client import _RequestContextManager, _WSRequestContextManager
     from structlog import BoundLogger
 
-    from .models.business import BusinessConfig
+    from .models.jupyter import JupyterConfig
     from .models.user import AuthenticatedUser
 
 __all__ = ["JupyterClient", "JupyterLabSession"]
@@ -185,13 +187,12 @@ class JupyterClient:
         self,
         user: AuthenticatedUser,
         log: BoundLogger,
-        business_config: BusinessConfig,
+        jupyter_config: JupyterConfig,
     ) -> None:
         self.user = user
         self.log = log
-        self.jupyter_base = business_config.nb_url
-        self.jupyter_url = config.environment_url + self.jupyter_base
-        self.jupyter_options_form = business_config.jupyter_options_form
+        self.config = jupyter_config
+        self.jupyter_url = config.environment_url + jupyter_config.url_prefix
 
         xsrftoken = "".join(
             random.choices(string.ascii_uppercase + string.digits, k=16)
@@ -202,6 +203,10 @@ class JupyterClient:
         )
         session.cookie_jar.update_cookies(BaseCookie({"_xsrf": xsrftoken}))
         self.session = JupyterClientSession(session, user.token)
+
+        # We also send the XSRF token to cachemachine because of how we're
+        # sharing the session, but that shouldn't matter.
+        self.cachemachine = CachemachineClient(session, user.token)
 
     async def close(self) -> None:
         await self.session.close()
@@ -239,9 +244,19 @@ class JupyterClient:
             self.log.warning(msg)
         return result
 
-    async def spawn_lab(self) -> None:
+    async def spawn_lab(self) -> JupyterImage:
         spawn_url = self.jupyter_url + "hub/spawn"
-        self.log.info(f"Spawning lab for {self.user.username}")
+
+        # Determine what image to spawn.
+        if self.config.image_class == JupyterImageClass.RECOMMENDED:
+            image = await self.cachemachine.get_recommended()
+        elif self.config.image_class == JupyterImageClass.LATEST_WEEKLY:
+            image = await self.cachemachine.get_latest_weekly()
+        else:
+            assert self.config.image_reference
+            image = JupyterImage.from_reference(self.config.image_reference)
+        msg = f"Spawning lab image {image.name} for {self.user.username}"
+        self.log.info(msg)
 
         # Retrieving the spawn page before POSTing to it appears to trigger
         # some necessary internal state construction (and also more accurately
@@ -251,10 +266,15 @@ class JupyterClient:
 
         # POST the options form to the spawn page.  This should redirect to
         # the spawn-pending page, which will return a 200.
-        data = self.jupyter_options_form
+        image = await self._get_spawn_image()
+        data = self._build_jupyter_spawn_form(image)
         async with self.session.post(spawn_url, data=data) as r:
             if r.status != 200:
                 raise await JupyterError.from_response(self.user.username, r)
+
+        # Return information about the image spawned so that we can use it to
+        # annotate timers and get it into error reports.
+        return image
 
     async def spawn_progress(self) -> AsyncIterator[ProgressMessage]:
         """Monitor lab spawn progress.
@@ -414,3 +434,25 @@ class JupyterClient:
         See https://stackoverflow.com/questions/14693701/
         """
         return _ANSI_REGEX.sub("", string)
+
+    def _build_jupyter_spawn_form(self, image: JupyterImage) -> Dict[str, str]:
+        """Construct the form to submit to the JupyterHub login page."""
+        return {
+            "image_list": str(image),
+            "image_dropdown": "use_image_from_dropdown",
+            "size": self.config.image_size,
+        }
+
+    async def _get_spawn_image(self) -> JupyterImage:
+        """Determine what image to spawn."""
+        if self.config.image_class == JupyterImageClass.RECOMMENDED:
+            return await self.cachemachine.get_recommended()
+        elif self.config.image_class == JupyterImageClass.LATEST_WEEKLY:
+            return await self.cachemachine.get_latest_weekly()
+        elif self.config.image_class == JupyterImageClass.BY_REFERENCE:
+            assert self.config.image_reference
+            return JupyterImage.from_reference(self.config.image_reference)
+        else:
+            # This should be prevented by the model as long as we don't add a
+            # new image class without adding the corresponding condition.
+            raise ValueError(f"Invalid image_class {self.config.image_class}")

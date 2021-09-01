@@ -45,6 +45,12 @@ class NotebookRunner(JupyterPythonLoop):
         self._repo: Optional[git.Repo] = None
         self._notebook_paths: Optional[List[Path]] = None
 
+    def annotations(self) -> Dict[str, str]:
+        result = super().annotations()
+        if self.notebook:
+            result["notebook"] = self.notebook.name
+        return result
+
     async def startup(self) -> None:
         if not self._repo:
             self.clone_repo()
@@ -136,9 +142,8 @@ class NotebookRunner(JupyterPythonLoop):
     ) -> None:
         assert self.notebook
         self.logger.info("Executing:\n%s\n", code)
-        annotations = {"notebook": self.notebook.name, "cell": cell_id}
-        if self.node:
-            annotations["node"] = self.node
+        annotations = self.annotations()
+        annotations["cell"] = cell_id
         with self.timings.start("execute_cell", annotations):
             self.running_code = code
             reply = await self._client.run_python(session, code)

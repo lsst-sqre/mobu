@@ -143,6 +143,13 @@ async def test_alert(
         "name": "testuser1",
         "business": {
             "failure_count": 1,
+            "image": {
+                "digest": ANY,
+                "name": "Recommended (Weekly 2021_33)",
+                "reference": (
+                    "registry.hub.docker.com/lsstsqre/sciplat-lab:recommended"
+                ),
+            },
             "name": "NotebookRunner",
             "notebook": "exception.ipynb",
             "running_code": bad_code,
@@ -179,10 +186,15 @@ async def test_alert(
                         {"type": "mrkdwn", "text": "*Event*\nexecute_cell"},
                         {
                             "type": "mrkdwn",
-                            "text": "*Cell id*\n`ed399c0a` (#2)",
+                            "text": "*Image*\nRecommended (Weekly 2021_33)",
                             "verbatim": True,
                         },
                         {"type": "mrkdwn", "text": "*Node*\nsome-node"},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Cell id*\n`ed399c0a` (#2)",
+                            "verbatim": True,
+                        },
                     ],
                 },
             ],

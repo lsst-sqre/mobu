@@ -16,9 +16,12 @@ from ..jupyterclient import JupyterClient
 from .base import Business
 
 if TYPE_CHECKING:
+    from typing import Dict, Optional
+
     from structlog import BoundLogger
 
-    from ..models.business import BusinessConfig
+    from ..models.business import BusinessConfig, BusinessData
+    from ..models.jupyter import JupyterImage
     from ..user import AuthenticatedUser
 
 __all__ = ["JupyterLoginLoop", "ProgressLogMessage"]
@@ -64,10 +67,20 @@ class JupyterLoginLoop(Business):
         user: AuthenticatedUser,
     ) -> None:
         super().__init__(logger, business_config, user)
-        self._client = JupyterClient(user, logger, business_config)
+        self.image: Optional[JupyterImage] = None
+        self._client = JupyterClient(user, logger, business_config.jupyter)
 
     async def close(self) -> None:
         await self._client.close()
+
+    def annotations(self) -> Dict[str, str]:
+        """Timer annotations to use.
+
+        Subclasses should override this to add more annotations based on
+        current business state.  They should call ``super().annotations()``
+        and then add things to the resulting dictionary.
+        """
+        return {"image": self.image.name} if self.image else {}
 
     async def startup(self) -> None:
         await self.hub_login()
@@ -102,8 +115,8 @@ class JupyterLoginLoop(Business):
             await self._client.hub_login()
 
     async def spawn_lab(self) -> None:
-        with self.timings.start("spawn_lab") as sw:
-            await self._client.spawn_lab()
+        with self.timings.start("spawn_lab", self.annotations()) as sw:
+            self.image = await self._client.spawn_lab()
 
             # Pause before using the progress API, since otherwise it may not
             # have attached to the spawner and will not return a full stream
@@ -139,12 +152,12 @@ class JupyterLoginLoop(Business):
             await self.pause(self.config.lab_settle_time)
 
     async def lab_login(self) -> None:
-        with self.timings.start("lab_login"):
+        with self.timings.start("lab_login", self.annotations()):
             await self._client.lab_login()
 
     async def delete_lab(self) -> None:
         self.logger.info("Deleting lab")
-        with self.timings.start("delete_lab"):
+        with self.timings.start("delete_lab", self.annotations()):
             await self._client.delete_lab()
 
             # If we're not stopping, wait for the lab to actually go away.  If
@@ -168,6 +181,7 @@ class JupyterLoginLoop(Business):
                     return
 
         self.logger.info("Lab successfully deleted")
+        self.image = None
 
     async def lab_business(self) -> None:
         """Do whatever business we want to do inside a lab.
@@ -178,3 +192,8 @@ class JupyterLoginLoop(Business):
         """
         with self.timings.start("lab_wait"):
             await self.pause(self.config.login_idle_time)
+
+    def dump(self) -> BusinessData:
+        data = super().dump()
+        data.image = self.image if self.image else None
+        return data

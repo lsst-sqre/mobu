@@ -1,11 +1,12 @@
 """Models for monkey business."""
 
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
 from ..constants import NOTEBOOK_REPO_BRANCH, NOTEBOOK_REPO_URL
-from ..models.timings import StopwatchData
+from .jupyter import JupyterConfig, JupyterImage
+from .timings import StopwatchData
 
 __all__ = ["BusinessConfig", "BusinessData"]
 
@@ -23,10 +24,9 @@ class BusinessConfig(BaseModel):
     options.
     """
 
-    nb_url: str = Field("/nb/", title="URL prefix for Jupyter")
-
-    jupyter_options_form: Dict[str, str] = Field(
-        default_factory=dict, title="Values to POST to the spawn options form"
+    jupyter: JupyterConfig = Field(
+        default_factory=JupyterConfig,
+        title="Jupyter lab spawning configuration",
     )
 
     code: str = Field(
@@ -64,26 +64,6 @@ class BusinessConfig(BaseModel):
         ),
     )
 
-    spawn_settle_time: int = Field(
-        10,
-        title="How long to wait before polling spawn progress in seconds",
-        description=(
-            "Wait this long after triggering a lab spawn before starting to"
-            " poll its progress"
-        ),
-        example=10,
-    )
-
-    lab_settle_time: int = Field(
-        10,
-        title="How long to wait after spawn before using a lab, in seconds",
-        description=(
-            "Wait this long after a lab successfully spawns before starting"
-            " to use it"
-        ),
-        example=10,
-    )
-
     idle_time: int = Field(
         60,
         title="How long to wait between business executions",
@@ -92,6 +72,28 @@ class BusinessConfig(BaseModel):
             " pause for this long in seconds"
         ),
         example=60,
+    )
+
+    spawn_settle_time: int = Field(
+        10,
+        title="How long to wait before polling spawn progress in seconds",
+        description=(
+            "Wait this long after triggering a lab spawn before starting to"
+            " poll its progress. KubeSpawner 1.1.0 has a bug where progress"
+            " queries prior to starting the spawn will fail with an exception"
+            " that closes the progress EventStream."
+        ),
+        example=10,
+    )
+
+    lab_settle_time: int = Field(
+        0,
+        title="How long to wait after spawn before using a lab, in seconds",
+        description=(
+            "Wait this long after a lab successfully spawns before starting"
+            " to use it"
+        ),
+        example=0,
     )
 
     login_idle_time: int = Field(
@@ -165,6 +167,12 @@ class BusinessData(BaseModel):
     success_count: int = Field(..., title="Number of successes", example=25)
 
     timings: List[StopwatchData] = Field(..., title="Timings of events")
+
+    image: Optional[JupyterImage] = Field(
+        None,
+        title="JupyterLab image information",
+        description="Will only be present when there is an active Jupyter lab",
+    )
 
     notebook: Optional[str] = Field(
         None,

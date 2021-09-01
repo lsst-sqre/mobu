@@ -12,7 +12,7 @@ from ..jupyterclient import JupyterLabSession
 from .jupyterloginloop import JupyterLoginLoop
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from typing import Dict, Optional
 
     from structlog import BoundLogger
 
@@ -50,6 +50,12 @@ class JupyterPythonLoop(JupyterLoginLoop):
         super().__init__(logger, business_config, user)
         self.node: Optional[str] = None
 
+    def annotations(self) -> Dict[str, str]:
+        result = super().annotations()
+        if self.node:
+            result["node"] = self.node
+        return result
+
     async def lab_business(self) -> None:
         if self.stopping:
             return
@@ -61,9 +67,9 @@ class JupyterPythonLoop(JupyterLoginLoop):
         self, notebook_name: Optional[str] = None
     ) -> JupyterLabSession:
         self.logger.info("Creating lab session")
-        with self.timings.start("create_session"):
+        with self.timings.start("create_session", self.annotations()):
             session = await self._client.create_labsession(notebook_name)
-        with self.timings.start("execute_setup"):
+        with self.timings.start("execute_setup", self.annotations()):
             if self.config.get_node:
                 # Our libraries currently spew warning messages when imported.
                 # The node is only the last line of the output.
@@ -78,8 +84,7 @@ class JupyterPythonLoop(JupyterLoginLoop):
     async def execute_code(self, session: JupyterLabSession) -> None:
         code = self.config.code
         for count in range(self.config.max_executions):
-            annotations = {"node": self.node} if self.node else {}
-            with self.timings.start("execute_code", annotations):
+            with self.timings.start("execute_code", self.annotations()):
                 reply = await self._client.run_python(session, code)
             self.logger.info(f"{code} -> {reply}")
             await self.execution_idle()
@@ -94,5 +99,6 @@ class JupyterPythonLoop(JupyterLoginLoop):
     async def delete_session(self, session: JupyterLabSession) -> None:
         await self.lab_login()
         self.logger.info("Deleting lab session")
-        with self.timings.start("delete_session"):
+        with self.timings.start("delete_session", self.annotations()):
             await self._client.delete_labsession(session)
+        self.node = None
