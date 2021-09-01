@@ -206,7 +206,10 @@ class JupyterClient:
 
         # We also send the XSRF token to cachemachine because of how we're
         # sharing the session, but that shouldn't matter.
-        self.cachemachine = CachemachineClient(session, user.token)
+        assert config.gafaelfawr_token
+        self.cachemachine = CachemachineClient(
+            session, config.gafaelfawr_token
+        )
 
     async def close(self) -> None:
         await self.session.close()
