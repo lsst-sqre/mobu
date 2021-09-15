@@ -59,7 +59,8 @@ class BusinessConfig(BaseModel):
         title="Whether to get the node name for error reporting",
         description=(
             "Used by JupyterPythonLoop and its subclasses. Requires the lab"
-            " have rubin_jupyter_utils.lab.notebook.utils pre-installed and"
+            " have rsp_jupyter_extensions.utilities (JL3) or"
+            " rubin_jupyter_utils.lab.notebook.utils (JL2) pre-installed and"
             " able to make Kubernetes API calls."
         ),
     )

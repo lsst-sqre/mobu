@@ -25,7 +25,10 @@ _CHDIR_TEMPLATE = 'import os; os.chdir("{wd}")'
 """Template to construct the code to run to set the working directory."""
 
 _GET_NODE = """
-from rubin_jupyter_utils.lab.notebook.utils import get_node
+try:
+    from rsp_jupyter_extensions.utilities import get_node  # JL 3
+except ImportError:
+    from rubin_jupyter_utils.lab.notebook.utils import get_node  # JL 2
 print(get_node(), end="")
 """
 """Code to get the node on which the lab is running."""
