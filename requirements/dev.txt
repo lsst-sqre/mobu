@@ -92,9 +92,9 @@ chardet==4.0.0 \
     # via
     #   -c requirements/main.txt
     #   aiohttp
-charset-normalizer==2.0.4 \
-    --hash=sha256:0c8911edd15d19223366a194a513099a302055a962bca2cec0f54b8b63175d8b \
-    --hash=sha256:f23667ebe1084be45f6ae0538e4a5a865206544097e4e8bbcacf42cd02a348f3
+charset-normalizer==2.0.6 \
+    --hash=sha256:5d209c0a931f215cee683b6445e2d77677e7e75e159f78def0db09d68fafcaa6 \
+    --hash=sha256:5ec46d183433dcbd0ab716f2d7f29d8dee50505b3fdb40c6b985c7c4f5a3591f
     # via
     #   -c requirements/main.txt
     #   httpx
@@ -168,9 +168,9 @@ h11==0.12.0 \
     # via
     #   -c requirements/main.txt
     #   httpcore
-httpcore==0.13.6 \
-    --hash=sha256:b0d16f0012ec88d8cc848f5a55f8a03158405f4bca02ee49bc4ca2c1fda49f3e \
-    --hash=sha256:db4c0dcb8323494d01b8c6d812d80091a31e520033e7b0120883d6f52da649ff
+httpcore==0.13.7 \
+    --hash=sha256:036f960468759e633574d7c121afba48af6419615d36ab8ede979f1ad6276fa3 \
+    --hash=sha256:369aa481b014cf046f7067fddd67d00560f2f00426e79569d99cb11245134af0
     # via
     #   -c requirements/main.txt
     #   httpx
@@ -181,9 +181,9 @@ httpx==0.19.0 \
     #   -c requirements/main.txt
     #   -r requirements/dev.in
     #   pytest-httpx
-identify==2.2.14 \
-    --hash=sha256:113a76a6ba614d2a3dd408b3504446bcfac0370da5995aa6a17fd7c6dffde02d \
-    --hash=sha256:32f465f3c48083f345ad29a9df8419a4ce0674bf4a8c3245191d65c83634bdbf
+identify==2.2.15 \
+    --hash=sha256:528a88021749035d5a39fe2ba67c0642b8341aaf71889da0e1ed669a429b87f0 \
+    --hash=sha256:de83a84d774921669774a2000bf87ebba46b4d1c04775f4a5d37deff0cf39f73
     # via pre-commit
 idna==3.2 \
     --hash=sha256:14475042e284991034cb48e06f6851428fb14c4dc953acd9be9a5e95c7b6dd7a \
@@ -393,9 +393,9 @@ typing-extensions==3.10.0.2 \
     #   -c requirements/main.txt
     #   aiohttp
     #   mypy
-virtualenv==20.7.2 \
-    --hash=sha256:9ef4e8ee4710826e98ff3075c9a4739e2cb1040de6a2a8d35db0055840dc96a0 \
-    --hash=sha256:e4670891b3a03eb071748c569a87cceaefbf643c5bac46d996c5a45c34aa0f06
+virtualenv==20.8.0 \
+    --hash=sha256:4da4ac43888e97de9cf4fdd870f48ed864bbfd133d2c46cbdec941fed4a25aef \
+    --hash=sha256:a4b987ec31c3c9996cf1bc865332f967fe4a0512c41b39652d6224f696e69da5
     # via pre-commit
 yarl==1.6.3 \
     --hash=sha256:00d7ad91b6583602eb9c1d085a2cf281ada267e9a197e8b7cae487dadbfa293e \
