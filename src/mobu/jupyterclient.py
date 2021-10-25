@@ -346,7 +346,9 @@ class JupyterClient:
             + f"{kernel_id}/channels"
         )
         try:
-            websocket = await self.session.ws_connect(channels_url, max_msg_size=0)
+            websocket = await self.session.ws_connect(
+                channels_url, max_msg_size=0
+            )
         except WSServerHandshakeError as e:
             raise JupyterError.from_exception(self.user.username, e) from None
         return JupyterLabSession(
