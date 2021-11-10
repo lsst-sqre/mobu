@@ -192,7 +192,7 @@ async def test_alert(
                         {"type": "mrkdwn", "text": "*Node*\nsome-node"},
                         {
                             "type": "mrkdwn",
-                            "text": "*Cell id*\n`ed399c0a` (#2)",
+                            "text": "*Cell id*\n`ed399c0a` (#1)",
                             "verbatim": True,
                         },
                     ],
