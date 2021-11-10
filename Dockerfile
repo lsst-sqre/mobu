@@ -14,7 +14,7 @@
 #   - Runs a non-root user.
 #   - Sets up the entrypoint and port.
 
-FROM tiangolo/uvicorn-gunicorn:python3.8-slim as base-image
+FROM python:3.9.8-slim-bullseye as base-image
 
 # Update system packages
 COPY scripts/install-base-packages.sh .
@@ -49,22 +49,20 @@ RUN pip install --no-cache-dir .
 
 FROM base-image AS runtime-image
 
+# Create a non-root user
+RUN useradd --create-home appuser
+
 # Copy the virtualenv
 COPY --from=install-image /opt/venv /opt/venv
 
 # Make sure we use the virtualenv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# We use a module name other than app, so tell the base image that.  This
-# does not copy the app into /app as is recommended by the base Docker
-# image documentation and instead relies on the module search path as
-# modified by the virtualenv.
-ENV MODULE_NAME=mobu.main
+# Switch to the non-root user.
+USER appuser
 
-# mobu uses an in-memory data store to track all running monkeys, so it
-# only makes sense to run a single process.
-ENV MAX_WORKERS=1
+# Expose the port.
+EXPOSE 8080
 
-# Run on port 8080 instead of the FastAPI default to avoid requiring
-# capabilities.
-ENV PORT=8080
+# Run the application.
+CMD ["uvicorn", "mobu.main:app", "--host", "0.0.0.0", "--port", "8080"]
