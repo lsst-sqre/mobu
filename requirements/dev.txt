@@ -113,9 +113,9 @@ attrs==21.2.0 \
     #   -c requirements/main.txt
     #   aiohttp
     #   pytest
-backports.entry-points-selectable==1.1.0 \
-    --hash=sha256:988468260ec1c196dab6ae1149260e2f5472c9110334e5d51adcb77867361f6a \
-    --hash=sha256:a6d9a871cde5e15b4c4a53e3d43ba890cc6861ec1332c9c2428c92f977192acc
+backports.entry-points-selectable==1.1.1 \
+    --hash=sha256:7fceed9532a7aa2bd888654a7314f864a3c16a4e710b34a58cfc0f08114c663b \
+    --hash=sha256:914b21a479fde881635f7af5adc7f6e38d6b274be32269070c53b698c60d5386
     # via virtualenv
 certifi==2021.10.8 \
     --hash=sha256:78884e7c1d4b00ce3cea67b44566851c4343c120abd683433ce934a68ea58872 \
@@ -288,9 +288,9 @@ httpx==0.20.0 \
     #   -c requirements/main.txt
     #   -r requirements/dev.in
     #   pytest-httpx
-identify==2.3.4 \
-    --hash=sha256:4de55a93e0ba72bf917c840b3794eb1055a67272a1732351c557c88ec42011b1 \
-    --hash=sha256:595283a1c3a078ac5774ad4dc4d1bdd0c1602f60bcf11ae673b64cb2b1945762
+identify==2.3.5 \
+    --hash=sha256:6f0368ba0f21c199645a331beb7425d5374376e71bc149e9cb55e45cb45f832d \
+    --hash=sha256:ba945bddb4322394afcf3f703fa68eda08a6acc0f99d9573eb2be940aa7b9bba
     # via pre-commit
 idna==3.3 \
     --hash=sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff \
@@ -529,9 +529,9 @@ types-pyyaml==6.0.0 \
     --hash=sha256:3d3591ddfc488fc30be3c506a0c0fe54da968fe98d8b76ab12e59d455330ffca \
     --hash=sha256:746f23d351245d176d7bc89eef79e2ee94b4e7306f7d23bfefb3dc946c0fb58d
     # via -r requirements/dev.in
-types-requests==2.25.11 \
-    --hash=sha256:b279284e51f668e38ee12d9665e4d789089f532dc2a0be4a1508ca0efd98ba9e \
-    --hash=sha256:ba1d108d512e294b6080c37f6ae7cb2a2abf527560e2b671d1786c1fc46b541a
+types-requests==2.26.0 \
+    --hash=sha256:809b5dcd3c408ac39d11d593835b6aff32420b3e7ddb79c7f3e823330f040466 \
+    --hash=sha256:df5ec8c34b413a42ebb38e4f96bdeb68090b875bdfcc5138dc82989c95445883
     # via -r requirements/dev.in
 typing-extensions==3.10.0.2 \
     --hash=sha256:49f75d16ff11f1cd258e1b988ccff82a3ca5570217d7ad8c5f48205dd99a677e \

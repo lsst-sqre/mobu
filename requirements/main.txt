@@ -82,9 +82,9 @@ aiohttp==3.8.0 \
     --hash=sha256:fa818609357dde5c4a94a64c097c6404ad996b1d38ca977a72834b682830a722 \
     --hash=sha256:fe4a327da0c6b6e59f2e474ae79d6ee7745ac3279fd15f200044602fa31e3d79
     # via -r requirements/main.in
-aiojobs==0.3.0 \
-    --hash=sha256:ed49e9ea1be0261fde99305c84691b440f69172016c7b372f9c411dac082a65f \
-    --hash=sha256:f6631d42dc4308f7d883abbd70d4e976f3fcc35a3ba1e8eae5d4af4940a1e0c3
+aiojobs==1.0.0 \
+    --hash=sha256:5097580bb73d838e3f80e49d6a81d8e5f1dfc22fc6e75a44383cb2164daea8ea \
+    --hash=sha256:86bd70777df7c8140be9bc597181d4db0d88a6449f4e4578169f98b6df24e805
     # via -r requirements/main.in
 aiosignal==1.2.0 \
     --hash=sha256:26e62109036cd181df6e6ad646f91f0dcfd05fe16d0cb924138ff2ab75d64e3a \
@@ -121,7 +121,9 @@ astropy==4.3.1 \
 async-timeout==4.0.0 \
     --hash=sha256:7d87a4e8adba8ededb52e579ce6bc8276985888913620c935094c2276fd83382 \
     --hash=sha256:f3303dddf6cafa748a92747ab6c2ecf60e0aeca769aee4c151adfce243a05d9b
-    # via aiohttp
+    # via
+    #   aiohttp
+    #   aiojobs
 attrs==21.2.0 \
     --hash=sha256:149e90d6d8ac20db7a955ad60cf0e6881a3f20d37096140088356da6c716b0b1 \
     --hash=sha256:ef6aaac3ca6cd92904cdd0d83f629a15f18053ec84e6432106f7a4d04ae4f5fb
@@ -278,9 +280,9 @@ idna==3.3 \
     #   requests
     #   rfc3986
     #   yarl
-jinja2==3.0.2 \
-    --hash=sha256:827a0e32839ab1600d4eb1c4c33ec5a8edfbc5cb42dafa13b81f182f97784b45 \
-    --hash=sha256:8569982d3f0889eed11dd620c706d39b60c36d6d25843961f33f77fb6bc6b20c
+jinja2==3.0.3 \
+    --hash=sha256:077ce6014f7b40d03b47d1f1ca4b0fc8328a692bd284016f806ed0eaca390ad8 \
+    --hash=sha256:611bb273cd68f3b993fabdc4064fc858c5b47a973cb5aa7999ec1ba405c87cd7
     # via -r requirements/main.in
 markupsafe==2.0.1 \
     --hash=sha256:01a9b8ea66f1658938f65b93a85ebe8bc016e6769611be228d797c9d998dd298 \
@@ -577,9 +579,9 @@ rfc3986[idna2008]==1.5.0 \
     --hash=sha256:270aaf10d87d0d4e095063c65bf3ddbc6ee3d0b226328ce21e036f946e421835 \
     --hash=sha256:a86d6e1f5b1dc238b218b012df0aa79409667bb209e58da56d0b94704e712a97
     # via httpx
-safir==2.1.1 \
-    --hash=sha256:6c33d7dfe9509fc6a14637c7078c107a941824d084bcd51a652dd7065d87efa4 \
-    --hash=sha256:8de37d4e0d1de0175bb803ad0b9ae7810841241f4697ca4ffd35e3da77d10f83
+safir==2.2.0 \
+    --hash=sha256:ac8493c9a556c50e0a4e4062f4547005f4fe73487c8e82cfb159a8866ccf02f1 \
+    --hash=sha256:e10ccb400d8b4547d89e72c5ec2ef3d6631f3f302b715bb9426190e9d804750b
     # via -r requirements/main.in
 smmap==5.0.0 \
     --hash=sha256:2aba19d6a040e78d8b09de5c57e96207b09ed71d8e55ce0959eeee6c8e190d94 \
