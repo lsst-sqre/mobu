@@ -445,15 +445,19 @@ class JupyterClient:
             try:
                 r = await session.websocket.receive_json()
             except TypeError as e:
-                # The aiohttp WebSocket code raises the unhelpful error
-                # message TypeError("Received message 257:None is not str")
-                # if the WebSocket connection is abruptly closed.  Translate
-                # this into a useful error that we can annotate.
+                # The aiohttp WebSocket code raises TypeError on various
+                # WebSocket problems, including the unhelpful error message
+                # TypeError("Received message 257:None is not str") if the
+                # WebSocket connection is abruptly closed.  Translate these
+                # into useful errors that we can annotate.
                 if "Received message 257" in str(e):
                     error = "WebSocket unexpectedly closed"
-                    raise JupyterWebSocketError(username, error) from e
+                elif "Received message 258:" in str(e):
+                    error = str(e).removeprefix("Received message 258:")
                 else:
-                    raise
+                    error = str(e)
+                error = error.removesuffix(" is not str")
+                raise JupyterWebSocketError(username, error) from e
 
             self.log.debug(f"Recieved kernel message: {r}")
             msg_type = r["msg_type"]
