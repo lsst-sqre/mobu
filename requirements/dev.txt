@@ -381,6 +381,7 @@ multidict==5.2.0 \
     --hash=sha256:fd77c8f3cba815aa69cb97ee2b2ef385c7c12ada9c734b0f3b32e26bb88bbf1d
     # via
     #   -c requirements/main.txt
+    #   -r requirements/dev.in
     #   aiohttp
     #   yarl
 mypy==0.910 \
@@ -625,4 +626,5 @@ yarl==1.7.2 \
     --hash=sha256:fd547ec596d90c8676e369dd8a581a21227fe9b4ad37d0dc7feb4ccf544c2d59
     # via
     #   -c requirements/main.txt
+    #   -r requirements/dev.in
     #   aiohttp

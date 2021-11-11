@@ -26,12 +26,7 @@ from typing import (
 )
 from uuid import uuid4
 
-from aiohttp import (
-    ClientResponseError,
-    ClientSession,
-    TCPConnector,
-    WSServerHandshakeError,
-)
+from aiohttp import ClientResponseError, ClientSession, TCPConnector
 
 from .cachemachine import CachemachineClient
 from .config import config
@@ -402,12 +397,7 @@ class JupyterClient:
             + f"user/{self.user.username}/api/kernels/"
             + f"{kernel_id}/channels"
         )
-        try:
-            websocket = await self.session.ws_connect(
-                channels_url, max_msg_size=0
-            )
-        except WSServerHandshakeError as e:
-            raise JupyterError.from_exception(self.user.username, e) from None
+        websocket = await self.session.ws_connect(channels_url, max_msg_size=0)
         return JupyterLabSession(
             session_id=response["id"], kernel_id=kernel_id, websocket=websocket
         )
