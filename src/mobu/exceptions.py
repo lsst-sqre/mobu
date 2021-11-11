@@ -219,7 +219,7 @@ class JupyterError(SlackError):
             url=str(exc.request_info.url),
             user=user,
             status=exc.status,
-            reason=exc.message,
+            reason=exc.message if exc.message else str(exc),
             method=exc.request_info.method,
         )
 

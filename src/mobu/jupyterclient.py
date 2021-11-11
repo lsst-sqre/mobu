@@ -13,11 +13,25 @@ import re
 import string
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import wraps
 from http.cookies import BaseCookie
-from typing import TYPE_CHECKING
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    TypeVar,
+    cast,
+)
 from uuid import uuid4
 
-from aiohttp import ClientSession, TCPConnector, WSServerHandshakeError
+from aiohttp import (
+    ClientResponseError,
+    ClientSession,
+    TCPConnector,
+    WSServerHandshakeError,
+)
 
 from .cachemachine import CachemachineClient
 from .config import config
@@ -25,7 +39,7 @@ from .exceptions import CodeExecutionError, JupyterError, JupyterWebSocketError
 from .models.jupyter import JupyterImage, JupyterImageClass
 
 if TYPE_CHECKING:
-    from typing import Any, AsyncIterator, Dict, Optional
+    from typing import Dict, Optional
 
     from aiohttp import ClientResponse, ClientWebSocketResponse
     from aiohttp.client import _RequestContextManager, _WSRequestContextManager
@@ -173,6 +187,42 @@ class JupyterClientSession:
         return self._session.ws_connect(*args, **kwargs)
 
 
+# Type of method that can be decorated with _convert_exception.
+F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
+F_Iter = TypeVar("F_Iter", bound=Callable[..., AsyncIterator[Any]])
+
+
+def _convert_exception(f: F) -> F:
+    """Convert web errors to `~mobu.exceptions.JupyterError`."""
+
+    @wraps(f)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return await f(*args, **kwargs)
+        except ClientResponseError as e:
+            obj = args[0]
+            username = obj.user.username
+            raise JupyterError.from_exception(username, e) from None
+
+    return cast(F, wrapper)
+
+
+def _convert_exception_iter(f: F_Iter) -> F_Iter:
+    """Convert web errors to `~mobu.exceptions.JupyterError`."""
+
+    @wraps(f)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            async for r in f(*args, **kwargs):
+                yield r
+        except ClientResponseError as e:
+            obj = args[0]
+            username = obj.user.username
+            raise JupyterError.from_exception(username, e) from None
+
+    return cast(F_Iter, wrapper)
+
+
 class JupyterClient:
     """Client for talking to JupyterHub and Jupyter labs.
 
@@ -214,11 +264,13 @@ class JupyterClient:
     async def close(self) -> None:
         await self.session.close()
 
+    @_convert_exception
     async def hub_login(self) -> None:
         async with self.session.get(self.jupyter_url + "hub/login") as r:
             if r.status != 200:
                 raise await JupyterError.from_response(self.user.username, r)
 
+    @_convert_exception
     async def lab_login(self) -> None:
         self.log.info("Logging into lab")
         lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
@@ -226,6 +278,7 @@ class JupyterClient:
             if r.status != 200:
                 raise await JupyterError.from_response(self.user.username, r)
 
+    @_convert_exception
     async def is_lab_stopped(self, final: bool = False) -> bool:
         """Determine if the lab is fully stopped.
 
@@ -247,6 +300,7 @@ class JupyterClient:
             self.log.warning(msg)
         return result
 
+    @_convert_exception
     async def spawn_lab(self) -> JupyterImage:
         spawn_url = self.jupyter_url + "hub/spawn"
 
@@ -279,6 +333,7 @@ class JupyterClient:
         # annotate timers and get it into error reports.
         return image
 
+    @_convert_exception_iter
     async def spawn_progress(self) -> AsyncIterator[ProgressMessage]:
         """Monitor lab spawn progress.
 
@@ -309,6 +364,7 @@ class JupyterClient:
             await asyncio.sleep(1)
             self.log.info("Retrying spawn progress request")
 
+    @_convert_exception
     async def delete_lab(self) -> None:
         if await self.is_lab_stopped():
             self.log.info("Lab is already stopped")
@@ -320,6 +376,7 @@ class JupyterClient:
             if r.status not in [200, 202, 204]:
                 raise await JupyterError.from_response(self.user.username, r)
 
+    @_convert_exception
     async def create_labsession(
         self, notebook_name: Optional[str] = None, *, kernel_name: str = "LSST"
     ) -> JupyterLabSession:
@@ -355,6 +412,7 @@ class JupyterClient:
             session_id=response["id"], kernel_id=kernel_id, websocket=websocket
         )
 
+    @_convert_exception
     async def delete_labsession(self, session: JupyterLabSession) -> None:
         user = self.user.username
         session_url = (
