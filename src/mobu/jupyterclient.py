@@ -26,11 +26,21 @@ from typing import (
 )
 from uuid import uuid4
 
-from aiohttp import ClientResponseError, ClientSession, TCPConnector
+from aiohttp import (
+    ClientError,
+    ClientResponseError,
+    ClientSession,
+    TCPConnector,
+)
 
 from .cachemachine import CachemachineClient
 from .config import config
-from .exceptions import CodeExecutionError, JupyterError, JupyterWebSocketError
+from .exceptions import (
+    CodeExecutionError,
+    JupyterError,
+    JupyterResponseError,
+    JupyterWebSocketError,
+)
 from .models.jupyter import JupyterImage, JupyterImageClass
 
 if TYPE_CHECKING:
@@ -188,7 +198,7 @@ F_Iter = TypeVar("F_Iter", bound=Callable[..., AsyncIterator[Any]])
 
 
 def _convert_exception(f: F) -> F:
-    """Convert web errors to `~mobu.exceptions.JupyterError`."""
+    """Convert web errors to a `~mobu.exceptions.SlackError`."""
 
     @wraps(f)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -197,13 +207,17 @@ def _convert_exception(f: F) -> F:
         except ClientResponseError as e:
             obj = args[0]
             username = obj.user.username
-            raise JupyterError.from_exception(username, e) from None
+            raise JupyterResponseError.from_exception(username, e) from None
+        except (ClientError, ConnectionResetError) as e:
+            obj = args[0]
+            username = obj.user.username
+            raise JupyterError(username, e) from None
 
     return cast(F, wrapper)
 
 
 def _convert_exception_iter(f: F_Iter) -> F_Iter:
-    """Convert web errors to `~mobu.exceptions.JupyterError`."""
+    """Convert web errors to a `~mobu.exceptions.SlackError`."""
 
     @wraps(f)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -213,7 +227,11 @@ def _convert_exception_iter(f: F_Iter) -> F_Iter:
         except ClientResponseError as e:
             obj = args[0]
             username = obj.user.username
-            raise JupyterError.from_exception(username, e) from None
+            raise JupyterResponseError.from_exception(username, e) from None
+        except (ClientError, ConnectionResetError) as e:
+            obj = args[0]
+            username = obj.user.username
+            raise JupyterError(username, e) from None
 
     return cast(F_Iter, wrapper)
 
@@ -263,7 +281,9 @@ class JupyterClient:
     async def hub_login(self) -> None:
         async with self.session.get(self.jupyter_url + "hub/login") as r:
             if r.status != 200:
-                raise await JupyterError.from_response(self.user.username, r)
+                raise await JupyterResponseError.from_response(
+                    self.user.username, r
+                )
 
     @_convert_exception
     async def lab_login(self) -> None:
@@ -271,7 +291,9 @@ class JupyterClient:
         lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
         async with self.session.get(lab_url) as r:
             if r.status != 200:
-                raise await JupyterError.from_response(self.user.username, r)
+                raise await JupyterResponseError.from_response(
+                    self.user.username, r
+                )
 
     @_convert_exception
     async def is_lab_stopped(self, final: bool = False) -> bool:
@@ -287,7 +309,9 @@ class JupyterClient:
         headers = {"Referer": self.jupyter_url + "hub/home"}
         async with self.session.get(user_url, headers=headers) as r:
             if r.status != 200:
-                raise await JupyterError.from_response(self.user.username, r)
+                raise await JupyterResponseError.from_response(
+                    self.user.username, r
+                )
             data = await r.json()
         result = data["servers"] == {}
         if final and not result:
@@ -322,7 +346,9 @@ class JupyterClient:
         data = self._build_jupyter_spawn_form(image)
         async with self.session.post(spawn_url, data=data) as r:
             if r.status != 200:
-                raise await JupyterError.from_response(self.user.username, r)
+                raise await JupyterResponseError.from_response(
+                    self.user.username, r
+                )
 
         # Return information about the image spawned so that we can use it to
         # annotate timers and get it into error reports.
@@ -343,7 +369,7 @@ class JupyterClient:
         while True:
             async with self.session.get(progress_url, headers=headers) as r:
                 if r.status != 200:
-                    raise await JupyterError.from_response(
+                    raise await JupyterResponseError.from_response(
                         self.user.username, r
                     )
                 progress = JupyterSpawnProgress(r, self.log)
@@ -369,7 +395,9 @@ class JupyterClient:
         headers = {"Referer": self.jupyter_url + "hub/home"}
         async with self.session.delete(server_url, headers=headers) as r:
             if r.status not in [200, 202, 204]:
-                raise await JupyterError.from_response(self.user.username, r)
+                raise await JupyterResponseError.from_response(
+                    self.user.username, r
+                )
 
     @_convert_exception
     async def create_labsession(
@@ -388,7 +416,9 @@ class JupyterClient:
 
         async with self.session.post(session_url, json=body) as r:
             if r.status != 201:
-                raise await JupyterError.from_response(self.user.username, r)
+                raise await JupyterResponseError.from_response(
+                    self.user.username, r
+                )
             response = await r.json()
 
         kernel_id = response["kernel"]["id"]
@@ -412,7 +442,9 @@ class JupyterClient:
         await session.websocket.close()
         async with self.session.delete(session_url) as r:
             if r.status != 204:
-                raise await JupyterError.from_response(self.user.username, r)
+                raise await JupyterResponseError.from_response(
+                    self.user.username, r
+                )
 
     async def run_python(self, session: JupyterLabSession, code: str) -> str:
         username = self.user.username

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from abc import ABCMeta, abstractmethod
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
@@ -20,6 +19,7 @@ __all__ = [
     "CodeExecutionError",
     "FlockNotFoundException",
     "JupyterError",
+    "JupyterResponseError",
     "JupyterTimeoutError",
     "MonkeyNotFoundException",
     "SlackError",
@@ -50,7 +50,7 @@ class NotebookRepositoryError(Exception):
     """The repository containing notebooks to run is not valid."""
 
 
-class SlackError(Exception, metaclass=ABCMeta):
+class SlackError(Exception):
     """Represents an exception that can be reported to Slack.
 
     Intended to be subclassed.  Subclasses must override the to_slack
@@ -65,9 +65,22 @@ class SlackError(Exception, metaclass=ABCMeta):
         self.annotations: Dict[str, str] = {}
         super().__init__(msg)
 
-    @abstractmethod
     def to_slack(self) -> Dict[str, Any]:
-        """Build a Slack message suitable for sending to an incoming webook."""
+        """Format the error as a Slack Block Kit message.
+
+        This is the generic version that only reports the text of the
+        exception and common fields.  Most classes will want to override it.
+        """
+        return {
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": str(self)},
+                },
+                {"type": "section", "fields": self.common_fields()},
+                {"type": "divider"},
+            ]
+        }
 
     def common_fields(self) -> List[Dict[str, Union[str, bool]]]:
         """Return common fields to put in any alert."""
@@ -209,12 +222,19 @@ class CodeExecutionError(SlackError):
 
 
 class JupyterError(SlackError):
-    """Web error from JupyterHub or JupyterLab."""
+    """An exception occurred when talking to JupyterHub or JupyterLab."""
+
+    def __init__(self, user: str, exc: Exception) -> None:
+        super().__init__(user, f"{type(exc).__name__}: {str(exc)}")
+
+
+class JupyterResponseError(SlackError):
+    """Web response error from JupyterHub or JupyterLab."""
 
     @classmethod
     def from_exception(
         cls, user: str, exc: ClientResponseError
-    ) -> JupyterError:
+    ) -> JupyterResponseError:
         return cls(
             url=str(exc.request_info.url),
             user=user,
@@ -226,7 +246,7 @@ class JupyterError(SlackError):
     @classmethod
     async def from_response(
         cls, user: str, response: ClientResponse
-    ) -> JupyterError:
+    ) -> JupyterResponseError:
         return cls(
             url=str(response.url),
             user=user,
@@ -343,16 +363,3 @@ class JupyterTimeoutError(SlackError):
 
 class JupyterWebSocketError(SlackError):
     """Unexpected messages on the session WebSocket."""
-
-    def to_slack(self) -> Dict[str, Any]:
-        """Format the error as a Slack Block Kit message."""
-        return {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": str(self)},
-                },
-                {"type": "section", "fields": self.common_fields()},
-                {"type": "divider"},
-            ]
-        }
