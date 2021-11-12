@@ -24,9 +24,12 @@ class CachemachineClient:
     The resulting string can be passed in to the JupyterHub options form.
     """
 
-    def __init__(self, session: ClientSession, token: str) -> None:
+    def __init__(
+        self, session: ClientSession, token: str, username: str
+    ) -> None:
         self._session = session
         self._token = token
+        self._username = username
         self._url = urljoin(
             config.environment_url, "cachemachine/jupyter/available"
         )
@@ -48,7 +51,7 @@ class CachemachineClient:
         for image in await self._get_images():
             if image.name.startswith("Weekly"):
                 return image
-        raise CachemachineError("No weekly versions found")
+        raise CachemachineError(self._username, "No weekly images found")
 
     async def get_recommended(self) -> JupyterImage:
         """Image string for the latest recommended version.
@@ -64,20 +67,19 @@ class CachemachineClient:
             Some error occurred talking to cachemachine.
         """
         images = await self._get_images()
+        if not images or not images[0]:
+            raise CachemachineError(self._username, "No images found")
         return images[0]
 
     async def _get_images(self) -> List[JupyterImage]:
         headers = {"Authorization": f"bearer {self._token}"}
         async with self._session.get(self._url, headers=headers) as r:
             if r.status != 200:
-                msg = (
-                    "Cannot get image status from cachemachine: "
-                    f"{r.status} {r.reason}"
-                )
-                raise CachemachineError(msg)
+                msg = f"Cannot get image status: {r.status} {r.reason}"
+                raise CachemachineError(self._username, msg)
             try:
                 data = await r.json()
                 return [JupyterImage.from_dict(i) for i in data["images"]]
             except Exception as e:
-                msg = f"Invalid response from cachemachine: {str(e)}"
-                raise CachemachineError(msg)
+                msg = f"Invalid response: {type(e).__name__}: {str(e)}"
+                raise CachemachineError(self._username, msg)

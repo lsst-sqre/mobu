@@ -26,10 +26,6 @@ __all__ = [
 ]
 
 
-class CachemachineError(Exception):
-    """Unable to get image information from cachemachine."""
-
-
 class FlockNotFoundException(Exception):
     """The named flock was not found."""
 
@@ -118,6 +114,13 @@ class SlackError(Exception):
                 }
             )
         return fields
+
+
+class CachemachineError(SlackError):
+    """Failed to obtain a valid image list from cachemachine."""
+
+    def __init__(self, user: str, msg: str) -> None:
+        super().__init__(user, f"Cachemachine error: {msg}")
 
 
 class CodeExecutionError(SlackError):

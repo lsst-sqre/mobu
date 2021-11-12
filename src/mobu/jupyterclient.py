@@ -250,7 +250,7 @@ class JupyterClient:
         # sharing the session, but that shouldn't matter.
         assert config.gafaelfawr_token
         self.cachemachine = CachemachineClient(
-            session, config.gafaelfawr_token
+            session, config.gafaelfawr_token, self.user.username
         )
 
     async def close(self) -> None:
