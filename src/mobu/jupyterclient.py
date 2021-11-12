@@ -194,7 +194,6 @@ class JupyterClientSession:
 
 # Type of method that can be decorated with _convert_exception.
 F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
-F_Iter = TypeVar("F_Iter", bound=Callable[..., AsyncIterator[Any]])
 
 
 def _convert_exception(f: F) -> F:
@@ -208,32 +207,12 @@ def _convert_exception(f: F) -> F:
             obj = args[0]
             username = obj.user.username
             raise JupyterResponseError.from_exception(username, e) from None
-        except (ClientError, ConnectionResetError) as e:
+        except (ClientError, ConnectionResetError, asyncio.TimeoutError) as e:
             obj = args[0]
             username = obj.user.username
-            raise JupyterError(username, e) from None
+            raise JupyterError(username, e) from e
 
     return cast(F, wrapper)
-
-
-def _convert_exception_iter(f: F_Iter) -> F_Iter:
-    """Convert web errors to a `~mobu.exceptions.SlackError`."""
-
-    @wraps(f)
-    async def wrapper(*args: Any, **kwargs: Any) -> Any:
-        try:
-            async for r in f(*args, **kwargs):
-                yield r
-        except ClientResponseError as e:
-            obj = args[0]
-            username = obj.user.username
-            raise JupyterResponseError.from_exception(username, e) from None
-        except (ClientError, ConnectionResetError) as e:
-            obj = args[0]
-            username = obj.user.username
-            raise JupyterError(username, e) from None
-
-    return cast(F_Iter, wrapper)
 
 
 class JupyterClient:
@@ -354,12 +333,15 @@ class JupyterClient:
         # annotate timers and get it into error reports.
         return image
 
-    @_convert_exception_iter
     async def spawn_progress(self) -> AsyncIterator[ProgressMessage]:
         """Monitor lab spawn progress.
 
         This is an EventStream API, which provides a stream of events until
         the lab is spawned or the spawn fails.
+
+        Unlike other `JupyterClient` methods, the caller is responsible for
+        handling exceptions and converting them to an exception that can
+        produce a Slack notification.
         """
         progress_url = (
             self.jupyter_url

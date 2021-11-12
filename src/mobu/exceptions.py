@@ -302,8 +302,20 @@ class JupyterResponseError(SlackError):
 class JupyterSpawnError(SlackError):
     """The Jupyter Lab pod failed to spawn."""
 
-    def __init__(self, user: str, log: str) -> None:
-        super().__init__(user, "Spawning lab failed")
+    @classmethod
+    def from_exception(
+        cls, user: str, log: str, exc: Exception
+    ) -> JupyterSpawnError:
+        return cls(user, log, f"{type(exc).__name__}: {str(exc)}")
+
+    def __init__(
+        self, user: str, log: str, message: Optional[str] = None
+    ) -> None:
+        if message:
+            message = f"Spawning lab failed: {message}"
+        else:
+            message = "Spawning lab failed"
+        super().__init__(user, message)
         self.log = log
 
     def to_slack(self) -> Dict[str, Any]:
@@ -312,7 +324,7 @@ class JupyterSpawnError(SlackError):
             "blocks": [
                 {
                     "type": "section",
-                    "text": {"type": "mrkdwn", "text": "Spawning lab failed"},
+                    "text": {"type": "mrkdwn", "text": str(self)},
                 },
                 {"type": "section", "fields": self.common_fields()},
                 {
