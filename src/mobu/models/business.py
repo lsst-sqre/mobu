@@ -100,7 +100,7 @@ class BusinessConfig(BaseModel):
         60,
         title="Time to pause after spawning lab",
         description=(
-            "Only used by JupyterLoginLoop and JupyterJitterLoginLoop."
+            "Only used by JupyterLoginLoop and its subclasses."
             " How long to wait after spawning the lab before destroying"
             " it again."
         ),
@@ -172,6 +172,12 @@ class BusinessData(BaseModel):
         None,
         title="JupyterLab image information",
         description="Will only be present when there is an active Jupyter lab",
+    )
+
+    progress_log_messages: Optional[List[str]] = Field(
+        None,
+        title="ProgressLog messages from Lab spawn",
+        description="Only used by SpawnTimerLoop",
     )
 
     notebook: Optional[str] = Field(

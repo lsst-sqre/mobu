@@ -50,6 +50,7 @@ class FlockConfig(BaseModel):
         "JupyterLoginLoop",
         "JupyterPythonLoop",
         "NotebookRunner",
+        "SpawnTimerLoop",
         "TAPQueryRunner",
     ] = Field(..., title="Type of business to run")
 

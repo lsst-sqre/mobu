@@ -12,6 +12,7 @@ from .business.jupyterjitterloginloop import JupyterJitterLoginLoop
 from .business.jupyterloginloop import JupyterLoginLoop
 from .business.jupyterpythonloop import JupyterPythonLoop
 from .business.notebookrunner import NotebookRunner
+from .business.spawntimerloop import SpawnTimerLoop
 from .business.tapqueryrunner import TAPQueryRunner
 from .exceptions import MonkeyNotFoundException
 from .models.flock import FlockConfig, FlockData, FlockSummary
@@ -32,6 +33,7 @@ _BUSINESS_CLASS = {
     "JupyterLoginLoop": JupyterLoginLoop,
     "JupyterPythonLoop": JupyterPythonLoop,
     "NotebookRunner": NotebookRunner,
+    "SpawnTimerLoop": SpawnTimerLoop,
     "TAPQueryRunner": TAPQueryRunner,
 }
 

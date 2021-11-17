@@ -132,6 +132,7 @@ certifi==2021.10.8 \
     --hash=sha256:78884e7c1d4b00ce3cea67b44566851c4343c120abd683433ce934a68ea58872 \
     --hash=sha256:d62a0163eb4c2344ac042ab2bdf75399a71a2d8c7d47eac2e2ee91b9d6339569
     # via
+    #   httpcore
     #   httpx
     #   requests
 charset-normalizer==2.0.7 \
@@ -247,9 +248,9 @@ h11==0.12.0 \
     # via
     #   httpcore
     #   uvicorn
-httpcore==0.13.7 \
-    --hash=sha256:036f960468759e633574d7c121afba48af6419615d36ab8ede979f1ad6276fa3 \
-    --hash=sha256:369aa481b014cf046f7067fddd67d00560f2f00426e79569d99cb11245134af0
+httpcore==0.14.3 \
+    --hash=sha256:9a98d2416b78976fc5396ff1f6b26ae9885efbb3105d24eed490f20ab4c95ec1 \
+    --hash=sha256:d10162a63265a0228d5807964bd964478cbdb5178f9a2eedfebb2faba27eef5d
     # via httpx
 httptools==0.2.0 \
     --hash=sha256:01b392a166adcc8bc2f526a939a8aabf89fe079243e1543fd0e7dc1b58d737cb \
@@ -268,9 +269,9 @@ httptools==0.2.0 \
     --hash=sha256:d5682eeb10cca0606c4a8286a3391d4c3c5a36f0c448e71b8bd05be4e1694bfb \
     --hash=sha256:fd3b8905e21431ad306eeaf56644a68fdd621bf8f3097eff54d0f6bdf7262065
     # via uvicorn
-httpx==0.20.0 \
-    --hash=sha256:09606d630f070d07f9ff28104fbcea429ea0014c1e89ac90b4d8de8286c40e7b \
-    --hash=sha256:33af5aad9bdc82ef1fc89219c1e36f5693bf9cd0ebe330884df563445682c0f8
+httpx==0.21.1 \
+    --hash=sha256:02af20df486b78892a614a7ccd4e4e86a5409ec4981ab0e422c579a887acad83 \
+    --hash=sha256:208e5ef2ad4d105213463cfd541898ed9d11851b346473539a8425e644bb7c66
     # via safir
 idna==3.3 \
     --hash=sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff \
@@ -608,6 +609,7 @@ structlog==21.2.0 \
     #   -r requirements/main.in
     #   safir
 typing-extensions==4.0.0 \
+    --hash=sha256:2cdf80e4e04866a9b3689a51869016d36db0814d84b8d8a568d22781d45d27ed \
     --hash=sha256:829704698b22e13ec9eaf959122315eabb370b0884400e9818334d8b677023d9
     # via
     #   async-timeout
