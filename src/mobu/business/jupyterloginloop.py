@@ -6,12 +6,19 @@ instance, and then delete them.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
+from aiohttp import ClientError, ClientResponseError
+
 from ..constants import DATE_FORMAT
-from ..exceptions import JupyterSpawnError, JupyterTimeoutError
+from ..exceptions import (
+    JupyterResponseError,
+    JupyterSpawnError,
+    JupyterTimeoutError,
+)
 from ..jupyterclient import JupyterClient
 from .base import Business
 
@@ -130,10 +137,22 @@ class JupyterLoginLoop(Business):
             log_messages = []
             timeout = self.config.spawn_timeout - self.config.spawn_settle_time
             progress = self._client.spawn_progress()
-            async for message in self.iter_with_timeout(progress, timeout):
-                log_messages.append(ProgressLogMessage(message.message))
-                if message.ready:
-                    return
+            try:
+                async for message in self.iter_with_timeout(progress, timeout):
+                    log_messages.append(ProgressLogMessage(message.message))
+                    if message.ready:
+                        return
+            except ClientResponseError as e:
+                username = self.user.username
+                raise JupyterResponseError.from_exception(username, e) from e
+            except (
+                ClientError,
+                ConnectionResetError,
+                asyncio.TimeoutError,
+            ) as e:
+                username = self.user.username
+                log = "\n".join([str(m) for m in log_messages])
+                raise JupyterSpawnError.from_exception(username, log, e) from e
 
             # We only fall through if the spawn failed, timed out, or if we're
             # stopping the business.

@@ -15,8 +15,9 @@ from typing import TYPE_CHECKING
 from unittest.mock import ANY, AsyncMock, Mock
 from uuid import uuid4
 
-from aiohttp import ClientWebSocketResponse
+from aiohttp import ClientWebSocketResponse, RequestInfo, TooManyRedirects
 from aioresponses import CallbackResult
+from multidict import CIMultiDict, CIMultiDictProxy
 
 from mobu.business.jupyterpythonloop import _GET_NODE
 from mobu.config import config
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
     from typing import Any, Dict, Optional, Union
 
     from aioresponses import aioresponses
+    from yarl import URL
 
 
 class JupyterAction(Enum):
@@ -71,6 +73,7 @@ class MockJupyter:
         self.state: Dict[str, JupyterState] = {}
         self.delete_immediate = True
         self.spawn_timeout = False
+        self.redirect_loop = False
         self._delete_at: Dict[str, Optional[datetime]] = {}
         self._fail: Dict[str, Dict[JupyterAction, bool]] = {}
 
@@ -80,7 +83,7 @@ class MockJupyter:
             self._fail[user] = {}
         self._fail[user][action] = True
 
-    def login(self, url: str, **kwargs: Any) -> CallbackResult:
+    def login(self, url: URL, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         if JupyterAction.LOGIN in self._fail.get(user, {}):
             return CallbackResult(status=500)
@@ -89,7 +92,7 @@ class MockJupyter:
             self.state[user] = JupyterState.LOGGED_IN
         return CallbackResult(status=200)
 
-    def user(self, url: str, **kwargs: Any) -> CallbackResult:
+    def user(self, url: URL, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         if JupyterAction.USER in self._fail.get(user, {}):
             return CallbackResult(status=500)
@@ -112,7 +115,19 @@ class MockJupyter:
             body = {"name": user, "servers": {}}
         return CallbackResult(status=200, body=json.dumps(body))
 
-    async def progress(self, url: str, **kwargs: Any) -> CallbackResult:
+    async def progress(self, url: URL, **kwargs: Any) -> CallbackResult:
+        if self.redirect_loop:
+            headers: CIMultiDict[str] = CIMultiDict()
+            raise TooManyRedirects(
+                request_info=RequestInfo(
+                    url=url,
+                    method="GET",
+                    headers=CIMultiDictProxy(headers),
+                    real_url=url,
+                ),
+                history=(),
+                status=303,
+            )
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/hub/api/users/{user}/server/progress")
         state = self.state.get(user, JupyterState.LOGGED_OUT)
@@ -141,7 +156,7 @@ class MockJupyter:
             )
         return CallbackResult(status=200, body=body)
 
-    def spawn(self, url: str, **kwargs: Any) -> CallbackResult:
+    def spawn(self, url: URL, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         if JupyterAction.SPAWN in self._fail.get(user, {}):
             return CallbackResult(status=500, method="POST", reason="foo")
@@ -153,7 +168,7 @@ class MockJupyter:
             headers={"Location": _url(f"hub/spawn-pending/{user}")},
         )
 
-    def spawn_pending(self, url: str, **kwargs: Any) -> CallbackResult:
+    def spawn_pending(self, url: URL, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/hub/spawn-pending/{user}")
         if JupyterAction.SPAWN_PENDING in self._fail.get(user, {}):
@@ -162,12 +177,12 @@ class MockJupyter:
         assert state == JupyterState.SPAWN_PENDING
         return CallbackResult(status=200)
 
-    def missing_lab(self, url: str, **kwargs: Any) -> CallbackResult:
+    def missing_lab(self, url: URL, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/hub/user/{user}/lab")
         return CallbackResult(status=503)
 
-    def lab(self, url: str, **kwargs: Any) -> CallbackResult:
+    def lab(self, url: URL, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/user/{user}/lab")
         if JupyterAction.LAB in self._fail.get(user, {}):
@@ -180,7 +195,7 @@ class MockJupyter:
                 status=302, headers={"Location": _url(f"hub/user/{user}/lab")}
             )
 
-    def delete_lab(self, url: str, **kwargs: Any) -> CallbackResult:
+    def delete_lab(self, url: URL, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/users/{user}/server")
         if JupyterAction.DELETE_LAB in self._fail.get(user, {}):
@@ -194,7 +209,7 @@ class MockJupyter:
             self._delete_at[user] = now + timedelta(seconds=5)
         return CallbackResult(status=202)
 
-    def create_session(self, url: str, **kwargs: Any) -> CallbackResult:
+    def create_session(self, url: URL, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         assert str(url).endswith(f"/user/{user}/api/sessions")
         assert user not in self.sessions
@@ -219,7 +234,7 @@ class MockJupyter:
             },
         )
 
-    def delete_session(self, url: str, **kwargs: Any) -> CallbackResult:
+    def delete_session(self, url: URL, **kwargs: Any) -> CallbackResult:
         user = self._get_user(kwargs["headers"]["Authorization"])
         session_id = self.sessions[user].session_id
         assert str(url).endswith(f"/user/{user}/api/sessions/{session_id}")

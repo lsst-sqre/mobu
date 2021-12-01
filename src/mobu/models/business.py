@@ -115,10 +115,10 @@ class BusinessConfig(BaseModel):
     )
 
     spawn_timeout: int = Field(
-        900,
+        610,
         title="Timeout for spawning a lab in seconds",
         description="Used by JupyterLoginLoop and its subclasses",
-        example=900,
+        example=610,
     )
 
     delete_timeout: int = Field(

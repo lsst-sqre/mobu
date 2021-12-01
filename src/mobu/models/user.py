@@ -66,7 +66,7 @@ class AuthenticatedUser(User):
                 "token_type": "user",
                 "token_name": f"mobu {str(float(time.time()))}",
                 "scopes": scopes,
-                "expires": int(time.time() + 2419200),
+                "expires": int(time.time() + 60 * 60 * 24 * 365),
                 "uid": user.uidnumber,
             },
             raise_for_status=True,

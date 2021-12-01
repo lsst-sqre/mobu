@@ -93,17 +93,19 @@ class NotebookRunner(JupyterPythonLoop):
                 msg = f"Invalid notebook {notebook.name}: {str(e)}"
                 raise NotebookRepositoryError(msg)
 
+        # Strip non-code cells.
+        cells = [c for c in cells if c["cell_type"] == "code"]
+
         # Add cell numbers to all the cells, which we'll use to name timing
         # events so that we can find cells that take an excessively long time
-        # to run.  Do this before we strip all non-code cells so that we can
-        # correlate to the original notebook.
+        # to run.
         #
         # We will prefer to use the id attribute of the cell if present, but
         # some of our notebooks are in the older format without an id.
         for i, cell in enumerate(cells, start=1):
             cell["_index"] = str(i)
 
-        return [c for c in cells if c["cell_type"] == "code"]
+        return cells
 
     async def create_session(
         self, notebook_name: Optional[str] = None

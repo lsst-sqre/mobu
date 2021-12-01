@@ -206,6 +206,72 @@ async def test_alert(
 
 
 @pytest.mark.asyncio
+async def test_redirect_loop(
+    client: AsyncClient,
+    jupyter: MockJupyter,
+    slack: MockSlack,
+    mock_aioresponses: aioresponses,
+) -> None:
+    mock_gafaelfawr(mock_aioresponses)
+    jupyter.redirect_loop = True
+
+    r = await client.put(
+        "/mobu/flocks",
+        json={
+            "name": "test",
+            "count": 1,
+            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "scopes": ["exec:notebook"],
+            "options": {
+                "spawn_settle_time": 0,
+                "lab_settle_time": 0,
+                "login_idle_time": 0,
+                "delete_lab": False,
+            },
+            "business": "JupyterLoginLoop",
+        },
+    )
+    assert r.status_code == 201
+
+    # Wait until we've finished one loop.
+    data = await wait_for_business(client, "testuser1")
+    assert data["business"]["success_count"] == 0
+    assert data["business"]["failure_count"] > 0
+
+    # Check that an appropriate error was posted.
+    url = urljoin(
+        config.environment_url, "/nb/hub/api/users/testuser1/server/progress"
+    )
+    assert slack.alerts == [
+        {
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"Status 303 from GET {url}",
+                    },
+                },
+                {
+                    "type": "section",
+                    "fields": [
+                        {"type": "mrkdwn", "text": ANY},
+                        {"type": "mrkdwn", "text": ANY},
+                        {"type": "mrkdwn", "text": "*User*\ntestuser1"},
+                        {"type": "mrkdwn", "text": "*Event*\nspawn_lab"},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Message*\nTooManyRedirects",
+                        },
+                    ],
+                },
+                {"type": "divider"},
+            ]
+        }
+    ]
+
+
+@pytest.mark.asyncio
 async def test_spawn_timeout(
     client: AsyncClient,
     jupyter: MockJupyter,
