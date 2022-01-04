@@ -106,7 +106,7 @@ class JupyterLoginLoop(Business):
                 return
             await self.lab_settle()
             if self.stopping:
-                return
+                return  # type: ignore[unreachable]  # bug in mypy 0.930
         await self.lab_login()
         await self.lab_business()
         if self.config.delete_lab:
@@ -157,7 +157,7 @@ class JupyterLoginLoop(Business):
             # We only fall through if the spawn failed, timed out, or if we're
             # stopping the business.
             if self.stopping:
-                return
+                return  # type: ignore[unreachable]  # bug in mypy 0.930
             log = "\n".join([str(m) for m in log_messages])
             if sw.elapsed.total_seconds() > timeout:
                 elapsed = round(sw.elapsed.total_seconds())
@@ -197,7 +197,7 @@ class JupyterLoginLoop(Business):
                 self.logger.info(msg)
                 await self.pause(2)
                 if self.stopping:
-                    return
+                    return  # type: ignore[unreachable]  # bug in mypy 0.930
 
         self.logger.info("Lab successfully deleted")
         self.image = None
