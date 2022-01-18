@@ -55,11 +55,15 @@ known_first_party = ["mobu", "tests"]
 skip = ["docs/conf.py"]
 
 [tool.pytest.ini_options]
+asyncio_mode = "strict"
 filterwarnings = [
+    # Bug in astropy
+    "ignore:distutils Version classes are deprecated:DeprecationWarning",
     # Bug in pyvo
     "ignore:Using or importing the ABCs:DeprecationWarning",
     # Bugs in aiojobs
-    "ignore:The loop argument is deprecated:DeprecationWarning"
+    "ignore:The loop argument is deprecated:DeprecationWarning",
+    "ignore:with timeout\\(\\) is deprecated:DeprecationWarning"
 ]
 python_files = [
     "tests/*.py",

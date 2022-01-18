@@ -27,6 +27,7 @@ class MockSlack:
 
 def mock_slack(mocked: aioresponses) -> MockSlack:
     """Set up a mocked Slack server."""
+    assert config.alert_hook
     mock = MockSlack()
     mocked.post(config.alert_hook, callback=mock.alert, repeat=True)
     return mock

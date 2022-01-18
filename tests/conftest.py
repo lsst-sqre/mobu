@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
+import pytest_asyncio
 from aiohttp import ClientSession
 from aioresponses import aioresponses
 from asgi_lifespan import LifespanManager
@@ -46,7 +47,7 @@ def configure() -> Iterator[None]:
     config.gafaelfawr_token = None
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def app(
     jupyter: MockJupyter, cachemachine: MockCachemachine
 ) -> AsyncIterator[FastAPI]:
@@ -68,7 +69,7 @@ async def app(
         yield main.app
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
     async with AsyncClient(app=app, base_url="https://example.com/") as client:
