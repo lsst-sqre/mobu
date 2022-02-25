@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import FileResponse, JSONResponse
-from safir.dependencies.logger import logger_dependency
+from safir.dependencies.gafaelfawr import auth_logger_dependency
 from safir.metadata import get_metadata
 from safir.models import ErrorModel
 from structlog.stdlib import BoundLogger
@@ -99,9 +99,11 @@ async def put_flock(
     flock_config: FlockConfig,
     response: Response,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
-    logger: BoundLogger = Depends(logger_dependency),
+    logger: BoundLogger = Depends(auth_logger_dependency),
 ) -> FlockData:
-    logger.info("Creating flock: %s", flock_config.dict())
+    logger.info(
+        "Creating flock", flock=flock_config.name, config=flock_config.dict()
+    )
     flock = await manager.start_flock(flock_config)
     response.headers["Location"] = quote(f"/mobu/flocks/{flock.name}")
     return flock.dump()
@@ -132,7 +134,9 @@ async def get_flock(
 async def delete_flock(
     flock: str,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
+    logger: BoundLogger = Depends(auth_logger_dependency),
 ) -> None:
+    logger.info("Deleting flock", flock=flock)
     await manager.stop_flock(flock)
 
 

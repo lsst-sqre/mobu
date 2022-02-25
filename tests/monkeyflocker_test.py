@@ -25,7 +25,11 @@ if TYPE_CHECKING:
     from typing import Any, Dict, Iterator
 
 APP_SOURCE = """
+from typing import Awaitable, Callable
+
 from aioresponses import aioresponses
+from fastapi import FastAPI, Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from mobu.config import config
 from mobu.main import app
@@ -33,8 +37,26 @@ from tests.support.gafaelfawr import make_gafaelfawr_token, mock_gafaelfawr
 from tests.support.jupyter import mock_jupyter
 
 
+# Pretend Gafaelfawr is doing authentication in front of mobu.  This is a
+# total hack based on https://github.com/tiangolo/fastapi/issues/2727 that
+# adds the header that would have been added by Gafaelfawr.  Unfortunately,
+# there's no documented way to modify request headers in middleware, so we
+# have to muck about with internals.
+class AddAuthHeaderMiddleware(BaseHTTPMiddleware):
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        request.headers.__dict__["_list"].append(
+            (b"x-auth-request-user", b"someuser")
+        )
+        return await call_next(request)
+
+
 @app.on_event("startup")
 async def startup_event() -> None:
+    app.add_middleware(AddAuthHeaderMiddleware)
     config.gafaelfawr_token = make_gafaelfawr_token()
     mocked = aioresponses()
     mocked.start()
@@ -127,6 +149,7 @@ def test_start_report_stop(tmp_path: Path, app_url: str) -> None:
             config.gafaelfawr_token,
         ],
     )
+    print(result.stdout)
     assert result.exit_code == 0
 
     expected: Dict[str, Any] = {
