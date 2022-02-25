@@ -72,7 +72,9 @@ async def app(
 @pytest_asyncio.fixture
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
-    async with AsyncClient(app=app, base_url="https://example.com/") as client:
+    url = "https://example.com/"
+    headers = {"X-Auth-Request-User": "someuser"}
+    async with AsyncClient(app=app, base_url=url, headers=headers) as client:
         yield client
 
 
