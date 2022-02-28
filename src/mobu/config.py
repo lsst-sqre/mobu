@@ -37,7 +37,7 @@ class Configuration:
     Set with the ``ENVIRONMENT_URL`` environment variable.
     """
 
-    cachemachine_image_policy: Optional[str] = os.getenv(
+    cachemachine_image_policy: str = os.getenv(
         "CACHEMACHINE_IMAGE_POLICY", "available"
     )
     """Whether to use the images available on all nodes, or the images
