@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from urllib.parse import urljoin
 
 from .config import config
 from .exceptions import CachemachineError
@@ -30,8 +29,11 @@ class CachemachineClient:
         self._session = session
         self._token = token
         self._username = username
-        self._url = urljoin(
-            config.environment_url, "cachemachine/jupyter/available"
+        # Should be configurable between available and desired
+        self._url = (
+            config.environment_url
+            + "/cachemachine/jupyter/"
+            + config.cachemachine_image_policy
         )
 
     async def get_latest_weekly(self) -> JupyterImage:

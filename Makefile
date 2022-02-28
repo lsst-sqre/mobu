@@ -1,12 +1,12 @@
 .PHONY: update-deps
 update-deps:
-	pip install --upgrade pip-tools pip setuptools
+	pip install --upgrade pip-tools 'pip<23' setuptools
 	pip-compile --upgrade --build-isolation --generate-hashes --output-file requirements/main.txt requirements/main.in
 	pip-compile --upgrade --build-isolation --generate-hashes --output-file requirements/dev.txt requirements/dev.in
 
 .PHONY: init
 init:
-	pip install --upgrade pip setuptools wheel
+	pip install --upgrade 'pip<23' setuptools wheel
 	pip install --editable .
 	pip install --upgrade -r requirements/main.txt -r requirements/dev.txt
 	rm -rf .tox
