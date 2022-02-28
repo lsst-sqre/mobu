@@ -42,8 +42,8 @@ class Configuration:
     )
     """Whether to use the images available on all nodes, or the images
     desired by cachemachine.  In instances where image streaming is enabled,
-    and therefore pulls are fast, 'desired' is preferred.  The default is
-    'available'.
+    and therefore pulls are fast, ``desired`` is preferred.  The default is
+    ``available``.
 
     Set with the ``CACHEMACHINE_IMAGE_POLICY`` environment variable.
     """
