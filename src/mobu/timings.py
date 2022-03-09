@@ -75,6 +75,7 @@ class Stopwatch:
         self.annotations = annotations
         self.start_time = datetime.now(tz=timezone.utc)
         self.stop_time: Optional[datetime] = None
+        self.failed = False
         self._previous = previous
 
     def __enter__(self) -> Stopwatch:
@@ -87,6 +88,8 @@ class Stopwatch:
         exc_tb: Optional[TracebackType],
     ) -> Literal[False]:
         self.stop_time = datetime.now(tz=timezone.utc)
+        if exc_val:
+            self.failed = True
         if exc_val and isinstance(exc_val, SlackError):
             exc_val.started = self.start_time
             exc_val.event = self.event
@@ -112,4 +115,5 @@ class Stopwatch:
             start=self.start_time,
             stop=self.stop_time,
             elapsed=elapsed,
+            failed=self.failed,
         )

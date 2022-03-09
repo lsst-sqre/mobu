@@ -34,3 +34,7 @@ class StopwatchData(BaseModel):
         description="Will be null if the event is ongoing",
         example=0.068551,
     )
+
+    failed: bool = Field(
+        False, title="Whether the event failed", example=False
+    )

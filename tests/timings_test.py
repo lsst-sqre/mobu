@@ -47,6 +47,7 @@ def test_timings() -> None:
             start=first_sw.start_time.isoformat(),
             stop=first_sw.stop_time.isoformat(),
             elapsed=first_sw.elapsed.total_seconds(),
+            failed=False,
         ),
         StopwatchData(
             event="else",
@@ -54,6 +55,7 @@ def test_timings() -> None:
             start=second_sw.start_time.isoformat(),
             stop=second_sw.stop_time.isoformat(),
             elapsed=second_sw.elapsed.total_seconds(),
+            failed=True,
         ),
     ]
 
