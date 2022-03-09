@@ -9,9 +9,10 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import Dict, Optional
 
 from aiohttp import ClientError, ClientResponseError
+from structlog import BoundLogger
 
 from ..constants import DATE_FORMAT
 from ..exceptions import (
@@ -20,16 +21,10 @@ from ..exceptions import (
     JupyterTimeoutError,
 )
 from ..jupyterclient import JupyterClient
+from ..models.business import BusinessConfig, BusinessData
+from ..models.jupyter import JupyterImage
+from ..models.user import AuthenticatedUser
 from .base import Business
-
-if TYPE_CHECKING:
-    from typing import Dict, Optional
-
-    from structlog import BoundLogger
-
-    from ..models.business import BusinessConfig, BusinessData
-    from ..models.jupyter import JupyterImage
-    from ..user import AuthenticatedUser
 
 __all__ = ["JupyterLoginLoop", "ProgressLogMessage"]
 

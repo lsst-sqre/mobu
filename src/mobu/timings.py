@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from datetime import datetime, timedelta, timezone
+from types import TracebackType
+from typing import Dict, List, Literal, Optional
 
 from .exceptions import SlackError
 from .models.timings import StopwatchData
-
-if TYPE_CHECKING:
-    from datetime import timedelta
-    from types import TracebackType
-    from typing import Dict, List, Literal, Optional
 
 
 class Timings:

@@ -6,21 +6,16 @@ import asyncio
 from asyncio import Queue, QueueEmpty, TimeoutError
 from datetime import datetime, timezone
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import AsyncIterable, AsyncIterator, TypeVar
 
-from ..models.business import BusinessData
+from structlog import BoundLogger
+
+from ..models.business import BusinessConfig, BusinessData
+from ..models.user import AuthenticatedUser
 from ..timings import Timings
 from ..util import wait_first
 
-if TYPE_CHECKING:
-    from typing import AsyncIterable, AsyncIterator, TypeVar
-
-    from structlog import BoundLogger
-
-    from ..models.business import BusinessConfig
-    from ..models.user import AuthenticatedUser
-
-    T = TypeVar("T")
+T = TypeVar("T")
 
 __all__ = ["Business"]
 

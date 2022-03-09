@@ -16,11 +16,12 @@ from datetime import datetime, timezone
 from functools import wraps
 from http.cookies import BaseCookie
 from typing import (
-    TYPE_CHECKING,
     Any,
     AsyncIterator,
     Awaitable,
     Callable,
+    Dict,
+    Optional,
     TypeVar,
     cast,
 )
@@ -28,10 +29,14 @@ from uuid import uuid4
 
 from aiohttp import (
     ClientError,
+    ClientResponse,
     ClientResponseError,
     ClientSession,
+    ClientWebSocketResponse,
     TCPConnector,
 )
+from aiohttp.client import _RequestContextManager, _WSRequestContextManager
+from structlog import BoundLogger
 
 from .cachemachine import CachemachineClient
 from .config import config
@@ -41,17 +46,8 @@ from .exceptions import (
     JupyterResponseError,
     JupyterWebSocketError,
 )
-from .models.jupyter import JupyterImage, JupyterImageClass
-
-if TYPE_CHECKING:
-    from typing import Dict, Optional
-
-    from aiohttp import ClientResponse, ClientWebSocketResponse
-    from aiohttp.client import _RequestContextManager, _WSRequestContextManager
-    from structlog import BoundLogger
-
-    from .models.jupyter import JupyterConfig
-    from .models.user import AuthenticatedUser
+from .models.jupyter import JupyterConfig, JupyterImage, JupyterImageClass
+from .models.user import AuthenticatedUser
 
 __all__ = ["JupyterClient", "JupyterLabSession"]
 

@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import List
+
+from aiohttp import ClientSession
 
 from .config import config
 from .exceptions import CachemachineError
 from .models.jupyter import JupyterImage
-
-if TYPE_CHECKING:
-    from typing import List
-
-    from aiohttp import ClientSession
 
 
 class CachemachineClient:

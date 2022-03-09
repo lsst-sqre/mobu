@@ -5,16 +5,13 @@ from __future__ import annotations
 import asyncio
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Any, Awaitable, Callable, Optional, TypeVar, Union
 
 import click
 
 from .client import MonkeyflockerClient
 
-if TYPE_CHECKING:
-    from typing import Any, Awaitable, Callable, Optional, TypeVar, Union
-
-    T = TypeVar("T")
+T = TypeVar("T")
 
 
 def coroutine(f: Callable[..., Awaitable[T]]) -> Callable[..., T]:

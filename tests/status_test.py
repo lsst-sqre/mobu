@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
@@ -11,9 +10,7 @@ import pytest
 from mobu.dependencies.manager import monkey_business_manager
 from mobu.models.flock import FlockSummary
 from mobu.status import post_status
-
-if TYPE_CHECKING:
-    from tests.support.slack import MockSlack
+from tests.support.slack import MockSlack
 
 
 @pytest.mark.asyncio

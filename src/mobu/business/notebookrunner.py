@@ -10,21 +10,16 @@ import json
 import random
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING
+from typing import Any, Dict, List, Optional
 
 import git
+from structlog import BoundLogger
 
 from ..exceptions import NotebookRepositoryError
 from ..jupyterclient import JupyterLabSession
+from ..models.business import BusinessConfig, BusinessData
+from ..models.user import AuthenticatedUser
 from .jupyterpythonloop import JupyterPythonLoop
-
-if TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional
-
-    from structlog import BoundLogger
-
-    from ..models.business import BusinessConfig, BusinessData
-    from ..models.user import AuthenticatedUser
 
 __all__ = ["NotebookRunner"]
 

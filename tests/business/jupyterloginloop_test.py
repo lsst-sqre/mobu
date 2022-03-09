@@ -3,23 +3,18 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
 from unittest.mock import ANY
 from urllib.parse import urljoin
 
 import pytest
+from aioresponses import aioresponses
+from httpx import AsyncClient
 
 from mobu.config import config
 from tests.support.gafaelfawr import mock_gafaelfawr
-from tests.support.jupyter import JupyterAction, JupyterState
+from tests.support.jupyter import JupyterAction, JupyterState, MockJupyter
+from tests.support.slack import MockSlack
 from tests.support.util import wait_for_business
-
-if TYPE_CHECKING:
-    from aioresponses import aioresponses
-    from httpx import AsyncClient
-
-    from tests.support.jupyter import MockJupyter
-    from tests.support.slack import MockSlack
 
 
 @pytest.mark.asyncio

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any, AsyncIterator, Iterator
 from unittest.mock import patch
 
 import pytest
@@ -10,23 +10,20 @@ import pytest_asyncio
 from aiohttp import ClientSession
 from aioresponses import aioresponses
 from asgi_lifespan import LifespanManager
+from fastapi import FastAPI
 from httpx import AsyncClient
 
 from mobu import main
 from mobu.config import config
-from tests.support.cachemachine import mock_cachemachine
+from tests.support.cachemachine import MockCachemachine, mock_cachemachine
 from tests.support.gafaelfawr import make_gafaelfawr_token
-from tests.support.jupyter import mock_jupyter, mock_jupyter_websocket
-from tests.support.slack import mock_slack
-
-if TYPE_CHECKING:
-    from typing import Any, AsyncIterator, Iterator
-
-    from fastapi import FastAPI
-
-    from tests.support.cachemachine import MockCachemachine
-    from tests.support.jupyter import MockJupyter, MockJupyterWebSocket
-    from tests.support.slack import MockSlack
+from tests.support.jupyter import (
+    MockJupyter,
+    MockJupyterWebSocket,
+    mock_jupyter,
+    mock_jupyter_websocket,
+)
+from tests.support.slack import MockSlack, mock_slack
 
 
 @pytest.fixture(autouse=True)

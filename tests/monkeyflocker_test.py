@@ -10,7 +10,8 @@ import shutil
 import socket
 import subprocess
 import time
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import Any, Dict, Iterator
 from unittest.mock import ANY
 
 import httpx
@@ -19,10 +20,6 @@ from click.testing import CliRunner
 
 from mobu.config import config
 from monkeyflocker.cli import main
-
-if TYPE_CHECKING:
-    from pathlib import Path
-    from typing import Any, Dict, Iterator
 
 APP_SOURCE = """
 from typing import Awaitable, Callable

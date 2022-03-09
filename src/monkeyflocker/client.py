@@ -6,18 +6,14 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from types import TracebackType
+from typing import Literal, Optional
 from urllib.parse import urljoin
 
 import aiohttp
 import structlog
 import yaml
-
-if TYPE_CHECKING:
-    from types import TracebackType
-    from typing import Literal, Optional
-
-    from structlog import BoundLogger
+from structlog import BoundLogger
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 """Date format to use for logging."""

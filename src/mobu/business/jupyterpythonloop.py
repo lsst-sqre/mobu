@@ -6,18 +6,14 @@ over again.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Dict, Optional
+
+from structlog import BoundLogger
 
 from ..jupyterclient import JupyterLabSession
+from ..models.business import BusinessConfig
+from ..models.user import AuthenticatedUser
 from .jupyterloginloop import JupyterLoginLoop
-
-if TYPE_CHECKING:
-    from typing import Dict, Optional
-
-    from structlog import BoundLogger
-
-    from ..models.business import BusinessConfig
-    from ..user import AuthenticatedUser
 
 __all__ = ["JupyterPythonLoop"]
 

@@ -3,16 +3,11 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import Any
 
-from aioresponses import CallbackResult
+from aioresponses import CallbackResult, aioresponses
 
 from mobu.config import config
-
-if TYPE_CHECKING:
-    from typing import Any
-
-    from aioresponses import aioresponses
 
 __all__ = ["MockCachemachine", "mock_cachemachine"]
 

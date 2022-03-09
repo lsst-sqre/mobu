@@ -5,17 +5,12 @@ from __future__ import annotations
 import base64
 import os
 import time
-from typing import TYPE_CHECKING
+from typing import Any, Optional
 from unittest.mock import ANY
 
-from aioresponses import CallbackResult
+from aioresponses import CallbackResult, aioresponses
 
 from mobu.config import config
-
-if TYPE_CHECKING:
-    from typing import Any, Optional
-
-    from aioresponses import aioresponses
 
 __all__ = ["make_gafaelfawr_token", "mock_gafaelfawr"]
 
