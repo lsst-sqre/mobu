@@ -2,24 +2,13 @@
 
 from __future__ import annotations
 
-import asyncio
-from functools import wraps
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Optional, TypeVar, Union
+from typing import Optional, Union
 
 import click
+from safir.asyncio import run_with_asyncio
 
 from .client import MonkeyflockerClient
-
-T = TypeVar("T")
-
-
-def coroutine(f: Callable[..., Awaitable[T]]) -> Callable[..., T]:
-    @wraps(f)
-    def wrapper(*args: Any, **kwargs: Any) -> T:
-        return asyncio.run(f(*args, **kwargs))
-
-    return wrapper
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -72,7 +61,7 @@ def help(ctx: click.Context, topic: Union[None, str]) -> None:
     envvar="MONKEYFLOCKER_TOKEN",
     help="Token to use to drive mobu",
 )
-@coroutine
+@run_with_asyncio
 async def start(base_url: str, spec_file: Path, token: str) -> None:
     """Start a flock of monkeys."""
     async with MonkeyflockerClient(base_url, token) as client:
@@ -103,7 +92,7 @@ async def start(base_url: str, spec_file: Path, token: str) -> None:
     help="Directory in which to store output",
 )
 @click.argument("name")
-@coroutine
+@run_with_asyncio
 async def report(base_url: str, token: str, output: Path, name: str) -> None:
     """Generate an output report for a flock."""
     async with MonkeyflockerClient(base_url, token) as client:
@@ -133,7 +122,7 @@ async def report(base_url: str, token: str, output: Path, name: str) -> None:
     help="Directory in which to store output",
 )
 @click.argument("name")
-@coroutine
+@run_with_asyncio
 async def stop(
     base_url: str, token: str, output: Optional[Path], name: str
 ) -> None:
