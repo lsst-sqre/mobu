@@ -96,6 +96,7 @@ class JupyterLoginLoop(Business):
     async def execute(self) -> None:
         """The work done in each iteration of the loop."""
         if self.config.delete_lab or await self._client.is_lab_stopped():
+            self.image = None
             await self.spawn_lab()
             if self.stopping:
                 return
