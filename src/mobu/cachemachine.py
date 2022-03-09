@@ -26,7 +26,6 @@ class CachemachineClient:
         self._session = session
         self._token = token
         self._username = username
-        # Should be configurable between available and desired
         self._url = (
             config.environment_url
             + "/cachemachine/jupyter/"
