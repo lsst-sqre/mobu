@@ -43,7 +43,8 @@ class TAPQueryRunner(Business):
             loader=jinja2.FileSystemLoader(str(template_path)),
             undefined=jinja2.StrictUndefined,
         )
-        self._objects = yaml.safe_load(str(template_path / "objects.yaml"))
+        with (template_path / "objects.yaml").open("r") as f:
+            self._objects = yaml.safe_load(f)
 
     @staticmethod
     def _make_client(token: str) -> pyvo.dal.TAPService:

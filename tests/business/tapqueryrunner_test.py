@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import cast
 from unittest.mock import ANY, patch
 
 import pytest
 import pyvo
+import structlog
+import yaml
 from aioresponses import aioresponses
 from httpx import AsyncClient
 
+import mobu
+from mobu.business.tapqueryrunner import TAPQueryRunner
+from mobu.models.business import BusinessConfig
+from mobu.models.user import AuthenticatedUser
 from tests.support.gafaelfawr import mock_gafaelfawr
 from tests.support.slack import MockSlack
 from tests.support.util import wait_for_business
@@ -138,3 +146,29 @@ async def test_alert(
             ],
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_random_object() -> None:
+    objects_path = (
+        Path(mobu.__file__).parent
+        / "templates"
+        / "tapqueryrunner"
+        / "objects.yaml"
+    )
+    with objects_path.open("r") as f:
+        objects = [str(o) for o in yaml.safe_load(f)]
+
+    logger = structlog.get_logger(__file__)
+    user = AuthenticatedUser(
+        username="user", uidnumber=1000, scopes=["read:tap"], token="blah blah"
+    )
+    with patch.object(pyvo.dal, "TAPService"):
+        runner = TAPQueryRunner(logger, BusinessConfig(), user)
+    parameters = runner._generate_parameters()
+
+    assert parameters["object"] in objects
+    random_objects = cast(str, parameters["objects"]).split(", ")
+    assert len(random_objects) == 12
+    for obj in random_objects:
+        assert obj in objects
