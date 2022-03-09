@@ -3,16 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Union
 
-from aiohttp import ClientResponseError
+from aiohttp import ClientResponse, ClientResponseError
 
 from .constants import DATE_FORMAT
-
-if TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional, Union
-
-    from aiohttp import ClientResponse
 
 __all__ = [
     "CachemachineError",

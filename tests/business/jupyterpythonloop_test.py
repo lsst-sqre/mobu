@@ -3,19 +3,15 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
 from unittest.mock import ANY
 
 import pytest
+from aioresponses import aioresponses
+from httpx import AsyncClient
 
 from tests.support.gafaelfawr import mock_gafaelfawr
+from tests.support.slack import MockSlack
 from tests.support.util import wait_for_business
-
-if TYPE_CHECKING:
-    from aioresponses import aioresponses
-    from httpx import AsyncClient
-
-    from tests.support.slack import MockSlack
 
 
 @pytest.mark.asyncio

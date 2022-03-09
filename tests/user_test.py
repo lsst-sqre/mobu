@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import pytest
 from aiohttp import ClientSession
+from aioresponses import aioresponses
 
 from mobu.models.user import AuthenticatedUser, User
 from tests.support.gafaelfawr import mock_gafaelfawr
-
-if TYPE_CHECKING:
-    from aioresponses import aioresponses
 
 
 @pytest.mark.asyncio

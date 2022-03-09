@@ -5,25 +5,19 @@ from __future__ import annotations
 import logging
 import sys
 from tempfile import NamedTemporaryFile
-from typing import TYPE_CHECKING
+from typing import Optional, Type
 
 import structlog
 from aiohttp import ClientSession
 from aiojobs import Scheduler
+from aiojobs._job import Job
 
+from .business.base import Business
 from .config import config
 from .exceptions import SlackError
-from .models.monkey import MonkeyData, MonkeyState
+from .models.monkey import MonkeyConfig, MonkeyData, MonkeyState
+from .models.user import AuthenticatedUser
 from .slack import SlackClient
-
-if TYPE_CHECKING:
-    from typing import Optional, Type
-
-    from aiojobs._job import Job
-
-    from .business.base import Business
-    from .models.monkey import MonkeyConfig
-    from .models.user import AuthenticatedUser
 
 __all__ = ["Monkey"]
 

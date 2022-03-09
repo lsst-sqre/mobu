@@ -10,25 +10,20 @@ from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from io import StringIO
+from re import Pattern
 from traceback import format_exc
-from typing import TYPE_CHECKING
+from typing import Any, Dict, Optional, Union
 from unittest.mock import ANY, AsyncMock, Mock
 from uuid import uuid4
 
 from aiohttp import ClientWebSocketResponse, RequestInfo, TooManyRedirects
-from aioresponses import CallbackResult
+from aioresponses import CallbackResult, aioresponses
 from multidict import CIMultiDict, CIMultiDictProxy
+from yarl import URL
 
 from mobu.business.jupyterpythonloop import _GET_NODE
 from mobu.config import config
 from mobu.jupyterclient import JupyterLabSession
-
-if TYPE_CHECKING:
-    from re import Pattern
-    from typing import Any, Dict, Optional, Union
-
-    from aioresponses import aioresponses
-    from yarl import URL
 
 
 class JupyterAction(Enum):

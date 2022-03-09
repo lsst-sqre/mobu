@@ -2,16 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any, Dict, List
 
-from aioresponses import CallbackResult
+from aioresponses import CallbackResult, aioresponses
 
 from mobu.config import config
-
-if TYPE_CHECKING:
-    from typing import Any, Dict, List
-
-    from aioresponses import aioresponses
 
 
 class MockSlack:

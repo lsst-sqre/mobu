@@ -4,16 +4,13 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import Any, Dict
+
+from aiohttp import ClientSession
+from structlog import BoundLogger
 
 from .constants import DATE_FORMAT
 from .exceptions import SlackError
-
-if TYPE_CHECKING:
-    from typing import Any, Dict
-
-    from aiohttp import ClientSession
-    from structlog import BoundLogger
 
 __all__ = ["SlackClient"]
 

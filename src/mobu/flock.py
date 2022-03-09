@@ -5,7 +5,10 @@ from __future__ import annotations
 import asyncio
 import math
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import Dict, List, Optional
+
+from aiohttp import ClientSession
+from aiojobs import Scheduler
 
 from .business.base import Business
 from .business.jupyterjitterloginloop import JupyterJitterLoginLoop
@@ -17,12 +20,6 @@ from .exceptions import MonkeyNotFoundException
 from .models.flock import FlockConfig, FlockData, FlockSummary
 from .models.user import AuthenticatedUser, User, UserSpec
 from .monkey import Monkey
-
-if TYPE_CHECKING:
-    from typing import Dict, List, Optional
-
-    from aiohttp import ClientSession
-    from aiojobs import Scheduler
 
 __all__ = ["Flock"]
 

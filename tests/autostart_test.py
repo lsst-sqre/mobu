@@ -2,21 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import Iterator
 from unittest.mock import ANY
 
 import pytest
+from aioresponses import aioresponses
+from httpx import AsyncClient
 
 from mobu.config import config
 from tests.support.gafaelfawr import mock_gafaelfawr
-
-if TYPE_CHECKING:
-    from pathlib import Path
-    from typing import Iterator
-
-    from aioresponses import aioresponses
-    from httpx import AsyncClient
-
 
 AUTOSTART_CONFIG = """
 - name: basic

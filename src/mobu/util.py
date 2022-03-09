@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
+from asyncio import Task
+from typing import Awaitable, Callable, Optional, TypeVar
 
-if TYPE_CHECKING:
-    from asyncio import Task
-    from typing import Awaitable, Callable, Optional, TypeVar
-
-    T = TypeVar("T")
+T = TypeVar("T")
 
 __all__ = ["wait_first"]
 

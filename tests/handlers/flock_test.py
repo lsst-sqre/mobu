@@ -2,19 +2,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any, Dict
 from unittest.mock import ANY
 
 import pytest
+from aioresponses import aioresponses
+from httpx import AsyncClient
 
 from tests.support.gafaelfawr import mock_gafaelfawr
 from tests.support.util import wait_for_business
-
-if TYPE_CHECKING:
-    from typing import Any, Dict
-
-    from aioresponses import aioresponses
-    from httpx import AsyncClient
 
 
 @pytest.mark.asyncio

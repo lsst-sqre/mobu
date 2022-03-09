@@ -16,11 +16,12 @@ from datetime import datetime, timezone
 from functools import wraps
 from http.cookies import BaseCookie
 from typing import (
-    TYPE_CHECKING,
     Any,
     AsyncIterator,
     Awaitable,
     Callable,
+    Dict,
+    Optional,
     TypeVar,
     cast,
 )
@@ -28,10 +29,14 @@ from uuid import uuid4
 
 from aiohttp import (
     ClientError,
+    ClientResponse,
     ClientResponseError,
     ClientSession,
+    ClientWebSocketResponse,
     TCPConnector,
 )
+from aiohttp.client import _RequestContextManager, _WSRequestContextManager
+from structlog import BoundLogger
 
 from .cachemachine import CachemachineClient
 from .config import config
@@ -41,17 +46,8 @@ from .exceptions import (
     JupyterResponseError,
     JupyterWebSocketError,
 )
-from .models.jupyter import JupyterImage, JupyterImageClass
-
-if TYPE_CHECKING:
-    from typing import Dict, Optional
-
-    from aiohttp import ClientResponse, ClientWebSocketResponse
-    from aiohttp.client import _RequestContextManager, _WSRequestContextManager
-    from structlog import BoundLogger
-
-    from .models.jupyter import JupyterConfig
-    from .models.user import AuthenticatedUser
+from .models.jupyter import JupyterConfig, JupyterImage, JupyterImageClass
+from .models.user import AuthenticatedUser
 
 __all__ = ["JupyterClient", "JupyterLabSession"]
 
@@ -321,7 +317,6 @@ class JupyterClient:
 
         # POST the options form to the spawn page.  This should redirect to
         # the spawn-pending page, which will return a 200.
-        image = await self._get_spawn_image()
         data = self._build_jupyter_spawn_form(image)
         async with self.session.post(spawn_url, data=data) as r:
             if r.status != 200:
@@ -513,17 +508,3 @@ class JupyterClient:
             "image_dropdown": "use_image_from_dropdown",
             "size": self.config.image_size,
         }
-
-    async def _get_spawn_image(self) -> JupyterImage:
-        """Determine what image to spawn."""
-        if self.config.image_class == JupyterImageClass.RECOMMENDED:
-            return await self.cachemachine.get_recommended()
-        elif self.config.image_class == JupyterImageClass.LATEST_WEEKLY:
-            return await self.cachemachine.get_latest_weekly()
-        elif self.config.image_class == JupyterImageClass.BY_REFERENCE:
-            assert self.config.image_reference
-            return JupyterImage.from_reference(self.config.image_reference)
-        else:
-            # This should be prevented by the model as long as we don't add a
-            # new image class without adding the corresponding condition.
-            raise ValueError(f"Invalid image_class {self.config.image_class}")
