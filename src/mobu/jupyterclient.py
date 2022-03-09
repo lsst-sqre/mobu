@@ -317,7 +317,6 @@ class JupyterClient:
 
         # POST the options form to the spawn page.  This should redirect to
         # the spawn-pending page, which will return a 200.
-        image = await self._get_spawn_image()
         data = self._build_jupyter_spawn_form(image)
         async with self.session.post(spawn_url, data=data) as r:
             if r.status != 200:
@@ -509,17 +508,3 @@ class JupyterClient:
             "image_dropdown": "use_image_from_dropdown",
             "size": self.config.image_size,
         }
-
-    async def _get_spawn_image(self) -> JupyterImage:
-        """Determine what image to spawn."""
-        if self.config.image_class == JupyterImageClass.RECOMMENDED:
-            return await self.cachemachine.get_recommended()
-        elif self.config.image_class == JupyterImageClass.LATEST_WEEKLY:
-            return await self.cachemachine.get_latest_weekly()
-        elif self.config.image_class == JupyterImageClass.BY_REFERENCE:
-            assert self.config.image_reference
-            return JupyterImage.from_reference(self.config.image_reference)
-        else:
-            # This should be prevented by the model as long as we don't add a
-            # new image class without adding the corresponding condition.
-            raise ValueError(f"Invalid image_class {self.config.image_class}")
