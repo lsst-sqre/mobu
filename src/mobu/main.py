@@ -8,7 +8,7 @@ called.
 """
 
 import asyncio
-from importlib.metadata import metadata
+from importlib.metadata import metadata, version
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
@@ -35,8 +35,8 @@ configure_logging(
 
 app = FastAPI(
     title="mobu",
-    description=metadata("mobu").get("Summary", ""),
-    version=metadata("mobu").get("Version", "0.0.0"),
+    description=metadata("mobu")["Summary"],
+    version=version("mobu"),
     openapi_url=f"/{config.name}/openapi.json",
     docs_url=f"/{config.name}/docs",
     redoc_url=f"/{config.name}/redoc",
