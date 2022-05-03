@@ -170,15 +170,23 @@ class Business:
         the first one that finishes and abort the other one.
         """
         iterator = iterable.__aiter__()
+
+        # While it works for our current code to pass the results of __anext__
+        # directly into wait_first and thus into asyncio.create_task, mypy
+        # complains because technically the return value of __anext__ can be
+        # any Awaitable and does not need to be a Coroutine (which is required
+        # for asyncio.create_task).  Turn it into an explicit Coroutine to
+        # guarantee this will always work correctly.
+        async def iter_next() -> T:
+            return await iterator.__anext__()
+
         start = datetime.now(tz=timezone.utc)
         while True:
             now = datetime.now(tz=timezone.utc)
             remaining = timeout - (now - start).total_seconds()
             if remaining < 0:
                 break
-            pause_await = self.pause(timeout)
-            iter_await = iterator.__anext__()
-            result = await wait_first(iter_await, pause_await)
+            result = await wait_first(iter_next(), self.pause(timeout))
             if result is None or self.stopping:
                 break
             yield result
