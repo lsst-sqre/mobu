@@ -151,9 +151,9 @@ click==8.1.3 \
     # via
     #   -r requirements/main.in
     #   uvicorn
-fastapi==0.75.2 \
-    --hash=sha256:a70d31f4249b6b42dbe267667d22f83af645b2d857876c97f83ca9573215784f \
-    --hash=sha256:b5dac161ee19d33346040d3f44d8b7a9ac09b37df9efff95891f5e7641fa482f
+fastapi==0.76.0 \
+    --hash=sha256:1e05c868651e3935bd9b290c61a3661a54e37471d3a0700bc5e4380f9ed935ae \
+    --hash=sha256:a5f99f6e827c7108a8efaf1d7f19d6cf2d735ad984f5e44d33ccec6ee88a7da1
     # via
     #   -r requirements/main.in
     #   safir
@@ -567,9 +567,9 @@ sniffio==1.2.0 \
     #   anyio
     #   httpcore
     #   httpx
-starlette==0.17.1 \
-    --hash=sha256:26a18cbda5e6b651c964c12c88b36d9898481cd428ed6e063f5f29c418f73050 \
-    --hash=sha256:57eab3cc975a28af62f6faec94d355a410634940f10b30d68d31cb5ec1b44ae8
+starlette==0.18.0 \
+    --hash=sha256:377d64737a0e03560cb8eaa57604afee143cea5a4996933242798a7820e64f53 \
+    --hash=sha256:b45c6e9a617ecb5caf7e6446bd8d767b0084d6217e8e1b08187ca5191e10f097
     # via
     #   -r requirements/main.in
     #   fastapi
