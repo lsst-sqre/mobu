@@ -22,7 +22,7 @@ async def test_start_stop(
     config = {
         "name": "test",
         "count": 1,
-        "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+        "user_spec": {"username_prefix": "testuser"},
         "scopes": ["exec:notebook"],
         "business": "Business",
     }
@@ -33,7 +33,7 @@ async def test_start_stop(
         "config": {
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "business": "Business",
         },
@@ -51,7 +51,6 @@ async def test_start_stop(
                 "user": {
                     "scopes": ["exec:notebook"],
                     "token": ANY,
-                    "uidnumber": 1000,
                     "username": "testuser1",
                 },
             },
@@ -132,7 +131,7 @@ async def test_start_stop(
 async def test_user_list(
     client: AsyncClient, mock_aioresponses: aioresponses
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(mock_aioresponses, any_uid=True)
 
     config = {
         "name": "test",

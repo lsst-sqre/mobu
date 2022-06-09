@@ -133,6 +133,10 @@ class Flock:
         users = []
         for i in range(1, count + 1):
             username = spec.username_prefix + str(i).zfill(padding)
-            user = User(username=username, uidnumber=spec.uid_start + i - 1)
+            if spec.uid_start is not None:
+                uid = spec.uid_start + i - 1
+            else:
+                uid = None
+            user = User(username=username, uidnumber=uid)
             users.append(user)
         return users

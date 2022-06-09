@@ -1,7 +1,7 @@
 """Data models for an authenticated user."""
 
 import time
-from typing import List
+from typing import List, Optional
 
 from aiohttp import ClientSession
 from pydantic import BaseModel, Field
@@ -16,7 +16,12 @@ class User(BaseModel):
 
     username: str = Field(..., title="Username", example="testuser")
 
-    uidnumber: int = Field(..., title="Numeric UID", example=60001)
+    uidnumber: Optional[int] = Field(
+        None,
+        title="Numeric UID",
+        description="If omitted, ask Gafaelfawr to assign a UID",
+        example=60001,
+    )
 
 
 class UserSpec(BaseModel):
@@ -29,10 +34,13 @@ class UserSpec(BaseModel):
         example="lsptestuser",
     )
 
-    uid_start: int = Field(
-        ...,
+    uid_start: Optional[int] = Field(
+        None,
         title="Starting UID",
-        description="Users will be given consecutive UIDs starting with this",
+        description=(
+            "Users will be given consecutive UIDs starting with this. If"
+            " omitted, ask Gafaelfawr to assign UIDs."
+        ),
         example=60000,
     )
 
@@ -57,18 +65,20 @@ class AuthenticatedUser(User):
         cls, user: User, scopes: List[str], session: ClientSession
     ) -> "AuthenticatedUser":
         token_url = f"{config.environment_url}/auth/api/v1/tokens"
+        data = {
+            "username": user.username,
+            "name": "Mobu Test User",
+            "token_type": "user",
+            "token_name": f"mobu {str(float(time.time()))}",
+            "scopes": scopes,
+            "expires": int(time.time() + 60 * 60 * 24 * 365),
+        }
+        if user.uidnumber is not None:
+            data["uid"] = user.uidnumber
         r = await session.post(
             token_url,
             headers={"Authorization": f"Bearer {config.gafaelfawr_token}"},
-            json={
-                "username": user.username,
-                "name": "Mobu Test User",
-                "token_type": "user",
-                "token_name": f"mobu {str(float(time.time()))}",
-                "scopes": scopes,
-                "expires": int(time.time() + 60 * 60 * 24 * 365),
-                "uid": user.uidnumber,
-            },
+            json=data,
             raise_for_status=True,
         )
         body = await r.json()
