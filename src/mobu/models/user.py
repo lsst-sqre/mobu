@@ -19,7 +19,10 @@ class User(BaseModel):
     uidnumber: Optional[int] = Field(
         None,
         title="Numeric UID",
-        description="If omitted, ask Gafaelfawr to assign a UID",
+        description=(
+            "If omitted, Gafaelfawr will assign a UID. (Gafaelfawr UID"
+            " assignment requires Firestore be configured.)"
+        ),
         example=60001,
     )
 
@@ -39,7 +42,8 @@ class UserSpec(BaseModel):
         title="Starting UID",
         description=(
             "Users will be given consecutive UIDs starting with this. If"
-            " omitted, ask Gafaelfawr to assign UIDs."
+            " omitted, Gafaelfawr will assign UIDs. (Gafaelfawr UID assignment"
+            " requires Firestore be configured.)"
         ),
         example=60000,
     )
