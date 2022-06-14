@@ -47,12 +47,14 @@ app = FastAPI(
 app.include_router(internal_router)
 app.include_router(external_router, prefix=f"/{config.name}")
 
+# Add middleware.
+app.add_middleware(XForwardedMiddleware)
+
 
 @app.on_event("startup")
 async def startup_event() -> None:
     if not config.environment_url:
         raise RuntimeError("ENVIRONMENT_URL was not set")
-    app.add_middleware(XForwardedMiddleware)
     await monkey_business_manager.init()
     if config.autostart:
         await autostart()

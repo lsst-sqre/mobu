@@ -35,6 +35,8 @@ def mock_gafaelfawr(
     mocked: aioresponses,
     username: Optional[str] = None,
     uid: Optional[int] = None,
+    *,
+    any_uid: bool = False,
 ) -> None:
     """Mock out the call to Gafaelfawr to create a user token.
 
@@ -47,19 +49,19 @@ def mock_gafaelfawr(
 
     def handler(url: str, **kwargs: Any) -> CallbackResult:
         assert kwargs["headers"] == {"Authorization": f"Bearer {admin_token}"}
-        assert kwargs["json"] == {
-            "username": ANY,
+        expected = {
+            "username": username if username else ANY,
             "token_type": "user",
             "token_name": ANY,
             "scopes": ["exec:notebook"],
             "expires": ANY,
             "name": "Mobu Test User",
-            "uid": ANY,
         }
-        if username:
-            assert kwargs["json"]["username"] == username
         if uid:
-            assert kwargs["json"]["uid"] == uid
+            expected["uid"] = uid
+        elif any_uid:
+            expected["uid"] = ANY
+        assert kwargs["json"] == expected
         assert kwargs["json"]["token_name"].startswith("mobu ")
         assert kwargs["json"]["expires"] > time.time()
         response = {"token": make_gafaelfawr_token(kwargs["json"]["username"])}

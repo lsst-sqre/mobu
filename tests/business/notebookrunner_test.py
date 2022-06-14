@@ -41,7 +41,7 @@ async def test_run(
         json={
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "options": {
                 "spawn_settle_time": 0,
@@ -73,7 +73,6 @@ async def test_run(
         "user": {
             "scopes": ["exec:notebook"],
             "token": ANY,
-            "uidnumber": 1000,
             "username": "testuser1",
         },
     }
@@ -117,7 +116,7 @@ async def test_alert(
         json={
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "options": {
                 "spawn_settle_time": 0,
@@ -157,7 +156,6 @@ async def test_alert(
         "user": {
             "scopes": ["exec:notebook"],
             "token": ANY,
-            "uidnumber": 1000,
             "username": "testuser1",
         },
     }

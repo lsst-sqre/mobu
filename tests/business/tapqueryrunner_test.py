@@ -34,10 +34,7 @@ async def test_run(
             json={
                 "name": "test",
                 "count": 1,
-                "user_spec": {
-                    "username_prefix": "testuser",
-                    "uid_start": 1000,
-                },
+                "user_spec": {"username_prefix": "testuser"},
                 "scopes": ["exec:notebook"],
                 "business": "TAPQueryRunner",
             },
@@ -59,7 +56,6 @@ async def test_run(
             "user": {
                 "scopes": ["exec:notebook"],
                 "token": ANY,
-                "uidnumber": 1000,
                 "username": "testuser1",
             },
         }
@@ -85,10 +81,7 @@ async def test_alert(
             json={
                 "name": "test",
                 "count": 1,
-                "user_spec": {
-                    "username_prefix": "testuser",
-                    "uid_start": 1000,
-                },
+                "user_spec": {"username_prefix": "testuser"},
                 "scopes": ["exec:notebook"],
                 "business": "TAPQueryRunner",
             },
@@ -161,7 +154,7 @@ async def test_random_object() -> None:
 
     logger = structlog.get_logger(__file__)
     user = AuthenticatedUser(
-        username="user", uidnumber=1000, scopes=["read:tap"], token="blah blah"
+        username="user", scopes=["read:tap"], token="blah blah"
     )
     with patch.object(pyvo.dal, "TAPService"):
         runner = TAPQueryRunner(logger, BusinessConfig(), user)

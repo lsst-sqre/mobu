@@ -18,7 +18,7 @@ from tests.support.util import wait_for_business
 async def test_run(
     client: AsyncClient, mock_aioresponses: aioresponses
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(mock_aioresponses, username="testuser1", uid=1000)
 
     r = await client.put(
         "/mobu/flocks",
@@ -77,7 +77,7 @@ async def test_server_shutdown(
         json={
             "name": "test",
             "count": 20,
-            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "options": {
                 "spawn_settle_time": 0,
@@ -107,7 +107,7 @@ async def test_alert(
         json={
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "options": {
                 "code": 'raise Exception("some error")',
@@ -193,7 +193,7 @@ async def test_long_error(
         json={
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "options": {
                 "code": "long_error_for_test()",

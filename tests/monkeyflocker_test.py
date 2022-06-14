@@ -66,7 +66,6 @@ name: basic
 count: 1
 user_spec:
   username_prefix: testuser
-  uid_start: 1000
 scopes: ["exec:notebook"]
 business: Business
 """
@@ -154,7 +153,7 @@ def test_start_report_stop(tmp_path: Path, app_url: str) -> None:
         "config": {
             "name": "basic",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "business": "Business",
         },
@@ -172,7 +171,6 @@ def test_start_report_stop(tmp_path: Path, app_url: str) -> None:
                 "user": {
                     "scopes": ["exec:notebook"],
                     "token": ANY,
-                    "uidnumber": 1000,
                     "username": "testuser1",
                 },
             },
