@@ -1,4 +1,6 @@
-SELECT 'monkey', objectId, object.ra, object.dec, extendedness, object.mag_r, object.magerr_r, good
+SELECT 'monkey', 'scan-magnitude',
+objectId, object.ra, object.dec, extendedness, object.mag_r,
+object.magerr_r, good
 FROM dp01_dc2_catalogs.object AS object
 JOIN dp01_dc2_catalogs.truth_match AS truth
 ON object.objectId = truth.match_objectId
