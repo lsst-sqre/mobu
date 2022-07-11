@@ -394,9 +394,9 @@ pluggy==1.0.0 \
     --hash=sha256:4224373bacce55f955a878bf9cfa763c1e360858e330072059e10bad68531159 \
     --hash=sha256:74134bbf457f031a36d68416e1509f34bd5ccc019f0bcc952c7b909d06b37bd3
     # via pytest
-pre-commit==2.19.0 \
-    --hash=sha256:10c62741aa5704faea2ad69cb550ca78082efe5697d6f04e5710c3c229afdd10 \
-    --hash=sha256:4233a1e38621c87d9dda9808c6606d7e7ba0e087cd56d3fe03202a01d2919615
+pre-commit==2.20.0 \
+    --hash=sha256:51a5ba7c480ae8072ecdb6933df22d2f812dc897d5fe848778116129a681aac7 \
+    --hash=sha256:a978dac7bc9ec0bcee55c18a277d553b0f419d259dadb4b9418ff2d00eb43959
     # via -r requirements/dev.in
 py==1.11.0 \
     --hash=sha256:51c75c4126074b472f746a24399ad32f6053d1b34b68d2fa41e558e6f4a98719 \
@@ -504,9 +504,9 @@ types-requests==2.28.0 \
     --hash=sha256:85383b4ef0535f639c3f06c5bbb6494bbf59570c4cd88bbcf540f0b2ac1b49ab \
     --hash=sha256:9863d16dfbb3fa55dcda64fa3b989e76e8859033b26c1e1623e30465cfe294d3
     # via -r requirements/dev.in
-types-urllib3==1.26.15 \
-    --hash=sha256:6011befa13f901fc934f59bb1fd6973be6f3acf4ebfce427593a27e7f492918f \
-    --hash=sha256:c89283541ef92e344b7f59f83ea9b5a295b16366ceee3f25ecfc5593c79f794e
+types-urllib3==1.26.16 \
+    --hash=sha256:20588c285e5ca336d908d2705994830a83cfb6bda40fc356bbafaf430a262013 \
+    --hash=sha256:8bb3832c684c30cbed40b96e28bc04703becb2b97d82ac65ba4b968783453b0e
     # via types-requests
 typing-extensions==4.3.0 \
     --hash=sha256:25642c956049920a5aa49edcdd6ab1e06d7e5d467fc00e0506c44ac86fbfca02 \
