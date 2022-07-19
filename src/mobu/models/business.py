@@ -167,6 +167,16 @@ class BusinessConfig(BaseModel):
         example="dp0.1",
     )
 
+    tap_sync: bool = Field(
+        True,
+        title="Whether to run TAP queries as sync or async",
+        description=(
+            "By default, queries to TAP are run via the sync endpoint."
+            " Set this to False to run as an async query."
+        ),
+        example=True,
+    )
+
 
 class BusinessData(BaseModel):
     """Status of a running business."""

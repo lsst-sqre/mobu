@@ -40,8 +40,9 @@ class TAPQueryRunner(Business):
             Path(__file__).parent.parent
             / "templates"
             / "tapqueryrunner"
-            / business_config.tap_query_set
+            / self.config.tap_query_set
         )
+
         self._env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(str(template_path)),
             undefined=jinja2.StrictUndefined,
@@ -117,26 +118,44 @@ class TAPQueryRunner(Business):
         template_name = random.choice(self._env.list_templates(["sql"]))
         template = self._env.get_template(template_name)
         query = template.render(self._generate_parameters())
-        await self.run_query(query)
 
-    async def run_query(self, query: str) -> None:
-        self.logger.info("Running: %s", query)
-        loop = asyncio.get_event_loop()
         with self.timings.start("execute_query", {"query": query}) as sw:
             self.running_query = query
+
             try:
-                await loop.run_in_executor(
-                    self._pool, self._client.search, query
-                )
+                if self.config.tap_sync:
+                    await self.run_sync_query(query)
+                else:
+                    await self.run_async_query(query)
             except Exception as e:
-                user = self.user.username
-                error = f"{type(e).__name__}: {str(e)}"
                 raise CodeExecutionError(
-                    user, query, code_type="TAP query", error=error
+                    self.user.username,
+                    query,
+                    code_type="TAP query",
+                    error=f"{type(e).__name__}: {str(e)}",
                 ) from e
+
             self.running_query = None
             elapsed = sw.elapsed.total_seconds()
+
         self.logger.info(f"Query finished after {elapsed} seconds")
+
+    async def run_async_query(self, query: str) -> None:
+        self.logger.info("Running: %s", query)
+        job = self._client.submit_job(query)
+
+        try:
+            job.run()
+
+            while job.phase not in ["COMPLETED", "ERROR"]:
+                await asyncio.sleep(30)
+        finally:
+            job.delete()
+
+    async def run_sync_query(self, query: str) -> None:
+        self.logger.info("Running: %s", query)
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(self._pool, self._client.search, query)
 
     def dump(self) -> BusinessData:
         data = super().dump()
