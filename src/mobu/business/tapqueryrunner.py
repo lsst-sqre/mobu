@@ -37,7 +37,7 @@ class TAPQueryRunner(Business):
         self._pool = ThreadPoolExecutor(max_workers=1)
 
         template_path = (
-            Path(__file__).parent.parent / "templates" / "tapqueryrunner"
+            Path(__file__).parent.parent / "templates" / "tapqueryrunner" / "dp0.1"
         )
         self._env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(str(template_path)),
