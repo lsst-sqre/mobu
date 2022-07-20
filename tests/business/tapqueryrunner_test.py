@@ -143,25 +143,29 @@ async def test_alert(
 
 @pytest.mark.asyncio
 async def test_random_object() -> None:
-    objects_path = (
-        Path(mobu.__file__).parent
-        / "templates"
-        / "tapqueryrunner"
-        / "objects.yaml"
-    )
-    with objects_path.open("r") as f:
-        objects = [str(o) for o in yaml.safe_load(f)]
+    for query_set in ["dp0.1"]:
+        params_path = (
+            Path(mobu.__file__).parent
+            / "templates"
+            / "tapqueryrunner"
+            / query_set
+            / "params.yaml"
+        )
+        with params_path.open("r") as f:
+            objects = [str(o) for o in yaml.safe_load(f)["objectIds"]]
 
-    logger = structlog.get_logger(__file__)
-    user = AuthenticatedUser(
-        username="user", scopes=["read:tap"], token="blah blah"
-    )
-    with patch.object(pyvo.dal, "TAPService"):
-        runner = TAPQueryRunner(logger, BusinessConfig(), user)
-    parameters = runner._generate_parameters()
+        logger = structlog.get_logger(__file__)
+        user = AuthenticatedUser(
+            username="user", scopes=["read:tap"], token="blah blah"
+        )
+        with patch.object(pyvo.dal, "TAPService"):
+            runner = TAPQueryRunner(
+                logger, BusinessConfig(tap_query_set=query_set), user
+            )
+        parameters = runner._generate_parameters()
 
-    assert parameters["object"] in objects
-    random_objects = cast(str, parameters["objects"]).split(", ")
-    assert len(random_objects) == 12
-    for obj in random_objects:
-        assert obj in objects
+        assert parameters["object"] in objects
+        random_objects = cast(str, parameters["objects"]).split(", ")
+        assert len(random_objects) == 12
+        for obj in random_objects:
+            assert obj in objects

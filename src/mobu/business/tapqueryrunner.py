@@ -37,14 +37,17 @@ class TAPQueryRunner(Business):
         self._pool = ThreadPoolExecutor(max_workers=1)
 
         template_path = (
-            Path(__file__).parent.parent / "templates" / "tapqueryrunner" / "dp0.1"
+            Path(__file__).parent.parent
+            / "templates"
+            / "tapqueryrunner"
+            / business_config.tap_query_set
         )
         self._env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(str(template_path)),
             undefined=jinja2.StrictUndefined,
         )
-        with (template_path / "objects.yaml").open("r") as f:
-            self._objects = yaml.safe_load(f)
+        with (template_path / "params.yaml").open("r") as f:
+            self._params = yaml.safe_load(f)
 
     @staticmethod
     def _make_client(token: str) -> pyvo.dal.TAPService:
@@ -62,10 +65,12 @@ class TAPQueryRunner(Business):
         return pyvo.dal.TAPService(tap_url, auth)
 
     @staticmethod
-    def _generate_random_polygon() -> str:
+    def _generate_random_polygon(
+        min_ra: float, max_ra: float, min_dec: float, max_dec: float
+    ) -> str:
         """Generate a random polygon as comma-separated ra/dec values."""
-        ra = 55.0 + random.random() * 15.0
-        dec = -42.0 + random.random() * 12.0
+        ra = min_ra + random.random() * (max_ra - min_ra)
+        dec = min_dec + random.random() * (max_dec - min_dec)
         r = 0.01 + random.random() * 0.04
         n = random.randrange(3, 8)
         phi = random.random() * 2 * math.pi
@@ -77,23 +82,32 @@ class TAPQueryRunner(Business):
 
     def _generate_parameters(self) -> Dict[str, Union[int, float, str]]:
         """Generate some random parameters for the query."""
+        min_ra = self._params.get("min_ra", 55.0)
+        max_ra = self._params.get("max_ra", 70.0)
+        min_dec = self._params.get("min_dec", -42.0)
+        max_dec = self._params.get("max_dec", -30.0)
         min_flux = 0.0 + random.random() * 0.00100
         min_mag = 15.0 + random.random() * 15.0
-        return {
-            "ra": 55.0 + random.random() * 15.0,
-            "dec": -42.0 + random.random() * 12.0,
+        result = {
+            "ra": min_ra + random.random() * (max_ra - min_ra),
+            "dec": min_dec + random.random() * (max_dec - min_dec),
             "min_flux": min_flux,
             "max_flux": min_flux + 0.00001,
             "min_mag": min_mag,
             "max_mag": min_mag + 0.1,
-            "object": str(random.choice(self._objects)),
-            "objects": ", ".join(
-                str(o) for o in random.choices(self._objects, k=12)
+            "polygon": self._generate_random_polygon(
+                min_ra, max_ra, min_dec, max_dec
             ),
-            "polygon": self._generate_random_polygon(),
             "radius": 0.01 + random.random() * 0.04,
             "radius_near": 0.01 + random.random() * 0.09,
         }
+        objectIds = self._params.get("objectIds")
+        if objectIds:
+            result["object"] = str(random.choice(objectIds))
+            result["objects"] = ", ".join(
+                str(o) for o in random.choices(objectIds, k=12)
+            )
+        return result
 
     async def startup(self) -> None:
         templates = self._env.list_templates(["sql"])
