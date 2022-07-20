@@ -143,7 +143,7 @@ async def test_alert(
 
 @pytest.mark.asyncio
 async def test_random_object() -> None:
-    for query_set in ["dp0.1"]:
+    for query_set in ["dp0.1", "dp0.2"]:
         params_path = (
             Path(mobu.__file__).parent
             / "templates"
