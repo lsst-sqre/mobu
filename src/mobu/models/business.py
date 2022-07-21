@@ -156,6 +156,17 @@ class BusinessConfig(BaseModel):
         example=True,
     )
 
+    tap_query_set: str = Field(
+        "dp0.1",
+        title="Which query template set to use for a TapQueryRunner",
+        description=(
+            "For TapQueryRunner, this is the name of a subdirectory of"
+            " templates/tapqueryrunner from which Jinja2 query templates"
+            " will be loaded."
+        ),
+        example="dp0.1",
+    )
+
 
 class BusinessData(BaseModel):
     """Status of a running business."""

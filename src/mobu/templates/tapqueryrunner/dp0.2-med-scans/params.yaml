@@ -1,0 +1,6 @@
+---
+# Limits for randomly selected points within the spatial extent of DP0.2.
+min_ra: 52.0
+max_ra: 72.0
+min_dec: -44.0
+max_dec: -28.0
