@@ -101,6 +101,7 @@ class TAPQueryRunner(Business):
             ),
             "radius": 0.01 + random.random() * 0.04,
             "radius_near": 0.01 + random.random() * 0.09,
+            "username": self.user.username,
         }
         objectIds = self._params.get("objectIds")
         if objectIds:

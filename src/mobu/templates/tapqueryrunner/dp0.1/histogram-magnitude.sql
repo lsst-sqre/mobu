@@ -1,4 +1,4 @@
-SELECT 'monkey', 'histogram-magnitude', COUNT(*), FLOOR(object.mag_r) as BIN
+SELECT '{{ username }}', 'histogram-magnitude', COUNT(*), FLOOR(object.mag_r) as BIN
 FROM dp01_dc2_catalogs.object AS object
 JOIN dp01_dc2_catalogs.truth_match AS truth
 ON object.objectId = truth.match_objectId
