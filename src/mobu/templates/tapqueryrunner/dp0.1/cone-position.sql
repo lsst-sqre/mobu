@@ -1,3 +1,3 @@
-SELECT '{{ username }}', 'cone-position', *
+SELECT '{{ query_id }}', 'cone-position', *
 FROM dp01_dc2_catalogs.position
 WHERE CONTAINS(POINT('ICRS', coord_ra, coord_dec), CIRCLE('ICRS', {{ ra }}, {{ dec }}, {{ radius }}))=1
