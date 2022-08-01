@@ -1,4 +1,4 @@
-SELECT '{{ username }}', 'time-series-several', *
+SELECT '{{ query_id }}', 'time-series-several', *
 FROM dp02_dc2_catalogs.Object AS o
 JOIN dp02_dc2_catalogs.ForcedSource AS fs
 ON o.objectId = fs.objectId

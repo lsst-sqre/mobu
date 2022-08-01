@@ -1,4 +1,4 @@
-SELECT '{{ username }}', 'scan-flux',
+SELECT '{{ query_id }}', 'scan-flux',
 objectId, coord_ra, coord_dec, i_base_PsfFlux_instFlux
 FROM dp01_dc2_catalogs.forced_photometry
 WHERE i_base_PsfFlux_instFlux BETWEEN {{ min_flux }} AND {{ max_flux }}

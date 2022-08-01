@@ -12,6 +12,7 @@ from typing import Dict, Optional, Union
 import jinja2
 import pyvo
 import requests
+import shortuuid
 import yaml
 from structlog import BoundLogger
 
@@ -102,6 +103,7 @@ class TAPQueryRunner(Business):
             "radius": 0.01 + random.random() * 0.04,
             "radius_near": 0.01 + random.random() * 0.09,
             "username": self.user.username,
+            "query_id": shortuuid.uuid(),
         }
         objectIds = self._params.get("objectIds")
         if objectIds:

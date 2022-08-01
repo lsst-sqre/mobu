@@ -21,4 +21,5 @@ pydantic
 pyvo
 pyyaml
 safir
+shortuuid
 structlog
