@@ -18,7 +18,9 @@ from tests.support.util import wait_for_business
 async def test_run(
     client: AsyncClient, mock_aioresponses: aioresponses
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses, username="testuser1", uid=1000)
+    mock_gafaelfawr(
+        mock_aioresponses, username="testuser1", uid=1000, gid=1000
+    )
 
     r = await client.put(
         "/mobu/flocks",
@@ -53,6 +55,7 @@ async def test_run(
             "scopes": ["exec:notebook"],
             "token": ANY,
             "uidnumber": 1000,
+            "gidnumber": 1000,
             "username": "testuser1",
         },
     }

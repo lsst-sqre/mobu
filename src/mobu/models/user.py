@@ -26,6 +26,18 @@ class User(BaseModel):
         example=60001,
     )
 
+    gidnumber: Optional[int] = Field(
+        None,
+        title="Primary GID",
+        description=(
+            "If omitted but a UID was specified, use a GID equal to the UID."
+            " If both are omitted, Gafaelfawr will assign a UID and GID."
+            " (Gafaelfawr UID and GID assignment requires Firestore and"
+            " synthetic user private groups to be configured.)"
+        ),
+        example=60001,
+    )
+
 
 class UserSpec(BaseModel):
     """Configuration to generate a set of users."""
@@ -44,6 +56,19 @@ class UserSpec(BaseModel):
             "Users will be given consecutive UIDs starting with this. If"
             " omitted, Gafaelfawr will assign UIDs. (Gafaelfawr UID assignment"
             " requires Firestore be configured.)"
+        ),
+        example=60000,
+    )
+
+    gid_start: Optional[int] = Field(
+        None,
+        title="Starting GID",
+        description=(
+            "Users will be given consecutive primary GIDs starting with this."
+            " If omitted but UIDs were given, the GIDs will be equal to the"
+            " UIDs. If both are omitted, Gafaelfawr will assign UIDs and GIDs"
+            " (which requires Firestore and synthetic user private groups to"
+            " be configured)."
         ),
         example=60000,
     )
@@ -79,6 +104,12 @@ class AuthenticatedUser(User):
         }
         if user.uidnumber is not None:
             data["uid"] = user.uidnumber
+            if user.gidnumber is not None:
+                data["gid"] = user.gidnumber
+            else:
+                data["gid"] = user.uidnumber
+        elif user.gidnumber is not None:
+            data["gid"] = user.gidnumber
         r = await session.post(
             token_url,
             headers={"Authorization": f"Bearer {config.gafaelfawr_token}"},
@@ -88,7 +119,8 @@ class AuthenticatedUser(User):
         body = await r.json()
         return cls(
             username=user.username,
-            uidnumber=user.uidnumber,
+            uidnumber=data["uid"] if "uid" in data else None,
+            gidnumber=data["gid"] if "gid" in data else None,
             token=body["token"],
             scopes=scopes,
         )

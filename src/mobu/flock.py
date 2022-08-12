@@ -137,6 +137,10 @@ class Flock:
                 uid = spec.uid_start + i - 1
             else:
                 uid = None
-            user = User(username=username, uidnumber=uid)
+            if spec.gid_start is not None:
+                gid = spec.gid_start + i - 1
+            else:
+                gid = None
+            user = User(username=username, uidnumber=uid, gidnumber=gid)
             users.append(user)
         return users

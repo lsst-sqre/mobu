@@ -35,6 +35,7 @@ def mock_gafaelfawr(
     mocked: aioresponses,
     username: Optional[str] = None,
     uid: Optional[int] = None,
+    gid: Optional[int] = None,
     *,
     any_uid: bool = False,
 ) -> None:
@@ -59,8 +60,11 @@ def mock_gafaelfawr(
         }
         if uid:
             expected["uid"] = uid
+            if gid:
+                expected["gid"] = gid
         elif any_uid:
             expected["uid"] = ANY
+            expected["gid"] = ANY
         assert kwargs["json"] == expected
         assert kwargs["json"]["token_name"].startswith("mobu ")
         assert kwargs["json"]["expires"] > time.time()

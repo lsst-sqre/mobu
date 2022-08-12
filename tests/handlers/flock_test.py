@@ -140,6 +140,7 @@ async def test_user_list(
             {
                 "username": "testuser",
                 "uidnumber": 1000,
+                "gidnumber": 1056,
             },
             {
                 "username": "otheruser",
@@ -169,6 +170,7 @@ async def test_user_list(
                     "scopes": ["exec:notebook"],
                     "token": ANY,
                     "uidnumber": 1000,
+                    "gidnumber": 1056,
                     "username": "testuser",
                 },
             },
@@ -186,6 +188,7 @@ async def test_user_list(
                     "scopes": ["exec:notebook"],
                     "token": ANY,
                     "uidnumber": 60000,
+                    "gidnumber": 60000,
                     "username": "otheruser",
                 },
             },

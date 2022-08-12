@@ -12,7 +12,7 @@ from tests.support.gafaelfawr import mock_gafaelfawr
 
 @pytest.mark.asyncio
 async def test_generate_token(mock_aioresponses: aioresponses) -> None:
-    mock_gafaelfawr(mock_aioresponses, "someuser", 1234)
+    mock_gafaelfawr(mock_aioresponses, "someuser", 1234, 1234)
     config = User(username="someuser", uidnumber=1234)
     scopes = ["exec:notebook"]
 

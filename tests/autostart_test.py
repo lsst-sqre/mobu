@@ -19,6 +19,7 @@ AUTOSTART_CONFIG = """
   user_spec:
     username_prefix: testuser
     uid_start: 1000
+    gid_start: 2000
   scopes: ["exec:notebook"]
   business: Business
 - name: python
@@ -71,6 +72,7 @@ async def test_autostart(client: AsyncClient) -> None:
                 "scopes": ["exec:notebook"],
                 "token": ANY,
                 "uidnumber": 1000 + i - 1,
+                "gidnumber": 2000 + i - 1,
                 "username": f"testuser{i:02d}",
             },
         }
@@ -81,7 +83,11 @@ async def test_autostart(client: AsyncClient) -> None:
         "config": {
             "name": "basic",
             "count": 10,
-            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "user_spec": {
+                "username_prefix": "testuser",
+                "uid_start": 1000,
+                "gid_start": 2000,
+            },
             "scopes": ["exec:notebook"],
             "business": "Business",
         },
@@ -140,6 +146,7 @@ async def test_autostart(client: AsyncClient) -> None:
                     "token": ANY,
                     "username": "python",
                     "uidnumber": 60000,
+                    "gidnumber": 60000,
                 },
             },
             {
@@ -165,6 +172,7 @@ async def test_autostart(client: AsyncClient) -> None:
                     "token": ANY,
                     "username": "otherpython",
                     "uidnumber": 70000,
+                    "gidnumber": 70000,
                 },
             },
         ],
