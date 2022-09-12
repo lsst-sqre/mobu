@@ -113,9 +113,9 @@ attrs==22.1.0 \
     #   -c requirements/main.txt
     #   aiohttp
     #   pytest
-certifi==2022.6.15 \
-    --hash=sha256:84c85a9078b11105f04f3036a9482ae10e4621616db313fe045dd24743a0820d \
-    --hash=sha256:fe86415d55e84719d75f8b69414f6438ac3547d2078ab91b67e779ef69378412
+certifi==2022.6.15.1 \
+    --hash=sha256:43dadad18a7f168740e66944e4fa82c6611848ff9056ad910f8f7a3e46ab89e0 \
+    --hash=sha256:cffdcd380919da6137f76633531a5817e3a9f268575c128249fb637e4f9e73fb
     # via
     #   -c requirements/main.txt
     #   httpcore
@@ -275,9 +275,9 @@ httpx==0.23.0 \
     #   -c requirements/main.txt
     #   -r requirements/dev.in
     #   pytest-httpx
-identify==2.5.3 \
-    --hash=sha256:25851c8c1370effb22aaa3c987b30449e9ff0cece408f810ae6ce408fdd20893 \
-    --hash=sha256:887e7b91a1be152b0d46bbf072130235a8117392b9f1828446079a816a05ef44
+identify==2.5.5 \
+    --hash=sha256:322a5699daecf7c6fd60e68852f36f2ecbb6a36ff6e6e973e0d2bb6fca203ee6 \
+    --hash=sha256:ef78c0d96098a3b5fe7720be4a97e73f439af7cf088ebf47b620aeaa10fadf97
     # via pre-commit
 idna==3.3 \
     --hash=sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff \
@@ -504,13 +504,13 @@ types-pyyaml==6.0.11 \
     --hash=sha256:7f7da2fd11e9bc1e5e9eb3ea1be84f4849747017a59fc2eee0ea34ed1147c2e0 \
     --hash=sha256:8f890028123607379c63550179ddaec4517dc751f4c527a52bb61934bf495989
     # via -r requirements/dev.in
-types-requests==2.28.9 \
-    --hash=sha256:86cb66d3de2f53eac5c09adc42cf6547eefbd0c7e1210beca1ee751c35d96083 \
-    --hash=sha256:feaf581bd580497a47fe845d506fa3b91b484cf706ff27774e87659837de9962
+types-requests==2.28.10 \
+    --hash=sha256:45b485725ed58752f2b23461252f1c1ad9205b884a1e35f786bb295525a3e16a \
+    --hash=sha256:97d8f40aa1ffe1e58c3726c77d63c182daea9a72d9f1fa2cafdea756b2a19f2c
     # via -r requirements/dev.in
-types-urllib3==1.26.23 \
-    --hash=sha256:333e675b188a1c1fd980b4b352f9e40572413a4c1ac689c23cd546e96310070a \
-    --hash=sha256:b78e819f0e350221d0689a5666162e467ba3910737bafda14b5c2c85e9bb1e56
+types-urllib3==1.26.24 \
+    --hash=sha256:a1b3aaea7dda3eb1b51699ee723aadd235488e4dc4648e030f09bc429ecff42f \
+    --hash=sha256:cf7918503d02d3576e503bbfb419b0e047c4617653bba09624756ab7175e15c9
     # via types-requests
 typing-extensions==4.3.0 \
     --hash=sha256:25642c956049920a5aa49edcdd6ab1e06d7e5d467fc00e0506c44ac86fbfca02 \
@@ -518,9 +518,9 @@ typing-extensions==4.3.0 \
     # via
     #   -c requirements/main.txt
     #   mypy
-virtualenv==20.16.4 \
-    --hash=sha256:014f766e4134d0008dcaa1f95bafa0fb0f575795d07cae50b1bee514185d6782 \
-    --hash=sha256:035ed57acce4ac35c82c9d8802202b0e71adac011a511ff650cbcf9635006a22
+virtualenv==20.16.5 \
+    --hash=sha256:227ea1b9994fdc5ea31977ba3383ef296d7472ea85be9d6732e42a91c04e80da \
+    --hash=sha256:d07dfc5df5e4e0dbc92862350ad87a36ed505b978f6c39609dc489eadd5b0d27
     # via pre-commit
 yarl==1.8.1 \
     --hash=sha256:076eede537ab978b605f41db79a56cad2e7efeea2aa6e0fa8f05a26c24a034fb \
