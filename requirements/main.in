@@ -6,8 +6,8 @@
 #     make update-deps
 
 # These dependencies are for fastapi including some optional features.
-fastapi
 aiofiles
+fastapi!=0.89.0
 starlette
 uvicorn[standard]
 
