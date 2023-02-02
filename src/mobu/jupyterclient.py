@@ -21,6 +21,7 @@ from typing import (
     Awaitable,
     Callable,
     Dict,
+    List,
     Optional,
     TypeVar,
     cast,
@@ -38,15 +39,15 @@ from aiohttp import (
 from aiohttp.client import _RequestContextManager, _WSRequestContextManager
 from structlog import BoundLogger
 
-from .cachemachine import CachemachineClient
 from .config import config
+from .controller import ControllerClient
 from .exceptions import (
     CodeExecutionError,
     JupyterError,
     JupyterResponseError,
     JupyterWebSocketError,
 )
-from .models.jupyter import JupyterConfig, JupyterImage, JupyterImageClass
+from .models.jupyter import ControllerImage, JupyterConfig, JupyterImageClass
 from .models.user import AuthenticatedUser
 
 __all__ = ["JupyterClient", "JupyterLabSession"]
@@ -242,10 +243,10 @@ class JupyterClient:
         session.cookie_jar.update_cookies(BaseCookie({"_xsrf": xsrftoken}))
         self.session = JupyterClientSession(session, user.token)
 
-        # We also send the XSRF token to cachemachine because of how we're
-        # sharing the session, but that shouldn't matter.
+        # We also send the XSRF token to the JupyterLabController because
+        # of how we're sharing the session, but that shouldn't matter.
         assert config.gafaelfawr_token
-        self.cachemachine = CachemachineClient(
+        self.controller = ControllerClient(
             session, config.gafaelfawr_token, self.user.username
         )
 
@@ -295,17 +296,21 @@ class JupyterClient:
         return result
 
     @_convert_exception
-    async def spawn_lab(self) -> JupyterImage:
+    async def spawn_lab(self) -> ControllerImage:
         spawn_url = self.jupyter_url + "hub/spawn"
 
         # Determine what image to spawn.
         if self.config.image_class == JupyterImageClass.RECOMMENDED:
-            image = await self.cachemachine.get_recommended()
+            image = await self.controller.get_recommended()
         elif self.config.image_class == JupyterImageClass.LATEST_WEEKLY:
-            image = await self.cachemachine.get_latest_weekly()
+            image = await self.controller.get_latest_weekly()
         else:
             assert self.config.image_reference
-            image = JupyterImage.from_reference(self.config.image_reference)
+            ref = self.config.image_reference
+            image = ControllerImage(
+                path=ref, name=ref, digest="unknown", tags={}
+            )
+
         msg = f"Spawning lab image {image.name} for {self.user.username}"
         self.log.info(msg)
 
@@ -501,10 +506,12 @@ class JupyterClient:
         """
         return _ANSI_REGEX.sub("", string)
 
-    def _build_jupyter_spawn_form(self, image: JupyterImage) -> Dict[str, str]:
+    def _build_jupyter_spawn_form(
+        self, image: ControllerImage
+    ) -> Dict[str, List[str]]:
         """Construct the form to submit to the JupyterHub login page."""
         return {
-            "image_list": str(image),
-            "image_dropdown": "use_image_from_dropdown",
-            "size": self.config.image_size,
+            "image_list": [image.path],
+            "image_dropdown": [image.path],  # Not used
+            "size": [self.config.image_size],
         }

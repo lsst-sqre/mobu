@@ -15,7 +15,7 @@ from httpx import AsyncClient
 
 from mobu import main
 from mobu.config import config
-from tests.support.cachemachine import MockCachemachine, mock_cachemachine
+from tests.support.controller import MockController, mock_controller
 from tests.support.gafaelfawr import make_gafaelfawr_token
 from tests.support.jupyter import (
     MockJupyter,
@@ -46,7 +46,7 @@ def configure() -> Iterator[None]:
 
 @pytest_asyncio.fixture
 async def app(
-    jupyter: MockJupyter, cachemachine: MockCachemachine
+    jupyter: MockJupyter, controller: MockController
 ) -> AsyncIterator[FastAPI]:
     """Return a configured test application.
 
@@ -83,9 +83,9 @@ def mock_aioresponses() -> Iterator[aioresponses]:
 
 
 @pytest.fixture
-def cachemachine(mock_aioresponses: aioresponses) -> MockCachemachine:
-    """Mock out cachemachine."""
-    return mock_cachemachine(mock_aioresponses)
+def controller(mock_aioresponses: aioresponses) -> MockController:
+    """Mock out JupyterLab Controller."""
+    return mock_controller(mock_aioresponses)
 
 
 @pytest.fixture

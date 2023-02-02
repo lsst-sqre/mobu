@@ -37,17 +37,6 @@ class Configuration:
     Set with the ``ENVIRONMENT_URL`` environment variable.
     """
 
-    cachemachine_image_policy: str = os.getenv(
-        "CACHEMACHINE_IMAGE_POLICY", "available"
-    )
-    """Whether to use the images available on all nodes, or the images
-    desired by cachemachine.  In instances where image streaming is enabled,
-    and therefore pulls are fast, ``desired`` is preferred.  The default is
-    ``available``.
-
-    Set with the ``CACHEMACHINE_IMAGE_POLICY`` environment variable.
-    """
-
     gafaelfawr_token: Optional[str] = os.getenv("GAFAELFAWR_TOKEN")
     """The Gafaelfawr admin token to use to create user tokens.
 

@@ -10,7 +10,7 @@ from aiohttp import ClientResponse, ClientResponseError
 from .constants import DATE_FORMAT
 
 __all__ = [
-    "CachemachineError",
+    "ControllerError",
     "CodeExecutionError",
     "FlockNotFoundException",
     "JupyterError",
@@ -111,11 +111,11 @@ class SlackError(Exception):
         return fields
 
 
-class CachemachineError(SlackError):
-    """Failed to obtain a valid image list from cachemachine."""
+class ControllerError(SlackError):
+    """Failed to obtain a valid image list from JupyterLab Controller."""
 
     def __init__(self, user: str, msg: str) -> None:
-        super().__init__(user, f"Cachemachine error: {msg}")
+        super().__init__(user, f"JupyterLab Controller error: {msg}")
 
 
 class CodeExecutionError(SlackError):

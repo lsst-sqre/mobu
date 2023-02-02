@@ -5,7 +5,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from ..constants import NOTEBOOK_REPO_BRANCH, NOTEBOOK_REPO_URL
-from .jupyter import JupyterConfig, JupyterImage
+from .jupyter import ControllerImage, JupyterConfig
 from .timings import StopwatchData
 
 __all__ = ["BusinessConfig", "BusinessData"]
@@ -189,7 +189,7 @@ class BusinessData(BaseModel):
 
     timings: List[StopwatchData] = Field(..., title="Timings of events")
 
-    image: Optional[JupyterImage] = Field(
+    image: Optional[ControllerImage] = Field(
         None,
         title="JupyterLab image information",
         description="Will only be present when there is an active Jupyter lab",

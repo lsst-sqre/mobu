@@ -22,7 +22,7 @@ from ..exceptions import (
 )
 from ..jupyterclient import JupyterClient
 from ..models.business import BusinessConfig, BusinessData
-from ..models.jupyter import JupyterImage
+from ..models.jupyter import ControllerImage
 from ..models.user import AuthenticatedUser
 from .base import Business
 
@@ -69,7 +69,7 @@ class JupyterLoginLoop(Business):
         user: AuthenticatedUser,
     ) -> None:
         super().__init__(logger, business_config, user)
-        self.image: Optional[JupyterImage] = None
+        self.image: Optional[ControllerImage] = None
         self._client = JupyterClient(user, logger, business_config.jupyter)
 
     async def close(self) -> None:
