@@ -140,10 +140,10 @@ async def test_alert(
             "failure_count": 1,
             "image": {
                 "digest": ANY,
-                "name": "Recommended (Weekly 2021_33)",
-                "reference": (
-                    "registry.hub.docker.com/lsstsqre/sciplat-lab:recommended"
-                ),
+                "name": "Recommended (Weekly 2023_03)",
+                "path": ("docker.io/lsstsqre/sciplat-lab:recommended"),
+                "prepulled": True,
+                "tags": {"recommended": "Recommended (Weekly 2023_03)"},
             },
             "name": "NotebookRunner",
             "notebook": "exception.ipynb",
@@ -180,7 +180,7 @@ async def test_alert(
                         {"type": "mrkdwn", "text": "*Event*\nexecute_cell"},
                         {
                             "type": "mrkdwn",
-                            "text": "*Image*\nRecommended (Weekly 2021_33)",
+                            "text": "*Image*\nRecommended (Weekly 2023_03)",
                             "verbatim": True,
                         },
                         {"type": "mrkdwn", "text": "*Node*\nsome-node"},

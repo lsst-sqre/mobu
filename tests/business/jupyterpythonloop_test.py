@@ -147,7 +147,7 @@ async def test_alert(
                         {"type": "mrkdwn", "text": "*Event*\nexecute_code"},
                         {
                             "type": "mrkdwn",
-                            "text": "*Image*\nRecommended (Weekly 2021_33)",
+                            "text": "*Image*\nRecommended (Weekly 2023_03)",
                             "verbatim": True,
                         },
                         {"type": "mrkdwn", "text": "*Node*\nsome-node"},
@@ -203,8 +203,7 @@ async def test_long_error(
                 "jupyter": {
                     "image_class": "by-reference",
                     "image_reference": (
-                        "registry.hub.docker.com/lsstsqre/sciplat-lab"
-                        ":d_2021_08_30"
+                        "docker.io/lsstsqre/sciplat-lab" ":d_2023_02_03"
                     ),
                 },
                 "spawn_settle_time": 0,
@@ -245,7 +244,10 @@ async def test_long_error(
                         {"type": "mrkdwn", "text": "*Event*\nexecute_code"},
                         {
                             "type": "mrkdwn",
-                            "text": "*Image*\nd_2021_08_30",
+                            "text": (
+                                "*Image*\ndocker.io/lsstsqre/"
+                                "sciplat-lab:d_2023_02_03"
+                            ),
                             "verbatim": True,
                         },
                         {"type": "mrkdwn", "text": "*Node*\nsome-node"},

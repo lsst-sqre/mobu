@@ -129,11 +129,12 @@ async def test_autostart(client: AsyncClient) -> None:
                     "failure_count": 0,
                     "image": {
                         "digest": ANY,
-                        "name": "Weekly 2021_35",
-                        "reference": (
-                            "registry.hub.docker.com/lsstsqre/sciplat-lab"
-                            ":w_2021_35"
+                        "name": "Weekly 2023_05",
+                        "path": (
+                            "docker.io/lsstsqre/sciplat-lab" ":w_2023_05"
                         ),
+                        "prepulled": True,
+                        "tags": {"w_2023_05": "Weekly 2023_05"},
                     },
                     "name": "JupyterPythonLoop",
                     "success_count": ANY,
@@ -155,11 +156,12 @@ async def test_autostart(client: AsyncClient) -> None:
                     "failure_count": 0,
                     "image": {
                         "digest": ANY,
-                        "name": "Weekly 2021_35",
-                        "reference": (
-                            "registry.hub.docker.com/lsstsqre/sciplat-lab"
-                            ":w_2021_35"
+                        "name": "Weekly 2023_05",
+                        "path": (
+                            "docker.io/lsstsqre/sciplat-lab" ":w_2023_05"
                         ),
+                        "prepulled": True,
+                        "tags": {"w_2023_05": "Weekly 2023_05"},
                     },
                     "name": "JupyterPythonLoop",
                     "success_count": ANY,

@@ -20,7 +20,7 @@ async def test_post_status(slack: MockSlack) -> None:
             FlockSummary(
                 name="notebook",
                 business="NotebookRunner",
-                start_time=datetime(2021, 8, 20, 17, 3, tzinfo=timezone.utc),
+                start_time=datetime(2023, 2, 3, 16, 29, tzinfo=timezone.utc),
                 monkey_count=5,
                 success_count=487,
                 failure_count=3,
@@ -28,7 +28,7 @@ async def test_post_status(slack: MockSlack) -> None:
             FlockSummary(
                 name="tap",
                 business="TAPQueryRunner",
-                start_time=datetime(2021, 8, 20, 12, 40, tzinfo=timezone.utc),
+                start_time=datetime(2023, 2, 3, 16, 33, tzinfo=timezone.utc),
                 monkey_count=1,
                 success_count=200000,
                 failure_count=1,
@@ -47,8 +47,8 @@ async def test_post_status(slack: MockSlack) -> None:
 
     expected = """\
 Currently running 3 flocks against https://test.example.com:
-• *notebook*: 5 monkeys started 2021-08-20 with 3 failures (99.39% success)
-• *tap*: 1 monkey started 2021-08-20 with 1 failure (99.99% success)
+• *notebook*: 5 monkeys started 2023-02-03 with 3 failures (99.39% success)
+• *tap*: 1 monkey started 2023-02-03 with 1 failure (99.99% success)
 • *login*: 2 monkeys (not started) with 0 failures (100.00% success)
 """
     assert slack.alerts == [
