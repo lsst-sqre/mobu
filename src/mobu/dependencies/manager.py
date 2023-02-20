@@ -6,7 +6,7 @@ import asyncio
 from typing import Dict, List, Optional
 
 from aiohttp import ClientSession
-from aiojobs import Scheduler, create_scheduler
+from aiojobs import Scheduler
 
 from ..exceptions import FlockNotFoundException
 from ..flock import Flock
@@ -27,7 +27,7 @@ class MonkeyBusinessManager:
         return self
 
     async def init(self) -> None:
-        self._scheduler = await create_scheduler(limit=1000, pending_limit=0)
+        self._scheduler = Scheduler(limit=1000, pending_limit=0)
         self._session = ClientSession()
 
     async def cleanup(self) -> None:
