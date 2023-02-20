@@ -51,9 +51,12 @@ class AddAuthHeaderMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+# Add the new middleware.
+app.add_middleware(AddAuthHeaderMiddleware)
+
+
 @app.on_event("startup")
 async def startup_event() -> None:
-    app.add_middleware(AddAuthHeaderMiddleware)
     config.gafaelfawr_token = make_gafaelfawr_token()
     mocked = aioresponses()
     mocked.start()
