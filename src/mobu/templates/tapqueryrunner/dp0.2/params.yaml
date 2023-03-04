@@ -5,6 +5,13 @@ max_ra: 72.0
 min_dec: -44.0
 max_dec: -28.0
 
+# Limits for randomly generated cones an polygons for DP0.2.  DP0.2 is about
+# 10 time as dense as DP0.1; these params are downscaled by approx. sqrt(10)
+# from the (default) DP0.1 settings to produce similarly sized query results.
+min_radius: 0.003
+radius_range: 0.012
+radius_near_range: 0.028
+
 # Source list of 500 randomly selected objects across the entire spatial
 # extent of DP0.2.
 objectIds:
