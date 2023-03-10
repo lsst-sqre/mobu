@@ -68,12 +68,17 @@ class TAPQueryRunner(Business):
 
     @staticmethod
     def _generate_random_polygon(
-        min_ra: float, max_ra: float, min_dec: float, max_dec: float
+        min_ra: float,
+        max_ra: float,
+        min_dec: float,
+        max_dec: float,
+        min_radius: float,
+        radius_range: float,
     ) -> str:
         """Generate a random polygon as comma-separated ra/dec values."""
         ra = min_ra + random.random() * (max_ra - min_ra)
         dec = min_dec + random.random() * (max_dec - min_dec)
-        r = 0.01 + random.random() * 0.04
+        r = min_radius + random.random() * radius_range
         n = random.randrange(3, 8)
         phi = random.random() * 2 * math.pi
         poly = []
@@ -88,6 +93,9 @@ class TAPQueryRunner(Business):
         max_ra = self._params.get("max_ra", 70.0)
         min_dec = self._params.get("min_dec", -42.0)
         max_dec = self._params.get("max_dec", -30.0)
+        min_radius = self._params.get("min_radius", 0.01)
+        radius_range = self._params.get("radius_range", 0.04)
+        radius_near_range = self._params.get("radius_near_range", 0.09)
         min_flux = 0.0 + random.random() * 0.00100
         min_mag = 15.0 + random.random() * 15.0
         result = {
@@ -98,10 +106,10 @@ class TAPQueryRunner(Business):
             "min_mag": min_mag,
             "max_mag": min_mag + 0.1,
             "polygon": self._generate_random_polygon(
-                min_ra, max_ra, min_dec, max_dec
+                min_ra, max_ra, min_dec, max_dec, min_radius, radius_range
             ),
-            "radius": 0.01 + random.random() * 0.04,
-            "radius_near": 0.01 + random.random() * 0.09,
+            "radius": min_radius + random.random() * radius_range,
+            "radius_near": min_radius + random.random() * radius_near_range,
             "username": self.user.username,
             "query_id": "mobu-" + shortuuid.uuid(),
         }
