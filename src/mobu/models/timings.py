@@ -28,7 +28,7 @@ class StopwatchData(BaseModel):
         example="2021-07-21T19:43:40.514623+00:00",
     )
 
-    elapsed: float = Field(
+    elapsed: Optional[float] = Field(
         None,
         title="Duration of event in seconds",
         description="Will be null if the event is ongoing",
