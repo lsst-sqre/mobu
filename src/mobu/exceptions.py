@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Union
+from datetime import datetime
+from typing import Dict, Optional
 
 from aiohttp import ClientResponse, ClientResponseError
-
-from .constants import DATE_FORMAT
+from safir.datetime import format_datetime_for_logging
+from safir.slack.blockkit import (
+    SlackCodeBlock,
+    SlackException,
+    SlackMessage,
+    SlackTextBlock,
+    SlackTextField,
+)
 
 __all__ = [
     "CachemachineError",
@@ -16,8 +22,8 @@ __all__ = [
     "JupyterError",
     "JupyterResponseError",
     "JupyterTimeoutError",
+    "MobuSlackException",
     "MonkeyNotFoundException",
-    "SlackError",
 ]
 
 
@@ -41,84 +47,65 @@ class NotebookRepositoryError(Exception):
     """The repository containing notebooks to run is not valid."""
 
 
-class SlackError(Exception):
+class MobuSlackException(SlackException):
     """Represents an exception that can be reported to Slack.
 
-    Intended to be subclassed.  Subclasses must override the to_slack
-    method.
+    This is equivalent to `~safir.slack.blockkit.SlackException` except it
+    adds some additional fields that mobu uses. It is intended to be
+    subclassed. Subclasses must override the `to_slack` method.
     """
 
     def __init__(self, user: str, msg: str) -> None:
-        self.user = user
-        self.failed = datetime.now(tz=timezone.utc)
-        self.started: Optional[datetime] = None
+        super().__init__(msg, user)
+        self.started_at: Optional[datetime] = None
         self.event: Optional[str] = None
         self.annotations: Dict[str, str] = {}
-        super().__init__(msg)
 
-    def to_slack(self) -> Dict[str, Any]:
+    def to_slack(self) -> SlackMessage:
         """Format the error as a Slack Block Kit message.
 
         This is the generic version that only reports the text of the
-        exception and common fields.  Most classes will want to override it.
+        exception and common fields. Most classes will want to override it.
+        Do not use any of the formatting of the general Safir
+        `~safir.slack.blockkit.SlackException` class, since it includes an
+        exception type field that we don't care about and adds some additional
+        text to the main message that we don't want.
         """
-        return {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": str(self)},
-                },
-                {"type": "section", "fields": self.common_fields()},
-                {"type": "divider"},
-            ]
-        }
+        return SlackMessage(message=str(self), fields=self.common_fields())
 
-    def common_fields(self) -> List[Dict[str, Union[str, bool]]]:
+    def common_fields(self) -> list[SlackTextField]:
         """Return common fields to put in any alert."""
-        failed = self.failed.strftime(DATE_FORMAT)
-        fields: List[Dict[str, Union[str, bool]]] = [
-            {"type": "mrkdwn", "text": f"*Failed at*\n{failed}"},
-            {"type": "mrkdwn", "text": f"*User*\n{self.user}"},
+        failed_at = format_datetime_for_logging(self.failed_at)
+        fields = [
+            SlackTextField(heading="Failed at", text=failed_at),
+            SlackTextField(heading="User", text=self.user),
         ]
-        if self.started:
-            started = self.started.strftime(DATE_FORMAT)
-            fields.insert(
-                0, {"type": "mrkdwn", "text": f"*Started at*\n{started}"}
-            )
+        if self.started_at:
+            started_at = format_datetime_for_logging(self.started_at)
+            field = SlackTextField(heading="Started at", text=started_at)
+            fields.insert(0, field)
         if self.event:
-            fields.append({"type": "mrkdwn", "text": f"*Event*\n{self.event}"})
+            fields.append(SlackTextField(heading="Event", text=self.event))
         if self.annotations.get("image"):
             image = self.annotations["image"]
-            fields.append(
-                {
-                    "type": "mrkdwn",
-                    "text": f"*Image*\n{image}",
-                    "verbatim": True,
-                }
-            )
+            fields.append(SlackTextField(heading="Image", text=image))
         if self.annotations.get("node"):
             node = self.annotations["node"]
-            fields.append({"type": "mrkdwn", "text": f"*Node*\n{node}"})
+            fields.append(SlackTextField(heading="Node", text=node))
         if self.annotations.get("cell"):
             cell = self.annotations["cell"]
-            fields.append(
-                {
-                    "type": "mrkdwn",
-                    "text": f"*Cell id*\n{cell}",
-                    "verbatim": True,
-                }
-            )
+            fields.append(SlackTextField(heading="Cell id", text=cell))
         return fields
 
 
-class CachemachineError(SlackError):
+class CachemachineError(MobuSlackException):
     """Failed to obtain a valid image list from cachemachine."""
 
     def __init__(self, user: str, msg: str) -> None:
         super().__init__(user, f"Cachemachine error: {msg}")
 
 
-class CodeExecutionError(SlackError):
+class CodeExecutionError(MobuSlackException):
     """Error generated by code execution in a notebook on JupyterLab."""
 
     def __init__(
@@ -130,11 +117,11 @@ class CodeExecutionError(SlackError):
         error: Optional[str] = None,
         status: Optional[str] = None,
     ) -> None:
+        super().__init__(user, "Code execution failed")
         self.code = code
         self.code_type = code_type
         self.error = error
         self.status = status
-        super().__init__(user, "Code execution failed")
 
     def __str__(self) -> str:
         if self.annotations.get("notebook"):
@@ -152,7 +139,7 @@ class CodeExecutionError(SlackError):
         msg += f"\nError: {self.error}"
         return msg
 
-    def to_slack(self) -> Dict[str, Any]:
+    def to_slack(self) -> SlackMessage:
         """Format the error as a Slack Block Kit message."""
         if self.annotations.get("notebook"):
             notebook = self.annotations["notebook"]
@@ -162,71 +149,23 @@ class CodeExecutionError(SlackError):
         if self.status:
             intro += f" (status: {self.status})"
 
-        code = self._trim_block(self.code)
-        if not code.endswith("\n"):
-            code += "\n"
-        result: Dict[str, Any] = {
-            "blocks": [
-                {"type": "section", "text": {"type": "mrkdwn", "text": intro}},
-                {"type": "section", "fields": self.common_fields()},
-            ],
-            "attachments": [
-                {
-                    "blocks": [
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": f"*Code executed*\n```\n{code}```",
-                                "verbatim": True,
-                            },
-                        }
-                    ],
-                }
-            ],
-        }
+        attachments = [SlackCodeBlock(heading="Code executed", code=self.code)]
         if self.error:
-            error = self._trim_block(self.error)
-            if error and not error.endswith("\n"):
-                error += "\n"
-            result["attachments"][0]["blocks"].insert(
-                0,
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"*Error*\n```\n{error}```",
-                        "verbatim": True,
-                    },
-                },
-            )
-        return result
-
-    @staticmethod
-    def _trim_block(string: str) -> str:
-        """Trim a string with newlines to at most 2977 characters.
-
-        Slack limits the mrkdwn section of an attachment to 3001 characters.
-        We add "*Code executed*\n```\n````" at most.
-        """
-        length = len(string)
-        if length < 2977:
-            return string
-        lines = string.split("\n")
-        while length >= 2977:
-            line = lines.pop(0)
-            length -= len(line) + 1
-        return "\n".join(lines)
+            attachment = SlackCodeBlock(heading="Error", code=self.error)
+            attachments.insert(0, attachment)
+        return SlackMessage(
+            message=intro, fields=self.common_fields(), attachments=attachments
+        )
 
 
-class JupyterError(SlackError):
+class JupyterError(MobuSlackException):
     """An exception occurred when talking to JupyterHub or JupyterLab."""
 
     def __init__(self, user: str, exc: Exception) -> None:
         super().__init__(user, f"{type(exc).__name__}: {str(exc)}")
 
 
-class JupyterResponseError(SlackError):
+class JupyterResponseError(MobuSlackException):
     """Web response error from JupyterHub or JupyterLab."""
 
     @classmethod
@@ -264,12 +203,12 @@ class JupyterResponseError(SlackError):
         method: str,
         body: Optional[str] = None,
     ) -> None:
+        super().__init__(user, f"Status {status} from {method} {url}")
         self.url = url
         self.status = status
         self.reason = reason
         self.method = method
         self.body = body
-        super().__init__(user, f"Status {status} from {method} {url}")
 
     def __str__(self) -> str:
         result = (
@@ -280,24 +219,16 @@ class JupyterResponseError(SlackError):
             result += f"\nBody:\n{self.body}\n"
         return result
 
-    def to_slack(self) -> Dict[str, Any]:
+    def to_slack(self) -> SlackMessage:
         """Format the error as a Slack Block Kit message."""
         intro = f"Status {self.status} from {self.method} {self.url}"
         fields = self.common_fields()
         if self.reason:
-            fields.append(
-                {"type": "mrkdwn", "text": f"*Message*\n{self.reason}"}
-            )
-        return {
-            "blocks": [
-                {"type": "section", "text": {"type": "mrkdwn", "text": intro}},
-                {"type": "section", "fields": fields},
-                {"type": "divider"},
-            ]
-        }
+            fields.append(SlackTextField(heading="Message", text=self.reason))
+        return SlackMessage(message=intro, fields=fields)
 
 
-class JupyterSpawnError(SlackError):
+class JupyterSpawnError(MobuSlackException):
     """The Jupyter Lab pod failed to spawn."""
 
     @classmethod
@@ -316,60 +247,27 @@ class JupyterSpawnError(SlackError):
         super().__init__(user, message)
         self.log = log
 
-    def to_slack(self) -> Dict[str, Any]:
+    def to_slack(self) -> SlackMessage:
         """Format the error as a Slack Block Kit message."""
-        return {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": str(self)},
-                },
-                {"type": "section", "fields": self.common_fields()},
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"*Log*\n{self.log}",
-                        "verbatim": True,
-                    },
-                },
-                {"type": "divider"},
-            ]
-        }
+        message = super().to_slack()
+        message.blocks = [SlackTextBlock(heading="Log", text=self.log)]
+        return message
 
 
-class JupyterTimeoutError(SlackError):
+class JupyterTimeoutError(MobuSlackException):
     """Timed out waiting for the lab to spawn."""
 
     def __init__(self, user: str, msg: str, log: Optional[str] = None) -> None:
         super().__init__(user, msg)
         self.log = log
 
-    def to_slack(self) -> Dict[str, Any]:
+    def to_slack(self) -> SlackMessage:
         """Format the error as a Slack Block Kit message."""
-        result = {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": str(self)},
-                },
-                {"type": "section", "fields": self.common_fields()},
-            ]
-        }
+        message = super().to_slack()
         if self.log:
-            result["blocks"].append(
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"*Log*\n{self.log}",
-                        "verbatim": True,
-                    },
-                }
-            )
-        result["blocks"].append({"type": "divider"})
-        return result
+            message.blocks = [SlackTextBlock(heading="Log", text=self.log)]
+        return message
 
 
-class JupyterWebSocketError(SlackError):
+class JupyterWebSocketError(MobuSlackException):
     """Unexpected messages on the session WebSocket."""

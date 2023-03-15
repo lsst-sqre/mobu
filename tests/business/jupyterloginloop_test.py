@@ -9,11 +9,11 @@ from urllib.parse import urljoin
 import pytest
 from aioresponses import aioresponses
 from httpx import AsyncClient
+from safir.testing.slack import MockSlackWebhook
 
 from mobu.config import config
 from tests.support.gafaelfawr import mock_gafaelfawr
 from tests.support.jupyter import JupyterAction, JupyterState, MockJupyter
-from tests.support.slack import MockSlack
 from tests.support.util import wait_for_business
 
 
@@ -142,7 +142,7 @@ async def test_delayed_lab_delete(
 async def test_alert(
     client: AsyncClient,
     jupyter: MockJupyter,
-    slack: MockSlack,
+    slack: MockSlackWebhook,
     mock_aioresponses: aioresponses,
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
@@ -173,7 +173,7 @@ async def test_alert(
 
     # Check that an appropriate error was posted.
     url = urljoin(config.environment_url, "/nb/hub/spawn")
-    assert slack.alerts == [
+    assert slack.messages == [
         {
             "blocks": [
                 {
@@ -181,16 +181,29 @@ async def test_alert(
                     "text": {
                         "type": "mrkdwn",
                         "text": f"Status 500 from POST {url}",
+                        "verbatim": True,
                     },
                 },
                 {
                     "type": "section",
                     "fields": [
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": "*User*\ntestuser2"},
-                        {"type": "mrkdwn", "text": "*Event*\nspawn_lab"},
-                        {"type": "mrkdwn", "text": "*Message*\nfoo"},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*User*\ntestuser2",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Event*\nspawn_lab",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Message*\nfoo",
+                            "verbatim": True,
+                        },
                     ],
                 },
                 {"type": "divider"},
@@ -203,7 +216,7 @@ async def test_alert(
 async def test_redirect_loop(
     client: AsyncClient,
     jupyter: MockJupyter,
-    slack: MockSlack,
+    slack: MockSlackWebhook,
     mock_aioresponses: aioresponses,
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
@@ -236,7 +249,7 @@ async def test_redirect_loop(
     url = urljoin(
         config.environment_url, "/nb/hub/api/users/testuser1/server/progress"
     )
-    assert slack.alerts == [
+    assert slack.messages == [
         {
             "blocks": [
                 {
@@ -244,18 +257,28 @@ async def test_redirect_loop(
                     "text": {
                         "type": "mrkdwn",
                         "text": f"Status 303 from GET {url}",
+                        "verbatim": True,
                     },
                 },
                 {
                     "type": "section",
                     "fields": [
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": "*User*\ntestuser1"},
-                        {"type": "mrkdwn", "text": "*Event*\nspawn_lab"},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*User*\ntestuser1",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Event*\nspawn_lab",
+                            "verbatim": True,
+                        },
                         {
                             "type": "mrkdwn",
                             "text": "*Message*\nTooManyRedirects",
+                            "verbatim": True,
                         },
                     ],
                 },
@@ -269,7 +292,7 @@ async def test_redirect_loop(
 async def test_spawn_timeout(
     client: AsyncClient,
     jupyter: MockJupyter,
-    slack: MockSlack,
+    slack: MockSlackWebhook,
     mock_aioresponses: aioresponses,
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
@@ -297,7 +320,7 @@ async def test_spawn_timeout(
     data = await wait_for_business(client, "testuser1")
     assert data["business"]["success_count"] == 0
     assert data["business"]["failure_count"] > 0
-    assert slack.alerts == [
+    assert slack.messages == [
         {
             "blocks": [
                 {
@@ -305,15 +328,24 @@ async def test_spawn_timeout(
                     "text": {
                         "type": "mrkdwn",
                         "text": "Lab did not spawn after 1s",
+                        "verbatim": True,
                     },
                 },
                 {
                     "type": "section",
                     "fields": [
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": "*User*\ntestuser1"},
-                        {"type": "mrkdwn", "text": "*Event*\nspawn_lab"},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*User*\ntestuser1",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Event*\nspawn_lab",
+                            "verbatim": True,
+                        },
                     ],
                 },
                 {"type": "divider"},
@@ -326,7 +358,7 @@ async def test_spawn_timeout(
 async def test_spawn_failed(
     client: AsyncClient,
     jupyter: MockJupyter,
-    slack: MockSlack,
+    slack: MockSlackWebhook,
     mock_aioresponses: aioresponses,
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
@@ -354,7 +386,7 @@ async def test_spawn_failed(
     data = await wait_for_business(client, "testuser1")
     assert data["business"]["success_count"] == 0
     assert data["business"]["failure_count"] > 0
-    assert slack.alerts == [
+    assert slack.messages == [
         {
             "blocks": [
                 {
@@ -362,15 +394,24 @@ async def test_spawn_failed(
                     "text": {
                         "type": "mrkdwn",
                         "text": "Spawning lab failed",
+                        "verbatim": True,
                     },
                 },
                 {
                     "type": "section",
                     "fields": [
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": "*User*\ntestuser1"},
-                        {"type": "mrkdwn", "text": "*Event*\nspawn_lab"},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*User*\ntestuser1",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Event*\nspawn_lab",
+                            "verbatim": True,
+                        },
                     ],
                 },
                 {
@@ -378,10 +419,10 @@ async def test_spawn_failed(
                     "text": {"type": "mrkdwn", "text": ANY, "verbatim": True},
                 },
                 {"type": "divider"},
-            ]
+            ],
         }
     ]
-    log = slack.alerts[0]["blocks"][2]["text"]["text"]
+    log = slack.messages[0]["blocks"][2]["text"]["text"]
     log = re.sub(r"\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d", "<ts>", log)
     assert log == (
         "*Log*\n"
@@ -395,7 +436,7 @@ async def test_spawn_failed(
 async def test_delete_timeout(
     client: AsyncClient,
     jupyter: MockJupyter,
-    slack: MockSlack,
+    slack: MockSlackWebhook,
     mock_aioresponses: aioresponses,
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
@@ -426,7 +467,7 @@ async def test_delete_timeout(
     data = await wait_for_business(client, "testuser1")
     assert data["business"]["success_count"] == 0
     assert data["business"]["failure_count"] > 0
-    assert slack.alerts == [
+    assert slack.messages == [
         {
             "blocks": [
                 {
@@ -434,15 +475,24 @@ async def test_delete_timeout(
                     "text": {
                         "type": "mrkdwn",
                         "text": "Lab not deleted after 2s",
+                        "verbatim": True,
                     },
                 },
                 {
                     "type": "section",
                     "fields": [
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": "*User*\ntestuser1"},
-                        {"type": "mrkdwn", "text": "*Event*\ndelete_lab"},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*User*\ntestuser1",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Event*\ndelete_lab",
+                            "verbatim": True,
+                        },
                         {
                             "type": "mrkdwn",
                             "text": "*Image*\nRecommended (Weekly 2021_33)",

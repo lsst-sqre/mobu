@@ -6,15 +6,15 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pytest
+from safir.testing.slack import MockSlackWebhook
 
 from mobu.dependencies.manager import monkey_business_manager
 from mobu.models.flock import FlockSummary
 from mobu.status import post_status
-from tests.support.slack import MockSlack
 
 
 @pytest.mark.asyncio
-async def test_post_status(slack: MockSlack) -> None:
+async def test_post_status(slack: MockSlackWebhook) -> None:
     with patch.object(monkey_business_manager, "summarize_flocks") as mock:
         mock.return_value = [
             FlockSummary(
@@ -51,12 +51,16 @@ Currently running 3 flocks against https://test.example.com:
 • *tap*: 1 monkey started 2021-08-20 with 1 failure (99.99% success)
 • *login*: 2 monkeys (not started) with 0 failures (100.00% success)
 """
-    assert slack.alerts == [
+    assert slack.messages == [
         {
             "blocks": [
                 {
                     "type": "section",
-                    "text": {"type": "mrkdwn", "text": expected},
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": expected.strip(),
+                        "verbatim": True,
+                    },
                 }
             ]
         }

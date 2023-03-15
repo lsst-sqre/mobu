@@ -18,6 +18,7 @@ pytest
 pytest-asyncio
 pytest-cov
 pytest-httpx
+respx
 types-PyYAML
 types-requests
 yarl

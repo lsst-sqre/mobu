@@ -7,7 +7,7 @@
 
 # These dependencies are for fastapi including some optional features.
 aiofiles
-fastapi!=0.89.0
+fastapi
 starlette
 uvicorn[standard]
 
@@ -20,6 +20,10 @@ jinja2
 pydantic
 pyvo
 pyyaml
-safir
+safir>=3.8.0
 shortuuid
 structlog
+
+# Uncomment this, change the branch, comment out safir above, and run make
+# update-deps-no-hashes to test against an unreleased version of Safir.
+#safir @ git+https://github.com/lsst-sqre/safir@tickets/DM-38272
