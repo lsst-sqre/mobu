@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import structlog
-from aiohttp import ClientSession
+from safir.slack.blockkit import SlackMessage
+from safir.slack.webhook import SlackWebhookClient
 
 from .config import config
 from .dependencies.manager import monkey_business_manager
-from .slack import SlackClient
 
 __all__ = ["post_status"]
 
@@ -52,13 +52,6 @@ async def post_status() -> None:
         )
         text += line
 
-    alert = {
-        "blocks": [
-            {"type": "section", "text": {"type": "mrkdwn", "text": text}}
-        ]
-    }
-
     logger = structlog.get_logger(config.logger_name)
-    async with ClientSession() as session:
-        slack = SlackClient(config.alert_hook, session, logger)
-        await slack.post_alert(alert)
+    slack = SlackWebhookClient(config.alert_hook, "Mobu", logger)
+    await slack.post(SlackMessage(message=text))

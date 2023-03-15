@@ -11,9 +11,9 @@ import pytest
 from aioresponses import aioresponses
 from git import Actor, Repo
 from httpx import AsyncClient
+from safir.testing.slack import MockSlackWebhook
 
 from tests.support.gafaelfawr import mock_gafaelfawr
-from tests.support.slack import MockSlack
 from tests.support.util import wait_for_business
 
 
@@ -89,7 +89,7 @@ async def test_run(
 @pytest.mark.asyncio
 async def test_alert(
     client: AsyncClient,
-    slack: MockSlack,
+    slack: MockSlackWebhook,
     mock_aioresponses: aioresponses,
     tmp_path: Path,
 ) -> None:
@@ -161,7 +161,7 @@ async def test_alert(
     }
 
     # Check that an appropriate error was posted.
-    assert slack.alerts == [
+    assert slack.messages == [
         {
             "blocks": [
                 {
@@ -169,21 +169,34 @@ async def test_alert(
                     "text": {
                         "type": "mrkdwn",
                         "text": "Error while running `exception.ipynb`",
+                        "verbatim": True,
                     },
                 },
                 {
                     "type": "section",
                     "fields": [
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": "*User*\ntestuser1"},
-                        {"type": "mrkdwn", "text": "*Event*\nexecute_cell"},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*User*\ntestuser1",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Event*\nexecute_cell",
+                            "verbatim": True,
+                        },
                         {
                             "type": "mrkdwn",
                             "text": "*Image*\nRecommended (Weekly 2021_33)",
                             "verbatim": True,
                         },
-                        {"type": "mrkdwn", "text": "*Node*\nsome-node"},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Node*\nsome-node",
+                            "verbatim": True,
+                        },
                         {
                             "type": "mrkdwn",
                             "text": "*Cell id*\n`ed399c0a` (#1)",
@@ -218,5 +231,5 @@ async def test_alert(
             ],
         }
     ]
-    error = slack.alerts[0]["attachments"][0]["blocks"][0]["text"]["text"]
+    error = slack.messages[0]["attachments"][0]["blocks"][0]["text"]["text"]
     assert "KeyError: 'nothing'" in error

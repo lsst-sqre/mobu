@@ -8,9 +8,9 @@ from unittest.mock import ANY
 import pytest
 from aioresponses import aioresponses
 from httpx import AsyncClient
+from safir.testing.slack import MockSlackWebhook
 
 from tests.support.gafaelfawr import mock_gafaelfawr
-from tests.support.slack import MockSlack
 from tests.support.util import wait_for_business
 
 
@@ -101,7 +101,9 @@ async def test_server_shutdown(
 
 @pytest.mark.asyncio
 async def test_alert(
-    client: AsyncClient, slack: MockSlack, mock_aioresponses: aioresponses
+    client: AsyncClient,
+    slack: MockSlackWebhook,
+    mock_aioresponses: aioresponses,
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
 
@@ -128,7 +130,7 @@ async def test_alert(
     assert data["business"]["failure_count"] == 1
 
     # Check that an appropriate error was posted.
-    assert slack.alerts == [
+    assert slack.messages == [
         {
             "blocks": [
                 {
@@ -136,21 +138,34 @@ async def test_alert(
                     "text": {
                         "type": "mrkdwn",
                         "text": "Error while running code",
+                        "verbatim": True,
                     },
                 },
                 {
                     "type": "section",
                     "fields": [
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": "*User*\ntestuser1"},
-                        {"type": "mrkdwn", "text": "*Event*\nexecute_code"},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*User*\ntestuser1",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Event*\nexecute_code",
+                            "verbatim": True,
+                        },
                         {
                             "type": "mrkdwn",
                             "text": "*Image*\nRecommended (Weekly 2021_33)",
                             "verbatim": True,
                         },
-                        {"type": "mrkdwn", "text": "*Node*\nsome-node"},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Node*\nsome-node",
+                            "verbatim": True,
+                        },
                     ],
                 },
             ],
@@ -181,13 +196,15 @@ async def test_alert(
             ],
         }
     ]
-    error = slack.alerts[0]["attachments"][0]["blocks"][0]["text"]["text"]
+    error = slack.messages[0]["attachments"][0]["blocks"][0]["text"]["text"]
     assert "Exception: some error" in error
 
 
 @pytest.mark.asyncio
 async def test_long_error(
-    client: AsyncClient, slack: MockSlack, mock_aioresponses: aioresponses
+    client: AsyncClient,
+    slack: MockSlackWebhook,
+    mock_aioresponses: aioresponses,
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
 
@@ -221,12 +238,12 @@ async def test_long_error(
     assert data["business"]["failure_count"] == 1
 
     # Check that an appropriate error was posted.
-    error = ""
+    error = "... truncated ...\n"
     line = "this is a single line of output to test trimming errors"
     for i in range(5, 54):
         error += f"{line} #{i}\n"
     assert 2977 - len(line) <= len(error) <= 2977
-    assert slack.alerts == [
+    assert slack.messages == [
         {
             "blocks": [
                 {
@@ -234,21 +251,34 @@ async def test_long_error(
                     "text": {
                         "type": "mrkdwn",
                         "text": "Error while running code",
+                        "verbatim": True,
                     },
                 },
                 {
                     "type": "section",
                     "fields": [
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": "*User*\ntestuser1"},
-                        {"type": "mrkdwn", "text": "*Event*\nexecute_code"},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*User*\ntestuser1",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Event*\nexecute_code",
+                            "verbatim": True,
+                        },
                         {
                             "type": "mrkdwn",
                             "text": "*Image*\nd_2021_08_30",
                             "verbatim": True,
                         },
-                        {"type": "mrkdwn", "text": "*Node*\nsome-node"},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Node*\nsome-node",
+                            "verbatim": True,
+                        },
                     ],
                 },
             ],

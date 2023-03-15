@@ -12,13 +12,13 @@ import structlog
 import yaml
 from aioresponses import aioresponses
 from httpx import AsyncClient
+from safir.testing.slack import MockSlackWebhook
 
 import mobu
 from mobu.business.tapqueryrunner import TAPQueryRunner
 from mobu.models.business import BusinessConfig
 from mobu.models.user import AuthenticatedUser
 from tests.support.gafaelfawr import mock_gafaelfawr
-from tests.support.slack import MockSlack
 from tests.support.util import wait_for_business
 
 
@@ -69,7 +69,9 @@ async def test_run(
 
 @pytest.mark.asyncio
 async def test_alert(
-    client: AsyncClient, slack: MockSlack, mock_aioresponses: aioresponses
+    client: AsyncClient,
+    slack: MockSlackWebhook,
+    mock_aioresponses: aioresponses,
 ) -> None:
     mock_gafaelfawr(mock_aioresponses)
 
@@ -92,7 +94,7 @@ async def test_alert(
         data = await wait_for_business(client, "testuser1")
         assert data["business"]["failure_count"] == 1
 
-    assert slack.alerts == [
+    assert slack.messages == [
         {
             "blocks": [
                 {
@@ -100,15 +102,24 @@ async def test_alert(
                     "text": {
                         "type": "mrkdwn",
                         "text": "Error while running TAP query",
+                        "verbatim": True,
                     },
                 },
                 {
                     "type": "section",
                     "fields": [
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": ANY},
-                        {"type": "mrkdwn", "text": "*User*\ntestuser1"},
-                        {"type": "mrkdwn", "text": "*Event*\nexecute_query"},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*User*\ntestuser1",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Event*\nexecute_query",
+                            "verbatim": True,
+                        },
                     ],
                 },
             ],

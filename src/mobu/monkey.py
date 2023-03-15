@@ -11,13 +11,14 @@ import structlog
 from aiohttp import ClientSession
 from aiojobs import Scheduler
 from aiojobs._job import Job
+from safir.datetime import current_datetime, format_datetime_for_logging
+from safir.slack.blockkit import SlackException, SlackMessage, SlackTextField
+from safir.slack.webhook import SlackWebhookClient
 
 from .business.base import Business
 from .config import config
-from .exceptions import SlackError
 from .models.monkey import MonkeyConfig, MonkeyData, MonkeyState
 from .models.user import AuthenticatedUser
-from .slack import SlackClient
 
 __all__ = ["Monkey"]
 
@@ -62,7 +63,9 @@ class Monkey:
 
         self._slack = None
         if config.alert_hook and config.alert_hook != "None":
-            self._slack = SlackClient(config.alert_hook, session, self.log)
+            self._slack = SlackWebhookClient(
+                config.alert_hook, "Mobu", self.log
+            )
 
         self.business = business_type(self.log, self.config.options, self.user)
 
@@ -75,11 +78,22 @@ class Monkey:
             self.log.info("Alert hook isn't set, so not sending to Slack")
             return
 
-        if isinstance(e, SlackError):
-            await self._slack.alert_from_exception(e)
+        if isinstance(e, SlackException):
+            # Avoid post_exception here since it adds the application name,
+            # but mobu (unusually) uses a dedicated web hook and therefore
+            # doesn't need to label its alerts.
+            await self._slack.post(e.to_slack())
         else:
-            msg = f"Unexpected exception {type(e).__name__}: {str(e)}"
-            await self._slack.alert(self.user.username, msg)
+            now = current_datetime(microseconds=True)
+            date = format_datetime_for_logging(now)
+            message = SlackMessage(
+                message=f"Unexpected exception {type(e).__name__}: {str(e)}",
+                fields=[
+                    SlackTextField(heading="Date", text=date),
+                    SlackTextField(heading="User", text=self.user.username),
+                ],
+            )
+            await self._slack.post(message)
 
     def logfile(self) -> str:
         self._logfile.flush()

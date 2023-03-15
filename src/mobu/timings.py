@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from types import TracebackType
 from typing import Dict, List, Literal, Optional
 
-from .exceptions import SlackError
+from .exceptions import MobuSlackException
 from .models.timings import StopwatchData
 
 
@@ -90,8 +90,8 @@ class Stopwatch:
         self.stop_time = datetime.now(tz=timezone.utc)
         if exc_val:
             self.failed = True
-        if exc_val and isinstance(exc_val, SlackError):
-            exc_val.started = self.start_time
+        if exc_val and isinstance(exc_val, MobuSlackException):
+            exc_val.started_at = self.start_time
             exc_val.event = self.event
             exc_val.annotations = self.annotations
         return False

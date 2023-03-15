@@ -7,11 +7,13 @@ from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
+import respx
 from aiohttp import ClientSession
 from aioresponses import aioresponses
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import AsyncClient
+from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 
 from mobu import main
 from mobu.config import config
@@ -23,7 +25,6 @@ from tests.support.jupyter import (
     mock_jupyter,
     mock_jupyter_websocket,
 )
-from tests.support.slack import MockSlack, mock_slack
 
 
 @pytest.fixture(autouse=True)
@@ -104,8 +105,7 @@ def jupyter(mock_aioresponses: aioresponses) -> Iterator[MockJupyter]:
 
 
 @pytest.fixture
-def slack(mock_aioresponses: aioresponses) -> Iterator[MockSlack]:
-    """Mock out Slack for alerting."""
+def slack(respx_mock: respx.Router) -> Iterator[MockSlackWebhook]:
     config.alert_hook = "https://slack.example.com/services/XXXX/YYYYY"
-    yield mock_slack(mock_aioresponses)
+    yield mock_slack_webhook(config.alert_hook, respx_mock)
     config.alert_hook = None
