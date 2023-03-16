@@ -20,9 +20,10 @@ from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 
 from mobu import main
 from mobu.config import config
-from tests.support.cachemachine import MockCachemachine, mock_cachemachine
-from tests.support.gafaelfawr import make_gafaelfawr_token
-from tests.support.jupyter import (
+
+from .support.cachemachine import MockCachemachine, mock_cachemachine
+from .support.gafaelfawr import make_gafaelfawr_token
+from .support.jupyter import (
     MockJupyter,
     MockJupyterWebSocket,
     mock_jupyter,

@@ -7,7 +7,8 @@ from aiohttp import ClientSession
 from aioresponses import aioresponses
 
 from mobu.models.user import AuthenticatedUser, User
-from tests.support.gafaelfawr import mock_gafaelfawr
+
+from .support.gafaelfawr import mock_gafaelfawr
 
 
 @pytest.mark.asyncio

@@ -10,8 +10,8 @@ from aioresponses import aioresponses
 from httpx import AsyncClient
 from safir.testing.slack import MockSlackWebhook
 
-from tests.support.gafaelfawr import mock_gafaelfawr
-from tests.support.util import wait_for_business
+from ..support.gafaelfawr import mock_gafaelfawr
+from ..support.util import wait_for_business
 
 
 @pytest.mark.asyncio

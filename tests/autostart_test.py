@@ -11,7 +11,8 @@ from aioresponses import aioresponses
 from httpx import AsyncClient
 
 from mobu.config import config
-from tests.support.gafaelfawr import mock_gafaelfawr
+
+from .support.gafaelfawr import mock_gafaelfawr
 
 AUTOSTART_CONFIG = """
 - name: basic
