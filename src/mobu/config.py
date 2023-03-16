@@ -6,7 +6,7 @@ from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseSettings, Field, HttpUrl
-from safir.logging import LogLevel
+from safir.logging import LogLevel, Profile
 
 __all__ = [
     "CachemachinePolicy",
@@ -91,6 +91,12 @@ class Configuration(BaseSettings):
         title="Name of application",
         description="Doubles as the root HTTP endpoint path.",
         env="SAFIR_NAME",
+    )
+
+    profile: Profile = Field(
+        Profile.development,
+        title="Application logging profile",
+        env="SAFIR_PROFILE",
     )
 
     log_level: LogLevel = Field(

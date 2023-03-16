@@ -12,7 +12,7 @@ from importlib.metadata import metadata, version
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
-from safir.logging import Profile, configure_logging, configure_uvicorn_logging
+from safir.logging import configure_logging, configure_uvicorn_logging
 from safir.middleware.x_forwarded import XForwardedMiddleware
 
 from .autostart import autostart
@@ -28,7 +28,7 @@ __all__ = ["app", "config"]
 
 
 configure_logging(
-    profile=Profile.production, log_level=config.log_level, name="mobu"
+    profile=config.profile, log_level=config.log_level, name="mobu"
 )
 configure_uvicorn_logging(config.log_level)
 
