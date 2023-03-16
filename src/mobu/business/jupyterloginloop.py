@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from aiohttp import ClientError, ClientResponseError
+from safir.datetime import current_datetime, format_datetime_for_logging
 from structlog import BoundLogger
 
-from ..constants import DATE_FORMAT
 from ..exceptions import (
     JupyterResponseError,
     JupyterSpawnError,
@@ -37,12 +37,13 @@ class ProgressLogMessage:
     """The message."""
 
     timestamp: datetime = field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
+        default_factory=lambda: current_datetime(microseconds=True)
     )
     """When the event was received."""
 
     def __str__(self) -> str:
-        return f"{self.timestamp.strftime(DATE_FORMAT)} - {self.message}"
+        timestamp = format_datetime_for_logging(self.timestamp)
+        return f"{timestamp} - {self.message}"
 
 
 class JupyterLoginLoop(Business):
@@ -181,9 +182,9 @@ class JupyterLoginLoop(Business):
             if self.stopping:
                 return
             timeout = self.config.delete_timeout
-            start = datetime.now(tz=timezone.utc)
+            start = current_datetime(microseconds=True)
             while not await self._client.is_lab_stopped():
-                now = datetime.now(tz=timezone.utc)
+                now = current_datetime(microseconds=True)
                 elapsed = round((now - start).total_seconds())
                 if elapsed > timeout:
                     if not await self._client.is_lab_stopped(final=True):

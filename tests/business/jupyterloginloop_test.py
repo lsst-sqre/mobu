@@ -423,7 +423,7 @@ async def test_spawn_failed(
         }
     ]
     log = slack.messages[0]["blocks"][2]["text"]["text"]
-    log = re.sub(r"\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d", "<ts>", log)
+    log = re.sub(r"\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d(.\d\d\d)?", "<ts>", log)
     assert log == (
         "*Log*\n"
         "<ts> - Server requested\n"

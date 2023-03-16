@@ -13,7 +13,6 @@ import re
 import string
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from functools import wraps
 from http.cookies import BaseCookie
 from typing import Any, Optional, TypeVar, cast
@@ -28,6 +27,7 @@ from aiohttp import (
     TCPConnector,
 )
 from aiohttp.client import _RequestContextManager, _WSRequestContextManager
+from safir.datetime import current_datetime
 from structlog import BoundLogger
 
 from .cachemachine import CachemachineClient
@@ -87,7 +87,7 @@ class JupyterSpawnProgress:
     def __init__(self, response: ClientResponse, logger: BoundLogger) -> None:
         self._response = response
         self._logger = logger
-        self._start = datetime.now(tz=timezone.utc)
+        self._start = current_datetime(microseconds=True)
 
     async def __aiter__(self) -> AsyncIterator[ProgressMessage]:
         """Iterate over spawn progress events."""
@@ -110,7 +110,7 @@ class JupyterSpawnProgress:
                 continue
 
             # Log the event and yield it.
-            now = datetime.now(tz=timezone.utc)
+            now = current_datetime(microseconds=True)
             elapsed = int((now - self._start).total_seconds())
             if event.ready:
                 status = "complete"
