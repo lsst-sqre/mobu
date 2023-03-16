@@ -14,6 +14,8 @@ from aioresponses import aioresponses
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import AsyncClient
+from pydantic import HttpUrl
+from pydantic.tools import parse_obj_as
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 
 from mobu import main
@@ -39,10 +41,10 @@ def configure() -> Iterator[None]:
     minimal test configuration and a unique admin token that is replaced after
     the test runs.
     """
-    config.environment_url = "https://test.example.com"
+    config.environment_url = parse_obj_as(HttpUrl, "https://test.example.com")
     config.gafaelfawr_token = make_gafaelfawr_token()
     yield
-    config.environment_url = ""
+    config.environment_url = None
     config.gafaelfawr_token = None
 
 
@@ -107,6 +109,6 @@ def jupyter(mock_aioresponses: aioresponses) -> Iterator[MockJupyter]:
 
 @pytest.fixture
 def slack(respx_mock: respx.Router) -> Iterator[MockSlackWebhook]:
-    config.alert_hook = "https://slack.example.com/services/XXXX/YYYYY"
-    yield mock_slack_webhook(config.alert_hook, respx_mock)
+    config.alert_hook = parse_obj_as(HttpUrl, "https://slack.example.com/XXXX")
+    yield mock_slack_webhook(str(config.alert_hook), respx_mock)
     config.alert_hook = None

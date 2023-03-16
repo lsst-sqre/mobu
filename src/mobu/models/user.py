@@ -95,7 +95,11 @@ class AuthenticatedUser(User):
     async def create(
         cls, user: User, scopes: list[str], session: ClientSession
     ) -> Self:
-        token_url = f"{config.environment_url}/auth/api/v1/tokens"
+        if not config.environment_url:
+            raise RuntimeError("environment_url not set")
+        token_url = (
+            str(config.environment_url).rstrip("/") + "/auth/api/v1/tokens"
+        )
         data: dict[str, Any] = {
             "username": user.username,
             "name": "Mobu Test User",

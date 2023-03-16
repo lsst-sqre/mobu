@@ -46,9 +46,8 @@ def configure_autostart(
 ) -> Iterator[None]:
     """Set up the autostart configuration."""
     mock_gafaelfawr(mock_aioresponses, any_uid=True)
-    autostart_path = tmp_path / "autostart.yaml"
-    autostart_path.write_text(AUTOSTART_CONFIG)
-    config.autostart = str(autostart_path)
+    config.autostart = tmp_path / "autostart.yaml"
+    config.autostart.write_text(AUTOSTART_CONFIG)
     yield
     config.autostart = None
 

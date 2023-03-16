@@ -222,7 +222,11 @@ class JupyterClient:
         self.user = user
         self.log = log
         self.config = jupyter_config
-        self.jupyter_url = config.environment_url + jupyter_config.url_prefix
+        if not config.environment_url:
+            raise RuntimeError("environment_url not set")
+        self.jupyter_url = (
+            str(config.environment_url).rstrip("/") + jupyter_config.url_prefix
+        )
 
         xsrftoken = "".join(
             random.choices(string.ascii_uppercase + string.digits, k=16)

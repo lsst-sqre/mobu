@@ -55,6 +55,8 @@ app.add_middleware(XForwardedMiddleware)
 async def startup_event() -> None:
     if not config.environment_url:
         raise RuntimeError("ENVIRONMENT_URL was not set")
+    if not config.gafaelfawr_token:
+        raise RuntimeError("GAFAELFAWR_TOKEN was not set")
     await monkey_business_manager.init()
     if config.autostart:
         await autostart()

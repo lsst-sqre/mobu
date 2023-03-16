@@ -22,6 +22,8 @@ from click.testing import CliRunner
 from mobu.config import config
 from monkeyflocker.cli import main
 
+from .support.gafaelfawr import make_gafaelfawr_token
+
 APP_SOURCE = """
 from collections.abc import Awaitable, Callable
 
@@ -31,7 +33,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from mobu.config import config
 from mobu.main import app
-from tests.support.gafaelfawr import make_gafaelfawr_token, mock_gafaelfawr
+from tests.support.gafaelfawr import mock_gafaelfawr
 from tests.support.jupyter import mock_jupyter
 
 
@@ -58,7 +60,6 @@ app.add_middleware(AddAuthHeaderMiddleware)
 
 @app.on_event("startup")
 async def startup_event() -> None:
-    config.gafaelfawr_token = make_gafaelfawr_token()
     mocked = aioresponses()
     mocked.start()
     mock_gafaelfawr(mocked)
@@ -109,6 +110,7 @@ def app_url(tmp_path: Path) -> Iterator[str]:
 
     cmd = ["uvicorn", "--fd", "0", "testing:app"]
     logging.info("Starting server with command %s", " ".join(cmd))
+    assert config.environment_url
     p = subprocess.Popen(
         cmd,
         cwd=str(tmp_path),
@@ -116,6 +118,7 @@ def app_url(tmp_path: Path) -> Iterator[str]:
         env={
             **os.environ,
             "ENVIRONMENT_URL": config.environment_url,
+            "GAFAELFAWR_TOKEN": make_gafaelfawr_token(),
             "PYTHONPATH": os.getcwd(),
         },
     )

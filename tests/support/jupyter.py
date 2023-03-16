@@ -50,10 +50,11 @@ class JupyterState(Enum):
 
 def _url(route: str, regex: bool = False) -> str | Pattern[str]:
     """Construct a URL for JupyterHub/Proxy."""
+    base_url = str(config.environment_url).rstrip("/")
     if not regex:
-        return f"{config.environment_url}/nb/{route}"
+        return f"{base_url}/nb/{route}"
 
-    prefix = re.escape(f"{config.environment_url}/nb/")
+    prefix = re.escape(f"{base_url}/nb/")
     return re.compile(prefix + route)
 
 
