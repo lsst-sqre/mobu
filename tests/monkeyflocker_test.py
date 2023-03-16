@@ -10,8 +10,9 @@ import shutil
 import socket
 import subprocess
 import time
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Dict, Iterator
+from typing import Any
 from unittest.mock import ANY
 
 import httpx
@@ -22,7 +23,7 @@ from mobu.config import config
 from monkeyflocker.cli import main
 
 APP_SOURCE = """
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 from aioresponses import aioresponses
 from fastapi import FastAPI, Request, Response
@@ -151,7 +152,7 @@ def test_start_report_stop(tmp_path: Path, app_url: str) -> None:
     print(result.stdout)
     assert result.exit_code == 0
 
-    expected: Dict[str, Any] = {
+    expected: dict[str, Any] = {
         "name": "basic",
         "config": {
             "name": "basic",

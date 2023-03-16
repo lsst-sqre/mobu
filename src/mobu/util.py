@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import asyncio
 from asyncio import Task
-from typing import Awaitable, Callable, Coroutine, Optional, TypeVar
+from collections.abc import Awaitable, Callable, Coroutine
+from typing import TypeVar
 
 T = TypeVar("T")
 
@@ -24,7 +25,7 @@ def schedule_periodic(
     return asyncio.ensure_future(loop())
 
 
-async def wait_first(*args: Coroutine[None, None, T]) -> Optional[T]:
+async def wait_first(*args: Coroutine[None, None, T]) -> T | None:
     """Return the result of the first awaitable to finish.
 
     The other awaitables will be cancelled.  The first awaitable determines

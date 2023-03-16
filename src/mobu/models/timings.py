@@ -1,7 +1,7 @@
 """Models for timing data."""
 
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -11,7 +11,7 @@ class StopwatchData(BaseModel):
 
     event: str = Field(..., title="Name of the event", example="lab_create")
 
-    annotations: Dict[str, str] = Field(
+    annotations: dict[str, str] = Field(
         default_factory=dict,
         title="Event annotations",
         example={"notebook": "example.ipynb"},

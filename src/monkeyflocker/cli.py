@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Union
 
 import click
 from safir.asyncio import run_with_asyncio
@@ -24,7 +23,7 @@ def main() -> None:
 @main.command()
 @click.argument("topic", default=None, required=False, nargs=1)
 @click.pass_context
-def help(ctx: click.Context, topic: Union[None, str]) -> None:
+def help(ctx: click.Context, topic: str | None) -> None:
     """Show help for any command."""
     # The help command implementation is taken from
     # https://www.burgundywall.com/post/having-click-help-subcommand
@@ -124,7 +123,7 @@ async def report(base_url: str, token: str, output: Path, name: str) -> None:
 @click.argument("name")
 @run_with_asyncio
 async def stop(
-    base_url: str, token: str, output: Optional[Path], name: str
+    base_url: str, token: str, output: Path | None, name: str
 ) -> None:
     """Stop a flock."""
     async with MonkeyflockerClient(base_url, token) as client:

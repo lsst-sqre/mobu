@@ -44,16 +44,16 @@ def test_timings() -> None:
         StopwatchData(
             event="something",
             annotations={},
-            start=first_sw.start_time.isoformat(),
-            stop=first_sw.stop_time.isoformat(),
+            start=first_sw.start_time,
+            stop=first_sw.stop_time,
             elapsed=first_sw.elapsed.total_seconds(),
             failed=False,
         ),
         StopwatchData(
             event="else",
             annotations={"foo": "bar"},
-            start=second_sw.start_time.isoformat(),
-            stop=second_sw.stop_time.isoformat(),
+            start=second_sw.start_time,
+            stop=second_sw.stop_time,
             elapsed=second_sw.elapsed.total_seconds(),
             failed=True,
         ),
@@ -64,7 +64,7 @@ def test_timings() -> None:
         assert dump[2] == StopwatchData(
             event="incomplete",
             annotations={},
-            start=sw.start_time.isoformat(),
+            start=sw.start_time,
             stop=None,
             elapsed=None,
         )

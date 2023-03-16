@@ -7,7 +7,7 @@ import logging
 import sys
 from pathlib import Path
 from types import TracebackType
-from typing import Literal, Optional
+from typing import Literal
 from urllib.parse import urljoin
 
 import aiohttp
@@ -47,9 +47,9 @@ class MonkeyflockerClient:
 
     async def __aexit__(
         self,
-        exc_type: Optional[type],
-        exc_val: Optional[Exception],
-        exc_tb: Optional[TracebackType],
+        exc_type: type | None,
+        exc_val: Exception | None,
+        exc_tb: TracebackType | None,
     ) -> Literal[False]:
         await self.aclose()
         return False

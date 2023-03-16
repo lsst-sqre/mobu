@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-from asyncio import Queue, QueueEmpty, TimeoutError
+from asyncio import Queue, QueueEmpty
+from collections.abc import AsyncIterable, AsyncIterator
 from datetime import datetime, timezone
 from enum import Enum
-from typing import AsyncIterable, AsyncIterator, TypeVar
+from typing import TypeVar
 
 from structlog import BoundLogger
 
@@ -194,7 +195,6 @@ class Business:
     def dump(self) -> BusinessData:
         return BusinessData(
             name=type(self).__name__,
-            config=self.config,
             failure_count=self.failure_count,
             success_count=self.success_count,
             timings=self.timings.dump(),

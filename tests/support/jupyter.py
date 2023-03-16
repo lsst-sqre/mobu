@@ -12,7 +12,7 @@ from enum import Enum
 from io import StringIO
 from re import Pattern
 from traceback import format_exc
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional
 from unittest.mock import ANY, AsyncMock, Mock
 from uuid import uuid4
 
@@ -47,7 +47,7 @@ class JupyterState(Enum):
     LAB_RUNNING = "lab running"
 
 
-def _url(route: str, regex: bool = False) -> Union[str, Pattern[str]]:
+def _url(route: str, regex: bool = False) -> str | Pattern[str]:
     """Construct a URL for JupyterHub/Proxy."""
     if not regex:
         return f"{config.environment_url}/nb/{route}"
@@ -64,13 +64,13 @@ class MockJupyter:
     """
 
     def __init__(self) -> None:
-        self.sessions: Dict[str, JupyterLabSession] = {}
-        self.state: Dict[str, JupyterState] = {}
+        self.sessions: dict[str, JupyterLabSession] = {}
+        self.state: dict[str, JupyterState] = {}
         self.delete_immediate = True
         self.spawn_timeout = False
         self.redirect_loop = False
-        self._delete_at: Dict[str, Optional[datetime]] = {}
-        self._fail: Dict[str, Dict[JupyterAction, bool]] = {}
+        self._delete_at: dict[str, datetime | None] = {}
+        self._fail: dict[str, dict[JupyterAction, bool]] = {}
 
     def fail(self, user: str, action: JupyterAction) -> None:
         """Configure the given action to fail for the given user."""
@@ -264,11 +264,11 @@ class MockJupyterWebSocket(Mock):
         super().__init__(spec=ClientWebSocketResponse)
         self.user = user
         self.session_id = session_id
-        self._header: Optional[Dict[str, str]] = None
+        self._header: Optional[dict[str, str]] = None
         self._code: Optional[str] = None
-        self._state: Dict[str, Any] = {}
+        self._state: dict[str, Any] = {}
 
-    async def send_json(self, message: Dict[str, Any]) -> None:
+    async def send_json(self, message: dict[str, Any]) -> None:
         assert message == {
             "header": {
                 "username": self.user,
@@ -292,7 +292,7 @@ class MockJupyterWebSocket(Mock):
         self._header = message["header"]
         self._code = message["content"]["code"]
 
-    async def receive_json(self) -> Dict[str, Any]:
+    async def receive_json(self) -> dict[str, Any]:
         assert self._header
         if self._code == _GET_NODE:
             self._code = None

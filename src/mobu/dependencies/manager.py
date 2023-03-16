@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Dict, List, Optional
+from typing import Optional
 
 from aiohttp import ClientSession
 from aiojobs import Scheduler
@@ -19,7 +19,7 @@ class MonkeyBusinessManager:
     """Manages all of the running monkeys."""
 
     def __init__(self) -> None:
-        self._flocks: Dict[str, Flock] = {}
+        self._flocks: dict[str, Flock] = {}
         self._scheduler: Optional[Scheduler] = None
         self._session: Optional[ClientSession] = None
 
@@ -56,10 +56,10 @@ class MonkeyBusinessManager:
             raise FlockNotFoundException(name)
         return flock
 
-    def list_flocks(self) -> List[str]:
+    def list_flocks(self) -> list[str]:
         return sorted(self._flocks.keys())
 
-    def summarize_flocks(self) -> List[FlockSummary]:
+    def summarize_flocks(self) -> list[FlockSummary]:
         return [f.summary() for _, f in sorted(self._flocks.items())]
 
     async def stop_flock(self, name: str) -> None:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import ANY
 
 import pytest
@@ -28,7 +28,7 @@ async def test_start_stop(
     }
     r = await client.put("/mobu/flocks", json=config)
     assert r.status_code == 201
-    expected: Dict[str, Any] = {
+    expected: dict[str, Any] = {
         "name": "test",
         "config": {
             "name": "test",
@@ -152,7 +152,7 @@ async def test_user_list(
     }
     r = await client.put("/mobu/flocks", json=config)
     assert r.status_code == 201
-    expected: Dict[str, Any] = {
+    expected: dict[str, Any] = {
         "name": "test",
         "config": config,
         "monkeys": [

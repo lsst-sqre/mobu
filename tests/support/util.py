@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Dict
+from typing import Any
 
 from httpx import AsyncClient
 
@@ -12,7 +12,7 @@ __all__ = ["wait_for_business"]
 
 async def wait_for_business(
     client: AsyncClient, username: str
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Wait for one loop of business to complete and return its data."""
     for _ in range(1, 10):
         await asyncio.sleep(0.5)

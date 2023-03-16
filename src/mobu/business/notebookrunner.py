@@ -10,9 +10,9 @@ import json
 import random
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
-import git
+from git.repo import Repo
 from structlog import BoundLogger
 
 from ..exceptions import NotebookRepositoryError
@@ -37,10 +37,10 @@ class NotebookRunner(JupyterPythonLoop):
         self.notebook: Optional[Path] = None
         self.running_code: Optional[str] = None
         self._repo_dir = TemporaryDirectory()
-        self._repo: Optional[git.Repo] = None
-        self._notebook_paths: Optional[List[Path]] = None
+        self._repo: Optional[Repo] = None
+        self._notebook_paths: Optional[list[Path]] = None
 
-    def annotations(self) -> Dict[str, str]:
+    def annotations(self) -> dict[str, str]:
         result = super().annotations()
         if self.notebook:
             result["notebook"] = self.notebook.name
@@ -58,9 +58,9 @@ class NotebookRunner(JupyterPythonLoop):
         branch = self.config.repo_branch
         path = self._repo_dir.name
         with self.timings.start("clone_repo"):
-            self._repo = git.Repo.clone_from(url, path, branch=branch)
+            self._repo = Repo.clone_from(url, path, branch=branch)
 
-    def find_notebooks(self) -> List[Path]:
+    def find_notebooks(self) -> list[Path]:
         with self.timings.start("find_notebooks"):
             notebooks = [
                 p
@@ -79,7 +79,7 @@ class NotebookRunner(JupyterPythonLoop):
             self._notebook_paths = self.find_notebooks()
         self.notebook = self._notebook_paths.pop()
 
-    def read_notebook(self, notebook: Path) -> List[Dict[str, Any]]:
+    def read_notebook(self, notebook: Path) -> list[dict[str, Any]]:
         with self.timings.start("read_notebook", {"notebook": notebook.name}):
             try:
                 notebook_text = notebook.read_text()

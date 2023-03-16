@@ -7,7 +7,7 @@ import math
 import random
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Optional
 
 import jinja2
 import pyvo
@@ -87,7 +87,7 @@ class TAPQueryRunner(Business):
             poly.append(dec + r * math.cos(theta))
         return ", ".join([str(x) for x in poly])
 
-    def _generate_parameters(self) -> Dict[str, Union[int, float, str]]:
+    def _generate_parameters(self) -> dict[str, int | float | str]:
         """Generate some random parameters for the query."""
         min_ra = self._params.get("min_ra", 55.0)
         max_ra = self._params.get("max_ra", 70.0)

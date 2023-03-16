@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, Optional
+from typing import Optional
 
 from aiohttp import ClientError, ClientResponseError
 from structlog import BoundLogger
@@ -75,7 +75,7 @@ class JupyterLoginLoop(Business):
     async def close(self) -> None:
         await self._client.close()
 
-    def annotations(self) -> Dict[str, str]:
+    def annotations(self) -> dict[str, str]:
         """Timer annotations to use.
 
         Subclasses should override this to add more annotations based on
