@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Optional, Self
 
 from aiohttp import ClientResponse, ClientResponseError
 from safir.datetime import format_datetime_for_logging
@@ -61,7 +61,7 @@ class MobuSlackException(SlackException):
         super().__init__(msg, user)
         self.started_at: Optional[datetime] = None
         self.event: Optional[str] = None
-        self.annotations: Dict[str, str] = {}
+        self.annotations: dict[str, str] = {}
 
     def to_slack(self) -> SlackMessage:
         """Format the error as a Slack Block Kit message.
@@ -174,26 +174,22 @@ class JupyterResponseError(MobuSlackException):
     """Web response error from JupyterHub or JupyterLab."""
 
     @classmethod
-    def from_exception(
-        cls, user: str, exc: ClientResponseError
-    ) -> JupyterResponseError:
+    def from_exception(cls, user: str, exc: ClientResponseError) -> Self:
         return cls(
             url=str(exc.request_info.url),
             user=user,
             status=exc.status,
-            reason=exc.message if exc.message else type(exc).__name__,
+            reason=exc.message or type(exc).__name__,
             method=exc.request_info.method,
         )
 
     @classmethod
-    async def from_response(
-        cls, user: str, response: ClientResponse
-    ) -> JupyterResponseError:
+    async def from_response(cls, user: str, response: ClientResponse) -> Self:
         return cls(
             url=str(response.url),
             user=user,
             status=response.status,
-            reason=response.reason,
+            reason=response.reason or "",
             method=response.method,
             body=await response.text(),
         )
@@ -204,7 +200,7 @@ class JupyterResponseError(MobuSlackException):
         url: str,
         user: str,
         status: int,
-        reason: Optional[str],
+        reason: str,
         method: str,
         body: Optional[str] = None,
     ) -> None:
@@ -237,9 +233,7 @@ class JupyterSpawnError(MobuSlackException):
     """The Jupyter Lab pod failed to spawn."""
 
     @classmethod
-    def from_exception(
-        cls, user: str, log: str, exc: Exception
-    ) -> JupyterSpawnError:
+    def from_exception(cls, user: str, log: str, exc: Exception) -> Self:
         return cls(user, log, f"{type(exc).__name__}: {str(exc)}")
 
     def __init__(

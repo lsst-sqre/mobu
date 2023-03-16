@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-from asyncio import Queue, QueueEmpty, TimeoutError
+from asyncio import Queue, QueueEmpty
+from collections.abc import AsyncIterable, AsyncIterator
 from datetime import datetime, timezone
 from enum import Enum
-from typing import AsyncIterable, AsyncIterator, TypeVar
+from typing import TypeVar
 
 from structlog import BoundLogger
 

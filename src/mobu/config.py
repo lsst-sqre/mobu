@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 __all__ = ["Configuration", "config"]
 
@@ -13,7 +12,7 @@ __all__ = ["Configuration", "config"]
 class Configuration:
     """Configuration for mobu."""
 
-    alert_hook: Optional[str] = os.getenv("ALERT_HOOK")
+    alert_hook: str | None = os.getenv("ALERT_HOOK")
     """The slack webhook used for alerting exceptions to slack.
 
     Set with the ``ALERT_HOOK`` environment variable.
@@ -21,7 +20,7 @@ class Configuration:
     If not set or set to "None", this feature will be disabled.
     """
 
-    autostart: Optional[str] = os.getenv("AUTOSTART")
+    autostart: str | None = os.getenv("AUTOSTART")
     """The path to a YAML file defining what flocks to automatically start.
 
     The YAML file should, if given, be a list of flock specifications. All
@@ -48,7 +47,7 @@ class Configuration:
     Set with the ``CACHEMACHINE_IMAGE_POLICY`` environment variable.
     """
 
-    gafaelfawr_token: Optional[str] = os.getenv("GAFAELFAWR_TOKEN")
+    gafaelfawr_token: str | None = os.getenv("GAFAELFAWR_TOKEN")
     """The Gafaelfawr admin token to use to create user tokens.
 
     This token is used to make an admin API call to Gafaelfawr to get a token

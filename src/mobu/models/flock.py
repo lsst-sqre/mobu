@@ -1,7 +1,7 @@
 """Models for a collection of monkeys."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, validator
 
@@ -21,7 +21,7 @@ class FlockConfig(BaseModel):
 
     count: int = Field(..., title="How many monkeys to run", example=100)
 
-    users: Optional[List[User]] = Field(
+    users: Optional[list[User]] = Field(
         None,
         title="Explicit list of users to run as",
         description=(
@@ -37,7 +37,7 @@ class FlockConfig(BaseModel):
         description="Specify either this or users but not both",
     )
 
-    scopes: List[str] = Field(
+    scopes: list[str] = Field(
         ...,
         title="Token scopes",
         description="Must include all scopes required to run the business",
@@ -63,8 +63,8 @@ class FlockConfig(BaseModel):
 
     @validator("users")
     def _valid_users(
-        cls, v: Optional[List[User]], values: Dict[str, Any]
-    ) -> Optional[List[User]]:
+        cls, v: list[User] | None, values: dict[str, Any]
+    ) -> list[User] | None:
         if v is None:
             return v
         if "count" in values and len(v) != values["count"]:
@@ -74,8 +74,8 @@ class FlockConfig(BaseModel):
 
     @validator("user_spec", always=True)
     def _valid_user_spec(
-        cls, v: Optional[UserSpec], values: Dict[str, Any]
-    ) -> Optional[UserSpec]:
+        cls, v: UserSpec | None, values: dict[str, Any]
+    ) -> UserSpec | None:
         if v is None and ("users" not in values or values["users"] is None):
             raise ValueError("one of users or user_spec must be provided")
         if v and "users" in values and values["users"]:
@@ -99,7 +99,7 @@ class FlockData(BaseModel):
 
     config: FlockConfig = Field(..., title="Configuration for the flock")
 
-    monkeys: List[MonkeyData] = Field(..., title="Monkeys of the flock")
+    monkeys: list[MonkeyData] = Field(..., title="Monkeys of the flock")
 
 
 class FlockSummary(BaseModel):

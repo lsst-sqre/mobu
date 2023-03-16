@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import sys
 from tempfile import NamedTemporaryFile
-from typing import Optional, Type
+from typing import Optional
 
 import structlog
 from aiohttp import ClientSession
@@ -31,7 +31,7 @@ class Monkey:
     def __init__(
         self,
         monkey_config: MonkeyConfig,
-        business_type: Type[Business],
+        business_type: type[Business],
         user: AuthenticatedUser,
         session: ClientSession,
     ):

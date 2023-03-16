@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List
-
 from aiohttp import ClientSession
 
 from .config import config
@@ -69,7 +67,7 @@ class CachemachineClient:
             raise CachemachineError(self._username, "No images found")
         return images[0]
 
-    async def _get_images(self) -> List[JupyterImage]:
+    async def _get_images(self) -> list[JupyterImage]:
         headers = {"Authorization": f"bearer {self._token}"}
         async with self._session.get(self._url, headers=headers) as r:
             if r.status != 200:

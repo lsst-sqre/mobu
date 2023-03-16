@@ -1,7 +1,9 @@
 """Data models for an authenticated user."""
 
+from __future__ import annotations
+
 import time
-from typing import Any, List, Optional
+from typing import Any, Optional, Self
 
 from aiohttp import ClientSession
 from pydantic import BaseModel, Field
@@ -77,7 +79,7 @@ class UserSpec(BaseModel):
 class AuthenticatedUser(User):
     """Represents an authenticated user with a token."""
 
-    scopes: List[str] = Field(
+    scopes: list[str] = Field(
         ...,
         title="Token scopes",
         example=["exec:notebook", "read:tap"],
@@ -91,8 +93,8 @@ class AuthenticatedUser(User):
 
     @classmethod
     async def create(
-        cls, user: User, scopes: List[str], session: ClientSession
-    ) -> "AuthenticatedUser":
+        cls, user: User, scopes: list[str], session: ClientSession
+    ) -> Self:
         token_url = f"{config.environment_url}/auth/api/v1/tokens"
         data: dict[str, Any] = {
             "username": user.username,

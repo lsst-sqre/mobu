@@ -1,6 +1,6 @@
 """Models for monkey business."""
 
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -187,7 +187,7 @@ class BusinessData(BaseModel):
 
     success_count: int = Field(..., title="Number of successes", example=25)
 
-    timings: List[StopwatchData] = Field(..., title="Timings of events")
+    timings: list[StopwatchData] = Field(..., title="Timings of events")
 
     image: Optional[JupyterImage] = Field(
         None,

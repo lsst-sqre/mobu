@@ -6,7 +6,7 @@ over again.
 
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Optional
 
 from structlog import BoundLogger
 
@@ -46,7 +46,7 @@ class JupyterPythonLoop(JupyterLoginLoop):
         super().__init__(logger, business_config, user)
         self.node: Optional[str] = None
 
-    def annotations(self) -> Dict[str, str]:
+    def annotations(self) -> dict[str, str]:
         result = super().annotations()
         if self.node:
             result["node"] = self.node

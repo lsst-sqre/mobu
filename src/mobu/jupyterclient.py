@@ -11,20 +11,12 @@ import json
 import random
 import re
 import string
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import wraps
 from http.cookies import BaseCookie
-from typing import (
-    Any,
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    Dict,
-    Optional,
-    TypeVar,
-    cast,
-)
+from typing import Any, Optional, TypeVar, cast
 from uuid import uuid4
 
 from aiohttp import (
@@ -501,7 +493,7 @@ class JupyterClient:
         """
         return _ANSI_REGEX.sub("", string)
 
-    def _build_jupyter_spawn_form(self, image: JupyterImage) -> Dict[str, str]:
+    def _build_jupyter_spawn_form(self, image: JupyterImage) -> dict[str, str]:
         """Construct the form to submit to the JupyterHub login page."""
         return {
             "image_list": str(image),

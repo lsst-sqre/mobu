@@ -1,7 +1,9 @@
 """Models for configuring a Jupyter lab."""
 
+from __future__ import annotations
+
 from enum import Enum
-from typing import Dict, Optional
+from typing import Optional, Self
 
 from pydantic import BaseModel, Field, validator
 
@@ -45,15 +47,15 @@ class JupyterImage(BaseModel):
         return "|".join([self.reference, self.name, self.digest or ""])
 
     @classmethod
-    def from_dict(cls, data: Dict[str, str]) -> "JupyterImage":
-        return JupyterImage(
+    def from_dict(cls, data: dict[str, str]) -> Self:
+        return cls(
             reference=data["image_url"],
             name=data["name"],
             digest=data["image_hash"],
         )
 
     @classmethod
-    def from_reference(cls, reference: str) -> "JupyterImage":
+    def from_reference(cls, reference: str) -> Self:
         return cls(
             reference=reference, name=reference.rsplit(":", 1)[1], digest=""
         )
@@ -90,8 +92,8 @@ class JupyterConfig(BaseModel):
 
     @validator("image_reference")
     def _valid_image_reference(
-        cls, v: Optional[str], values: Dict[str, object]
-    ) -> Optional[str]:
+        cls, v: str | None, values: dict[str, object]
+    ) -> str | None:
         if values.get("image_class") == JupyterImageClass.BY_REFERENCE:
             if not v:
                 raise ValueError("image_reference required")

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from types import TracebackType
-from typing import Dict, List, Literal, Optional
+from typing import Literal, Optional
 
 from .exceptions import MobuSlackException
 from .models.timings import StopwatchData
@@ -19,10 +19,10 @@ class Timings:
 
     def __init__(self) -> None:
         self._last: Optional[Stopwatch] = None
-        self._stopwatches: List[Stopwatch] = []
+        self._stopwatches: list[Stopwatch] = []
 
     def start(
-        self, event: str, annotations: Optional[Dict[str, str]] = None
+        self, event: str, annotations: Optional[dict[str, str]] = None
     ) -> Stopwatch:
         """Start a stopwatch.
 
@@ -42,7 +42,7 @@ class Timings:
         self._last = stopwatch
         return stopwatch
 
-    def dump(self) -> List[StopwatchData]:
+    def dump(self) -> list[StopwatchData]:
         """Convert the stored timings to a dictionary."""
         return [s.dump() for s in self._stopwatches]
 
@@ -68,7 +68,7 @@ class Stopwatch:
     def __init__(
         self,
         event: str,
-        annotations: Dict[str, str],
+        annotations: dict[str, str],
         previous: Optional[Stopwatch] = None,
     ) -> None:
         self.event = event
@@ -83,9 +83,9 @@ class Stopwatch:
 
     def __exit__(
         self,
-        exc_type: Optional[type],
-        exc_val: Optional[Exception],
-        exc_tb: Optional[TracebackType],
+        exc_type: type | None,
+        exc_val: Exception | None,
+        exc_tb: TracebackType | None,
     ) -> Literal[False]:
         self.stop_time = datetime.now(tz=timezone.utc)
         if exc_val:
