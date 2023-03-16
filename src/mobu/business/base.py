@@ -194,7 +194,6 @@ class Business:
     def dump(self) -> BusinessData:
         return BusinessData(
             name=type(self).__name__,
-            config=self.config,
             failure_count=self.failure_count,
             success_count=self.success_count,
             timings=self.timings.dump(),

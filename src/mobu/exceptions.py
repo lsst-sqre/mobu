@@ -8,6 +8,8 @@ from typing import Dict, Optional
 from aiohttp import ClientResponse, ClientResponseError
 from safir.datetime import format_datetime_for_logging
 from safir.slack.blockkit import (
+    SlackBaseBlock,
+    SlackBaseField,
     SlackCodeBlock,
     SlackException,
     SlackMessage,
@@ -73,13 +75,14 @@ class MobuSlackException(SlackException):
         """
         return SlackMessage(message=str(self), fields=self.common_fields())
 
-    def common_fields(self) -> list[SlackTextField]:
+    def common_fields(self) -> list[SlackBaseField]:
         """Return common fields to put in any alert."""
         failed_at = format_datetime_for_logging(self.failed_at)
-        fields = [
+        fields: list[SlackBaseField] = [
             SlackTextField(heading="Failed at", text=failed_at),
-            SlackTextField(heading="User", text=self.user),
         ]
+        if self.user:
+            fields.append(SlackTextField(heading="User", text=self.user))
         if self.started_at:
             started_at = format_datetime_for_logging(self.started_at)
             field = SlackTextField(heading="Started at", text=started_at)
@@ -149,7 +152,9 @@ class CodeExecutionError(MobuSlackException):
         if self.status:
             intro += f" (status: {self.status})"
 
-        attachments = [SlackCodeBlock(heading="Code executed", code=self.code)]
+        attachments: list[SlackBaseBlock] = [
+            SlackCodeBlock(heading="Code executed", code=self.code)
+        ]
         if self.error:
             attachment = SlackCodeBlock(heading="Error", code=self.error)
             attachments.insert(0, attachment)

@@ -1,7 +1,7 @@
 """Data models for an authenticated user."""
 
 import time
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from aiohttp import ClientSession
 from pydantic import BaseModel, Field
@@ -94,7 +94,7 @@ class AuthenticatedUser(User):
         cls, user: User, scopes: List[str], session: ClientSession
     ) -> "AuthenticatedUser":
         token_url = f"{config.environment_url}/auth/api/v1/tokens"
-        data = {
+        data: dict[str, Any] = {
             "username": user.username,
             "name": "Mobu Test User",
             "token_type": "user",

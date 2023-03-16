@@ -12,7 +12,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
 
-import git
+from git.repo import Repo
 from structlog import BoundLogger
 
 from ..exceptions import NotebookRepositoryError
@@ -37,7 +37,7 @@ class NotebookRunner(JupyterPythonLoop):
         self.notebook: Optional[Path] = None
         self.running_code: Optional[str] = None
         self._repo_dir = TemporaryDirectory()
-        self._repo: Optional[git.Repo] = None
+        self._repo: Optional[Repo] = None
         self._notebook_paths: Optional[List[Path]] = None
 
     def annotations(self) -> Dict[str, str]:
@@ -58,7 +58,7 @@ class NotebookRunner(JupyterPythonLoop):
         branch = self.config.repo_branch
         path = self._repo_dir.name
         with self.timings.start("clone_repo"):
-            self._repo = git.Repo.clone_from(url, path, branch=branch)
+            self._repo = Repo.clone_from(url, path, branch=branch)
 
     def find_notebooks(self) -> List[Path]:
         with self.timings.start("find_notebooks"):

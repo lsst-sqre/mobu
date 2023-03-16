@@ -9,7 +9,8 @@ from unittest.mock import ANY
 
 import pytest
 from aioresponses import aioresponses
-from git import Actor, Repo
+from git.repo import Repo
+from git.util import Actor
 from httpx import AsyncClient
 from safir.testing.slack import MockSlackWebhook
 
