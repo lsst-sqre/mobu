@@ -47,12 +47,12 @@ class Business:
 
     Parameters
     ----------
-    logger : `structlog.BoundLogger`
+    logger
         Logger to use to report the results of business.
-    options : Dict[`str`, Any]
+    business_config
         Configuration options for the business.
-    token : `str`
-        The authentication token to use for internal calls.
+    user
+        User with their authentication token to use to run the business.
     """
 
     def __init__(

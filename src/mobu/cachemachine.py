@@ -37,7 +37,7 @@ class CachemachineClient:
 
         Returns
         -------
-        image : `mobu.models.jupyter.JupyterImage`
+        mobu.models.jupyter.JupyterImage
             The corresponding image.
 
         Raises
@@ -56,7 +56,7 @@ class CachemachineClient:
 
         Returns
         -------
-        image : `mobu.models.jupyter.JupyterImage`
+        mobu.models.jupyter.JupyterImage
             The corresponding image.
 
         Raises
