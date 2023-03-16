@@ -9,7 +9,7 @@ from typing import TypeVar
 
 T = TypeVar("T")
 
-__all__ = ["wait_first"]
+__all__ = ["schedule_periodic", "wait_first"]
 
 
 def schedule_periodic(

@@ -132,9 +132,9 @@ class JupyterClientSession:
 
     Parameters
     ----------
-    session : `aiohttp.ClientSession`
+    session
         The session to wrap.
-    token : `str`
+    token
         The token to send.
 
     Notes
@@ -185,7 +185,7 @@ F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
 
 def _convert_exception(f: F) -> F:
-    """Convert web errors to a `~mobu.exceptions.SlackError`."""
+    """Convert web errors to a `~mobu.exceptions.MobuSlackException`."""
 
     @wraps(f)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -194,7 +194,7 @@ def _convert_exception(f: F) -> F:
         except ClientResponseError as e:
             obj = args[0]
             username = obj.user.username
-            raise JupyterResponseError.from_exception(username, e) from None
+            raise JupyterResponseError.from_exception(username, e) from e
         except (ClientError, ConnectionResetError, asyncio.TimeoutError) as e:
             obj = args[0]
             username = obj.user.username
@@ -272,7 +272,7 @@ class JupyterClient:
 
         Parameters
         ----------
-        final : `bool`
+        final
             The last attempt, so log some additional information if the lab
             still isn't gone.
         """

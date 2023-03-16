@@ -21,18 +21,6 @@ from ..models.flock import FlockConfig, FlockData, FlockSummary
 from ..models.index import Index
 from ..models.monkey import MonkeyData
 
-__all__ = [
-    "external_router",
-    "delete_flock",
-    "get_flock",
-    "get_flocks",
-    "get_index",
-    "get_monkey",
-    "get_monkeys",
-    "get_monkey_log",
-    "put_flock",
-]
-
 external_router = APIRouter()
 """FastAPI router for all external handlers."""
 
@@ -59,17 +47,6 @@ class FormattedJSONResponse(JSONResponse):
     summary="Application metadata",
 )
 async def get_index() -> Index:
-    """GET ``/mobu/`` (the app's external root).
-
-    Customize this handler to return whatever the top-level resource of your
-    application should return. For example, consider listing key API URLs.
-    When doing so, also change or customize the response model in
-    mobu.models.index.
-
-    By convention, the root of the external API includes a field called
-    ``metadata`` that provides the same Safir-generated metadata as the
-    internal root endpoint.
-    """
     metadata = get_metadata(
         package_name="mobu",
         application_name=config.name,

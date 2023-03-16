@@ -58,11 +58,11 @@ class Stopwatch:
 
     Parameters
     ----------
-    event : `str`
+    event
         The name of the event.
-    annotation : Dict[`str`, Any], optional
+    annotation
         Arbitrary annotations.
-    previous : `Stopwatch`, optional
+    previous
         The previous stopwatch, used to calculate the idle time between
         timed events.
     """
