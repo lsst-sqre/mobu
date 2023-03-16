@@ -18,8 +18,9 @@ import mobu
 from mobu.business.tapqueryrunner import TAPQueryRunner
 from mobu.models.business import BusinessConfig
 from mobu.models.user import AuthenticatedUser
-from tests.support.gafaelfawr import mock_gafaelfawr
-from tests.support.util import wait_for_business
+
+from ..support.gafaelfawr import mock_gafaelfawr
+from ..support.util import wait_for_business
 
 
 @pytest.mark.asyncio

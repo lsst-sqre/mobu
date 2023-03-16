@@ -12,9 +12,10 @@ from httpx import AsyncClient
 from safir.testing.slack import MockSlackWebhook
 
 from mobu.config import config
-from tests.support.gafaelfawr import mock_gafaelfawr
-from tests.support.jupyter import JupyterAction, JupyterState, MockJupyter
-from tests.support.util import wait_for_business
+
+from ..support.gafaelfawr import mock_gafaelfawr
+from ..support.jupyter import JupyterAction, JupyterState, MockJupyter
+from ..support.util import wait_for_business
 
 
 @pytest.mark.asyncio
