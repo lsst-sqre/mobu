@@ -12,8 +12,9 @@ from importlib.metadata import metadata, version
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
-from safir.logging import configure_logging
+from safir.logging import Profile, configure_logging, configure_uvicorn_logging
 from safir.middleware.x_forwarded import XForwardedMiddleware
+from safir.models import ErrorLocation
 
 from .autostart import autostart
 from .config import config
@@ -28,10 +29,10 @@ __all__ = ["app", "config"]
 
 
 configure_logging(
-    profile=config.profile,
-    log_level=config.log_level,
-    name=config.logger_name,
+    profile=config.profile, log_level=config.log_level, name="mobu"
 )
+if config.profile == Profile.production:
+    configure_uvicorn_logging(config.log_level)
 
 app = FastAPI(
     title="mobu",
@@ -55,6 +56,8 @@ app.add_middleware(XForwardedMiddleware)
 async def startup_event() -> None:
     if not config.environment_url:
         raise RuntimeError("ENVIRONMENT_URL was not set")
+    if not config.gafaelfawr_token:
+        raise RuntimeError("GAFAELFAWR_TOKEN was not set")
     await monkey_business_manager.init()
     if config.autostart:
         await autostart()
@@ -80,7 +83,7 @@ async def flock_not_found_exception_handler(
         content={
             "detail": [
                 {
-                    "loc": ["path", "flock"],
+                    "loc": [ErrorLocation.path, "flock"],
                     "msg": f"Flock for {exc.flock} not found",
                     "type": "flock_not_found",
                 }
@@ -98,7 +101,7 @@ async def monkey_not_found_exception_handler(
         content={
             "detail": [
                 {
-                    "loc": ["path", "monkey"],
+                    "loc": [ErrorLocation.path, "monkey"],
                     "msg": f"Monkey for {exc.monkey} not found",
                     "type": "monkey_not_found",
                 }

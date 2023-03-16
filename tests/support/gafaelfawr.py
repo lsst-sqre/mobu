@@ -71,7 +71,7 @@ def mock_gafaelfawr(
         response = {"token": make_gafaelfawr_token(kwargs["json"]["username"])}
         return CallbackResult(payload=response, status=200)
 
-    base_url = config.environment_url
+    base_url = str(config.environment_url).rstrip("/")
     mocked.post(
         f"{base_url}/auth/api/v1/tokens", callback=handler, repeat=True
     )

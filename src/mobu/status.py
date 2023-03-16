@@ -52,6 +52,6 @@ async def post_status() -> None:
         )
         text += line
 
-    logger = structlog.get_logger(config.logger_name)
+    logger = structlog.get_logger("mobu")
     slack = SlackWebhookClient(config.alert_hook, "Mobu", logger)
     await slack.post(SlackMessage(message=text))

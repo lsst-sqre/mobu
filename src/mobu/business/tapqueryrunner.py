@@ -53,7 +53,9 @@ class TAPQueryRunner(Business):
 
     @staticmethod
     def _make_client(token: str) -> pyvo.dal.TAPService:
-        tap_url = config.environment_url + "/api/tap"
+        if not config.environment_url:
+            raise RuntimeError("environment_url not set")
+        tap_url = str(config.environment_url).rstrip("/") + "/api/tap"
 
         s = requests.Session()
         s.headers["Authorization"] = "Bearer " + token

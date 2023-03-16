@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import math
-from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from datetime import datetime
+from typing import Optional
 
 from aiohttp import ClientSession
 from aiojobs import Scheduler
+from safir.datetime import current_datetime
 
 from .business.base import Business
 from .business.jupyterjitterloginloop import JupyterJitterLoginLoop
@@ -46,7 +47,7 @@ class Flock:
         self._config = flock_config
         self._scheduler = scheduler
         self._session = session
-        self._monkeys: Dict[str, Monkey] = {}
+        self._monkeys: dict[str, Monkey] = {}
         self._start_time: Optional[datetime] = None
         try:
             self._business_type = _BUSINESS_CLASS[self._config.business]
@@ -68,7 +69,7 @@ class Flock:
             raise MonkeyNotFoundException(name)
         return monkey
 
-    def list_monkeys(self) -> List[str]:
+    def list_monkeys(self) -> list[str]:
         """List the names of the monkeys."""
         return sorted(self._monkeys.keys())
 
@@ -97,7 +98,7 @@ class Flock:
             monkey = self._create_monkey(user)
             self._monkeys[user.username] = monkey
             await monkey.start(self._scheduler)
-        self._start_time = datetime.now(tz=timezone.utc)
+        self._start_time = current_datetime(microseconds=True)
 
     async def stop(self) -> None:
         """Stop all the monkeys.
@@ -114,7 +115,7 @@ class Flock:
         config = self._config.monkey_config(user.username)
         return Monkey(config, self._business_type, user, self._session)
 
-    async def _create_users(self) -> List[AuthenticatedUser]:
+    async def _create_users(self) -> list[AuthenticatedUser]:
         """Create the authenticated users the monkeys will run as."""
         users = self._config.users
         if not users:
@@ -127,7 +128,7 @@ class Flock:
             for u in users
         ]
 
-    def _users_from_spec(self, spec: UserSpec, count: int) -> List[User]:
+    def _users_from_spec(self, spec: UserSpec, count: int) -> list[User]:
         """Generate count Users from the provided spec."""
         padding = int(math.log10(count) + 1)
         users = []

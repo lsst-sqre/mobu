@@ -172,7 +172,8 @@ async def test_alert(
     assert data["business"]["failure_count"] > 0
 
     # Check that an appropriate error was posted.
-    url = urljoin(config.environment_url, "/nb/hub/spawn")
+    assert config.environment_url
+    url = urljoin(str(config.environment_url), "/nb/hub/spawn")
     assert slack.messages == [
         {
             "blocks": [
@@ -246,8 +247,10 @@ async def test_redirect_loop(
     assert data["business"]["failure_count"] > 0
 
     # Check that an appropriate error was posted.
+    assert config.environment_url
     url = urljoin(
-        config.environment_url, "/nb/hub/api/users/testuser1/server/progress"
+        str(config.environment_url),
+        "/nb/hub/api/users/testuser1/server/progress",
     )
     assert slack.messages == [
         {
@@ -423,7 +426,7 @@ async def test_spawn_failed(
         }
     ]
     log = slack.messages[0]["blocks"][2]["text"]["text"]
-    log = re.sub(r"\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d", "<ts>", log)
+    log = re.sub(r"\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d(.\d\d\d)?", "<ts>", log)
     assert log == (
         "*Log*\n"
         "<ts> - Server requested\n"

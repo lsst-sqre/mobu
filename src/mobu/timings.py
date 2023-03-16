@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from types import TracebackType
 from typing import Literal, Optional
+
+from safir.datetime import current_datetime
 
 from .exceptions import MobuSlackException
 from .models.timings import StopwatchData
@@ -73,7 +75,7 @@ class Stopwatch:
     ) -> None:
         self.event = event
         self.annotations = annotations
-        self.start_time = datetime.now(tz=timezone.utc)
+        self.start_time = current_datetime(microseconds=True)
         self.stop_time: Optional[datetime] = None
         self.failed = False
         self._previous = previous
@@ -87,7 +89,7 @@ class Stopwatch:
         exc_val: Exception | None,
         exc_tb: TracebackType | None,
     ) -> Literal[False]:
-        self.stop_time = datetime.now(tz=timezone.utc)
+        self.stop_time = current_datetime(microseconds=True)
         if exc_val:
             self.failed = True
         if exc_val and isinstance(exc_val, MobuSlackException):
@@ -102,7 +104,7 @@ class Stopwatch:
         if self.stop_time:
             return self.stop_time - self.start_time
         else:
-            return datetime.now(tz=timezone.utc) - self.start_time
+            return current_datetime(microseconds=True) - self.start_time
 
     def dump(self) -> StopwatchData:
         """Convert to a Pydantic model."""

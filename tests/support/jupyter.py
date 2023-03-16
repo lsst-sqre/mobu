@@ -7,7 +7,7 @@ import json
 import re
 from base64 import urlsafe_b64decode
 from contextlib import redirect_stdout
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from enum import Enum
 from io import StringIO
 from re import Pattern
@@ -19,6 +19,7 @@ from uuid import uuid4
 from aiohttp import ClientWebSocketResponse, RequestInfo, TooManyRedirects
 from aioresponses import CallbackResult, aioresponses
 from multidict import CIMultiDict, CIMultiDictProxy
+from safir.datetime import current_datetime
 from yarl import URL
 
 from mobu.business.jupyterpythonloop import _GET_NODE
@@ -49,10 +50,11 @@ class JupyterState(Enum):
 
 def _url(route: str, regex: bool = False) -> str | Pattern[str]:
     """Construct a URL for JupyterHub/Proxy."""
+    base_url = str(config.environment_url).rstrip("/")
     if not regex:
-        return f"{config.environment_url}/nb/{route}"
+        return f"{base_url}/nb/{route}"
 
-    prefix = re.escape(f"{config.environment_url}/nb/")
+    prefix = re.escape(f"{base_url}/nb/")
     return re.compile(prefix + route)
 
 
@@ -98,7 +100,7 @@ class MockJupyter:
             body = {"name": user, "servers": {"": server}}
         elif state == JupyterState.LAB_RUNNING:
             delete_at = self._delete_at.get(user)
-            if delete_at and datetime.now(tz=timezone.utc) > delete_at:
+            if delete_at and current_datetime(microseconds=True) > delete_at:
                 del self._delete_at[user]
                 self.state[user] = JupyterState.LOGGED_IN
             if delete_at:
@@ -200,7 +202,7 @@ class MockJupyter:
         if self.delete_immediate:
             self.state[user] = JupyterState.LOGGED_IN
         else:
-            now = datetime.now(tz=timezone.utc)
+            now = current_datetime(microseconds=True)
             self._delete_at[user] = now + timedelta(seconds=5)
         return CallbackResult(status=202)
 

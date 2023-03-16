@@ -5,10 +5,10 @@ from __future__ import annotations
 import asyncio
 from asyncio import Queue, QueueEmpty
 from collections.abc import AsyncIterable, AsyncIterator
-from datetime import datetime, timezone
 from enum import Enum
 from typing import TypeVar
 
+from safir.datetime import current_datetime
 from structlog import BoundLogger
 
 from ..models.business import BusinessConfig, BusinessData
@@ -181,9 +181,9 @@ class Business:
         async def iter_next() -> T:
             return await iterator.__anext__()
 
-        start = datetime.now(tz=timezone.utc)
+        start = current_datetime(microseconds=True)
         while True:
-            now = datetime.now(tz=timezone.utc)
+            now = current_datetime(microseconds=True)
             remaining = timeout - (now - start).total_seconds()
             if remaining < 0:
                 break

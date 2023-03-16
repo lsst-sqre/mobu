@@ -2,83 +2,108 @@
 
 from __future__ import annotations
 
-import os
-from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
 
-__all__ = ["Configuration", "config"]
+from pydantic import BaseSettings, Field, HttpUrl
+from safir.logging import LogLevel, Profile
+
+__all__ = [
+    "CachemachinePolicy",
+    "Configuration",
+    "config",
+]
 
 
-@dataclass
-class Configuration:
+class CachemachinePolicy(Enum):
+    """Policy for what eligible images to retrieve from cachemachine."""
+
+    available = "available"
+    desired = "desired"
+
+
+class Configuration(BaseSettings):
     """Configuration for mobu."""
 
-    alert_hook: str | None = os.getenv("ALERT_HOOK")
-    """The slack webhook used for alerting exceptions to slack.
-
-    Set with the ``ALERT_HOOK`` environment variable.
-    This is an https URL which should be considered secret.
-    If not set or set to "None", this feature will be disabled.
-    """
-
-    autostart: str | None = os.getenv("AUTOSTART")
-    """The path to a YAML file defining what flocks to automatically start.
-
-    The YAML file should, if given, be a list of flock specifications. All
-    flocks specified there will be automatically started when mobu starts.
-    """
-
-    environment_url: str = os.getenv("ENVIRONMENT_URL", "")
-    """The URL of the environment to run tests against.
-
-    This is used for creating URLs to services, such as JupyterHub.
-    mobu will not work if this is not set.
-
-    Set with the ``ENVIRONMENT_URL`` environment variable.
-    """
-
-    cachemachine_image_policy: str = os.getenv(
-        "CACHEMACHINE_IMAGE_POLICY", "available"
+    alert_hook: HttpUrl | None = Field(
+        None,
+        title="Slack webhook URL used for sending alerts",
+        description=(
+            "An https URL, which should be considered secret. If not set or"
+            " set to `None`, this feature will be disabled."
+        ),
+        env="ALERT_HOOK",
+        example="https://slack.example.com/ADFAW1452DAF41/",
     )
-    """Whether to use the images available on all nodes, or the images
-    desired by cachemachine.  In instances where image streaming is enabled,
-    and therefore pulls are fast, ``desired`` is preferred.  The default is
-    ``available``.
 
-    Set with the ``CACHEMACHINE_IMAGE_POLICY`` environment variable.
-    """
+    autostart: Path | None = Field(
+        None,
+        title="Path to YAML file defining flocks to automatically start",
+        description=(
+            "If given, the YAML file must contain a list of flock"
+            " specifications. All flocks given there will be automatically"
+            " started when mobu starts."
+        ),
+        env="AUTOSTART",
+        example="/etc/mobu/autostart.yaml",
+    )
 
-    gafaelfawr_token: str | None = os.getenv("GAFAELFAWR_TOKEN")
-    """The Gafaelfawr admin token to use to create user tokens.
+    environment_url: HttpUrl | None = Field(
+        None,
+        title="Base URL of the Science Platform environment",
+        description=(
+            "Used to create URLs to other services, such as Gafaelfawr and"
+            " JupyterHub. This is only optional to make writing the test"
+            " suite easier. If it is not set to a valid URL, mobu will abort"
+            " during startup."
+        ),
+        env="ENVIRONMENT_URL",
+        example="https://data.example.org/",
+    )
 
-    This token is used to make an admin API call to Gafaelfawr to get a token
-    for the user.  mobu will not work if this is not set.
+    cachemachine_image_policy: CachemachinePolicy = Field(
+        CachemachinePolicy.available,
+        field="Class of cachemachine images to use",
+        description=(
+            "Whether to use the images available on all nodes, or the images"
+            " desired by cachemachine. In instances where image streaming is"
+            " enabled and therefore pulls are fast, ``desired`` is preferred."
+            " The default is ``available``."
+        ),
+        env="CACHEMACHINE_IMAGE_POLICY",
+        example=CachemachinePolicy.desired,
+    )
 
-    Set with the ``GAFAELFAWR_TOKEN`` environment variable.
-    """
+    gafaelfawr_token: str | None = Field(
+        None,
+        field="Gafaelfawr admin token used to create user tokens",
+        description=(
+            "This token is used to make an admin API call to Gafaelfawr to"
+            " get a token for the user. This is only optional to make writing"
+            " tests easier. mobu will abort during startup if it is not set."
+        ),
+        env="GAFAELFAWR_TOKEN",
+        example="gt-vilSCi1ifK_MyuaQgMD2dQ.d6SIJhowv5Hs3GvujOyUig",
+    )
 
-    name: str = os.getenv("SAFIR_NAME", "mobu")
-    """The application's name, which doubles as the root HTTP endpoint path.
+    name: str = Field(
+        "mobu",
+        title="Name of application",
+        description="Doubles as the root HTTP endpoint path.",
+        env="SAFIR_NAME",
+    )
 
-    Set with the ``SAFIR_NAME`` environment variable.
-    """
+    profile: Profile = Field(
+        Profile.development,
+        title="Application logging profile",
+        env="SAFIR_PROFILE",
+    )
 
-    profile: str = os.getenv("SAFIR_PROFILE", "development")
-    """Application run profile: "development" or "production".
-
-    Set with the ``SAFIR_PROFILE`` environment variable.
-    """
-
-    logger_name: str = os.getenv("SAFIR_LOGGER", "mobu")
-    """The root name of the application's logger.
-
-    Set with the ``SAFIR_LOGGER`` environment variable.
-    """
-
-    log_level: str = os.getenv("SAFIR_LOG_LEVEL", "INFO")
-    """The log level of the application's logger.
-
-    Set with the ``SAFIR_LOG_LEVEL`` environment variable.
-    """
+    log_level: LogLevel = Field(
+        LogLevel.INFO,
+        title="Log level of the application's logger",
+        env="SAFIR_LOG_LEVEL",
+    )
 
 
 config = Configuration()

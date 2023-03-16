@@ -1,12 +1,12 @@
 """Handlers for the app's external root, ``/mobu/``."""
 
 import json
-from datetime import datetime
-from typing import Any, List
+from typing import Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import FileResponse, JSONResponse
+from safir.datetime import current_datetime
 from safir.dependencies.gafaelfawr import auth_logger_dependency
 from safir.metadata import get_metadata
 from safir.models import ErrorModel
@@ -78,11 +78,11 @@ async def get_index() -> Index:
 
 
 @external_router.get(
-    "/flocks", response_model=List[str], summary="List running flocks"
+    "/flocks", response_model=list[str], summary="List running flocks"
 )
 async def get_flocks(
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
-) -> List[str]:
+) -> list[str]:
     return manager.list_flocks()
 
 
@@ -143,14 +143,14 @@ async def delete_flock(
 @external_router.get(
     "/flocks/{flock}/monkeys",
     response_class=FormattedJSONResponse,
-    response_model=List[str],
+    response_model=list[str],
     responses={404: {"description": "Flock not found", "model": ErrorModel}},
     summary="Monkeys in flock",
 )
 async def get_monkeys(
     flock: str,
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
-) -> List[str]:
+) -> list[str]:
     return manager.get_flock(flock).list_monkeys()
 
 
@@ -190,7 +190,7 @@ async def get_monkey_log(
     return FileResponse(
         path=manager.get_flock(flock).get_monkey(monkey).logfile(),
         media_type="text/plain",
-        filename=f"{flock}-{monkey}-{datetime.now()}",
+        filename=f"{flock}-{monkey}-{current_datetime()}",
     )
 
 
@@ -211,10 +211,10 @@ async def get_flock_summary(
 @external_router.get(
     "/summary",
     response_class=FormattedJSONResponse,
-    response_model=List[FlockSummary],
+    response_model=list[FlockSummary],
     summary="Summary of statistics for all flocks",
 )
 async def get_summary(
     manager: MonkeyBusinessManager = Depends(monkey_business_manager),
-) -> List[FlockSummary]:
+) -> list[FlockSummary]:
     return manager.summarize_flocks()

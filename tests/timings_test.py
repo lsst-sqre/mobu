@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 import pytest
+from safir.datetime import current_datetime
 
 from mobu.models.timings import StopwatchData
 from mobu.timings import Timings
@@ -14,13 +15,14 @@ def test_timings() -> None:
     timings = Timings()
     assert timings.dump() == []
 
-    now = datetime.now(tz=timezone.utc)
+    now = current_datetime(microseconds=True)
     with timings.start("something") as sw:
         assert sw.event == "something"
         assert sw.annotations == {}
         assert now + timedelta(seconds=5) > sw.start_time >= now
         assert sw.stop_time is None
-        assert sw.elapsed <= datetime.now(tz=timezone.utc) - sw.start_time
+        elapsed = sw.elapsed
+        assert elapsed <= current_datetime(microseconds=True) - sw.start_time
         old_elapsed = sw.elapsed
 
     first_sw = sw

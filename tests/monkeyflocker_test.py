@@ -2,14 +2,8 @@
 
 from __future__ import annotations
 
-import errno
 import json
-import logging
-import os
 import shutil
-import socket
-import subprocess
-import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -18,52 +12,12 @@ from unittest.mock import ANY
 import httpx
 import pytest
 from click.testing import CliRunner
+from safir.testing.uvicorn import UvicornProcess, spawn_uvicorn
 
 from mobu.config import config
 from monkeyflocker.cli import main
 
-APP_SOURCE = """
-from collections.abc import Awaitable, Callable
-
-from aioresponses import aioresponses
-from fastapi import FastAPI, Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-
-from mobu.config import config
-from mobu.main import app
-from tests.support.gafaelfawr import make_gafaelfawr_token, mock_gafaelfawr
-from tests.support.jupyter import mock_jupyter
-
-
-# Pretend Gafaelfawr is doing authentication in front of mobu.  This is a
-# total hack based on https://github.com/tiangolo/fastapi/issues/2727 that
-# adds the header that would have been added by Gafaelfawr.  Unfortunately,
-# there's no documented way to modify request headers in middleware, so we
-# have to muck about with internals.
-class AddAuthHeaderMiddleware(BaseHTTPMiddleware):
-    async def dispatch(
-        self,
-        request: Request,
-        call_next: Callable[[Request], Awaitable[Response]],
-    ) -> Response:
-        request.headers.__dict__["_list"].append(
-            (b"x-auth-request-user", b"someuser")
-        )
-        return await call_next(request)
-
-
-# Add the new middleware.
-app.add_middleware(AddAuthHeaderMiddleware)
-
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    config.gafaelfawr_token = make_gafaelfawr_token()
-    mocked = aioresponses()
-    mocked.start()
-    mock_gafaelfawr(mocked)
-    mock_jupyter(mocked)
-"""
+from .support.gafaelfawr import make_gafaelfawr_token
 
 FLOCK_CONFIG = """
 name: basic
@@ -75,62 +29,27 @@ business: Business
 """
 
 
-def _wait_for_server(port: int, timeout: float = 5.0) -> None:
-    """Wait until a server accepts connections on the specified port."""
-    deadline = time.time() + timeout
-    while True:
-        socket_timeout = deadline - time.time()
-        if socket_timeout < 0.0:
-            assert False, f"Server did not start on port {port} in {timeout}s"
-        try:
-            s = socket.socket()
-            s.settimeout(socket_timeout)
-            s.connect(("localhost", port))
-        except socket.timeout:
-            pass
-        except socket.error as e:
-            if e.errno not in [errno.ETIMEDOUT, errno.ECONNREFUSED]:
-                raise
-        else:
-            s.close()
-            return
-        time.sleep(0.1)
-
-
 @pytest.fixture
-def app_url(tmp_path: Path) -> Iterator[str]:
+def monkeyflocker_app(tmp_path: Path) -> Iterator[UvicornProcess]:
     """Run the application as a separate process for monkeyflocker access."""
-    app_path = tmp_path / "testing.py"
-    app_path.write_text(APP_SOURCE)
-
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("127.0.0.1", 0))
-    port = s.getsockname()[1]
-
-    cmd = ["uvicorn", "--fd", "0", "testing:app"]
-    logging.info("Starting server with command %s", " ".join(cmd))
-    p = subprocess.Popen(
-        cmd,
-        cwd=str(tmp_path),
-        stdin=s.fileno(),
+    assert config.environment_url
+    config.gafaelfawr_token = make_gafaelfawr_token()
+    uvicorn = spawn_uvicorn(
+        working_directory=tmp_path,
+        factory="tests.support.monkeyflocker:create_app",
         env={
-            **os.environ,
-            "ENVIRONMENT_URL": config.environment_url,
-            "PYTHONPATH": os.getcwd(),
+            "ENVIRONMENT_URL": str(config.environment_url),
+            "GAFAELFAWR_TOKEN": config.gafaelfawr_token,
         },
     )
-    s.close()
-
-    logging.info("Waiting for server to start")
-    _wait_for_server(port)
-
-    try:
-        yield f"http://localhost:{port}"
-    finally:
-        p.terminate()
+    yield uvicorn
+    config.gafaelfawr_token = None
+    uvicorn.process.terminate()
 
 
-def test_start_report_stop(tmp_path: Path, app_url: str) -> None:
+def test_start_report_stop(
+    tmp_path: Path, monkeyflocker_app: UvicornProcess
+) -> None:
     runner = CliRunner()
     spec_path = tmp_path / "spec.yaml"
     spec_path.write_text(FLOCK_CONFIG)
@@ -142,7 +61,7 @@ def test_start_report_stop(tmp_path: Path, app_url: str) -> None:
         [
             "start",
             "-e",
-            app_url,
+            monkeyflocker_app.url,
             "-f",
             str(spec_path),
             "-k",
@@ -180,7 +99,7 @@ def test_start_report_stop(tmp_path: Path, app_url: str) -> None:
             },
         ],
     }
-    r = httpx.get(f"{app_url}/mobu/flocks/basic")
+    r = httpx.get(f"{monkeyflocker_app.url}/mobu/flocks/basic")
     assert r.status_code == 200
     assert r.json() == expected
 
@@ -189,7 +108,7 @@ def test_start_report_stop(tmp_path: Path, app_url: str) -> None:
         [
             "report",
             "-e",
-            app_url,
+            monkeyflocker_app.url,
             "-o",
             str(output_path),
             "-k",
@@ -210,7 +129,7 @@ def test_start_report_stop(tmp_path: Path, app_url: str) -> None:
         [
             "stop",
             "-e",
-            app_url,
+            monkeyflocker_app.url,
             "-o",
             str(output_path),
             "-k",
@@ -225,5 +144,5 @@ def test_start_report_stop(tmp_path: Path, app_url: str) -> None:
     log = (output_path / "testuser1_log.txt").read_text()
     assert "Idling..." in log
 
-    r = httpx.get(f"{app_url}/mobu/flocks/basic")
+    r = httpx.get(f"{monkeyflocker_app.url}/mobu/flocks/basic")
     assert r.status_code == 404

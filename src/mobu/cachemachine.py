@@ -24,10 +24,12 @@ class CachemachineClient:
         self._session = session
         self._token = token
         self._username = username
+        if not config.environment_url:
+            raise RuntimeError("environment_url not set")
         self._url = (
-            config.environment_url
+            str(config.environment_url).rstrip("/")
             + "/cachemachine/jupyter/"
-            + config.cachemachine_image_policy
+            + config.cachemachine_image_policy.value
         )
 
     async def get_latest_weekly(self) -> JupyterImage:
