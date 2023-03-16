@@ -14,6 +14,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from safir.logging import configure_logging, configure_uvicorn_logging
 from safir.middleware.x_forwarded import XForwardedMiddleware
+from safir.models import ErrorLocation
 
 from .autostart import autostart
 from .config import config
@@ -81,7 +82,7 @@ async def flock_not_found_exception_handler(
         content={
             "detail": [
                 {
-                    "loc": ["path", "flock"],
+                    "loc": [ErrorLocation.path, "flock"],
                     "msg": f"Flock for {exc.flock} not found",
                     "type": "flock_not_found",
                 }
@@ -99,7 +100,7 @@ async def monkey_not_found_exception_handler(
         content={
             "detail": [
                 {
-                    "loc": ["path", "monkey"],
+                    "loc": [ErrorLocation.path, "monkey"],
                     "msg": f"Monkey for {exc.monkey} not found",
                     "type": "monkey_not_found",
                 }
