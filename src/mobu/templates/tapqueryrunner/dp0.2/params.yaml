@@ -14,7 +14,7 @@ radius_near_range: 0.028
 
 # Source list of 500 randomly selected objects across the entire spatial
 # extent of DP0.2.
-objectIds:
+object_ids:
 - 2093848371285467432
 - 1912481729260552963
 - 1821389389922580341

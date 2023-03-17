@@ -115,11 +115,11 @@ class TAPQueryRunner(Business):
             "username": self.user.username,
             "query_id": "mobu-" + shortuuid.uuid(),
         }
-        objectIds = self._params.get("objectIds")
-        if objectIds:
-            result["object"] = str(random.choice(objectIds))
+        object_ids = self._params.get("object_ids")
+        if object_ids:
+            result["object"] = str(random.choice(object_ids))
             result["objects"] = ", ".join(
-                str(o) for o in random.choices(objectIds, k=12)
+                str(o) for o in random.choices(object_ids, k=12)
             )
         return result
 
@@ -154,19 +154,17 @@ class TAPQueryRunner(Business):
         self.logger.info(f"Query finished after {elapsed} seconds")
 
     async def run_async_query(self, query: str) -> None:
-        self.logger.info("Running: %s", query)
+        self.logger.info("Running (async): %s", query)
         job = self._client.submit_job(query)
-
         try:
             job.run()
-
-            while job.phase not in ["COMPLETED", "ERROR"]:
+            while job.phase not in ("COMPLETED", "ERROR"):
                 await asyncio.sleep(30)
         finally:
             job.delete()
 
     async def run_sync_query(self, query: str) -> None:
-        self.logger.info("Running: %s", query)
+        self.logger.info("Running (sync): %s", query)
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(self._pool, self._client.search, query)
 
