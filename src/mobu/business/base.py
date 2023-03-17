@@ -39,7 +39,7 @@ class Business:
     Subclasses should override ``startup``, ``execute``, and ``shutdown`` to
     add appropriate behavior.  ``idle`` by default waits for ``idle_time``,
     which generally does not need to be overridden.  Subclasses should also
-    override ``close`` to shut down any object state created in ``__init__``.
+    override ``close`` to free any resources allocated in ``__init__``.
 
     All delays should be done by calling ``pause``, and the caller should
     check ``self.stopping`` and exit any loops if it is `True` after calling
@@ -137,17 +137,30 @@ class Business:
         await self.control.join()
         self.logger.info("Stopped")
 
-    async def pause(self, seconds: float) -> None:
-        """Pause for up to the number of seconds, handling commands."""
+    async def pause(self, seconds: float) -> bool:
+        """Pause for up to the number of seconds, handling commands.
+
+        Parameters
+        ----------
+        seconds
+            How long to wait.
+
+        Returns
+        -------
+        bool
+            `False` if the business has been told to stop, `True` otherwise.
+        """
         if self.stopping:
-            return
+            return False
         try:
             if seconds:
                 await asyncio.wait_for(self.control.get(), seconds)
+                return False
             else:
                 self.control.get_nowait()
+                return False
         except (TimeoutError, QueueEmpty):
-            return
+            return True
 
     async def iter_with_timeout(
         self, iterable: AsyncIterable[T], timeout: float
@@ -187,7 +200,8 @@ class Business:
             remaining = timeout - (now - start).total_seconds()
             if remaining < 0:
                 break
-            result = await wait_first(iter_next(), self.pause(timeout))
+            pause = self._pause_no_return(timeout)
+            result = await wait_first(iter_next(), pause)
             if result is None or self.stopping:
                 break
             yield result
@@ -199,3 +213,21 @@ class Business:
             success_count=self.success_count,
             timings=self.timings.dump(),
         )
+
+    async def _pause_no_return(self, seconds: float) -> None:
+        """Same as `pause` but returns `None`.
+
+        Parameters
+        ----------
+        seconds
+            How long to wait.
+        """
+        if self.stopping:
+            return
+        try:
+            if seconds:
+                await asyncio.wait_for(self.control.get(), seconds)
+            else:
+                self.control.get_nowait()
+        except (TimeoutError, QueueEmpty):
+            pass

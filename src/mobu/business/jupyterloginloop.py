@@ -126,8 +126,7 @@ class JupyterLoginLoop(Business):
             # have attached to the spawner and will not return a full stream
             # of events.  (It will definitely take longer than 5s for the lab
             # to spawn.)
-            await self.pause(self.config.spawn_settle_time)
-            if self.stopping:
+            if not await self.pause(self.config.spawn_settle_time):
                 return
 
             # Watch the progress API until the lab has spawned.
@@ -154,7 +153,7 @@ class JupyterLoginLoop(Business):
             # We only fall through if the spawn failed, timed out, or if we're
             # stopping the business.
             if self.stopping:
-                return  # type: ignore[unreachable]  # bug in mypy 0.930
+                return
             log = "\n".join([str(m) for m in log_messages])
             if sw.elapsed.total_seconds() > timeout:
                 elapsed = round(sw.elapsed.total_seconds())
@@ -192,9 +191,8 @@ class JupyterLoginLoop(Business):
                         raise JupyterTimeoutError(self.user.username, msg)
                 msg = f"Waiting for lab deletion ({elapsed}s elapsed)"
                 self.logger.info(msg)
-                await self.pause(2)
-                if self.stopping:
-                    return  # type: ignore[unreachable]  # bug in mypy 0.930
+                if not await self.pause(2):
+                    return
 
         self.logger.info("Lab successfully deleted")
         self.image = None
