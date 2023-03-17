@@ -14,7 +14,7 @@ import pyvo
 import requests
 import shortuuid
 import yaml
-from structlog import BoundLogger
+from structlog.stdlib import BoundLogger
 
 from ..config import config
 from ..exceptions import CodeExecutionError

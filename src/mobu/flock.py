@@ -10,6 +10,7 @@ from typing import Optional
 from aiohttp import ClientSession
 from aiojobs import Scheduler
 from safir.datetime import current_datetime
+from structlog.stdlib import BoundLogger
 
 from .business.base import Business
 from .business.jupyterjitterloginloop import JupyterJitterLoginLoop
@@ -39,14 +40,17 @@ class Flock:
 
     def __init__(
         self,
+        *,
         flock_config: FlockConfig,
         scheduler: Scheduler,
         session: ClientSession,
+        logger: BoundLogger,
     ) -> None:
         self.name = flock_config.name
         self._config = flock_config
         self._scheduler = scheduler
         self._session = session
+        self._logger = logger.bind(flock=self.name)
         self._monkeys: dict[str, Monkey] = {}
         self._start_time: Optional[datetime] = None
         try:
@@ -93,7 +97,9 @@ class Flock:
 
     async def start(self) -> None:
         """Start all the monkeys."""
+        self._logger.info("Creating users")
         users = await self._create_users()
+        self._logger.info("Starting flock")
         for user in users:
             monkey = self._create_monkey(user)
             self._monkeys[user.username] = monkey
@@ -107,13 +113,20 @@ class Flock:
         it were in the middle of spawning, so stop them all in parallel to
         avoid waiting for the sum of all timeouts.
         """
+        self._logger.info("Stopping flock")
         awaits = [m.stop() for m in self._monkeys.values()]
         await asyncio.gather(*awaits)
 
     def _create_monkey(self, user: AuthenticatedUser) -> Monkey:
         """Create a monkey that will run as a given user."""
-        config = self._config.monkey_config(user.username)
-        return Monkey(config, self._business_type, user, self._session)
+        monkey_config = self._config.monkey_config(user.username)
+        return Monkey(
+            monkey_config=monkey_config,
+            business_type=self._business_type,
+            user=user,
+            session=self._session,
+            logger=self._logger,
+        )
 
     async def _create_users(self) -> list[AuthenticatedUser]:
         """Create the authenticated users the monkeys will run as."""

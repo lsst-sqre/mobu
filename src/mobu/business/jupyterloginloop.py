@@ -13,7 +13,7 @@ from typing import Optional
 
 from aiohttp import ClientError, ClientResponseError
 from safir.datetime import current_datetime, format_datetime_for_logging
-from structlog import BoundLogger
+from structlog.stdlib import BoundLogger
 
 from ..exceptions import (
     JupyterResponseError,

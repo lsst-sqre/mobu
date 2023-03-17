@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import Optional
 
+import structlog
 from aiohttp import ClientSession
 from aiojobs import Scheduler
 
@@ -22,6 +23,7 @@ class MonkeyBusinessManager:
         self._flocks: dict[str, Flock] = {}
         self._scheduler: Optional[Scheduler] = None
         self._session: Optional[ClientSession] = None
+        self._logger = structlog.get_logger("mobu")
 
     async def __call__(self) -> MonkeyBusinessManager:
         return self
@@ -43,7 +45,12 @@ class MonkeyBusinessManager:
     async def start_flock(self, flock_config: FlockConfig) -> Flock:
         if self._scheduler is None or not self._session:
             raise RuntimeError("MonkeyBusinessManager not initialized")
-        flock = Flock(flock_config, self._scheduler, self._session)
+        flock = Flock(
+            flock_config=flock_config,
+            scheduler=self._scheduler,
+            session=self._session,
+            logger=self._logger,
+        )
         if flock.name in self._flocks:
             await self._flocks[flock.name].stop()
         self._flocks[flock.name] = flock

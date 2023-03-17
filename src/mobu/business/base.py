@@ -9,7 +9,7 @@ from enum import Enum
 from typing import TypeVar
 
 from safir.datetime import current_datetime
-from structlog import BoundLogger
+from structlog.stdlib import BoundLogger
 
 from ..models.business import BusinessConfig, BusinessData
 from ..models.user import AuthenticatedUser
@@ -132,10 +132,10 @@ class Business:
     async def stop(self) -> None:
         """Tell the running background task to stop and wait for that."""
         self.stopping = True
+        self.logger.info("Stopping...")
         await self.control.put(BusinessCommand.STOP)
         await self.control.join()
         self.logger.info("Stopped")
-        await self.close()
 
     async def pause(self, seconds: float) -> None:
         """Pause for up to the number of seconds, handling commands."""

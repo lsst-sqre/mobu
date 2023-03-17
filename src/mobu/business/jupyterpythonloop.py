@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from structlog import BoundLogger
+from structlog.stdlib import BoundLogger
 
 from ..jupyterclient import JupyterLabSession
 from ..models.business import BusinessConfig
