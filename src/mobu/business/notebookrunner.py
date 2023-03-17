@@ -73,11 +73,11 @@ class NotebookRunner(JupyterPythonLoop):
             random.shuffle(notebooks)
         return notebooks
 
-    def next_notebook(self) -> None:
+    def next_notebook(self) -> Path:
         if not self._notebook_paths:
             self.logger.info("Done with this cycle of notebooks")
             self._notebook_paths = self.find_notebooks()
-        self.notebook = self._notebook_paths.pop()
+        return self._notebook_paths.pop()
 
     def read_notebook(self, notebook: Path) -> list[dict[str, Any]]:
         with self.timings.start("read_notebook", {"notebook": notebook.name}):
@@ -112,8 +112,7 @@ class NotebookRunner(JupyterPythonLoop):
 
     async def execute_code(self, session: JupyterLabSession) -> None:
         for count in range(self.config.max_executions):
-            self.next_notebook()
-            assert self.notebook
+            self.notebook = self.next_notebook()
 
             iteration = f"{count + 1}/{self.config.max_executions}"
             msg = f"Notebook {self.notebook.name} iteration {iteration}"
@@ -126,19 +125,18 @@ class NotebookRunner(JupyterPythonLoop):
                 else:
                     cell_id = f'#{cell["_index"]}'
                 await self.execute_cell(session, code, cell_id)
-                await self.execution_idle()
-                if self.stopping:
+                if not await self.execution_idle():
                     break
 
+            self.logger.info(f"Success running notebook {self.notebook.name}")
             if self.stopping:
                 break
-            self.logger.info(f"Success running notebook {self.notebook.name}")
 
     async def execute_cell(
         self, session: JupyterLabSession, code: str, cell_id: str
     ) -> None:
         assert self.notebook
-        self.logger.info("Executing:\n%s\n", code)
+        self.logger.info(f"Executing cell {cell_id}:\n{code}\n")
         annotations = self.annotations()
         annotations["cell"] = cell_id
         with self.timings.start("execute_cell", annotations):

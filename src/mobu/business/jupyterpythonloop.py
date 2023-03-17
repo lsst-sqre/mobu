@@ -73,7 +73,9 @@ class JupyterPythonLoop(JupyterLoginLoop):
                 self.node = node_data.split("\n")[-1]
                 self.logger.info(f"Running on node {self.node}")
             if self.config.working_directory:
-                code = _CHDIR_TEMPLATE.format(wd=self.config.working_directory)
+                path = self.config.working_directory
+                code = _CHDIR_TEMPLATE.format(wd=path)
+                self.logger.info(f"Changing directories to {path}")
                 await self._client.run_python(session, code)
         return session
 
@@ -83,14 +85,13 @@ class JupyterPythonLoop(JupyterLoginLoop):
             with self.timings.start("execute_code", self.annotations()):
                 reply = await self._client.run_python(session, code)
             self.logger.info(f"{code} -> {reply}")
-            await self.execution_idle()
-            if self.stopping:
+            if not await self.execution_idle():
                 break
 
-    async def execution_idle(self) -> None:
+    async def execution_idle(self) -> bool:
         """Executed between each unit of work execution."""
         with self.timings.start("execution_idle"):
-            await self.pause(self.config.execution_idle_time)
+            return await self.pause(self.config.execution_idle_time)
 
     async def delete_session(self, session: JupyterLabSession) -> None:
         await self.lab_login()

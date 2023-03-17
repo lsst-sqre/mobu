@@ -98,12 +98,10 @@ class JupyterLoginLoop(Business):
         """The work done in each iteration of the loop."""
         if self.config.delete_lab or await self._client.is_lab_stopped():
             self.image = None
-            await self.spawn_lab()
-            if self.stopping:
+            if not await self.spawn_lab():
                 return
-            await self.lab_settle()
-            if self.stopping:
-                return  # type: ignore[unreachable]  # bug in mypy 0.930
+            if not await self.lab_settle():
+                return
         await self.lab_login()
         await self.lab_business()
         if self.config.delete_lab:
@@ -118,7 +116,7 @@ class JupyterLoginLoop(Business):
         with self.timings.start("hub_login"):
             await self._client.hub_login()
 
-    async def spawn_lab(self) -> None:
+    async def spawn_lab(self) -> bool:
         with self.timings.start("spawn_lab", self.annotations()) as sw:
             self.image = await self._client.spawn_lab()
 
@@ -127,7 +125,7 @@ class JupyterLoginLoop(Business):
             # of events.  (It will definitely take longer than 5s for the lab
             # to spawn.)
             if not await self.pause(self.config.spawn_settle_time):
-                return
+                return False
 
             # Watch the progress API until the lab has spawned.
             log_messages = []
@@ -137,7 +135,7 @@ class JupyterLoginLoop(Business):
                 async for message in self.iter_with_timeout(progress, timeout):
                     log_messages.append(ProgressLogMessage(message.message))
                     if message.ready:
-                        return
+                        return True
             except ClientResponseError as e:
                 username = self.user.username
                 raise JupyterResponseError.from_exception(username, e) from e
@@ -153,7 +151,7 @@ class JupyterLoginLoop(Business):
             # We only fall through if the spawn failed, timed out, or if we're
             # stopping the business.
             if self.stopping:
-                return
+                return False
             log = "\n".join([str(m) for m in log_messages])
             if sw.elapsed.total_seconds() > timeout:
                 elapsed = round(sw.elapsed.total_seconds())
@@ -162,9 +160,9 @@ class JupyterLoginLoop(Business):
             else:
                 raise JupyterSpawnError(self.user.username, log)
 
-    async def lab_settle(self) -> None:
+    async def lab_settle(self) -> bool:
         with self.timings.start("lab_settle"):
-            await self.pause(self.config.lab_settle_time)
+            return await self.pause(self.config.lab_settle_time)
 
     async def lab_login(self) -> None:
         with self.timings.start("lab_login", self.annotations()):

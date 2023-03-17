@@ -53,6 +53,24 @@ class Business:
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+
+    Attributes
+    ----------
+    logger
+        Logger to use to report the results of business. This will generally
+        be attached to a file rather than the main logger.
+    config
+        Configuration options for the business.
+    user
+        User with their authentication token to use to run the business.
+    success_count
+        Number of successes.
+    failure_count
+        Number of failures.
+    timings
+        Execution timings.
+    stopping
+        Whether `stop` has been called and further execution should stop.
     """
 
     def __init__(
@@ -70,12 +88,40 @@ class Business:
         self.control: Queue[BusinessCommand] = Queue()
         self.stopping = False
 
-    async def close(self) -> None:
-        """Clean up any business state on shutdown."""
+    # Methods that should be overridden by child classes.
+
+    async def startup(self) -> None:
+        """Run before the start of the first iteration and then not again."""
         pass
 
+    async def execute(self) -> None:
+        """The business done in each loop."""
+        pass
+
+    async def close(self) -> None:
+        """Clean up any allocated resources.
+
+        This should be overridden by child classes to free any resources that
+        were allocated in ``__init__``.
+        """
+        pass
+
+    async def shutdown(self) -> None:
+        """Any cleanup to do before exiting after stopping."""
+        pass
+
+    # Public Business API called by the Monkey class. These methods handle the
+    # complex state logic of looping and handling a stop signal and should not
+    # be overridden.
+
     async def run(self) -> None:
-        """The core business logic, run in a background task."""
+        """The core business logic, run in a background task.
+
+        Calls `startup`, and then loops calling `execute` followed by `idle`,
+        tracking failures by watching for exceptions and updating
+        ``success_count`` and ``failure_count``. When told to stop, calls
+        `shutdown` followed by `close`.
+        """
         self.logger.info("Starting up...")
         try:
             await self.startup()
@@ -98,14 +144,6 @@ class Business:
             if self.stopping:
                 self.control.task_done()
 
-    async def startup(self) -> None:
-        """Run before the start of the first iteration and then not again."""
-        pass
-
-    async def execute(self) -> None:
-        """The business done in each loop."""
-        pass
-
     async def idle(self) -> None:
         """The idle pause at the end of each loop."""
         self.logger.info("Idling...")
@@ -115,8 +153,8 @@ class Business:
     async def error_idle(self) -> None:
         """The idle pause after an error.
 
-        This happens outside of ``run`` and therefore must handle
-        acknowledging a shutdown request.
+        This happens outside of `run` and therefore must handle acknowledging
+        a shutdown request.
         """
         self.logger.warning("Restarting failed monkey after 60s")
         try:
@@ -125,10 +163,6 @@ class Business:
             if self.stopping:
                 self.control.task_done()
 
-    async def shutdown(self) -> None:
-        """Any cleanup to do before exiting after stopping."""
-        pass
-
     async def stop(self) -> None:
         """Tell the running background task to stop and wait for that."""
         self.stopping = True
@@ -136,6 +170,8 @@ class Business:
         await self.control.put(BusinessCommand.STOP)
         await self.control.join()
         self.logger.info("Stopped")
+
+    # Utility functions that can be used by child classes.
 
     async def pause(self, seconds: float) -> bool:
         """Pause for up to the number of seconds, handling commands.
@@ -170,6 +206,24 @@ class Business:
         Returns the next element of the iterator on success and ends the
         iterator on timeout or if the business was told to shut down.  (The
         latter two can be distinguished by checking ``self.stopping``.)
+
+        Parameters
+        ----------
+        iterable
+            Any object that supports the async iterable protocol.
+        timeout
+            How long to wait for each new iterator result.
+
+        Yields
+        ------
+        typing.Any
+            The next result of the iterable passed as ``iterable``.
+
+        Raises
+        ------
+        StopIteration
+            Raised when the iterable is exhausted, a timeout occurs, or the
+            business was signaled to stop by calling `stop`.
 
         Notes
         -----
