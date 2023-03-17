@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from typing import Optional
 
 import structlog
@@ -12,8 +12,10 @@ from aiohttp import ClientSession
 from aiojobs import Scheduler
 from aiojobs._job import Job
 from safir.datetime import current_datetime, format_datetime_for_logging
+from safir.logging import Profile
 from safir.slack.blockkit import SlackException, SlackMessage, SlackTextField
 from safir.slack.webhook import SlackWebhookClient
+from structlog.stdlib import BoundLogger
 
 from .business.base import Business
 from .config import config
@@ -30,52 +32,45 @@ class Monkey:
 
     def __init__(
         self,
+        *,
         monkey_config: MonkeyConfig,
         business_type: type[Business],
         user: AuthenticatedUser,
         session: ClientSession,
+        logger: BoundLogger,
     ):
-        self.config = monkey_config
-        self.name = monkey_config.name
-        self.state = MonkeyState.IDLE
-        self.user = user
-        self.restart = monkey_config.restart
-
+        self._config = monkey_config
+        self._name = monkey_config.name
+        self._restart = monkey_config.restart
         self._session = session
+        self._user = user
+
+        self._state = MonkeyState.IDLE
         self._logfile = NamedTemporaryFile()
+        self._logger = self._build_logger(self._logfile)
+        self._global_logger = logger.bind(
+            monkey=self._name, user=self._user.username
+        )
         self._job: Optional[Job] = None
 
-        formatter = logging.Formatter(
-            fmt="%(asctime)s %(message)s", datefmt=DATE_FORMAT
+        # Create the Business class that will run the actual tests.
+        self.business = business_type(
+            self._logger, self._config.options, self._user
         )
-        fileHandler = logging.FileHandler(self._logfile.name)
-        fileHandler.setFormatter(formatter)
-        streamHandler = logging.StreamHandler(stream=sys.stdout)
-        streamHandler.setFormatter(formatter)
-        logger = logging.getLogger(self.name)
-        logger.handlers.clear()
-        logger.setLevel(logging.INFO)
-        logger.addHandler(fileHandler)
-        logger.addHandler(streamHandler)
-        logger.propagate = False
-        logger.info(f"Starting new file logger {self._logfile.name}")
-        self.log = structlog.wrap_logger(logger)
 
         self._slack = None
         if config.alert_hook and config.alert_hook != "None":
             self._slack = SlackWebhookClient(
-                config.alert_hook, "Mobu", self.log
+                config.alert_hook, "Mobu", self._global_logger
             )
 
-        self.business = business_type(self.log, self.config.options, self.user)
-
     async def alert(self, e: Exception) -> None:
-        if self.state in (MonkeyState.STOPPING, MonkeyState.FINISHED):
-            state = self.state.name
-            self.log.info(f"Not sending alert because state is {state}")
+        if self._state in (MonkeyState.STOPPING, MonkeyState.FINISHED):
+            state = self._state.name
+            self._logger.info(f"Not sending alert because state is {state}")
             return
         if not self._slack:
-            self.log.info("Alert hook isn't set, so not sending to Slack")
+            self._logger.info("Alert hook isn't set, so not sending to Slack")
             return
 
         if isinstance(e, SlackException):
@@ -90,10 +85,12 @@ class Monkey:
                 message=f"Unexpected exception {type(e).__name__}: {str(e)}",
                 fields=[
                     SlackTextField(heading="Date", text=date),
-                    SlackTextField(heading="User", text=self.user.username),
+                    SlackTextField(heading="User", text=self._user.username),
                 ],
             )
             await self._slack.post(message)
+
+        self._global_logger.info("Sent alert to Slack")
 
     def logfile(self) -> str:
         self._logfile.flush()
@@ -107,43 +104,76 @@ class Monkey:
 
         while run:
             try:
-                self.state = MonkeyState.RUNNING
+                self._state = MonkeyState.RUNNING
                 await self.business.run()
                 run = False
             except Exception as e:
-                self.log.exception(
-                    "Exception thrown while doing monkey business"
-                )
+                msg = "Exception thrown while doing monkey business"
+                self._logger.exception(msg)
                 await self.alert(e)
-                run = self.restart and self.state == MonkeyState.RUNNING
-                if self.state == MonkeyState.RUNNING:
-                    self.state = MonkeyState.ERROR
-            if run:
-                await self.business.error_idle()
-                if self.state == MonkeyState.STOPPING:
-                    self.log.info("Shutting down monkey")
-                    run = False
-            else:
-                self.log.info("Shutting down monkey")
+                run = self._restart and self._state == MonkeyState.RUNNING
+                if run:
+                    self._state = MonkeyState.ERROR
+                    await self.business.error_idle()
+                    if self._state == MonkeyState.STOPPING:
+                        run = False
+                else:
+                    self._state = MonkeyState.STOPPING
+                    msg = "Shutting down monkey due to error"
+                    self._global_logger.warning(msg)
 
         await self.business.close()
         self.state = MonkeyState.FINISHED
 
     async def stop(self) -> None:
-        if self.state == MonkeyState.FINISHED:
+        if self._state == MonkeyState.FINISHED:
             return
-        elif self.state in (MonkeyState.RUNNING, MonkeyState.ERROR):
-            self.state = MonkeyState.STOPPING
+        elif self._state in (MonkeyState.RUNNING, MonkeyState.ERROR):
+            self._state = MonkeyState.STOPPING
             await self.business.stop()
-            if self._job:
-                await self._job.wait()
-        self.state = MonkeyState.FINISHED
+        if self._job:
+            await self._job.wait()
+        self._state = MonkeyState.FINISHED
 
     def dump(self) -> MonkeyData:
         return MonkeyData(
-            name=self.name,
+            name=self._name,
             business=self.business.dump(),
-            restart=self.restart,
-            state=self.state,
-            user=self.user,
+            restart=self._restart,
+            state=self._state,
+            user=self._user,
         )
+
+    def _build_logger(self, logfile: _TemporaryFileWrapper) -> BoundLogger:
+        """Construct a logger for the actions of this monkey.
+
+        This logger will always log to a file, and will log to standard output
+        if the logging profile is ``development``.
+
+        Parameters
+        ----------
+        logfile
+            File to which to write the log messages.
+
+        Returns
+        -------
+        structlog.BoundLogger
+            Logger to use for further monkey actions.
+        """
+        formatter = logging.Formatter(
+            fmt="%(asctime)s %(message)s", datefmt=DATE_FORMAT
+        )
+        fileHandler = logging.FileHandler(logfile.name)
+        fileHandler.setFormatter(formatter)
+        logger = logging.getLogger("mobu")
+        logger.handlers.clear()
+        logger.setLevel(logging.INFO)
+        logger.addHandler(fileHandler)
+        logger.propagate = False
+        if config.profile == Profile.development:
+            streamHandler = logging.StreamHandler(stream=sys.stdout)
+            streamHandler.setFormatter(formatter)
+            logger.addHandler(streamHandler)
+        result = structlog.wrap_logger(logger, wrapper_class=BoundLogger)
+        result.info("Starting new file logger", file=logfile.name)
+        return result

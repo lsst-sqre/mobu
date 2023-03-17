@@ -13,7 +13,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Optional
 
 from git.repo import Repo
-from structlog import BoundLogger
+from structlog.stdlib import BoundLogger
 
 from ..exceptions import NotebookRepositoryError
 from ..jupyterclient import JupyterLabSession

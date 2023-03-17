@@ -28,7 +28,7 @@ from aiohttp import (
 )
 from aiohttp.client import _RequestContextManager, _WSRequestContextManager
 from safir.datetime import current_datetime
-from structlog import BoundLogger
+from structlog.stdlib import BoundLogger
 
 from .cachemachine import CachemachineClient
 from .config import config
