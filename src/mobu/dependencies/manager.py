@@ -10,8 +10,8 @@ from aiohttp import ClientSession
 from aiojobs import Scheduler
 
 from ..exceptions import FlockNotFoundException
-from ..flock import Flock
 from ..models.flock import FlockConfig, FlockSummary
+from ..services.flock import Flock
 
 __all__ = ["MonkeyBusinessManager", "monkey_business_manager"]
 

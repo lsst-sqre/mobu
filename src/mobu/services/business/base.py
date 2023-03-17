@@ -11,10 +11,10 @@ from typing import TypeVar
 from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
 
-from ..models.business import BusinessConfig, BusinessData
-from ..models.user import AuthenticatedUser
+from ...asyncio import wait_first
+from ...models.business import BusinessConfig, BusinessData
+from ...models.user import AuthenticatedUser
 from ..timings import Timings
-from ..util import wait_first
 
 T = TypeVar("T")
 

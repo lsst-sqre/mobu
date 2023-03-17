@@ -10,9 +10,9 @@ from typing import Optional
 
 from structlog.stdlib import BoundLogger
 
-from ..jupyterclient import JupyterLabSession
-from ..models.business import BusinessConfig
-from ..models.user import AuthenticatedUser
+from ...models.business import BusinessConfig
+from ...models.user import AuthenticatedUser
+from ...storage.jupyter import JupyterLabSession
 from .jupyterloginloop import JupyterLoginLoop
 
 __all__ = ["JupyterPythonLoop"]

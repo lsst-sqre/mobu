@@ -15,15 +15,15 @@ from aiohttp import ClientError, ClientResponseError
 from safir.datetime import current_datetime, format_datetime_for_logging
 from structlog.stdlib import BoundLogger
 
-from ..exceptions import (
+from ...exceptions import (
     JupyterResponseError,
     JupyterSpawnError,
     JupyterTimeoutError,
 )
-from ..jupyterclient import JupyterClient
-from ..models.business import BusinessConfig, BusinessData
-from ..models.jupyter import JupyterImage
-from ..models.user import AuthenticatedUser
+from ...models.business import BusinessConfig, BusinessData
+from ...models.jupyter import JupyterImage
+from ...models.user import AuthenticatedUser
+from ...storage.jupyter import JupyterClient
 from .base import Business
 
 __all__ = ["JupyterLoginLoop", "ProgressLogMessage"]

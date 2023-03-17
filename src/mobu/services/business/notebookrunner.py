@@ -15,10 +15,10 @@ from typing import Any, Optional
 from git.repo import Repo
 from structlog.stdlib import BoundLogger
 
-from ..exceptions import NotebookRepositoryError
-from ..jupyterclient import JupyterLabSession
-from ..models.business import BusinessConfig, BusinessData
-from ..models.user import AuthenticatedUser
+from ...exceptions import NotebookRepositoryError
+from ...models.business import BusinessConfig, BusinessData
+from ...models.user import AuthenticatedUser
+from ...storage.jupyter import JupyterLabSession
 from .jupyterpythonloop import JupyterPythonLoop
 
 __all__ = ["NotebookRunner"]

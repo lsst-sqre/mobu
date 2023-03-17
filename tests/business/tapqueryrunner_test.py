@@ -15,9 +15,9 @@ from httpx import AsyncClient
 from safir.testing.slack import MockSlackWebhook
 
 import mobu
-from mobu.business.tapqueryrunner import TAPQueryRunner
 from mobu.models.business import BusinessConfig
 from mobu.models.user import AuthenticatedUser
+from mobu.services.business.tapqueryrunner import TAPQueryRunner
 
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
@@ -158,7 +158,7 @@ async def test_random_object() -> None:
     for query_set in ("dp0.1", "dp0.2"):
         params_path = (
             Path(mobu.__file__).parent
-            / "templates"
+            / "data"
             / "tapqueryrunner"
             / query_set
             / "params.yaml"

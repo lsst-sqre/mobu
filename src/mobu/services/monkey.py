@@ -17,10 +17,10 @@ from safir.slack.blockkit import SlackException, SlackMessage, SlackTextField
 from safir.slack.webhook import SlackWebhookClient
 from structlog.stdlib import BoundLogger
 
+from ..config import config
+from ..models.monkey import MonkeyConfig, MonkeyData, MonkeyState
+from ..models.user import AuthenticatedUser
 from .business.base import Business
-from .config import config
-from .models.monkey import MonkeyConfig, MonkeyData, MonkeyState
-from .models.user import AuthenticatedUser
 
 __all__ = ["Monkey"]
 

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.resources
 import math
 import random
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 from typing import Optional
 
 import jinja2
@@ -16,10 +16,10 @@ import shortuuid
 import yaml
 from structlog.stdlib import BoundLogger
 
-from ..config import config
-from ..exceptions import CodeExecutionError
-from ..models.business import BusinessConfig, BusinessData
-from ..models.user import AuthenticatedUser
+from ...config import config
+from ...exceptions import CodeExecutionError
+from ...models.business import BusinessConfig, BusinessData
+from ...models.user import AuthenticatedUser
 from .base import Business
 
 
@@ -47,18 +47,18 @@ class TAPQueryRunner(Business):
         self._client = self._make_client(user.token)
         self._pool = ThreadPoolExecutor(max_workers=1)
 
-        template_path = (
-            Path(__file__).parent.parent
-            / "templates"
-            / "tapqueryrunner"
-            / self.config.tap_query_set
-        )
-
+        # Load templates and parameters. The path has to be specified in two
+        # different ways: as a relative path for Jinja's PackageLoader, and as
+        # a sequence of joinpath operations for importlib.resources.
+        template_path = ("data", "tapqueryrunner", self.config.tap_query_set)
         self._env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(str(template_path)),
+            loader=jinja2.PackageLoader("mobu", "/".join(template_path)),
             undefined=jinja2.StrictUndefined,
         )
-        with (template_path / "params.yaml").open("r") as f:
+        files = importlib.resources.files("mobu")
+        for directory in template_path:
+            files = files.joinpath(directory)
+        with files.joinpath("params.yaml").open("r") as f:
             self._params = yaml.safe_load(f)
 
     @staticmethod

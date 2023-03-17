@@ -8,8 +8,8 @@ from typing import Literal, Optional
 
 from safir.datetime import current_datetime
 
-from .exceptions import MobuSlackException
-from .models.timings import StopwatchData
+from ..exceptions import MobuSlackException
+from ..models.timings import StopwatchData
 
 
 class Timings:
