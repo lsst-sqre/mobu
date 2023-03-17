@@ -200,7 +200,10 @@ async def test_alert(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Cell id*\n`ed399c0a` (#1)",
+                            "text": (
+                                "*Cell*\n`exception.ipynb`"
+                                " cell `ed399c0a` (#2)"
+                            ),
                             "verbatim": True,
                         },
                     ],
