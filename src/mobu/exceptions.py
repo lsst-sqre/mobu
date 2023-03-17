@@ -95,9 +95,18 @@ class MobuSlackException(SlackException):
         if self.annotations.get("node"):
             node = self.annotations["node"]
             fields.append(SlackTextField(heading="Node", text=node))
-        if self.annotations.get("cell"):
+        if self.annotations.get("notebook"):
+            notebook = self.annotations["notebook"]
+            if self.annotations.get("cell"):
+                cell = self.annotations["cell"]
+                text = f"`{notebook}` cell {cell}"
+                fields.append(SlackTextField(heading="Cell", text=text))
+            else:
+                field = SlackTextField(heading="Notebook", text=notebook)
+                fields.append(field)
+        elif self.annotations.get("cell"):
             cell = self.annotations["cell"]
-            fields.append(SlackTextField(heading="Cell id", text=cell))
+            fields.append(SlackTextField(heading="Cell", text=cell))
         return fields
 
 
