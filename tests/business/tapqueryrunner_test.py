@@ -64,7 +64,7 @@ async def test_run(
         # Get the log and check that we logged the query.
         r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
         assert r.status_code == 200
-        assert "Running: " in r.text
+        assert "Running (sync): " in r.text
         assert "Query finished after " in r.text
 
 
@@ -155,7 +155,7 @@ async def test_alert(
 
 @pytest.mark.asyncio
 async def test_random_object() -> None:
-    for query_set in ["dp0.1", "dp0.2"]:
+    for query_set in ("dp0.1", "dp0.2"):
         params_path = (
             Path(mobu.__file__).parent
             / "templates"
@@ -164,12 +164,12 @@ async def test_random_object() -> None:
             / "params.yaml"
         )
         with params_path.open("r") as f:
-            objects = [str(o) for o in yaml.safe_load(f)["objectIds"]]
+            objects = [str(o) for o in yaml.safe_load(f)["object_ids"]]
 
-        logger = structlog.get_logger(__file__)
         user = AuthenticatedUser(
             username="user", scopes=["read:tap"], token="blah blah"
         )
+        logger = structlog.get_logger(__file__)
         with patch.object(pyvo.dal, "TAPService"):
             runner = TAPQueryRunner(
                 logger, BusinessConfig(tap_query_set=query_set), user

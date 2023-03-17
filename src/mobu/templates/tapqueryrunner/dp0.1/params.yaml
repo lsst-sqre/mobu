@@ -6,7 +6,7 @@ min_dec: -42.0
 max_dec: -30.0
 
 # 500 randomly selected objects across the entire spatial extent of DP0.1.
-objectIds:
+object_ids:
 - 15995858369670638
 - 15147293091046069
 - 15138492703093404
