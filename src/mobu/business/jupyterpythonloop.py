@@ -31,19 +31,27 @@ class JupyterPythonLoop(JupyterLoginLoop):
     """Run simple Python code in a loop inside a lab kernel.
 
     This can be used as a base class for other JupyterLab code execution
-    monkey business.  Override ``execute_code`` to change what code is
-    executed.  When doing so, be sure to call ``execute_idle`` between each
-    code execution and check ``self.stopping`` after it returns, exiting any
-    loops if ``self.stopping`` is true.
+    monkey business. Override `execute_code` to change what code is
+    executed. When doing so, be sure to call `execution_idle` between each
+    code execution and exit any loops if it returns `False`.
+
+    Parameters
+    ----------
+    business_config
+        Configuration options for the business.
+    user
+        User with their authentication token to use to run the business.
+    logger
+        Logger to use to report the results of business.
     """
 
     def __init__(
         self,
-        logger: BoundLogger,
         business_config: BusinessConfig,
         user: AuthenticatedUser,
+        logger: BoundLogger,
     ) -> None:
-        super().__init__(logger, business_config, user)
+        super().__init__(business_config, user, logger)
         self.node: Optional[str] = None
 
     def annotations(self) -> dict[str, str]:

@@ -50,26 +50,35 @@ class JupyterLoginLoop(Business):
     """Business that logs on to the hub, creates a lab, and deletes it.
 
     This class modifies the core `~mobu.business.base.Business` loop by
-    providing the overall ``execute`` framework and defualt ``startup`` and
-    ``shutdown`` methods.  It will log on to JupyterHub, ensure no lab
-    currently exists, create a lab, run ``lab_business``, and then shut down
-    the lab before starting another iteration.
+    providing `startup`, `execute`, and `shutdown` methods. It will log on to
+    JupyterHub, ensure no lab currently exists, create a lab, run
+    `lab_business`, and then shut down the lab before starting another
+    iteration.
 
-    Subclasses should override ``lab_business`` to do whatever they want to do
+    Subclasses should override `lab_business` to do whatever they want to do
     inside a lab.  The default behavior just waits for ``login_idle_time``.
 
     Once this business has been stopped, it cannot be started again (the
     `aiohttp.ClientSession` will be closed), and the instance should be
-    dropped after retrieving any status information.
+    dropped after retrieving any wanted status information.
+
+    Parameters
+    ----------
+    business_config
+        Configuration options for the business.
+    user
+        User with their authentication token to use to run the business.
+    logger
+        Logger to use to report the results of business.
     """
 
     def __init__(
         self,
-        logger: BoundLogger,
         business_config: BusinessConfig,
         user: AuthenticatedUser,
+        logger: BoundLogger,
     ) -> None:
-        super().__init__(logger, business_config, user)
+        super().__init__(business_config, user, logger)
         self.image: Optional[JupyterImage] = None
         self._client = JupyterClient(user, logger, business_config.jupyter)
 

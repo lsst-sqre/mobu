@@ -25,15 +25,25 @@ __all__ = ["NotebookRunner"]
 
 
 class NotebookRunner(JupyterPythonLoop):
-    """Start a Jupyter lab and run a sequence of notebooks."""
+    """Start a Jupyter lab and run a sequence of notebooks.
+
+    Parameters
+    ----------
+    business_config
+        Configuration options for the business.
+    user
+        User with their authentication token to use to run the business.
+    logger
+        Logger to use to report the results of business.
+    """
 
     def __init__(
         self,
-        logger: BoundLogger,
         business_config: BusinessConfig,
         user: AuthenticatedUser,
+        logger: BoundLogger,
     ) -> None:
-        super().__init__(logger, business_config, user)
+        super().__init__(business_config, user, logger)
         self.notebook: Optional[Path] = None
         self.running_code: Optional[str] = None
         self._repo_dir = TemporaryDirectory()

@@ -170,10 +170,9 @@ async def test_random_object() -> None:
             username="user", scopes=["read:tap"], token="blah blah"
         )
         logger = structlog.get_logger(__file__)
+        config = BusinessConfig(tap_query_set=query_set)
         with patch.object(pyvo.dal, "TAPService"):
-            runner = TAPQueryRunner(
-                logger, BusinessConfig(tap_query_set=query_set), user
-            )
+            runner = TAPQueryRunner(config, user, logger)
         parameters = runner._generate_parameters()
 
         assert parameters["object"] in objects

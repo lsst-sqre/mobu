@@ -24,15 +24,25 @@ from .base import Business
 
 
 class TAPQueryRunner(Business):
-    """Run queries against TAP."""
+    """Run queries against TAP.
+
+    Parameters
+    ----------
+    business_config
+        Configuration options for the business.
+    user
+        User with their authentication token to use to run the business.
+    logger
+        Logger to use to report the results of business.
+    """
 
     def __init__(
         self,
-        logger: BoundLogger,
         business_config: BusinessConfig,
         user: AuthenticatedUser,
+        logger: BoundLogger,
     ) -> None:
-        super().__init__(logger, business_config, user)
+        super().__init__(business_config, user, logger)
         self.running_query: Optional[str] = None
         self._client = self._make_client(user.token)
         self._pool = ThreadPoolExecutor(max_workers=1)

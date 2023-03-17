@@ -55,7 +55,7 @@ class Monkey:
 
         # Create the Business class that will run the actual tests.
         self.business = business_type(
-            self._logger, self._config.options, self._user
+            self._config.options, self._user, self._logger
         )
 
         self._slack = None

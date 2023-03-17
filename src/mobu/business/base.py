@@ -47,12 +47,12 @@ class Business:
 
     Parameters
     ----------
-    logger
-        Logger to use to report the results of business.
     business_config
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+    logger
+        Logger to use to report the results of business.
 
     Attributes
     ----------
@@ -75,9 +75,9 @@ class Business:
 
     def __init__(
         self,
-        logger: BoundLogger,
         business_config: BusinessConfig,
         user: AuthenticatedUser,
+        logger: BoundLogger,
     ) -> None:
         self.logger = logger
         self.config = business_config
