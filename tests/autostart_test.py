@@ -22,7 +22,8 @@ AUTOSTART_CONFIG = """
     uid_start: 1000
     gid_start: 2000
   scopes: ["exec:notebook"]
-  business: Business
+  business:
+    type: EmptyLoop
 - name: python
   count: 2
   users:
@@ -30,14 +31,16 @@ AUTOSTART_CONFIG = """
       uidnumber: 60000
     - username: otherpython
       uidnumber: 70000
-  options:
-    jupyter:
-      image_class: latest-weekly
-      image_size: Large
-    spawn_settle_time: 10
   scopes: ["exec:notebook"]
   restart: true
-  business: JupyterPythonLoop
+  business:
+    type: JupyterPythonLoop
+    restart: True
+    options:
+      jupyter:
+        image_class: latest-weekly
+        image_size: Large
+      spawn_settle_time: 10
 """
 
 
@@ -62,11 +65,10 @@ async def test_autostart(client: AsyncClient) -> None:
             "name": f"testuser{i:02d}",
             "business": {
                 "failure_count": 0,
-                "name": "Business",
+                "name": "EmptyLoop",
                 "success_count": ANY,
                 "timings": ANY,
             },
-            "restart": False,
             "state": ANY,
             "user": {
                 "scopes": ["exec:notebook"],
@@ -89,7 +91,7 @@ async def test_autostart(client: AsyncClient) -> None:
                 "gid_start": 2000,
             },
             "scopes": ["exec:notebook"],
-            "business": "Business",
+            "business": {"type": "EmptyLoop"},
         },
         "monkeys": expected_monkeys,
     }
@@ -112,14 +114,16 @@ async def test_autostart(client: AsyncClient) -> None:
                 },
             ],
             "scopes": ["exec:notebook"],
-            "restart": True,
-            "business": "JupyterPythonLoop",
-            "options": {
-                "jupyter": {
-                    "image_class": "latest-weekly",
-                    "image_size": "Large",
+            "business": {
+                "type": "JupyterPythonLoop",
+                "restart": True,
+                "options": {
+                    "jupyter": {
+                        "image_class": "latest-weekly",
+                        "image_size": "Large",
+                    },
+                    "spawn_settle_time": 10,
                 },
-                "spawn_settle_time": 10,
             },
         },
         "monkeys": [
@@ -139,7 +143,6 @@ async def test_autostart(client: AsyncClient) -> None:
                     "success_count": ANY,
                     "timings": ANY,
                 },
-                "restart": True,
                 "state": ANY,
                 "user": {
                     "scopes": ["exec:notebook"],
@@ -165,7 +168,6 @@ async def test_autostart(client: AsyncClient) -> None:
                     "success_count": ANY,
                     "timings": ANY,
                 },
-                "restart": True,
                 "state": ANY,
                 "user": {
                     "scopes": ["exec:notebook"],

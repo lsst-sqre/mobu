@@ -15,24 +15,9 @@ from structlog.stdlib import BoundLogger
 from ..exceptions import MonkeyNotFoundException
 from ..models.flock import FlockConfig, FlockData, FlockSummary
 from ..models.user import AuthenticatedUser, User, UserSpec
-from .business.base import Business
-from .business.jupyterjitterloginloop import JupyterJitterLoginLoop
-from .business.jupyterloginloop import JupyterLoginLoop
-from .business.jupyterpythonloop import JupyterPythonLoop
-from .business.notebookrunner import NotebookRunner
-from .business.tapqueryrunner import TAPQueryRunner
 from .monkey import Monkey
 
 __all__ = ["Flock"]
-
-_BUSINESS_CLASS = {
-    "Business": Business,
-    "JupyterJItterLoginLoop": JupyterJitterLoginLoop,
-    "JupyterLoginLoop": JupyterLoginLoop,
-    "JupyterPythonLoop": JupyterPythonLoop,
-    "NotebookRunner": NotebookRunner,
-    "TAPQueryRunner": TAPQueryRunner,
-}
 
 
 class Flock:
@@ -53,10 +38,6 @@ class Flock:
         self._logger = logger.bind(flock=self.name)
         self._monkeys: dict[str, Monkey] = {}
         self._start_time: Optional[datetime] = None
-        try:
-            self._business_type = _BUSINESS_CLASS[self._config.business]
-        except ValueError:
-            raise ValueError(f"Unknown business {self._config.business}")
 
     def dump(self) -> FlockData:
         """Return information about all running monkeys."""
@@ -83,12 +64,13 @@ class Flock:
         successes = 0
         failures = 0
         for monkey in self._monkeys.values():
+            data = monkey.dump()
             count += 1
-            successes += monkey.business.success_count
-            failures += monkey.business.failure_count
+            successes += data.business.success_count
+            failures += data.business.failure_count
         return FlockSummary(
             name=self.name,
-            business=self._config.business,
+            business=self._config.business.type,
             start_time=self._start_time,
             monkey_count=count,
             success_count=successes,
@@ -119,10 +101,9 @@ class Flock:
 
     def _create_monkey(self, user: AuthenticatedUser) -> Monkey:
         """Create a monkey that will run as a given user."""
-        monkey_config = self._config.monkey_config(user.username)
         return Monkey(
-            monkey_config=monkey_config,
-            business_type=self._business_type,
+            name=user.username,
+            business_config=self._config.business,
             user=user,
             session=self._session,
             logger=self._logger,

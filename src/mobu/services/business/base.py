@@ -3,20 +3,22 @@
 from __future__ import annotations
 
 import asyncio
+from abc import ABCMeta, abstractmethod
 from asyncio import Queue, QueueEmpty
 from collections.abc import AsyncIterable, AsyncIterator
 from enum import Enum
-from typing import TypeVar
+from typing import Generic, TypeVar
 
 from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
 
 from ...asyncio import wait_first
-from ...models.business import BusinessConfig, BusinessData
+from ...models.business.base import BusinessData, BusinessOptions
 from ...models.user import AuthenticatedUser
 from ..timings import Timings
 
-T = TypeVar("T")
+T = TypeVar("T", bound="BusinessOptions")
+U = TypeVar("U")
 
 __all__ = ["Business"]
 
@@ -27,7 +29,7 @@ class BusinessCommand(Enum):
     STOP = "STOP"
 
 
-class Business:
+class Business(Generic[T], metaclass=ABCMeta):
     """Base class for monkey business (one type of repeated operation).
 
     The basic flow for a monkey business is as follows:
@@ -74,13 +76,10 @@ class Business:
     """
 
     def __init__(
-        self,
-        business_config: BusinessConfig,
-        user: AuthenticatedUser,
-        logger: BoundLogger,
+        self, options: T, user: AuthenticatedUser, logger: BoundLogger
     ) -> None:
         self.logger = logger
-        self.config = business_config
+        self.config = options
         self.user = user
         self.success_count = 0
         self.failure_count = 0
@@ -88,15 +87,15 @@ class Business:
         self.control: Queue[BusinessCommand] = Queue()
         self.stopping = False
 
-    # Methods that should be overridden by child classes.
+    # Methods that should be overridden by child classes if needed.
 
     async def startup(self) -> None:
         """Run before the start of the first iteration and then not again."""
         pass
 
+    @abstractmethod
     async def execute(self) -> None:
         """The business done in each loop."""
-        pass
 
     async def close(self) -> None:
         """Clean up any allocated resources.
@@ -199,8 +198,8 @@ class Business:
             return True
 
     async def iter_with_timeout(
-        self, iterable: AsyncIterable[T], timeout: float
-    ) -> AsyncIterator[T]:
+        self, iterable: AsyncIterable[U], timeout: float
+    ) -> AsyncIterator[U]:
         """Run an iterator with a timeout.
 
         Returns the next element of the iterator on success and ends the
@@ -245,7 +244,7 @@ class Business:
         # any Awaitable and does not need to be a Coroutine (which is required
         # for asyncio.create_task).  Turn it into an explicit Coroutine to
         # guarantee this will always work correctly.
-        async def iter_next() -> T:
+        async def iter_next() -> U:
             return await iterator.__anext__()
 
         start = current_datetime(microseconds=True)

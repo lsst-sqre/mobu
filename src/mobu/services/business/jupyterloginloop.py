@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
+from typing import Generic, Optional, TypeVar
 
 from aiohttp import ClientError, ClientResponseError
 from safir.datetime import current_datetime, format_datetime_for_logging
@@ -20,11 +20,17 @@ from ...exceptions import (
     JupyterSpawnError,
     JupyterTimeoutError,
 )
-from ...models.business import BusinessConfig, BusinessData
+from ...models.business.jupyterloginloop import (
+    JupyterLoginLoopData,
+    JupyterLoginLoopOptions,
+    JupyterLoginOptions,
+)
 from ...models.jupyter import JupyterImage
 from ...models.user import AuthenticatedUser
 from ...storage.jupyter import JupyterClient
 from .base import Business
+
+T = TypeVar("T", bound="JupyterLoginOptions")
 
 __all__ = ["JupyterLoginLoop", "ProgressLogMessage"]
 
@@ -46,7 +52,7 @@ class ProgressLogMessage:
         return f"{timestamp} - {self.message}"
 
 
-class JupyterLoginLoop(Business):
+class JupyterLoginLoop(Business, Generic[T]):
     """Business that logs on to the hub, creates a lab, and deletes it.
 
     This class modifies the core `~mobu.business.base.Business` loop by
@@ -73,14 +79,11 @@ class JupyterLoginLoop(Business):
     """
 
     def __init__(
-        self,
-        business_config: BusinessConfig,
-        user: AuthenticatedUser,
-        logger: BoundLogger,
+        self, options: T, user: AuthenticatedUser, logger: BoundLogger
     ) -> None:
-        super().__init__(business_config, user, logger)
+        super().__init__(options, user, logger)
         self.image: Optional[JupyterImage] = None
-        self._client = JupyterClient(user, logger, business_config.jupyter)
+        self._client = JupyterClient(user, logger, options.jupyter)
 
     async def close(self) -> None:
         await self._client.close()
@@ -211,10 +214,11 @@ class JupyterLoginLoop(Business):
         default behavior is to wait a minute and then shut the lab down
         again.
         """
+        if not isinstance(self.config, JupyterLoginLoopOptions):
+            msg = "JupyterLoginLoop subclass didn't override lab_business"
+            raise RuntimeError(msg)
         with self.timings.start("lab_wait"):
             await self.pause(self.config.login_idle_time)
 
-    def dump(self) -> BusinessData:
-        data = super().dump()
-        data.image = self.image if self.image else None
-        return data
+    def dump(self) -> JupyterLoginLoopData:
+        return JupyterLoginLoopData(image=self.image, **super().dump().dict())

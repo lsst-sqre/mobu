@@ -6,14 +6,19 @@ over again.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Generic, Optional, TypeVar
 
 from structlog.stdlib import BoundLogger
 
-from ...models.business import BusinessConfig
+from ...models.business.jupyterpythonloop import (
+    JupyterPythonExecutorOptions,
+    JupyterPythonLoopOptions,
+)
 from ...models.user import AuthenticatedUser
 from ...storage.jupyter import JupyterLabSession
 from .jupyterloginloop import JupyterLoginLoop
+
+T = TypeVar("T", bound="JupyterPythonExecutorOptions")
 
 __all__ = ["JupyterPythonLoop"]
 
@@ -27,7 +32,7 @@ print(get_node(), end="")
 """Code to get the node on which the lab is running."""
 
 
-class JupyterPythonLoop(JupyterLoginLoop):
+class JupyterPythonLoop(JupyterLoginLoop, Generic[T]):
     """Run simple Python code in a loop inside a lab kernel.
 
     This can be used as a base class for other JupyterLab code execution
@@ -37,7 +42,7 @@ class JupyterPythonLoop(JupyterLoginLoop):
 
     Parameters
     ----------
-    business_config
+    options
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
@@ -46,12 +51,9 @@ class JupyterPythonLoop(JupyterLoginLoop):
     """
 
     def __init__(
-        self,
-        business_config: BusinessConfig,
-        user: AuthenticatedUser,
-        logger: BoundLogger,
+        self, options: T, user: AuthenticatedUser, logger: BoundLogger
     ) -> None:
-        super().__init__(business_config, user, logger)
+        super().__init__(options, user, logger)
         self.node: Optional[str] = None
 
     def annotations(self) -> dict[str, str]:
@@ -88,6 +90,9 @@ class JupyterPythonLoop(JupyterLoginLoop):
         return session
 
     async def execute_code(self, session: JupyterLabSession) -> None:
+        if not isinstance(self.config, JupyterPythonLoopOptions):
+            msg = "JupyterPythonLoop subclass didn't override execute_code"
+            raise RuntimeError(msg)
         code = self.config.code
         for count in range(self.config.max_executions):
             with self.timings.start("execute_code", self.annotations()):

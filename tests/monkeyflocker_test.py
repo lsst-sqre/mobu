@@ -25,7 +25,8 @@ count: 1
 user_spec:
   username_prefix: testuser
 scopes: ["exec:notebook"]
-business: Business
+business:
+  type: EmptyLoop
 """
 
 
@@ -78,18 +79,17 @@ def test_start_report_stop(
             "count": 1,
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
-            "business": "Business",
+            "business": {"type": "EmptyLoop"},
         },
         "monkeys": [
             {
                 "name": "testuser1",
                 "business": {
                     "failure_count": 0,
-                    "name": "Business",
+                    "name": "EmptyLoop",
                     "success_count": ANY,
                     "timings": ANY,
                 },
-                "restart": False,
                 "state": ANY,
                 "user": {
                     "scopes": ["exec:notebook"],

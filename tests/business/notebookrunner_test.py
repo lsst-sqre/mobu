@@ -44,16 +44,18 @@ async def test_run(
             "count": 1,
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
-            "options": {
-                "spawn_settle_time": 0,
-                "lab_settle_time": 0,
-                "execution_idle_time": 0,
-                "max_executions": 1,
-                "repo_url": str(repo_path),
-                "repo_branch": "main",
-                "working_directory": str(repo_path),
+            "business": {
+                "type": "NotebookRunner",
+                "options": {
+                    "spawn_settle_time": 0,
+                    "lab_settle_time": 0,
+                    "execution_idle_time": 0,
+                    "max_executions": 1,
+                    "repo_url": str(repo_path),
+                    "repo_branch": "main",
+                    "working_directory": str(repo_path),
+                },
             },
-            "business": "NotebookRunner",
         },
     )
     assert r.status_code == 201
@@ -69,7 +71,6 @@ async def test_run(
             "success_count": 1,
             "timings": ANY,
         },
-        "restart": False,
         "state": "RUNNING",
         "user": {
             "scopes": ["exec:notebook"],
@@ -119,16 +120,18 @@ async def test_alert(
             "count": 1,
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
-            "options": {
-                "spawn_settle_time": 0,
-                "lab_settle_time": 0,
-                "execution_idle_time": 0,
-                "max_executions": 1,
-                "repo_url": str(repo_path),
-                "repo_branch": "main",
+            "business": {
+                "type": "NotebookRunner",
+                "restart": True,
+                "options": {
+                    "spawn_settle_time": 0,
+                    "lab_settle_time": 0,
+                    "execution_idle_time": 0,
+                    "max_executions": 1,
+                    "repo_url": str(repo_path),
+                    "repo_branch": "main",
+                },
             },
-            "business": "NotebookRunner",
-            "restart": True,
         },
     )
     assert r.status_code == 201
@@ -152,7 +155,6 @@ async def test_alert(
             "success_count": 0,
             "timings": ANY,
         },
-        "restart": True,
         "state": "ERROR",
         "user": {
             "scopes": ["exec:notebook"],

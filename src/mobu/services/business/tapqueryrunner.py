@@ -18,7 +18,10 @@ from structlog.stdlib import BoundLogger
 
 from ...config import config
 from ...exceptions import CodeExecutionError
-from ...models.business import BusinessConfig, BusinessData
+from ...models.business.tapqueryrunner import (
+    TAPQueryRunnerData,
+    TAPQueryRunnerOptions,
+)
 from ...models.user import AuthenticatedUser
 from .base import Business
 
@@ -38,19 +41,19 @@ class TAPQueryRunner(Business):
 
     def __init__(
         self,
-        business_config: BusinessConfig,
+        options: TAPQueryRunnerOptions,
         user: AuthenticatedUser,
         logger: BoundLogger,
     ) -> None:
-        super().__init__(business_config, user, logger)
-        self.running_query: Optional[str] = None
+        super().__init__(options, user, logger)
+        self._running_query: Optional[str] = None
         self._client = self._make_client(user.token)
         self._pool = ThreadPoolExecutor(max_workers=1)
 
         # Load templates and parameters. The path has to be specified in two
         # different ways: as a relative path for Jinja's PackageLoader, and as
         # a sequence of joinpath operations for importlib.resources.
-        template_path = ("data", "tapqueryrunner", self.config.tap_query_set)
+        template_path = ("data", "tapqueryrunner", options.query_set)
         self._env = jinja2.Environment(
             loader=jinja2.PackageLoader("mobu", "/".join(template_path)),
             undefined=jinja2.StrictUndefined,
@@ -143,10 +146,10 @@ class TAPQueryRunner(Business):
         query = template.render(self._generate_parameters())
 
         with self.timings.start("execute_query", {"query": query}) as sw:
-            self.running_query = query
+            self._running_query = query
 
             try:
-                if self.config.tap_sync:
+                if self.config.sync:
                     await self.run_sync_query(query)
                 else:
                     await self.run_async_query(query)
@@ -158,7 +161,7 @@ class TAPQueryRunner(Business):
                     error=f"{type(e).__name__}: {str(e)}",
                 ) from e
 
-            self.running_query = None
+            self._running_query = None
             elapsed = sw.elapsed.total_seconds()
 
         self.logger.info(f"Query finished after {elapsed} seconds")
@@ -178,7 +181,7 @@ class TAPQueryRunner(Business):
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(self._pool, self._client.search, query)
 
-    def dump(self) -> BusinessData:
-        data = super().dump()
-        data.running_code = self.running_query
-        return data
+    def dump(self) -> TAPQueryRunnerData:
+        return TAPQueryRunnerData(
+            running_query=self._running_query, **super().dump().dict()
+        )

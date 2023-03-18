@@ -16,7 +16,10 @@ from git.repo import Repo
 from structlog.stdlib import BoundLogger
 
 from ...exceptions import NotebookRepositoryError
-from ...models.business import BusinessConfig, BusinessData
+from ...models.business.notebookrunner import (
+    NotebookRunnerData,
+    NotebookRunnerOptions,
+)
 from ...models.user import AuthenticatedUser
 from ...storage.jupyter import JupyterLabSession
 from .jupyterpythonloop import JupyterPythonLoop
@@ -29,7 +32,7 @@ class NotebookRunner(JupyterPythonLoop):
 
     Parameters
     ----------
-    business_config
+    options
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
@@ -39,11 +42,11 @@ class NotebookRunner(JupyterPythonLoop):
 
     def __init__(
         self,
-        business_config: BusinessConfig,
+        options: NotebookRunnerOptions,
         user: AuthenticatedUser,
         logger: BoundLogger,
     ) -> None:
-        super().__init__(business_config, user, logger)
+        super().__init__(options, user, logger)
         self.notebook: Optional[Path] = None
         self.running_code: Optional[str] = None
         self._repo_dir = TemporaryDirectory()
@@ -155,8 +158,9 @@ class NotebookRunner(JupyterPythonLoop):
             self.running_code = None
         self.logger.info(f"Result:\n{reply}\n")
 
-    def dump(self) -> BusinessData:
-        data = super().dump()
-        data.running_code = self.running_code
-        data.notebook = self.notebook.name if self.notebook else None
-        return data
+    def dump(self) -> NotebookRunnerData:
+        return NotebookRunnerData(
+            notebook=self.notebook.name if self.notebook else None,
+            running_code=self.running_code,
+            **super().dump().dict(),
+        )
