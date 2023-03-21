@@ -7,6 +7,7 @@ instance, and then delete them.
 from __future__ import annotations
 
 import asyncio
+import random
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Generic, Optional, TypeVar
@@ -98,6 +99,11 @@ class JupyterLoginLoop(Business, Generic[T]):
         return {"image": self.image.name} if self.image else {}
 
     async def startup(self) -> None:
+        if self.options.jitter:
+            with self.timings.start("pre_login_delay"):
+                max_delay = self.options.jitter
+                if not await self.pause(random.uniform(0, max_delay)):
+                    return
         await self.hub_login()
         if not await self._client.is_lab_stopped():
             try:
@@ -120,6 +126,16 @@ class JupyterLoginLoop(Business, Generic[T]):
 
     async def shutdown(self) -> None:
         await self.delete_lab()
+
+    async def idle(self) -> None:
+        """The idle pause at the end of each loop."""
+        if self.options.jitter:
+            self.logger.info("Idling...")
+            with self.timings.start("idle"):
+                extra_delay = random.uniform(0, self.options.jitter)
+                await self.pause(self.options.idle_time + extra_delay)
+        else:
+            await super().idle()
 
     async def hub_login(self) -> None:
         self.logger.info("Logging in to hub")

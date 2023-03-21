@@ -6,7 +6,6 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field, validator
 
 from .business.empty import EmptyLoopConfig
-from .business.jupyterjitterloginloop import JupyterJitterLoginLoopConfig
 from .business.jupyterloginloop import JupyterLoginLoopConfig
 from .business.jupyterpythonloop import JupyterPythonLoopConfig
 from .business.notebookrunner import NotebookRunnerConfig
@@ -56,7 +55,6 @@ class FlockConfig(BaseModel):
         TAPQueryRunnerConfig
         | NotebookRunnerConfig
         | JupyterPythonLoopConfig
-        | JupyterJitterLoginLoopConfig
         | JupyterLoginLoopConfig
         | EmptyLoopConfig
     ) = Field(..., title="Business to run")
