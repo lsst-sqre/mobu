@@ -123,7 +123,15 @@ class Business(Generic[T], metaclass=ABCMeta):
         """
         self.logger.info("Starting up...")
         try:
-            await self.startup()
+            try:
+                await self.startup()
+            except Exception:
+                # Strictly speaking, this is not an iteration, but unless we
+                # count startup failure as a failed iteration, a business that
+                # keeps failing during startup reports 100% success in the
+                # flock summary.
+                self.failure_count += 1
+                raise
 
             while not self.stopping:
                 self.logger.info("Starting next iteration")
@@ -150,10 +158,11 @@ class Business(Generic[T], metaclass=ABCMeta):
             await self.pause(self.options.idle_time)
 
     async def error_idle(self) -> None:
-        """The idle pause after an error.
+        """Pause after an error and before attempting to restart.
 
-        This happens outside of `run` and therefore must handle acknowledging
-        a shutdown request.
+        Thia is called directly by `~mobu.services.monkey.Monkey` rather than
+        by the business. It happens outside of `run` and therefore must handle
+        acknowledging a shutdown request.
         """
         self.logger.warning("Restarting failed monkey after 60s")
         try:

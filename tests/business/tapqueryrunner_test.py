@@ -68,6 +68,72 @@ async def test_run(
 
 
 @pytest.mark.asyncio
+async def test_setup_error(
+    client: AsyncClient,
+    slack: MockSlackWebhook,
+    mock_aioresponses: aioresponses,
+) -> None:
+    """Test that client creation is deferred to setup.
+
+    This also doubles as a test that failures during setup are recorded as a
+    failed test execution and result in a Slack alert.
+    """
+    mock_gafaelfawr(mock_aioresponses)
+
+    r = await client.put(
+        "/mobu/flocks",
+        json={
+            "name": "test",
+            "count": 1,
+            "users": [{"username": "tapuser"}],
+            "scopes": ["exec:notebook"],
+            "business": {"type": "TAPQueryRunner"},
+        },
+    )
+    assert r.status_code == 201
+
+    # Wait until we've finished at least one loop and check the results.
+    data = await wait_for_business(client, "tapuser")
+    assert data["business"]["failure_count"] == 1
+
+    assert slack.messages == [
+        {
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": (
+                            "Unable to create TAP client: DALServiceError:"
+                            " No working capabilities endpoint provided"
+                        ),
+                        "verbatim": True,
+                    },
+                },
+                {
+                    "type": "section",
+                    "fields": [
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*User*\ntapuser",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Event*\nmake_client",
+                            "verbatim": True,
+                        },
+                    ],
+                },
+                {"type": "divider"},
+            ]
+        }
+    ]
+
+
+@pytest.mark.asyncio
 async def test_alert(
     client: AsyncClient,
     slack: MockSlackWebhook,

@@ -17,7 +17,7 @@ import yaml
 from structlog.stdlib import BoundLogger
 
 from ...config import config
-from ...exceptions import CodeExecutionError
+from ...exceptions import CodeExecutionError, TAPClientError
 from ...models.business.tapqueryrunner import (
     TAPQueryRunnerData,
     TAPQueryRunnerOptions,
@@ -47,7 +47,7 @@ class TAPQueryRunner(Business):
     ) -> None:
         super().__init__(options, user, logger)
         self._running_query: Optional[str] = None
-        self._client = self._make_client(user.token)
+        self._client: Optional[pyvo.dal.TAPService] = None
         self._pool = ThreadPoolExecutor(max_workers=1)
 
         # Load templates and parameters. The path has to be specified in two
@@ -64,25 +64,81 @@ class TAPQueryRunner(Business):
         with files.joinpath("params.yaml").open("r") as f:
             self._params = yaml.safe_load(f)
 
-    @staticmethod
-    def _make_client(token: str) -> pyvo.dal.TAPService:
+    async def startup(self) -> None:
+        templates = self._env.list_templates(["sql"])
+        self.logger.info("Query templates to choose from: %s", templates)
+        with self.timings.start("make_client"):
+            self._client = self._make_client(self.user.token)
+
+    async def execute(self) -> None:
+        template_name = random.choice(self._env.list_templates(["sql"]))
+        template = self._env.get_template(template_name)
+        query = template.render(self._generate_parameters())
+
+        with self.timings.start("execute_query", {"query": query}) as sw:
+            self._running_query = query
+
+            try:
+                if self.options.sync:
+                    await self.run_sync_query(query)
+                else:
+                    await self.run_async_query(query)
+            except Exception as e:
+                raise CodeExecutionError(
+                    self.user.username,
+                    query,
+                    code_type="TAP query",
+                    error=f"{type(e).__name__}: {str(e)}",
+                ) from e
+
+            self._running_query = None
+            elapsed = sw.elapsed.total_seconds()
+
+        self.logger.info(f"Query finished after {elapsed} seconds")
+
+    async def run_async_query(self, query: str) -> None:
+        if not self._client:
+            raise RuntimeError("TAPQueryRunner startup never ran")
+        self.logger.info("Running (async): %s", query)
+        job = self._client.submit_job(query)
+        try:
+            job.run()
+            while job.phase not in ("COMPLETED", "ERROR"):
+                await asyncio.sleep(30)
+        finally:
+            job.delete()
+
+    async def run_sync_query(self, query: str) -> None:
+        if not self._client:
+            raise RuntimeError("TAPQueryRunner startup never ran")
+        self.logger.info("Running (sync): %s", query)
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(self._pool, self._client.search, query)
+
+    def dump(self) -> TAPQueryRunnerData:
+        return TAPQueryRunnerData(
+            running_query=self._running_query, **super().dump().dict()
+        )
+
+    def _make_client(self, token: str) -> pyvo.dal.TAPService:
         if not config.environment_url:
             raise RuntimeError("environment_url not set")
         tap_url = str(config.environment_url).rstrip("/") + "/api/tap"
+        try:
+            s = requests.Session()
+            s.headers["Authorization"] = "Bearer " + token
+            auth = pyvo.auth.AuthSession()
+            auth.credentials.set("lsst-token", s)
+            auth.add_security_method_for_url(tap_url, "lsst-token")
+            auth.add_security_method_for_url(tap_url + "/sync", "lsst-token")
+            auth.add_security_method_for_url(tap_url + "/async", "lsst-token")
+            auth.add_security_method_for_url(tap_url + "/tables", "lsst-token")
+            return pyvo.dal.TAPService(tap_url, auth)
+        except Exception as e:
+            raise TAPClientError(self.user.username, e) from e
 
-        s = requests.Session()
-        s.headers["Authorization"] = "Bearer " + token
-        auth = pyvo.auth.AuthSession()
-        auth.credentials.set("lsst-token", s)
-        auth.add_security_method_for_url(tap_url, "lsst-token")
-        auth.add_security_method_for_url(tap_url + "/sync", "lsst-token")
-        auth.add_security_method_for_url(tap_url + "/async", "lsst-token")
-        auth.add_security_method_for_url(tap_url + "/tables", "lsst-token")
-
-        return pyvo.dal.TAPService(tap_url, auth)
-
-    @staticmethod
     def _generate_random_polygon(
+        self,
         min_ra: float,
         max_ra: float,
         min_dec: float,
@@ -135,53 +191,3 @@ class TAPQueryRunner(Business):
                 str(o) for o in random.choices(object_ids, k=12)
             )
         return result
-
-    async def startup(self) -> None:
-        templates = self._env.list_templates(["sql"])
-        self.logger.info("Query templates to choose from: %s", templates)
-
-    async def execute(self) -> None:
-        template_name = random.choice(self._env.list_templates(["sql"]))
-        template = self._env.get_template(template_name)
-        query = template.render(self._generate_parameters())
-
-        with self.timings.start("execute_query", {"query": query}) as sw:
-            self._running_query = query
-
-            try:
-                if self.options.sync:
-                    await self.run_sync_query(query)
-                else:
-                    await self.run_async_query(query)
-            except Exception as e:
-                raise CodeExecutionError(
-                    self.user.username,
-                    query,
-                    code_type="TAP query",
-                    error=f"{type(e).__name__}: {str(e)}",
-                ) from e
-
-            self._running_query = None
-            elapsed = sw.elapsed.total_seconds()
-
-        self.logger.info(f"Query finished after {elapsed} seconds")
-
-    async def run_async_query(self, query: str) -> None:
-        self.logger.info("Running (async): %s", query)
-        job = self._client.submit_job(query)
-        try:
-            job.run()
-            while job.phase not in ("COMPLETED", "ERROR"):
-                await asyncio.sleep(30)
-        finally:
-            job.delete()
-
-    async def run_sync_query(self, query: str) -> None:
-        self.logger.info("Running (sync): %s", query)
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(self._pool, self._client.search, query)
-
-    def dump(self) -> TAPQueryRunnerData:
-        return TAPQueryRunnerData(
-            running_query=self._running_query, **super().dump().dict()
-        )
