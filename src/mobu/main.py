@@ -17,9 +17,8 @@ from safir.middleware.x_forwarded import XForwardedMiddleware
 from safir.models import ErrorLocation
 
 from .asyncio import schedule_periodic
-from .autostart import autostart
 from .config import config
-from .dependencies.manager import monkey_business_manager
+from .dependencies.context import context_dependency
 from .exceptions import FlockNotFoundException, MonkeyNotFoundException
 from .handlers.external import external_router
 from .handlers.internal import internal_router
@@ -58,15 +57,14 @@ async def startup_event() -> None:
         raise RuntimeError("ENVIRONMENT_URL was not set")
     if not config.gafaelfawr_token:
         raise RuntimeError("GAFAELFAWR_TOKEN was not set")
-    await monkey_business_manager.init()
-    if config.autostart:
-        await autostart()
+    await context_dependency.initialize()
+    await context_dependency.process_context.manager.autostart()
     app.state.periodic_status = schedule_periodic(post_status, 60 * 60 * 24)
 
 
 @app.on_event("shutdown")
 async def shutdown_event() -> None:
-    await monkey_business_manager.cleanup()
+    await context_dependency.aclose()
     app.state.periodic_status.cancel()
     try:
         await app.state.periodic_status

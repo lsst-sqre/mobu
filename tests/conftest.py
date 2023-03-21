@@ -22,6 +22,7 @@ from mobu import main
 from mobu.config import config
 
 from .support.cachemachine import MockCachemachine, mock_cachemachine
+from .support.constants import TEST_BASE_URL
 from .support.gafaelfawr import make_gafaelfawr_token
 from .support.jupyter import (
     MockJupyter,
@@ -74,7 +75,7 @@ async def app(
 @pytest_asyncio.fixture
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
-    url = "https://example.com/"
+    url = TEST_BASE_URL
     headers = {"X-Auth-Request-User": "someuser"}
     async with AsyncClient(app=app, base_url=url, headers=headers) as client:
         yield client
