@@ -35,7 +35,7 @@ async def test_post_status(slack: MockSlackWebhook) -> None:
             ),
             FlockSummary(
                 name="login",
-                business="JupyterLoginLoop",
+                business="JupyterPythonLoop",
                 start_time=None,
                 monkey_count=2,
                 success_count=0,

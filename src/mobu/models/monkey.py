@@ -5,8 +5,8 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 from .business.base import BusinessData
-from .business.jupyterloginloop import JupyterLoginLoopData
 from .business.notebookrunner import NotebookRunnerData
+from .business.nublado import NubladoBusinessData
 from .business.tapqueryrunner import TAPQueryRunnerData
 from .user import AuthenticatedUser
 
@@ -40,6 +40,6 @@ class MonkeyData(BaseModel):
     business: (
         TAPQueryRunnerData
         | NotebookRunnerData
-        | JupyterLoginLoopData
+        | NubladoBusinessData
         | BusinessData
     ) = Field(..., title="Business execution data")

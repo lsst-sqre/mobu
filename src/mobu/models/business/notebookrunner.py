@@ -8,8 +8,7 @@ from pydantic import Field
 
 from ...constants import NOTEBOOK_REPO_BRANCH, NOTEBOOK_REPO_URL
 from .base import BusinessConfig
-from .jupyterloginloop import JupyterLoginLoopData
-from .jupyterpythonloop import JupyterPythonExecutorOptions
+from .nublado import NubladoBusinessData, NubladoBusinessOptions
 
 __all__ = [
     "NotebookRunnerConfig",
@@ -18,7 +17,7 @@ __all__ = [
 ]
 
 
-class NotebookRunnerOptions(JupyterPythonExecutorOptions):
+class NotebookRunnerOptions(NubladoBusinessOptions):
     """Options for NotebookRunner monkey business."""
 
     max_executions: int = Field(
@@ -62,7 +61,7 @@ class NotebookRunnerConfig(BusinessConfig):
     )
 
 
-class NotebookRunnerData(JupyterLoginLoopData):
+class NotebookRunnerData(NubladoBusinessData):
     """Status of a running NotebookRunner business."""
 
     notebook: Optional[str] = Field(

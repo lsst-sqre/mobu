@@ -1,24 +1,22 @@
-"""Models for the JupyterLoginLoop monkey business and subclasses."""
+"""Base models for Nublado-related monkey business."""
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import Field
 
 from ..jupyter import JupyterConfig, JupyterImage
-from .base import BusinessConfig, BusinessData, BusinessOptions
+from .base import BusinessData, BusinessOptions
 
 __all__ = [
-    "JupyterLoginLoopConfig",
-    "JupyterLoginLoopData",
-    "JupyterLoginLoopOptions",
-    "JupyterLoginOptions",
+    "NubladoBusinessData",
+    "NubladoBusinessOptions",
 ]
 
 
-class JupyterLoginOptions(BusinessOptions):
-    """Options for any business that creates Jupyter labs."""
+class NubladoBusinessOptions(BusinessOptions):
+    """Options for any business that runs code in a Nublado lab."""
 
     delete_lab: bool = Field(
         True,
@@ -33,6 +31,23 @@ class JupyterLoginOptions(BusinessOptions):
 
     delete_timeout: int = Field(
         60, title="Timeout for deleting a lab in seconds", example=60
+    )
+
+    execution_idle_time: int = Field(
+        1,
+        title="How long to wait between cell executions in seconds",
+        description="Used by JupyterPythonLoop and NotebookRunner",
+        example=1,
+    )
+
+    get_node: bool = Field(
+        True,
+        title="Whether to get the node name for error reporting",
+        description=(
+            "Used by JupyterPythonLoop and its subclasses. Requires the lab"
+            " have rubin_jupyter_utils.lab.notebook.utils pre-installed and"
+            " able to make Kubernetes API calls."
+        ),
     )
 
     jitter: int = Field(
@@ -70,36 +85,15 @@ class JupyterLoginOptions(BusinessOptions):
         610, title="Timeout for spawning a lab in seconds", example=610
     )
 
-
-class JupyterLoginLoopOptions(JupyterLoginOptions):
-    """Options for JupyterLoginLoop monkey business."""
-
-    login_idle_time: int = Field(
-        60,
-        title="Time to pause after spawning lab",
-        description=(
-            " How long to wait after spawning the lab before destroying"
-            " it again."
-        ),
-        example=60,
+    working_directory: Optional[str] = Field(
+        None,
+        title="Working directory when running code",
+        example="notebooks/tutorial-notebooks",
     )
 
 
-class JupyterLoginLoopConfig(BusinessConfig):
-    """Configuration specialization for JupyterLoginLoop."""
-
-    type: Literal["JupyterLoginLoop"] = Field(
-        ..., title="Type of business to run"
-    )
-
-    options: JupyterLoginLoopOptions = Field(
-        default_factory=JupyterLoginLoopOptions,
-        title="Options for the monkey business",
-    )
-
-
-class JupyterLoginLoopData(BusinessData):
-    """Status of a running JupyterLoginLoop business."""
+class NubladoBusinessData(BusinessData):
+    """Status of a running Nublado business."""
 
     image: Optional[JupyterImage] = Field(
         None,

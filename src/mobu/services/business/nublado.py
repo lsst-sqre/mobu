@@ -1,13 +1,10 @@
-"""JupyterLoginLoop business logic for mobu.
-
-This is a loop that will constantly try to spawn new Jupyter labs on a nublado
-instance, and then delete them.
-"""
+"""Base class for executing code in a Nublado notebook."""
 
 from __future__ import annotations
 
 import asyncio
 import random
+from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Generic, Optional, TypeVar
@@ -21,19 +18,27 @@ from ...exceptions import (
     JupyterSpawnError,
     JupyterTimeoutError,
 )
-from ...models.business.jupyterloginloop import (
-    JupyterLoginLoopData,
-    JupyterLoginLoopOptions,
-    JupyterLoginOptions,
+from ...models.business.nublado import (
+    NubladoBusinessData,
+    NubladoBusinessOptions,
 )
 from ...models.jupyter import JupyterImage
 from ...models.user import AuthenticatedUser
-from ...storage.jupyter import JupyterClient
+from ...storage.jupyter import JupyterClient, JupyterLabSession
 from .base import Business
 
-T = TypeVar("T", bound="JupyterLoginOptions")
+T = TypeVar("T", bound="NubladoBusinessOptions")
 
-__all__ = ["JupyterLoginLoop", "ProgressLogMessage"]
+__all__ = ["NubladoBusiness", "ProgressLogMessage"]
+
+_CHDIR_TEMPLATE = 'import os; os.chdir("{wd}")'
+"""Template to construct the code to run to set the working directory."""
+
+_GET_NODE = """
+from rubin_jupyter_utils.lab.notebook.utils import get_node
+print(get_node(), end="")
+"""
+"""Code to get the node on which the lab is running."""
 
 
 @dataclass(frozen=True)
@@ -53,17 +58,17 @@ class ProgressLogMessage:
         return f"{timestamp} - {self.message}"
 
 
-class JupyterLoginLoop(Business, Generic[T]):
-    """Business that logs on to the hub, creates a lab, and deletes it.
+class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
+    """Base class for business that executes Python code in a Nublado notebook.
 
     This class modifies the core `~mobu.business.base.Business` loop by
     providing `startup`, `execute`, and `shutdown` methods. It will log on to
-    JupyterHub, ensure no lab currently exists, create a lab, run
-    `lab_business`, and then shut down the lab before starting another
-    iteration.
+    JupyterHub, ensure no lab currently exists, create a lab, call
+    `execute_code`, and then optionally shut down the lab before starting
+    another iteration.
 
-    Subclasses should override `lab_business` to do whatever they want to do
-    inside a lab.  The default behavior just waits for ``login_idle_time``.
+    Subclasses must override `execute_code` to do whatever they want to do
+    inside a lab.
 
     Once this business has been stopped, it cannot be started again (the
     `aiohttp.ClientSession` will be closed), and the instance should be
@@ -83,8 +88,24 @@ class JupyterLoginLoop(Business, Generic[T]):
         self, options: T, user: AuthenticatedUser, logger: BoundLogger
     ) -> None:
         super().__init__(options, user, logger)
-        self.image: Optional[JupyterImage] = None
         self._client = JupyterClient(user, logger, options.jupyter)
+        self._image: Optional[JupyterImage] = None
+        self._node: Optional[str] = None
+
+    @abstractmethod
+    async def execute_code(self, session: JupyterLabSession) -> None:
+        """The core of the execution loop.
+
+        Must be overridden by subclasses to use the provided lab session to
+        perform whatever operations are desired inside the lab. If multiple
+        blocks of code are being executed, call `execution_idle` between each
+        one.
+
+        Parameters
+        ----------
+        session
+            Authenticated session to the Nublado lab.
+        """
 
     async def close(self) -> None:
         await self._client.close()
@@ -96,7 +117,12 @@ class JupyterLoginLoop(Business, Generic[T]):
         current business state.  They should call ``super().annotations()``
         and then add things to the resulting dictionary.
         """
-        return {"image": self.image.name} if self.image else {}
+        result = {}
+        if self._image:
+            result["image"] = self._image.name
+        if self._node:
+            result["node"] = self._node
+        return result
 
     async def startup(self) -> None:
         if self.options.jitter:
@@ -115,14 +141,26 @@ class JupyterLoginLoop(Business, Generic[T]):
     async def execute(self) -> None:
         """The work done in each iteration of the loop."""
         if self.options.delete_lab or await self._client.is_lab_stopped():
-            self.image = None
+            self._image = None
             if not await self.spawn_lab():
                 return
         await self.lab_login()
-        await self.lab_business()
+        session = await self.create_session()
+        await self.execute_code(session)
+        await self.delete_session(session)
         if self.options.delete_lab:
             await self.hub_login()
             await self.delete_lab()
+
+    async def execution_idle(self) -> bool:
+        """Executed between each unit of work execution.
+
+        This is not used directly by `NubladoBusiness`. It should be called by
+        subclasses in `execute_code` in between each block of code that is
+        executed.
+        """
+        with self.timings.start("execution_idle"):
+            return await self.pause(self.options.execution_idle_time)
 
     async def shutdown(self) -> None:
         await self.delete_lab()
@@ -144,19 +182,18 @@ class JupyterLoginLoop(Business, Generic[T]):
 
     async def spawn_lab(self) -> bool:
         with self.timings.start("spawn_lab", self.annotations()) as sw:
-            self.image = await self._client.spawn_lab()
+            timeout = self.options.spawn_timeout
+            self._image = await self._client.spawn_lab()
 
             # Pause before using the progress API, since otherwise it may not
             # have attached to the spawner and will not return a full stream
-            # of events.  (It will definitely take longer than 5s for the lab
-            # to spawn.)
+            # of events.
             if not await self.pause(self.options.spawn_settle_time):
                 return False
+            timeout -= self.options.spawn_settle_time
 
             # Watch the progress API until the lab has spawned.
             log_messages = []
-            timeout = self.options.spawn_timeout
-            timeout -= self.options.spawn_settle_time
             progress = self._client.spawn_progress()
             try:
                 async for message in self.iter_with_timeout(progress, timeout):
@@ -191,16 +228,43 @@ class JupyterLoginLoop(Business, Generic[T]):
         with self.timings.start("lab_login", self.annotations()):
             await self._client.lab_login()
 
+    async def create_session(
+        self, notebook_name: Optional[str] = None
+    ) -> JupyterLabSession:
+        self.logger.info("Creating lab session")
+        with self.timings.start("create_session", self.annotations()):
+            session = await self._client.create_labsession(notebook_name)
+        with self.timings.start("execute_setup", self.annotations()):
+            if self.options.get_node:
+                # Our libraries currently spew warning messages when imported.
+                # The node is only the last line of the output.
+                node_data = await self._client.run_python(session, _GET_NODE)
+                self._node = node_data.split("\n")[-1]
+                self.logger.info(f"Running on node {self._node}")
+            if self.options.working_directory:
+                path = self.options.working_directory
+                code = _CHDIR_TEMPLATE.format(wd=path)
+                self.logger.info(f"Changing directories to {path}")
+                await self._client.run_python(session, code)
+        return session
+
+    async def delete_session(self, session: JupyterLabSession) -> None:
+        await self.lab_login()
+        self.logger.info("Deleting lab session")
+        with self.timings.start("delete_session", self.annotations()):
+            await self._client.delete_labsession(session)
+        self._node = None
+
     async def delete_lab(self) -> None:
         self.logger.info("Deleting lab")
         with self.timings.start("delete_lab", self.annotations()):
             await self._client.delete_lab()
+            if self.stopping:
+                return
 
             # If we're not stopping, wait for the lab to actually go away.  If
             # we don't do this, we may try to create a new lab while the old
             # one is still shutting down.
-            if self.stopping:
-                return
             timeout = self.options.delete_timeout
             start = current_datetime(microseconds=True)
             while not await self._client.is_lab_stopped():
@@ -216,20 +280,7 @@ class JupyterLoginLoop(Business, Generic[T]):
                     return
 
         self.logger.info("Lab successfully deleted")
-        self.image = None
+        self._image = None
 
-    async def lab_business(self) -> None:
-        """Do whatever business we want to do inside a lab.
-
-        Placeholder function intended to be overridden by subclasses.  The
-        default behavior is to wait a minute and then shut the lab down
-        again.
-        """
-        if not isinstance(self.options, JupyterLoginLoopOptions):
-            msg = "JupyterLoginLoop subclass didn't override lab_business"
-            raise RuntimeError(msg)
-        with self.timings.start("lab_wait"):
-            await self.pause(self.options.login_idle_time)
-
-    def dump(self) -> JupyterLoginLoopData:
-        return JupyterLoginLoopData(image=self.image, **super().dump().dict())
+    def dump(self) -> NubladoBusinessData:
+        return NubladoBusinessData(image=self._image, **super().dump().dict())

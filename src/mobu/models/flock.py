@@ -6,7 +6,6 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field, validator
 
 from .business.empty import EmptyLoopConfig
-from .business.jupyterloginloop import JupyterLoginLoopConfig
 from .business.jupyterpythonloop import JupyterPythonLoopConfig
 from .business.notebookrunner import NotebookRunnerConfig
 from .business.tapqueryrunner import TAPQueryRunnerConfig
@@ -48,14 +47,10 @@ class FlockConfig(BaseModel):
         example=["exec:notebook", "read:tap"],
     )
 
-    # These types should be given in order of most specific to least specific
-    # to avoid the risk that Pydantic plus FastAPI will interpret a class as
-    # its parent class.
     business: (
         TAPQueryRunnerConfig
         | NotebookRunnerConfig
         | JupyterPythonLoopConfig
-        | JupyterLoginLoopConfig
         | EmptyLoopConfig
     ) = Field(..., title="Business to run")
 

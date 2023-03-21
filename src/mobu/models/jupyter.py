@@ -75,19 +75,18 @@ class JupyterConfig(BaseModel):
     image_class: JupyterImageClass = Field(
         JupyterImageClass.RECOMMENDED,
         title="How to select the image to spawn",
-        description="Only used by JupyterLoginLoop and its subclasses",
     )
 
     image_reference: Optional[str] = Field(
         None,
         title="Docker reference of lab image to spawn",
-        description="Only used if jupyter_image is set to by-reference",
+        description="Only used if `image_class` is set to `by-reference`.",
     )
 
     image_size: str = Field(
         "Large",
         title="Size of image to spawn",
-        description="Must be one of the sizes in the nublado2 configuration",
+        description="Must be one of the sizes nunderstood by Nublado.",
     )
 
     @validator("image_reference")

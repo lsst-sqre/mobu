@@ -20,7 +20,6 @@ from structlog.stdlib import BoundLogger
 from ..config import config
 from ..models.business.base import BusinessConfig
 from ..models.business.empty import EmptyLoopConfig
-from ..models.business.jupyterloginloop import JupyterLoginLoopConfig
 from ..models.business.jupyterpythonloop import JupyterPythonLoopConfig
 from ..models.business.notebookrunner import NotebookRunnerConfig
 from ..models.business.tapqueryrunner import TAPQueryRunnerConfig
@@ -28,7 +27,6 @@ from ..models.monkey import MonkeyData, MonkeyState
 from ..models.user import AuthenticatedUser
 from .business.base import Business
 from .business.empty import EmptyLoop
-from .business.jupyterloginloop import JupyterLoginLoop
 from .business.jupyterpythonloop import JupyterPythonLoop
 from .business.notebookrunner import NotebookRunner
 from .business.tapqueryrunner import TAPQueryRunner
@@ -69,10 +67,6 @@ class Monkey:
         self.business: Business
         if isinstance(business_config, EmptyLoopConfig):
             self.business = EmptyLoop(
-                business_config.options, user, self._logger
-            )
-        elif isinstance(business_config, JupyterLoginLoopConfig):
-            self.business = JupyterLoginLoop(
                 business_config.options, user, self._logger
             )
         elif isinstance(business_config, JupyterPythonLoopConfig):

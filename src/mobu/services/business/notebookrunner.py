@@ -1,7 +1,7 @@
 """NotebookRunner logic for mobu.
 
 This business pattern will clone a Git repo full of notebooks, iterate through
-the notebooks, and run them on the remote Jupyter lab.
+the notebooks, and run them on the remote Nublado lab.
 """
 
 from __future__ import annotations
@@ -22,12 +22,12 @@ from ...models.business.notebookrunner import (
 )
 from ...models.user import AuthenticatedUser
 from ...storage.jupyter import JupyterLabSession
-from .jupyterpythonloop import JupyterPythonLoop
+from .nublado import NubladoBusiness
 
 __all__ = ["NotebookRunner"]
 
 
-class NotebookRunner(JupyterPythonLoop):
+class NotebookRunner(NubladoBusiness):
     """Start a Jupyter lab and run a sequence of notebooks.
 
     Parameters
@@ -47,16 +47,18 @@ class NotebookRunner(JupyterPythonLoop):
         logger: BoundLogger,
     ) -> None:
         super().__init__(options, user, logger)
-        self.notebook: Optional[Path] = None
-        self.running_code: Optional[str] = None
+        self._notebook: Optional[Path] = None
+        self._notebook_paths: Optional[list[Path]] = None
         self._repo_dir = TemporaryDirectory()
         self._repo: Optional[Repo] = None
-        self._notebook_paths: Optional[list[Path]] = None
+        self._running_code: Optional[str] = None
 
-    def annotations(self) -> dict[str, str]:
+    def annotations(self, cell_id: Optional[str] = None) -> dict[str, str]:
         result = super().annotations()
-        if self.notebook:
-            result["notebook"] = self.notebook.name
+        if self._notebook:
+            result["notebook"] = self._notebook.name
+        if cell_id:
+            result["cell"] = cell_id
         return result
 
     async def startup(self) -> None:
@@ -101,12 +103,9 @@ class NotebookRunner(JupyterPythonLoop):
                 msg = f"Invalid notebook {notebook.name}: {str(e)}"
                 raise NotebookRepositoryError(msg)
 
-        # Add cell numbers to all the cells, which we'll use to name timing
-        # events so that we can find cells that take an excessively long time
-        # to run.
-        #
-        # We will prefer to use the id attribute of the cell if present, but
-        # some of our notebooks are in the older format without an id.
+        # Add cell numbers to all the cells, which we'll use in exception
+        # reporting and to annotate timing events so that we can find cells
+        # that take an excessively long time to run.
         for i, cell in enumerate(cells, start=1):
             cell["_index"] = str(i)
 
@@ -118,20 +117,20 @@ class NotebookRunner(JupyterPythonLoop):
     async def create_session(
         self, notebook_name: Optional[str] = None
     ) -> JupyterLabSession:
-        """Override create_session to add the notebook name."""
+        """Override to add the notebook name."""
         if not notebook_name:
-            notebook_name = self.notebook.name if self.notebook else None
+            notebook_name = self._notebook.name if self._notebook else None
         return await super().create_session(notebook_name)
 
     async def execute_code(self, session: JupyterLabSession) -> None:
         for count in range(self.options.max_executions):
-            self.notebook = self.next_notebook()
+            self._notebook = self.next_notebook()
 
             iteration = f"{count + 1}/{self.options.max_executions}"
-            msg = f"Notebook {self.notebook.name} iteration {iteration}"
+            msg = f"Notebook {self._notebook.name} iteration {iteration}"
             self.logger.info(msg)
 
-            for cell in self.read_notebook(self.notebook):
+            for cell in self.read_notebook(self._notebook):
                 code = "".join(cell["source"])
                 if "id" in cell:
                     cell_id = f'`{cell["id"]}` (#{cell["_index"]})'
@@ -141,26 +140,25 @@ class NotebookRunner(JupyterPythonLoop):
                 if not await self.execution_idle():
                     break
 
-            self.logger.info(f"Success running notebook {self.notebook.name}")
+            self.logger.info(f"Success running notebook {self._notebook.name}")
             if self.stopping:
                 break
 
     async def execute_cell(
         self, session: JupyterLabSession, code: str, cell_id: str
     ) -> None:
-        assert self.notebook
+        if not self._notebook:
+            raise RuntimeError("Executing a cell without a notebook")
         self.logger.info(f"Executing cell {cell_id}:\n{code}\n")
-        annotations = self.annotations()
-        annotations["cell"] = cell_id
-        with self.timings.start("execute_cell", annotations):
-            self.running_code = code
+        with self.timings.start("execute_cell", self.annotations(cell_id)):
+            self._running_code = code
             reply = await self._client.run_python(session, code)
-            self.running_code = None
+            self._running_code = None
         self.logger.info(f"Result:\n{reply}\n")
 
     def dump(self) -> NotebookRunnerData:
         return NotebookRunnerData(
-            notebook=self.notebook.name if self.notebook else None,
-            running_code=self.running_code,
+            notebook=self._notebook.name if self._notebook else None,
+            running_code=self._running_code,
             **super().dump().dict(),
         )
