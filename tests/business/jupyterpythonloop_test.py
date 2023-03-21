@@ -29,12 +29,14 @@ async def test_run(
             "count": 1,
             "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
             "scopes": ["exec:notebook"],
-            "options": {
-                "spawn_settle_time": 0,
-                "lab_settle_time": 0,
-                "max_executions": 3,
+            "business": {
+                "type": "JupyterPythonLoop",
+                "options": {
+                    "spawn_settle_time": 0,
+                    "lab_settle_time": 0,
+                    "max_executions": 3,
+                },
             },
-            "business": "JupyterPythonLoop",
         },
     )
     assert r.status_code == 201
@@ -49,7 +51,6 @@ async def test_run(
             "success_count": 1,
             "timings": ANY,
         },
-        "restart": False,
         "state": "RUNNING",
         "user": {
             "scopes": ["exec:notebook"],
@@ -82,12 +83,14 @@ async def test_server_shutdown(
             "count": 20,
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
-            "options": {
-                "spawn_settle_time": 0,
-                "lab_settle_time": 0,
-                "max_executions": 3,
+            "business": {
+                "type": "JupyterPythonLoop",
+                "options": {
+                    "spawn_settle_time": 0,
+                    "lab_settle_time": 0,
+                    "max_executions": 3,
+                },
             },
-            "business": "JupyterPythonLoop",
         },
     )
     assert r.status_code == 201
@@ -114,13 +117,15 @@ async def test_alert(
             "count": 1,
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
-            "options": {
-                "code": 'raise Exception("some error")',
-                "spawn_settle_time": 0,
-                "lab_settle_time": 0,
-                "max_executions": 1,
+            "business": {
+                "type": "JupyterPythonLoop",
+                "options": {
+                    "code": 'raise Exception("some error")',
+                    "spawn_settle_time": 0,
+                    "lab_settle_time": 0,
+                    "max_executions": 1,
+                },
             },
-            "business": "JupyterPythonLoop",
         },
     )
     assert r.status_code == 201
@@ -215,20 +220,22 @@ async def test_long_error(
             "count": 1,
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
-            "options": {
-                "code": "long_error_for_test()",
-                "jupyter": {
-                    "image_class": "by-reference",
-                    "image_reference": (
-                        "registry.hub.docker.com/lsstsqre/sciplat-lab"
-                        ":d_2021_08_30"
-                    ),
+            "business": {
+                "type": "JupyterPythonLoop",
+                "options": {
+                    "code": "long_error_for_test()",
+                    "jupyter": {
+                        "image_class": "by-reference",
+                        "image_reference": (
+                            "registry.hub.docker.com/lsstsqre/sciplat-lab"
+                            ":d_2021_08_30"
+                        ),
+                    },
+                    "spawn_settle_time": 0,
+                    "lab_settle_time": 0,
+                    "max_executions": 1,
                 },
-                "spawn_settle_time": 0,
-                "lab_settle_time": 0,
-                "max_executions": 1,
             },
-            "business": "JupyterPythonLoop",
         },
     )
     assert r.status_code == 201

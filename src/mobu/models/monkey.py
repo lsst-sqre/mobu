@@ -4,29 +4,11 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-from .business import BusinessConfig, BusinessData
+from .business.base import BusinessData
+from .business.jupyterloginloop import JupyterLoginLoopData
+from .business.notebookrunner import NotebookRunnerData
+from .business.tapqueryrunner import TAPQueryRunnerData
 from .user import AuthenticatedUser
-
-
-class MonkeyConfig(BaseModel):
-    """Configuration for a single monkey."""
-
-    name: str = Field(
-        ...,
-        title="Name of the monkey",
-        description="This need not match the username as which it runs",
-        example="monkey01",
-    )
-
-    business: str = Field(..., title="Type of business to run")
-
-    options: BusinessConfig = Field(
-        default_factory=BusinessConfig, title="Business to run"
-    )
-
-    restart: bool = Field(
-        False, title="Restart business after failure", example=True
-    )
 
 
 class MonkeyState(Enum):
@@ -44,10 +26,6 @@ class MonkeyData(BaseModel):
 
     name: str = Field(..., title="Name of the monkey")
 
-    business: BusinessData = Field(..., title="Business execution data")
-
-    restart: bool = Field(..., title="Restart on error")
-
     state: MonkeyState = Field(
         ..., title="State of monkey", example=MonkeyState.RUNNING
     )
@@ -55,3 +33,13 @@ class MonkeyData(BaseModel):
     user: AuthenticatedUser = Field(
         ..., title="User as which the monkey is running"
     )
+
+    # These types should be given in order of most specific to least specific
+    # to avoid the risk that Pydantic plus FastAPI will interpret a class as
+    # its parent class.
+    business: (
+        TAPQueryRunnerData
+        | NotebookRunnerData
+        | JupyterLoginLoopData
+        | BusinessData
+    ) = Field(..., title="Business execution data")

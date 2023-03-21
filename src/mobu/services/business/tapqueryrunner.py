@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.resources
 import math
 import random
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 from typing import Optional
 
 import jinja2
@@ -16,39 +16,52 @@ import shortuuid
 import yaml
 from structlog.stdlib import BoundLogger
 
-from ..config import config
-from ..exceptions import CodeExecutionError
-from ..models.business import BusinessConfig, BusinessData
-from ..models.user import AuthenticatedUser
+from ...config import config
+from ...exceptions import CodeExecutionError
+from ...models.business.tapqueryrunner import (
+    TAPQueryRunnerData,
+    TAPQueryRunnerOptions,
+)
+from ...models.user import AuthenticatedUser
 from .base import Business
 
 
 class TAPQueryRunner(Business):
-    """Run queries against TAP."""
+    """Run queries against TAP.
+
+    Parameters
+    ----------
+    options
+        Configuration options for the business.
+    user
+        User with their authentication token to use to run the business.
+    logger
+        Logger to use to report the results of business.
+    """
 
     def __init__(
         self,
-        logger: BoundLogger,
-        business_config: BusinessConfig,
+        options: TAPQueryRunnerOptions,
         user: AuthenticatedUser,
+        logger: BoundLogger,
     ) -> None:
-        super().__init__(logger, business_config, user)
-        self.running_query: Optional[str] = None
+        super().__init__(options, user, logger)
+        self._running_query: Optional[str] = None
         self._client = self._make_client(user.token)
         self._pool = ThreadPoolExecutor(max_workers=1)
 
-        template_path = (
-            Path(__file__).parent.parent
-            / "templates"
-            / "tapqueryrunner"
-            / self.config.tap_query_set
-        )
-
+        # Load templates and parameters. The path has to be specified in two
+        # different ways: as a relative path for Jinja's PackageLoader, and as
+        # a sequence of joinpath operations for importlib.resources.
+        template_path = ("data", "tapqueryrunner", options.query_set)
         self._env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(str(template_path)),
+            loader=jinja2.PackageLoader("mobu", "/".join(template_path)),
             undefined=jinja2.StrictUndefined,
         )
-        with (template_path / "params.yaml").open("r") as f:
+        files = importlib.resources.files("mobu")
+        for directory in template_path:
+            files = files.joinpath(directory)
+        with files.joinpath("params.yaml").open("r") as f:
             self._params = yaml.safe_load(f)
 
     @staticmethod
@@ -133,10 +146,10 @@ class TAPQueryRunner(Business):
         query = template.render(self._generate_parameters())
 
         with self.timings.start("execute_query", {"query": query}) as sw:
-            self.running_query = query
+            self._running_query = query
 
             try:
-                if self.config.tap_sync:
+                if self.options.sync:
                     await self.run_sync_query(query)
                 else:
                     await self.run_async_query(query)
@@ -148,7 +161,7 @@ class TAPQueryRunner(Business):
                     error=f"{type(e).__name__}: {str(e)}",
                 ) from e
 
-            self.running_query = None
+            self._running_query = None
             elapsed = sw.elapsed.total_seconds()
 
         self.logger.info(f"Query finished after {elapsed} seconds")
@@ -168,7 +181,7 @@ class TAPQueryRunner(Business):
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(self._pool, self._client.search, query)
 
-    def dump(self) -> BusinessData:
-        data = super().dump()
-        data.running_code = self.running_query
-        return data
+    def dump(self) -> TAPQueryRunnerData:
+        return TAPQueryRunnerData(
+            running_query=self._running_query, **super().dump().dict()
+        )

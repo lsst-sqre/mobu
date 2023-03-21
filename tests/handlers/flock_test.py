@@ -24,7 +24,7 @@ async def test_start_stop(
         "count": 1,
         "user_spec": {"username_prefix": "testuser"},
         "scopes": ["exec:notebook"],
-        "business": "Business",
+        "business": {"type": "EmptyLoop"},
     }
     r = await client.put("/mobu/flocks", json=config)
     assert r.status_code == 201
@@ -35,18 +35,17 @@ async def test_start_stop(
             "count": 1,
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
-            "business": "Business",
+            "business": {"type": "EmptyLoop"},
         },
         "monkeys": [
             {
                 "name": "testuser1",
                 "business": {
                     "failure_count": 0,
-                    "name": "Business",
+                    "name": "EmptyLoop",
                     "success_count": ANY,
                     "timings": ANY,
                 },
-                "restart": False,
                 "state": ANY,
                 "user": {
                     "scopes": ["exec:notebook"],
@@ -87,7 +86,7 @@ async def test_start_stop(
     assert r.status_code == 200
     summary = {
         "name": "test",
-        "business": "Business",
+        "business": "EmptyLoop",
         "start_time": ANY,
         "monkey_count": 1,
         "success_count": 1,
@@ -148,7 +147,7 @@ async def test_user_list(
             },
         ],
         "scopes": ["exec:notebook"],
-        "business": "Business",
+        "business": {"type": "EmptyLoop"},
     }
     r = await client.put("/mobu/flocks", json=config)
     assert r.status_code == 201
@@ -160,11 +159,10 @@ async def test_user_list(
                 "name": "testuser",
                 "business": {
                     "failure_count": 0,
-                    "name": "Business",
+                    "name": "EmptyLoop",
                     "success_count": ANY,
                     "timings": ANY,
                 },
-                "restart": False,
                 "state": ANY,
                 "user": {
                     "scopes": ["exec:notebook"],
@@ -178,11 +176,10 @@ async def test_user_list(
                 "name": "otheruser",
                 "business": {
                     "failure_count": 0,
-                    "name": "Business",
+                    "name": "EmptyLoop",
                     "success_count": ANY,
                     "timings": ANY,
                 },
-                "restart": False,
                 "state": ANY,
                 "user": {
                     "scopes": ["exec:notebook"],
@@ -233,7 +230,7 @@ async def test_errors(
             ],
             "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
             "scopes": [],
-            "business": "Business",
+            "business": {"type": "EmptyLoop"},
         },
     )
     assert r.status_code == 422
@@ -254,7 +251,7 @@ async def test_errors(
             "name": "test",
             "count": 2,
             "scopes": [],
-            "business": "Business",
+            "business": {"type": "EmptyLoop"},
         },
     )
     assert r.status_code == 422
@@ -289,7 +286,7 @@ async def test_errors(
                 },
             ],
             "scopes": [],
-            "business": "Business",
+            "business": {"type": "EmptyLoop"},
         },
     )
     assert r.status_code == 422
@@ -321,7 +318,7 @@ async def test_errors(
                 }
             ],
             "scopes": [],
-            "business": "Business",
+            "business": {"type": "EmptyLoop"},
         },
     )
     assert r.status_code == 422
@@ -348,17 +345,14 @@ async def test_errors(
             "count": 1,
             "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
             "scopes": ["exec:notebook"],
-            "business": "UnknownBusiness",
+            "business": {"type": "UnknownBusiness"},
         },
     )
     assert r.status_code == 422
-    assert r.json() == {
-        "detail": [
-            {
-                "ctx": {"given": "UnknownBusiness", "permitted": ANY},
-                "loc": ["body", "business"],
-                "msg": ANY,
-                "type": "value_error.const",
-            }
-        ]
+    result = r.json()
+    assert result["detail"][0] == {
+        "ctx": {"given": "UnknownBusiness", "permitted": [ANY]},
+        "loc": ["body", "business", "type"],
+        "msg": ANY,
+        "type": "value_error.const",
     }

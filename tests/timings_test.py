@@ -8,7 +8,7 @@ import pytest
 from safir.datetime import current_datetime
 
 from mobu.models.timings import StopwatchData
-from mobu.timings import Timings
+from mobu.services.timings import Timings
 
 
 def test_timings() -> None:

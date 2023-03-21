@@ -9,22 +9,28 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
+from typing import Generic, Optional, TypeVar
 
 from aiohttp import ClientError, ClientResponseError
 from safir.datetime import current_datetime, format_datetime_for_logging
 from structlog.stdlib import BoundLogger
 
-from ..exceptions import (
+from ...exceptions import (
     JupyterResponseError,
     JupyterSpawnError,
     JupyterTimeoutError,
 )
-from ..jupyterclient import JupyterClient
-from ..models.business import BusinessConfig, BusinessData
-from ..models.jupyter import JupyterImage
-from ..models.user import AuthenticatedUser
+from ...models.business.jupyterloginloop import (
+    JupyterLoginLoopData,
+    JupyterLoginLoopOptions,
+    JupyterLoginOptions,
+)
+from ...models.jupyter import JupyterImage
+from ...models.user import AuthenticatedUser
+from ...storage.jupyter import JupyterClient
 from .base import Business
+
+T = TypeVar("T", bound="JupyterLoginOptions")
 
 __all__ = ["JupyterLoginLoop", "ProgressLogMessage"]
 
@@ -46,32 +52,38 @@ class ProgressLogMessage:
         return f"{timestamp} - {self.message}"
 
 
-class JupyterLoginLoop(Business):
+class JupyterLoginLoop(Business, Generic[T]):
     """Business that logs on to the hub, creates a lab, and deletes it.
 
     This class modifies the core `~mobu.business.base.Business` loop by
-    providing the overall ``execute`` framework and defualt ``startup`` and
-    ``shutdown`` methods.  It will log on to JupyterHub, ensure no lab
-    currently exists, create a lab, run ``lab_business``, and then shut down
-    the lab before starting another iteration.
+    providing `startup`, `execute`, and `shutdown` methods. It will log on to
+    JupyterHub, ensure no lab currently exists, create a lab, run
+    `lab_business`, and then shut down the lab before starting another
+    iteration.
 
-    Subclasses should override ``lab_business`` to do whatever they want to do
+    Subclasses should override `lab_business` to do whatever they want to do
     inside a lab.  The default behavior just waits for ``login_idle_time``.
 
     Once this business has been stopped, it cannot be started again (the
     `aiohttp.ClientSession` will be closed), and the instance should be
-    dropped after retrieving any status information.
+    dropped after retrieving any wanted status information.
+
+    Parameters
+    ----------
+    options
+        Configuration options for the business.
+    user
+        User with their authentication token to use to run the business.
+    logger
+        Logger to use to report the results of business.
     """
 
     def __init__(
-        self,
-        logger: BoundLogger,
-        business_config: BusinessConfig,
-        user: AuthenticatedUser,
+        self, options: T, user: AuthenticatedUser, logger: BoundLogger
     ) -> None:
-        super().__init__(logger, business_config, user)
+        super().__init__(options, user, logger)
         self.image: Optional[JupyterImage] = None
-        self._client = JupyterClient(user, logger, business_config.jupyter)
+        self._client = JupyterClient(user, logger, options.jupyter)
 
     async def close(self) -> None:
         await self._client.close()
@@ -96,17 +108,15 @@ class JupyterLoginLoop(Business):
 
     async def execute(self) -> None:
         """The work done in each iteration of the loop."""
-        if self.config.delete_lab or await self._client.is_lab_stopped():
+        if self.options.delete_lab or await self._client.is_lab_stopped():
             self.image = None
-            await self.spawn_lab()
-            if self.stopping:
+            if not await self.spawn_lab():
                 return
-            await self.lab_settle()
-            if self.stopping:
-                return  # type: ignore[unreachable]  # bug in mypy 0.930
+            if not await self.lab_settle():
+                return
         await self.lab_login()
         await self.lab_business()
-        if self.config.delete_lab:
+        if self.options.delete_lab:
             await self.hub_login()
             await self.delete_lab()
 
@@ -118,7 +128,7 @@ class JupyterLoginLoop(Business):
         with self.timings.start("hub_login"):
             await self._client.hub_login()
 
-    async def spawn_lab(self) -> None:
+    async def spawn_lab(self) -> bool:
         with self.timings.start("spawn_lab", self.annotations()) as sw:
             self.image = await self._client.spawn_lab()
 
@@ -126,19 +136,19 @@ class JupyterLoginLoop(Business):
             # have attached to the spawner and will not return a full stream
             # of events.  (It will definitely take longer than 5s for the lab
             # to spawn.)
-            await self.pause(self.config.spawn_settle_time)
-            if self.stopping:
-                return
+            if not await self.pause(self.options.spawn_settle_time):
+                return False
 
             # Watch the progress API until the lab has spawned.
             log_messages = []
-            timeout = self.config.spawn_timeout - self.config.spawn_settle_time
+            timeout = self.options.spawn_timeout
+            timeout -= self.options.spawn_settle_time
             progress = self._client.spawn_progress()
             try:
                 async for message in self.iter_with_timeout(progress, timeout):
                     log_messages.append(ProgressLogMessage(message.message))
                     if message.ready:
-                        return
+                        return True
             except ClientResponseError as e:
                 username = self.user.username
                 raise JupyterResponseError.from_exception(username, e) from e
@@ -154,7 +164,7 @@ class JupyterLoginLoop(Business):
             # We only fall through if the spawn failed, timed out, or if we're
             # stopping the business.
             if self.stopping:
-                return  # type: ignore[unreachable]  # bug in mypy 0.930
+                return False
             log = "\n".join([str(m) for m in log_messages])
             if sw.elapsed.total_seconds() > timeout:
                 elapsed = round(sw.elapsed.total_seconds())
@@ -163,9 +173,9 @@ class JupyterLoginLoop(Business):
             else:
                 raise JupyterSpawnError(self.user.username, log)
 
-    async def lab_settle(self) -> None:
+    async def lab_settle(self) -> bool:
         with self.timings.start("lab_settle"):
-            await self.pause(self.config.lab_settle_time)
+            return await self.pause(self.options.lab_settle_time)
 
     async def lab_login(self) -> None:
         with self.timings.start("lab_login", self.annotations()):
@@ -181,7 +191,7 @@ class JupyterLoginLoop(Business):
             # one is still shutting down.
             if self.stopping:
                 return
-            timeout = self.config.delete_timeout
+            timeout = self.options.delete_timeout
             start = current_datetime(microseconds=True)
             while not await self._client.is_lab_stopped():
                 now = current_datetime(microseconds=True)
@@ -192,9 +202,8 @@ class JupyterLoginLoop(Business):
                         raise JupyterTimeoutError(self.user.username, msg)
                 msg = f"Waiting for lab deletion ({elapsed}s elapsed)"
                 self.logger.info(msg)
-                await self.pause(2)
-                if self.stopping:
-                    return  # type: ignore[unreachable]  # bug in mypy 0.930
+                if not await self.pause(2):
+                    return
 
         self.logger.info("Lab successfully deleted")
         self.image = None
@@ -206,10 +215,11 @@ class JupyterLoginLoop(Business):
         default behavior is to wait a minute and then shut the lab down
         again.
         """
+        if not isinstance(self.options, JupyterLoginLoopOptions):
+            msg = "JupyterLoginLoop subclass didn't override lab_business"
+            raise RuntimeError(msg)
         with self.timings.start("lab_wait"):
-            await self.pause(self.config.login_idle_time)
+            await self.pause(self.options.login_idle_time)
 
-    def dump(self) -> BusinessData:
-        data = super().dump()
-        data.image = self.image if self.image else None
-        return data
+    def dump(self) -> JupyterLoginLoopData:
+        return JupyterLoginLoopData(image=self.image, **super().dump().dict())

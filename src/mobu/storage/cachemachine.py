@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from aiohttp import ClientSession
 
-from .config import config
-from .exceptions import CachemachineError
-from .models.jupyter import JupyterImage
+from ..config import config
+from ..exceptions import CachemachineError
+from ..models.jupyter import JupyterImage
 
 
 class CachemachineClient:

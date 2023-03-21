@@ -6,14 +6,19 @@ over again.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Generic, Optional, TypeVar
 
 from structlog.stdlib import BoundLogger
 
-from ..jupyterclient import JupyterLabSession
-from ..models.business import BusinessConfig
-from ..models.user import AuthenticatedUser
+from ...models.business.jupyterpythonloop import (
+    JupyterPythonExecutorOptions,
+    JupyterPythonLoopOptions,
+)
+from ...models.user import AuthenticatedUser
+from ...storage.jupyter import JupyterLabSession
 from .jupyterloginloop import JupyterLoginLoop
+
+T = TypeVar("T", bound="JupyterPythonExecutorOptions")
 
 __all__ = ["JupyterPythonLoop"]
 
@@ -27,23 +32,28 @@ print(get_node(), end="")
 """Code to get the node on which the lab is running."""
 
 
-class JupyterPythonLoop(JupyterLoginLoop):
+class JupyterPythonLoop(JupyterLoginLoop, Generic[T]):
     """Run simple Python code in a loop inside a lab kernel.
 
     This can be used as a base class for other JupyterLab code execution
-    monkey business.  Override ``execute_code`` to change what code is
-    executed.  When doing so, be sure to call ``execute_idle`` between each
-    code execution and check ``self.stopping`` after it returns, exiting any
-    loops if ``self.stopping`` is true.
+    monkey business. Override `execute_code` to change what code is
+    executed. When doing so, be sure to call `execution_idle` between each
+    code execution and exit any loops if it returns `False`.
+
+    Parameters
+    ----------
+    options
+        Configuration options for the business.
+    user
+        User with their authentication token to use to run the business.
+    logger
+        Logger to use to report the results of business.
     """
 
     def __init__(
-        self,
-        logger: BoundLogger,
-        business_config: BusinessConfig,
-        user: AuthenticatedUser,
+        self, options: T, user: AuthenticatedUser, logger: BoundLogger
     ) -> None:
-        super().__init__(logger, business_config, user)
+        super().__init__(options, user, logger)
         self.node: Optional[str] = None
 
     def annotations(self) -> dict[str, str]:
@@ -66,31 +76,35 @@ class JupyterPythonLoop(JupyterLoginLoop):
         with self.timings.start("create_session", self.annotations()):
             session = await self._client.create_labsession(notebook_name)
         with self.timings.start("execute_setup", self.annotations()):
-            if self.config.get_node:
+            if self.options.get_node:
                 # Our libraries currently spew warning messages when imported.
                 # The node is only the last line of the output.
                 node_data = await self._client.run_python(session, _GET_NODE)
                 self.node = node_data.split("\n")[-1]
                 self.logger.info(f"Running on node {self.node}")
-            if self.config.working_directory:
-                code = _CHDIR_TEMPLATE.format(wd=self.config.working_directory)
+            if self.options.working_directory:
+                path = self.options.working_directory
+                code = _CHDIR_TEMPLATE.format(wd=path)
+                self.logger.info(f"Changing directories to {path}")
                 await self._client.run_python(session, code)
         return session
 
     async def execute_code(self, session: JupyterLabSession) -> None:
-        code = self.config.code
-        for count in range(self.config.max_executions):
+        if not isinstance(self.options, JupyterPythonLoopOptions):
+            msg = "JupyterPythonLoop subclass didn't override execute_code"
+            raise RuntimeError(msg)
+        code = self.options.code
+        for count in range(self.options.max_executions):
             with self.timings.start("execute_code", self.annotations()):
                 reply = await self._client.run_python(session, code)
             self.logger.info(f"{code} -> {reply}")
-            await self.execution_idle()
-            if self.stopping:
+            if not await self.execution_idle():
                 break
 
-    async def execution_idle(self) -> None:
+    async def execution_idle(self) -> bool:
         """Executed between each unit of work execution."""
         with self.timings.start("execution_idle"):
-            await self.pause(self.config.execution_idle_time)
+            return await self.pause(self.options.execution_idle_time)
 
     async def delete_session(self, session: JupyterLabSession) -> None:
         await self.lab_login()

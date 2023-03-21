@@ -19,9 +19,8 @@ class JupyterJitterLoginLoop(JupyterLoginLoop):
 
     async def startup(self) -> None:
         with self.timings.start("pre_login_delay"):
-            await self.pause(random.uniform(0, 30))
-        if self.stopping:
-            return
+            if not await self.pause(random.uniform(0, 30)):
+                return
         await super().startup()
         await self.pause(random.uniform(10, 30))
 

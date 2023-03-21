@@ -22,9 +22,9 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from safir.datetime import current_datetime
 from yarl import URL
 
-from mobu.business.jupyterpythonloop import _GET_NODE
 from mobu.config import config
-from mobu.jupyterclient import JupyterLabSession
+from mobu.services.business.jupyterpythonloop import _GET_NODE
+from mobu.storage.jupyter import JupyterLabSession
 
 
 class JupyterAction(Enum):

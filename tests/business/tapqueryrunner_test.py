@@ -15,9 +15,9 @@ from httpx import AsyncClient
 from safir.testing.slack import MockSlackWebhook
 
 import mobu
-from mobu.business.tapqueryrunner import TAPQueryRunner
-from mobu.models.business import BusinessConfig
+from mobu.models.business.tapqueryrunner import TAPQueryRunnerOptions
 from mobu.models.user import AuthenticatedUser
+from mobu.services.business.tapqueryrunner import TAPQueryRunner
 
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
@@ -37,7 +37,7 @@ async def test_run(
                 "count": 1,
                 "user_spec": {"username_prefix": "testuser"},
                 "scopes": ["exec:notebook"],
-                "business": "TAPQueryRunner",
+                "business": {"type": "TAPQueryRunner"},
             },
         )
         assert r.status_code == 201
@@ -52,7 +52,6 @@ async def test_run(
                 "success_count": 1,
                 "timings": ANY,
             },
-            "restart": False,
             "state": "RUNNING",
             "user": {
                 "scopes": ["exec:notebook"],
@@ -86,7 +85,7 @@ async def test_alert(
                 "count": 1,
                 "user_spec": {"username_prefix": "testuser"},
                 "scopes": ["exec:notebook"],
-                "business": "TAPQueryRunner",
+                "business": {"type": "TAPQueryRunner"},
             },
         )
         assert r.status_code == 201
@@ -158,7 +157,7 @@ async def test_random_object() -> None:
     for query_set in ("dp0.1", "dp0.2"):
         params_path = (
             Path(mobu.__file__).parent
-            / "templates"
+            / "data"
             / "tapqueryrunner"
             / query_set
             / "params.yaml"
@@ -170,10 +169,9 @@ async def test_random_object() -> None:
             username="user", scopes=["read:tap"], token="blah blah"
         )
         logger = structlog.get_logger(__file__)
+        options = TAPQueryRunnerOptions(query_set=query_set)
         with patch.object(pyvo.dal, "TAPService"):
-            runner = TAPQueryRunner(
-                logger, BusinessConfig(tap_query_set=query_set), user
-            )
+            runner = TAPQueryRunner(options, user, logger)
         parameters = runner._generate_parameters()
 
         assert parameters["object"] in objects

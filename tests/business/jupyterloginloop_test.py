@@ -31,12 +31,14 @@ async def test_run(
             "count": 1,
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
-            "options": {
-                "spawn_settle_time": 0,
-                "lab_settle_time": 0,
-                "login_idle_time": 0,
+            "business": {
+                "type": "JupyterLoginLoop",
+                "options": {
+                    "spawn_settle_time": 0,
+                    "lab_settle_time": 0,
+                    "login_idle_time": 0,
+                },
             },
-            "business": "JupyterLoginLoop",
         },
     )
     assert r.status_code == 201
@@ -51,7 +53,6 @@ async def test_run(
             "success_count": 1,
             "timings": ANY,
         },
-        "restart": False,
         "state": "RUNNING",
         "user": {
             "scopes": ["exec:notebook"],
@@ -89,13 +90,15 @@ async def test_reuse_lab(
             "count": 1,
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
-            "options": {
-                "spawn_settle_time": 0,
-                "lab_settle_time": 0,
-                "login_idle_time": 0,
-                "delete_lab": False,
+            "business": {
+                "type": "JupyterLoginLoop",
+                "options": {
+                    "spawn_settle_time": 0,
+                    "lab_settle_time": 0,
+                    "login_idle_time": 0,
+                    "delete_lab": False,
+                },
             },
-            "business": "JupyterLoginLoop",
         },
     )
     assert r.status_code == 201
@@ -121,13 +124,15 @@ async def test_delayed_lab_delete(
             "count": 5,
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
-            "options": {
-                "spawn_settle_time": 0,
-                "lab_settle_time": 0,
-                "login_idle_time": 0,
-                "delete_lab": False,
+            "business": {
+                "type": "JupyterLoginLoop",
+                "options": {
+                    "spawn_settle_time": 0,
+                    "lab_settle_time": 0,
+                    "login_idle_time": 0,
+                    "delete_lab": False,
+                },
             },
-            "business": "JupyterLoginLoop",
         },
     )
     assert r.status_code == 201
@@ -156,13 +161,15 @@ async def test_alert(
             "count": 2,
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
-            "options": {
-                "spawn_settle_time": 0,
-                "lab_settle_time": 0,
-                "login_idle_time": 0,
-                "delete_lab": False,
+            "business": {
+                "type": "JupyterLoginLoop",
+                "options": {
+                    "spawn_settle_time": 0,
+                    "lab_settle_time": 0,
+                    "login_idle_time": 0,
+                    "delete_lab": False,
+                },
             },
-            "business": "JupyterLoginLoop",
         },
     )
     assert r.status_code == 201
@@ -231,13 +238,15 @@ async def test_redirect_loop(
             "count": 1,
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
-            "options": {
-                "spawn_settle_time": 0,
-                "lab_settle_time": 0,
-                "login_idle_time": 0,
-                "delete_lab": False,
+            "business": {
+                "type": "JupyterLoginLoop",
+                "options": {
+                    "spawn_settle_time": 0,
+                    "lab_settle_time": 0,
+                    "login_idle_time": 0,
+                    "delete_lab": False,
+                },
             },
-            "business": "JupyterLoginLoop",
         },
     )
     assert r.status_code == 201
@@ -309,12 +318,14 @@ async def test_spawn_timeout(
             "count": 1,
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
-            "options": {
-                "spawn_settle_time": 0,
-                "lab_settle_time": 0,
-                "spawn_timeout": 1,
+            "business": {
+                "type": "JupyterLoginLoop",
+                "options": {
+                    "spawn_settle_time": 0,
+                    "lab_settle_time": 0,
+                    "spawn_timeout": 1,
+                },
             },
-            "business": "JupyterLoginLoop",
         },
     )
     assert r.status_code == 201
@@ -375,12 +386,14 @@ async def test_spawn_failed(
             "count": 1,
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
-            "options": {
-                "spawn_settle_time": 0,
-                "lab_settle_time": 0,
-                "spawn_timeout": 1,
+            "business": {
+                "type": "JupyterLoginLoop",
+                "options": {
+                    "spawn_settle_time": 0,
+                    "lab_settle_time": 0,
+                    "spawn_timeout": 1,
+                },
             },
-            "business": "JupyterLoginLoop",
         },
     )
     assert r.status_code == 201
@@ -455,13 +468,15 @@ async def test_delete_timeout(
             "count": 1,
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
-            "options": {
-                "spawn_settle_time": 0,
-                "lab_settle_time": 0,
-                "login_idle_time": 0,
-                "delete_timeout": 1,
+            "business": {
+                "type": "JupyterLoginLoop",
+                "options": {
+                    "spawn_settle_time": 0,
+                    "lab_settle_time": 0,
+                    "login_idle_time": 0,
+                    "delete_timeout": 1,
+                },
             },
-            "business": "JupyterLoginLoop",
         },
     )
     assert r.status_code == 201

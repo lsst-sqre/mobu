@@ -16,6 +16,7 @@ from safir.logging import Profile, configure_logging, configure_uvicorn_logging
 from safir.middleware.x_forwarded import XForwardedMiddleware
 from safir.models import ErrorLocation
 
+from .asyncio import schedule_periodic
 from .autostart import autostart
 from .config import config
 from .dependencies.manager import monkey_business_manager
@@ -23,7 +24,6 @@ from .exceptions import FlockNotFoundException, MonkeyNotFoundException
 from .handlers.external import external_router
 from .handlers.internal import internal_router
 from .status import post_status
-from .util import schedule_periodic
 
 __all__ = ["app", "config"]
 

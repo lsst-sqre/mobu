@@ -15,25 +15,38 @@ from typing import Any, Optional
 from git.repo import Repo
 from structlog.stdlib import BoundLogger
 
-from ..exceptions import NotebookRepositoryError
-from ..jupyterclient import JupyterLabSession
-from ..models.business import BusinessConfig, BusinessData
-from ..models.user import AuthenticatedUser
+from ...exceptions import NotebookRepositoryError
+from ...models.business.notebookrunner import (
+    NotebookRunnerData,
+    NotebookRunnerOptions,
+)
+from ...models.user import AuthenticatedUser
+from ...storage.jupyter import JupyterLabSession
 from .jupyterpythonloop import JupyterPythonLoop
 
 __all__ = ["NotebookRunner"]
 
 
 class NotebookRunner(JupyterPythonLoop):
-    """Start a Jupyter lab and run a sequence of notebooks."""
+    """Start a Jupyter lab and run a sequence of notebooks.
+
+    Parameters
+    ----------
+    options
+        Configuration options for the business.
+    user
+        User with their authentication token to use to run the business.
+    logger
+        Logger to use to report the results of business.
+    """
 
     def __init__(
         self,
-        logger: BoundLogger,
-        business_config: BusinessConfig,
+        options: NotebookRunnerOptions,
         user: AuthenticatedUser,
+        logger: BoundLogger,
     ) -> None:
-        super().__init__(logger, business_config, user)
+        super().__init__(options, user, logger)
         self.notebook: Optional[Path] = None
         self.running_code: Optional[str] = None
         self._repo_dir = TemporaryDirectory()
@@ -54,8 +67,8 @@ class NotebookRunner(JupyterPythonLoop):
         await super().startup()
 
     def clone_repo(self) -> None:
-        url = self.config.repo_url
-        branch = self.config.repo_branch
+        url = self.options.repo_url
+        branch = self.options.repo_branch
         path = self._repo_dir.name
         with self.timings.start("clone_repo"):
             self._repo = Repo.clone_from(url, path, branch=branch)
@@ -73,11 +86,11 @@ class NotebookRunner(JupyterPythonLoop):
             random.shuffle(notebooks)
         return notebooks
 
-    def next_notebook(self) -> None:
+    def next_notebook(self) -> Path:
         if not self._notebook_paths:
             self.logger.info("Done with this cycle of notebooks")
             self._notebook_paths = self.find_notebooks()
-        self.notebook = self._notebook_paths.pop()
+        return self._notebook_paths.pop()
 
     def read_notebook(self, notebook: Path) -> list[dict[str, Any]]:
         with self.timings.start("read_notebook", {"notebook": notebook.name}):
@@ -111,11 +124,10 @@ class NotebookRunner(JupyterPythonLoop):
         return await super().create_session(notebook_name)
 
     async def execute_code(self, session: JupyterLabSession) -> None:
-        for count in range(self.config.max_executions):
-            self.next_notebook()
-            assert self.notebook
+        for count in range(self.options.max_executions):
+            self.notebook = self.next_notebook()
 
-            iteration = f"{count + 1}/{self.config.max_executions}"
+            iteration = f"{count + 1}/{self.options.max_executions}"
             msg = f"Notebook {self.notebook.name} iteration {iteration}"
             self.logger.info(msg)
 
@@ -126,19 +138,18 @@ class NotebookRunner(JupyterPythonLoop):
                 else:
                     cell_id = f'#{cell["_index"]}'
                 await self.execute_cell(session, code, cell_id)
-                await self.execution_idle()
-                if self.stopping:
+                if not await self.execution_idle():
                     break
 
+            self.logger.info(f"Success running notebook {self.notebook.name}")
             if self.stopping:
                 break
-            self.logger.info(f"Success running notebook {self.notebook.name}")
 
     async def execute_cell(
         self, session: JupyterLabSession, code: str, cell_id: str
     ) -> None:
         assert self.notebook
-        self.logger.info("Executing:\n%s\n", code)
+        self.logger.info(f"Executing cell {cell_id}:\n{code}\n")
         annotations = self.annotations()
         annotations["cell"] = cell_id
         with self.timings.start("execute_cell", annotations):
@@ -147,8 +158,9 @@ class NotebookRunner(JupyterPythonLoop):
             self.running_code = None
         self.logger.info(f"Result:\n{reply}\n")
 
-    def dump(self) -> BusinessData:
-        data = super().dump()
-        data.running_code = self.running_code
-        data.notebook = self.notebook.name if self.notebook else None
-        return data
+    def dump(self) -> NotebookRunnerData:
+        return NotebookRunnerData(
+            notebook=self.notebook.name if self.notebook else None,
+            running_code=self.running_code,
+            **super().dump().dict(),
+        )

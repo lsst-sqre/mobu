@@ -1,4 +1,4 @@
-"""Utility functions for mobu."""
+"""asyncio utility functions for mobu."""
 
 from __future__ import annotations
 

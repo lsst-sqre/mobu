@@ -1,12 +1,17 @@
 """Models for a collection of monkeys."""
 
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, validator
 
-from .business import BusinessConfig
-from .monkey import MonkeyConfig, MonkeyData
+from .business.empty import EmptyLoopConfig
+from .business.jupyterjitterloginloop import JupyterJitterLoginLoopConfig
+from .business.jupyterloginloop import JupyterLoginLoopConfig
+from .business.jupyterpythonloop import JupyterPythonLoopConfig
+from .business.notebookrunner import NotebookRunnerConfig
+from .business.tapqueryrunner import TAPQueryRunnerConfig
+from .monkey import MonkeyData
 from .user import User, UserSpec
 
 
@@ -44,22 +49,17 @@ class FlockConfig(BaseModel):
         example=["exec:notebook", "read:tap"],
     )
 
-    business: Literal[
-        "Business",
-        "JupyterJitterLoginLoop",
-        "JupyterLoginLoop",
-        "JupyterPythonLoop",
-        "NotebookRunner",
-        "TAPQueryRunner",
-    ] = Field(..., title="Type of business to run")
-
-    options: BusinessConfig = Field(
-        default_factory=BusinessConfig, title="Business to run"
-    )
-
-    restart: bool = Field(
-        False, title="Restart business after failure", example=True
-    )
+    # These types should be given in order of most specific to least specific
+    # to avoid the risk that Pydantic plus FastAPI will interpret a class as
+    # its parent class.
+    business: (
+        TAPQueryRunnerConfig
+        | NotebookRunnerConfig
+        | JupyterPythonLoopConfig
+        | JupyterJitterLoginLoopConfig
+        | JupyterLoginLoopConfig
+        | EmptyLoopConfig
+    ) = Field(..., title="Business to run")
 
     @validator("users")
     def _valid_users(
@@ -81,15 +81,6 @@ class FlockConfig(BaseModel):
         if v and "users" in values and values["users"]:
             raise ValueError("both users and user_spec provided")
         return v
-
-    def monkey_config(self, name: str) -> MonkeyConfig:
-        """Create a configuration for a monkey in the flock."""
-        return MonkeyConfig(
-            name=name,
-            business=self.business,
-            options=self.options,
-            restart=self.restart,
-        )
 
 
 class FlockData(BaseModel):

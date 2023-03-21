@@ -17,10 +17,25 @@ from safir.slack.blockkit import SlackException, SlackMessage, SlackTextField
 from safir.slack.webhook import SlackWebhookClient
 from structlog.stdlib import BoundLogger
 
+from ..config import config
+from ..models.business.base import BusinessConfig
+from ..models.business.empty import EmptyLoopConfig
+from ..models.business.jupyterjitterloginloop import (
+    JupyterJitterLoginLoopConfig,
+)
+from ..models.business.jupyterloginloop import JupyterLoginLoopConfig
+from ..models.business.jupyterpythonloop import JupyterPythonLoopConfig
+from ..models.business.notebookrunner import NotebookRunnerConfig
+from ..models.business.tapqueryrunner import TAPQueryRunnerConfig
+from ..models.monkey import MonkeyData, MonkeyState
+from ..models.user import AuthenticatedUser
 from .business.base import Business
-from .config import config
-from .models.monkey import MonkeyConfig, MonkeyData, MonkeyState
-from .models.user import AuthenticatedUser
+from .business.empty import EmptyLoop
+from .business.jupyterjitterloginloop import JupyterJitterLoginLoop
+from .business.jupyterloginloop import JupyterLoginLoop
+from .business.jupyterpythonloop import JupyterPythonLoop
+from .business.notebookrunner import NotebookRunner
+from .business.tapqueryrunner import TAPQueryRunner
 
 __all__ = ["Monkey"]
 
@@ -33,15 +48,14 @@ class Monkey:
     def __init__(
         self,
         *,
-        monkey_config: MonkeyConfig,
-        business_type: type[Business],
+        name: str,
+        business_config: BusinessConfig,
         user: AuthenticatedUser,
         session: ClientSession,
         logger: BoundLogger,
     ):
-        self._config = monkey_config
-        self._name = monkey_config.name
-        self._restart = monkey_config.restart
+        self._name = name
+        self._restart = business_config.restart
         self._session = session
         self._user = user
 
@@ -53,10 +67,37 @@ class Monkey:
         )
         self._job: Optional[Job] = None
 
-        # Create the Business class that will run the actual tests.
-        self.business = business_type(
-            self._logger, self._config.options, self._user
-        )
+        # Determine the business class from the type of configuration we got,
+        # which in turn will be based on Pydantic validation of the value of
+        # the type field.
+        self.business: Business
+        if isinstance(business_config, EmptyLoopConfig):
+            self.business = EmptyLoop(
+                business_config.options, user, self._logger
+            )
+        elif isinstance(business_config, JupyterLoginLoopConfig):
+            self.business = JupyterLoginLoop(
+                business_config.options, user, self._logger
+            )
+        elif isinstance(business_config, JupyterJitterLoginLoopConfig):
+            self.business = JupyterJitterLoginLoop(
+                business_config.options, user, self._logger
+            )
+        elif isinstance(business_config, JupyterPythonLoopConfig):
+            self.business = JupyterPythonLoop(
+                business_config.options, user, self._logger
+            )
+        elif isinstance(business_config, NotebookRunnerConfig):
+            self.business = NotebookRunner(
+                business_config.options, user, self._logger
+            )
+        elif isinstance(business_config, TAPQueryRunnerConfig):
+            self.business = TAPQueryRunner(
+                business_config.options, user, self._logger
+            )
+        else:
+            msg = f"Unknown business config {business_config}"
+            raise RuntimeError(msg)
 
         self._slack = None
         if config.alert_hook and config.alert_hook != "None":
@@ -139,7 +180,6 @@ class Monkey:
         return MonkeyData(
             name=self._name,
             business=self.business.dump(),
-            restart=self._restart,
             state=self._state,
             user=self._user,
         )

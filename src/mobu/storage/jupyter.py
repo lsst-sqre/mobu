@@ -30,16 +30,16 @@ from aiohttp.client import _RequestContextManager, _WSRequestContextManager
 from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
 
-from .cachemachine import CachemachineClient
-from .config import config
-from .exceptions import (
+from ..config import config
+from ..exceptions import (
     CodeExecutionError,
     JupyterError,
     JupyterResponseError,
     JupyterWebSocketError,
 )
-from .models.jupyter import JupyterConfig, JupyterImage, JupyterImageClass
-from .models.user import AuthenticatedUser
+from ..models.jupyter import JupyterConfig, JupyterImage, JupyterImageClass
+from ..models.user import AuthenticatedUser
+from .cachemachine import CachemachineClient
 
 __all__ = ["JupyterClient", "JupyterLabSession"]
 
