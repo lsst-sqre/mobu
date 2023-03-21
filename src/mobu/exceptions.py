@@ -26,6 +26,7 @@ __all__ = [
     "JupyterTimeoutError",
     "MobuSlackException",
     "MonkeyNotFoundException",
+    "TAPClientError",
 ]
 
 
@@ -279,3 +280,11 @@ class JupyterTimeoutError(MobuSlackException):
 
 class JupyterWebSocketError(MobuSlackException):
     """Unexpected messages on the session WebSocket."""
+
+
+class TAPClientError(MobuSlackException):
+    """Creating a TAP client failed."""
+
+    def __init__(self, user: str, exc: Exception) -> None:
+        msg = f"Unable to create TAP client: {type(exc).__name__}: {str(exc)}"
+        super().__init__(user, msg)
