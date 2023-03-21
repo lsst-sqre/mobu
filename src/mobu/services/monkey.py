@@ -123,6 +123,26 @@ class Monkey:
         self._logfile.flush()
         return self._logfile.name
 
+    async def run_once(self) -> str | None:
+        """Run the monkey business once.
+
+        Returns
+        -------
+        str or None
+            Error message on failure, or `None` if the business succeeded.
+        """
+        self._state = MonkeyState.RUNNING
+        error = None
+        try:
+            await self.business.run_once()
+            self._state = MonkeyState.FINISHED
+        except Exception as e:
+            msg = "Exception thrown while doing monkey business"
+            self._logger.exception(msg)
+            error = str(e)
+            self._state = MonkeyState.ERROR
+        return error
+
     async def start(self, scheduler: Scheduler) -> None:
         self._job = await scheduler.spawn(self._runner())
 

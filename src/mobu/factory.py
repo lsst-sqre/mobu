@@ -7,10 +7,12 @@ from typing import Optional
 import structlog
 from aiohttp import ClientSession
 from safir.slack.webhook import SlackWebhookClient
-from structlog import BoundLogger
+from structlog.stdlib import BoundLogger
 
 from .config import config
+from .models.solitary import SolitaryConfig
 from .services.manager import FlockManager
+from .services.solitary import Solitary
 
 __all__ = ["Factory", "ProcessContext"]
 
@@ -72,3 +74,18 @@ class Factory:
         if not config.alert_hook or config.alert_hook == "None":
             return None
         return SlackWebhookClient(config.alert_hook, "Mobu", self._logger)
+
+    def create_solitary(self, solitary_config: SolitaryConfig) -> Solitary:
+        """Create a runner for a solitary monkey.
+
+        Parameters
+        ----------
+        solitary_config
+            Configuration for the solitary monkey.
+
+        Returns
+        -------
+        Solitary
+            Newly-created solitary manager.
+        """
+        return Solitary(solitary_config, self._context.session, self._logger)

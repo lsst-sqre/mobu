@@ -14,6 +14,7 @@ from ..dependencies.context import RequestContext, context_dependency
 from ..models.flock import FlockConfig, FlockData, FlockSummary
 from ..models.index import Index
 from ..models.monkey import MonkeyData
+from ..models.solitary import SolitaryConfig, SolitaryResult
 
 external_router = APIRouter()
 """FastAPI router for all external handlers."""
@@ -178,6 +179,26 @@ async def get_flock_summary(
     context: RequestContext = Depends(context_dependency),
 ) -> FlockSummary:
     return context.manager.get_flock(flock).summary()
+
+
+@external_router.post(
+    "/run",
+    response_class=FormattedJSONResponse,
+    response_model=SolitaryResult,
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    summary="Run monkey business once",
+)
+async def put_run(
+    solitary_config: SolitaryConfig,
+    context: RequestContext = Depends(context_dependency),
+) -> SolitaryResult:
+    context.logger.info(
+        "Running solitary monkey",
+        config=solitary_config.dict(exclude_unset=True),
+    )
+    solitary = context.factory.create_solitary(solitary_config)
+    return await solitary.run()
 
 
 @external_router.get(
