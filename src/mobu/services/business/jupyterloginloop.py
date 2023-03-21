@@ -112,8 +112,6 @@ class JupyterLoginLoop(Business, Generic[T]):
             self.image = None
             if not await self.spawn_lab():
                 return
-            if not await self.lab_settle():
-                return
         await self.lab_login()
         await self.lab_business()
         if self.options.delete_lab:
@@ -172,10 +170,6 @@ class JupyterLoginLoop(Business, Generic[T]):
                 raise JupyterTimeoutError(self.user.username, msg, log)
             else:
                 raise JupyterSpawnError(self.user.username, log)
-
-    async def lab_settle(self) -> bool:
-        with self.timings.start("lab_settle"):
-            return await self.pause(self.options.lab_settle_time)
 
     async def lab_login(self) -> None:
         with self.timings.start("lab_login", self.annotations()):

@@ -40,16 +40,6 @@ class JupyterLoginOptions(BusinessOptions):
         title="Jupyter lab spawning configuration",
     )
 
-    lab_settle_time: int = Field(
-        0,
-        title="How long to wait after spawn before using a lab, in seconds",
-        description=(
-            "Wait this long after a lab successfully spawns before starting"
-            " to use it"
-        ),
-        example=0,
-    )
-
     spawn_settle_time: int = Field(
         10,
         title="How long to wait before polling spawn progress in seconds",

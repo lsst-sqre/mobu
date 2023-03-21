@@ -35,7 +35,6 @@ async def test_run(
                 "type": "JupyterLoginLoop",
                 "options": {
                     "spawn_settle_time": 0,
-                    "lab_settle_time": 0,
                     "login_idle_time": 0,
                 },
             },
@@ -94,7 +93,6 @@ async def test_reuse_lab(
                 "type": "JupyterLoginLoop",
                 "options": {
                     "spawn_settle_time": 0,
-                    "lab_settle_time": 0,
                     "login_idle_time": 0,
                     "delete_lab": False,
                 },
@@ -128,7 +126,6 @@ async def test_delayed_lab_delete(
                 "type": "JupyterLoginLoop",
                 "options": {
                     "spawn_settle_time": 0,
-                    "lab_settle_time": 0,
                     "login_idle_time": 0,
                     "delete_lab": False,
                 },
@@ -165,7 +162,6 @@ async def test_alert(
                 "type": "JupyterLoginLoop",
                 "options": {
                     "spawn_settle_time": 0,
-                    "lab_settle_time": 0,
                     "login_idle_time": 0,
                     "delete_lab": False,
                 },
@@ -242,7 +238,6 @@ async def test_redirect_loop(
                 "type": "JupyterLoginLoop",
                 "options": {
                     "spawn_settle_time": 0,
-                    "lab_settle_time": 0,
                     "login_idle_time": 0,
                     "delete_lab": False,
                 },
@@ -322,7 +317,6 @@ async def test_spawn_timeout(
                 "type": "JupyterLoginLoop",
                 "options": {
                     "spawn_settle_time": 0,
-                    "lab_settle_time": 0,
                     "spawn_timeout": 1,
                 },
             },
@@ -390,7 +384,6 @@ async def test_spawn_failed(
                 "type": "JupyterLoginLoop",
                 "options": {
                     "spawn_settle_time": 0,
-                    "lab_settle_time": 0,
                     "spawn_timeout": 1,
                 },
             },
@@ -472,7 +465,6 @@ async def test_delete_timeout(
                 "type": "JupyterLoginLoop",
                 "options": {
                     "spawn_settle_time": 0,
-                    "lab_settle_time": 0,
                     "login_idle_time": 0,
                     "delete_timeout": 1,
                 },
