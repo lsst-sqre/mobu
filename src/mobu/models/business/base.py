@@ -37,8 +37,7 @@ class BusinessConfig(BaseModel):
 
     Each type of business must override this class, redefining ``type`` with a
     different literal and ``options`` with a different type and default
-    factory. This base class doubles as the configuration for the
-    `~mobu.services.business.base.Business` base business class.
+    factory.
     """
 
     type: str = Field(..., title="Type of business to run")

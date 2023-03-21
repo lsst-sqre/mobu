@@ -151,6 +151,20 @@ class Business(Generic[T], metaclass=ABCMeta):
             if self.stopping:
                 self.control.task_done()
 
+    async def run_once(self) -> None:
+        """The core business logic, run only once.
+
+        Calls `startup`, `execute`, `shutdown`, and `close`.
+        """
+        self.logger.info("Starting up...")
+        try:
+            await self.startup()
+            await self.execute()
+            self.logger.info("Shutting down...")
+            await self.shutdown()
+        finally:
+            await self.close()
+
     async def idle(self) -> None:
         """The idle pause at the end of each loop."""
         self.logger.info("Idling...")

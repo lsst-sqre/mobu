@@ -13,7 +13,7 @@ from fastapi import Depends, Request
 from safir.dependencies.gafaelfawr import auth_logger_dependency
 from structlog.stdlib import BoundLogger
 
-from ..factory import ProcessContext
+from ..factory import Factory, ProcessContext
 from ..services.manager import FlockManager
 
 __all__ = [
@@ -35,6 +35,9 @@ class RequestContext:
 
     manager: FlockManager
     """Global singleton flock manager."""
+
+    factory: Factory
+    """Component factory."""
 
 
 class ContextDependency:
@@ -61,6 +64,7 @@ class ContextDependency:
             request=request,
             logger=logger,
             manager=self._process_context.manager,
+            factory=Factory(self._process_context, logger),
         )
 
     @property
