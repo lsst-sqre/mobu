@@ -33,7 +33,6 @@ async def test_run(
                 "type": "JupyterPythonLoop",
                 "options": {
                     "spawn_settle_time": 0,
-                    "lab_settle_time": 0,
                     "max_executions": 3,
                 },
             },
@@ -87,7 +86,6 @@ async def test_server_shutdown(
                 "type": "JupyterPythonLoop",
                 "options": {
                     "spawn_settle_time": 0,
-                    "lab_settle_time": 0,
                     "max_executions": 3,
                 },
             },
@@ -122,7 +120,6 @@ async def test_alert(
                 "options": {
                     "code": 'raise Exception("some error")',
                     "spawn_settle_time": 0,
-                    "lab_settle_time": 0,
                     "max_executions": 1,
                 },
             },
@@ -232,7 +229,6 @@ async def test_long_error(
                         ),
                     },
                     "spawn_settle_time": 0,
-                    "lab_settle_time": 0,
                     "max_executions": 1,
                 },
             },
