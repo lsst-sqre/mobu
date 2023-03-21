@@ -70,7 +70,7 @@ class JupyterLoginLoop(Business, Generic[T]):
 
     Parameters
     ----------
-    business_config
+    options
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
@@ -108,7 +108,7 @@ class JupyterLoginLoop(Business, Generic[T]):
 
     async def execute(self) -> None:
         """The work done in each iteration of the loop."""
-        if self.config.delete_lab or await self._client.is_lab_stopped():
+        if self.options.delete_lab or await self._client.is_lab_stopped():
             self.image = None
             if not await self.spawn_lab():
                 return
@@ -116,7 +116,7 @@ class JupyterLoginLoop(Business, Generic[T]):
                 return
         await self.lab_login()
         await self.lab_business()
-        if self.config.delete_lab:
+        if self.options.delete_lab:
             await self.hub_login()
             await self.delete_lab()
 
@@ -136,12 +136,13 @@ class JupyterLoginLoop(Business, Generic[T]):
             # have attached to the spawner and will not return a full stream
             # of events.  (It will definitely take longer than 5s for the lab
             # to spawn.)
-            if not await self.pause(self.config.spawn_settle_time):
+            if not await self.pause(self.options.spawn_settle_time):
                 return False
 
             # Watch the progress API until the lab has spawned.
             log_messages = []
-            timeout = self.config.spawn_timeout - self.config.spawn_settle_time
+            timeout = self.options.spawn_timeout
+            timeout -= self.options.spawn_settle_time
             progress = self._client.spawn_progress()
             try:
                 async for message in self.iter_with_timeout(progress, timeout):
@@ -174,7 +175,7 @@ class JupyterLoginLoop(Business, Generic[T]):
 
     async def lab_settle(self) -> bool:
         with self.timings.start("lab_settle"):
-            return await self.pause(self.config.lab_settle_time)
+            return await self.pause(self.options.lab_settle_time)
 
     async def lab_login(self) -> None:
         with self.timings.start("lab_login", self.annotations()):
@@ -190,7 +191,7 @@ class JupyterLoginLoop(Business, Generic[T]):
             # one is still shutting down.
             if self.stopping:
                 return
-            timeout = self.config.delete_timeout
+            timeout = self.options.delete_timeout
             start = current_datetime(microseconds=True)
             while not await self._client.is_lab_stopped():
                 now = current_datetime(microseconds=True)
@@ -214,11 +215,11 @@ class JupyterLoginLoop(Business, Generic[T]):
         default behavior is to wait a minute and then shut the lab down
         again.
         """
-        if not isinstance(self.config, JupyterLoginLoopOptions):
+        if not isinstance(self.options, JupyterLoginLoopOptions):
             msg = "JupyterLoginLoop subclass didn't override lab_business"
             raise RuntimeError(msg)
         with self.timings.start("lab_wait"):
-            await self.pause(self.config.login_idle_time)
+            await self.pause(self.options.login_idle_time)
 
     def dump(self) -> JupyterLoginLoopData:
         return JupyterLoginLoopData(image=self.image, **super().dump().dict())

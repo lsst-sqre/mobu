@@ -76,25 +76,25 @@ class JupyterPythonLoop(JupyterLoginLoop, Generic[T]):
         with self.timings.start("create_session", self.annotations()):
             session = await self._client.create_labsession(notebook_name)
         with self.timings.start("execute_setup", self.annotations()):
-            if self.config.get_node:
+            if self.options.get_node:
                 # Our libraries currently spew warning messages when imported.
                 # The node is only the last line of the output.
                 node_data = await self._client.run_python(session, _GET_NODE)
                 self.node = node_data.split("\n")[-1]
                 self.logger.info(f"Running on node {self.node}")
-            if self.config.working_directory:
-                path = self.config.working_directory
+            if self.options.working_directory:
+                path = self.options.working_directory
                 code = _CHDIR_TEMPLATE.format(wd=path)
                 self.logger.info(f"Changing directories to {path}")
                 await self._client.run_python(session, code)
         return session
 
     async def execute_code(self, session: JupyterLabSession) -> None:
-        if not isinstance(self.config, JupyterPythonLoopOptions):
+        if not isinstance(self.options, JupyterPythonLoopOptions):
             msg = "JupyterPythonLoop subclass didn't override execute_code"
             raise RuntimeError(msg)
-        code = self.config.code
-        for count in range(self.config.max_executions):
+        code = self.options.code
+        for count in range(self.options.max_executions):
             with self.timings.start("execute_code", self.annotations()):
                 reply = await self._client.run_python(session, code)
             self.logger.info(f"{code} -> {reply}")
@@ -104,7 +104,7 @@ class JupyterPythonLoop(JupyterLoginLoop, Generic[T]):
     async def execution_idle(self) -> bool:
         """Executed between each unit of work execution."""
         with self.timings.start("execution_idle"):
-            return await self.pause(self.config.execution_idle_time)
+            return await self.pause(self.options.execution_idle_time)
 
     async def delete_session(self, session: JupyterLabSession) -> None:
         await self.lab_login()

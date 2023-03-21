@@ -49,7 +49,7 @@ class Business(Generic[T], metaclass=ABCMeta):
 
     Parameters
     ----------
-    business_config
+    options
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
@@ -61,7 +61,7 @@ class Business(Generic[T], metaclass=ABCMeta):
     logger
         Logger to use to report the results of business. This will generally
         be attached to a file rather than the main logger.
-    config
+    options
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
@@ -79,7 +79,7 @@ class Business(Generic[T], metaclass=ABCMeta):
         self, options: T, user: AuthenticatedUser, logger: BoundLogger
     ) -> None:
         self.logger = logger
-        self.config = options
+        self.options = options
         self.user = user
         self.success_count = 0
         self.failure_count = 0
@@ -147,7 +147,7 @@ class Business(Generic[T], metaclass=ABCMeta):
         """The idle pause at the end of each loop."""
         self.logger.info("Idling...")
         with self.timings.start("idle"):
-            await self.pause(self.config.idle_time)
+            await self.pause(self.options.idle_time)
 
     async def error_idle(self) -> None:
         """The idle pause after an error.

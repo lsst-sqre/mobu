@@ -67,8 +67,8 @@ class NotebookRunner(JupyterPythonLoop):
         await super().startup()
 
     def clone_repo(self) -> None:
-        url = self.config.repo_url
-        branch = self.config.repo_branch
+        url = self.options.repo_url
+        branch = self.options.repo_branch
         path = self._repo_dir.name
         with self.timings.start("clone_repo"):
             self._repo = Repo.clone_from(url, path, branch=branch)
@@ -124,10 +124,10 @@ class NotebookRunner(JupyterPythonLoop):
         return await super().create_session(notebook_name)
 
     async def execute_code(self, session: JupyterLabSession) -> None:
-        for count in range(self.config.max_executions):
+        for count in range(self.options.max_executions):
             self.notebook = self.next_notebook()
 
-            iteration = f"{count + 1}/{self.config.max_executions}"
+            iteration = f"{count + 1}/{self.options.max_executions}"
             msg = f"Notebook {self.notebook.name} iteration {iteration}"
             self.logger.info(msg)
 

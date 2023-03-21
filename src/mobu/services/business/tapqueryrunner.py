@@ -31,7 +31,7 @@ class TAPQueryRunner(Business):
 
     Parameters
     ----------
-    business_config
+    options
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
@@ -149,7 +149,7 @@ class TAPQueryRunner(Business):
             self._running_query = query
 
             try:
-                if self.config.sync:
+                if self.options.sync:
                     await self.run_sync_query(query)
                 else:
                     await self.run_async_query(query)
