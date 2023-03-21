@@ -9,6 +9,7 @@ import pytest
 from aioresponses import aioresponses
 from httpx import AsyncClient
 
+from ..support.constants import TEST_BASE_URL
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
 
@@ -56,7 +57,7 @@ async def test_start_stop(
         ],
     }
     assert r.json() == expected
-    assert r.headers["Location"] == "/mobu/flocks/test"
+    assert r.headers["Location"] == f"{TEST_BASE_URL}/mobu/flocks/test"
     await wait_for_business(client, "testuser1")
 
     r = await client.get("/mobu/flocks")
@@ -192,7 +193,7 @@ async def test_user_list(
         ],
     }
     assert r.json() == expected
-    assert r.headers["Location"] == "/mobu/flocks/test"
+    assert r.headers["Location"] == f"{TEST_BASE_URL}/mobu/flocks/test"
 
     r = await client.get("/mobu/flocks/test/monkeys/testuser")
     assert r.status_code == 200

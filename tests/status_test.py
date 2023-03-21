@@ -6,16 +6,19 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pytest
+from httpx import AsyncClient
 from safir.testing.slack import MockSlackWebhook
 
-from mobu.dependencies.manager import monkey_business_manager
 from mobu.models.flock import FlockSummary
+from mobu.services.manager import FlockManager
 from mobu.status import post_status
 
 
 @pytest.mark.asyncio
-async def test_post_status(slack: MockSlackWebhook) -> None:
-    with patch.object(monkey_business_manager, "summarize_flocks") as mock:
+async def test_post_status(
+    client: AsyncClient, slack: MockSlackWebhook
+) -> None:
+    with patch.object(FlockManager, "summarize_flocks") as mock:
         mock.return_value = [
             FlockSummary(
                 name="notebook",

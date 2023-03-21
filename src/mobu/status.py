@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import structlog
 from safir.slack.blockkit import SlackMessage
-from safir.slack.webhook import SlackWebhookClient
 
 from .config import config
-from .dependencies.manager import monkey_business_manager
+from .dependencies.context import context_dependency
+from .factory import Factory
 
 __all__ = ["post_status"]
 
@@ -19,10 +18,13 @@ async def post_status() -> None:
     clear that mobu is alive, but a secondary benefit is to provide some
     summary statistics.
     """
-    if not config.alert_hook or config.alert_hook == "None":
+    process_context = context_dependency.process_context
+    factory = Factory(process_context)
+    slack = factory.create_slack_webhook_client()
+    if not slack:
         return
 
-    summaries = monkey_business_manager.summarize_flocks()
+    summaries = process_context.manager.summarize_flocks()
     flock_count = len(summaries)
     flock_plural = "flock" if flock_count == 1 else "flocks"
     text = (
@@ -52,6 +54,4 @@ async def post_status() -> None:
         )
         text += line
 
-    logger = structlog.get_logger("mobu")
-    slack = SlackWebhookClient(config.alert_hook, "Mobu", logger)
     await slack.post(SlackMessage(message=text))

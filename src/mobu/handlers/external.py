@@ -2,21 +2,15 @@
 
 import json
 from typing import Any
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import FileResponse, JSONResponse
 from safir.datetime import current_datetime
-from safir.dependencies.gafaelfawr import auth_logger_dependency
 from safir.metadata import get_metadata
 from safir.models import ErrorModel
-from structlog.stdlib import BoundLogger
 
 from ..config import config
-from ..dependencies.manager import (
-    MonkeyBusinessManager,
-    monkey_business_manager,
-)
+from ..dependencies.context import RequestContext, context_dependency
 from ..models.flock import FlockConfig, FlockData, FlockSummary
 from ..models.index import Index
 from ..models.monkey import MonkeyData
@@ -58,9 +52,9 @@ async def get_index() -> Index:
     "/flocks", response_model=list[str], summary="List running flocks"
 )
 async def get_flocks(
-    manager: MonkeyBusinessManager = Depends(monkey_business_manager),
+    context: RequestContext = Depends(context_dependency),
 ) -> list[str]:
-    return manager.list_flocks()
+    return context.manager.list_flocks()
 
 
 @external_router.put(
@@ -75,14 +69,16 @@ async def get_flocks(
 async def put_flock(
     flock_config: FlockConfig,
     response: Response,
-    manager: MonkeyBusinessManager = Depends(monkey_business_manager),
-    logger: BoundLogger = Depends(auth_logger_dependency),
+    context: RequestContext = Depends(context_dependency),
 ) -> FlockData:
-    logger.info(
-        "Creating flock", flock=flock_config.name, config=flock_config.dict()
+    context.logger.info(
+        "Creating flock",
+        flock=flock_config.name,
+        config=flock_config.dict(exclude_unset=True),
     )
-    flock = await manager.start_flock(flock_config)
-    response.headers["Location"] = quote(f"/mobu/flocks/{flock.name}")
+    flock = await context.manager.start_flock(flock_config)
+    flock_url = context.request.url_for("get_flock", flock=flock.name)
+    response.headers["Location"] = str(flock_url)
     return flock.dump()
 
 
@@ -97,9 +93,9 @@ async def put_flock(
 )
 async def get_flock(
     flock: str,
-    manager: MonkeyBusinessManager = Depends(monkey_business_manager),
+    context: RequestContext = Depends(context_dependency),
 ) -> FlockData:
-    return manager.get_flock(flock).dump()
+    return context.manager.get_flock(flock).dump()
 
 
 @external_router.delete(
@@ -110,11 +106,10 @@ async def get_flock(
 )
 async def delete_flock(
     flock: str,
-    manager: MonkeyBusinessManager = Depends(monkey_business_manager),
-    logger: BoundLogger = Depends(auth_logger_dependency),
+    context: RequestContext = Depends(context_dependency),
 ) -> None:
-    logger.info("Deleting flock", flock=flock)
-    await manager.stop_flock(flock)
+    context.logger.info("Deleting flock", flock=flock)
+    await context.manager.stop_flock(flock)
 
 
 @external_router.get(
@@ -126,9 +121,9 @@ async def delete_flock(
 )
 async def get_monkeys(
     flock: str,
-    manager: MonkeyBusinessManager = Depends(monkey_business_manager),
+    context: RequestContext = Depends(context_dependency),
 ) -> list[str]:
-    return manager.get_flock(flock).list_monkeys()
+    return context.manager.get_flock(flock).list_monkeys()
 
 
 @external_router.get(
@@ -145,9 +140,9 @@ async def get_monkeys(
 async def get_monkey(
     flock: str,
     monkey: str,
-    manager: MonkeyBusinessManager = Depends(monkey_business_manager),
+    context: RequestContext = Depends(context_dependency),
 ) -> MonkeyData:
-    return manager.get_flock(flock).get_monkey(monkey).dump()
+    return context.manager.get_flock(flock).get_monkey(monkey).dump()
 
 
 @external_router.get(
@@ -162,10 +157,10 @@ async def get_monkey(
 async def get_monkey_log(
     flock: str,
     monkey: str,
-    manager: MonkeyBusinessManager = Depends(monkey_business_manager),
+    context: RequestContext = Depends(context_dependency),
 ) -> FileResponse:
     return FileResponse(
-        path=manager.get_flock(flock).get_monkey(monkey).logfile(),
+        path=context.manager.get_flock(flock).get_monkey(monkey).logfile(),
         media_type="text/plain",
         filename=f"{flock}-{monkey}-{current_datetime()}",
     )
@@ -180,9 +175,9 @@ async def get_monkey_log(
 )
 async def get_flock_summary(
     flock: str,
-    manager: MonkeyBusinessManager = Depends(monkey_business_manager),
+    context: RequestContext = Depends(context_dependency),
 ) -> FlockSummary:
-    return manager.get_flock(flock).summary()
+    return context.manager.get_flock(flock).summary()
 
 
 @external_router.get(
@@ -192,6 +187,6 @@ async def get_flock_summary(
     summary="Summary of statistics for all flocks",
 )
 async def get_summary(
-    manager: MonkeyBusinessManager = Depends(monkey_business_manager),
+    context: RequestContext = Depends(context_dependency),
 ) -> list[FlockSummary]:
-    return manager.summarize_flocks()
+    return context.manager.summarize_flocks()
