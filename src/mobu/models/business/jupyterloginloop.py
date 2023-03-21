@@ -35,6 +35,20 @@ class JupyterLoginOptions(BusinessOptions):
         60, title="Timeout for deleting a lab in seconds", example=60
     )
 
+    jitter: int = Field(
+        0,
+        title="Maximum random time to pause",
+        description=(
+            "If set to a non-zero value, pause for a random interval between"
+            " 0 and that many seconds before logging in to JupyterHub, and"
+            " between each iteration of the core execution loop. Use this when"
+            " running lots of monkeys for load testing to spread their"
+            " execution sequence out more realistically and avoid a thundering"
+            " herd problem."
+        ),
+        example=60,
+    )
+
     jupyter: JupyterConfig = Field(
         default_factory=JupyterConfig,
         title="Jupyter lab spawning configuration",
