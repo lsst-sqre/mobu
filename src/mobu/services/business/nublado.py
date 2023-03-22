@@ -36,7 +36,7 @@ _CHDIR_TEMPLATE = 'import os; os.chdir("{wd}")'
 
 _GET_IMAGE = """
 import os
-print(os.getenv("JUPYTER_IMAGE"), os.getenv("IMAGE_DESCRIPTION"), sep="\n")
+print(os.getenv("JUPYTER_IMAGE"), os.getenv("IMAGE_DESCRIPTION"), sep="\\n")
 """
 """Code to get information about the lab image."""
 
