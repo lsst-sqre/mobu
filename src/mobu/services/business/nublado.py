@@ -21,8 +21,8 @@ from ...exceptions import (
 from ...models.business.nublado import (
     NubladoBusinessData,
     NubladoBusinessOptions,
+    RunningImage,
 )
-from ...models.jupyter import JupyterImage
 from ...models.user import AuthenticatedUser
 from ...storage.jupyter import JupyterClient, JupyterLabSession
 from .base import Business
@@ -33,6 +33,12 @@ __all__ = ["NubladoBusiness", "ProgressLogMessage"]
 
 _CHDIR_TEMPLATE = 'import os; os.chdir("{wd}")'
 """Template to construct the code to run to set the working directory."""
+
+_GET_IMAGE = """
+import os
+print(os.getenv("JUPYTER_IMAGE"), os.getenv("IMAGE_DESCRIPTION"), sep="\n")
+"""
+"""Code to get information about the lab image."""
 
 _GET_NODE = """
 from rubin_jupyter_utils.lab.notebook.utils import get_node
@@ -88,8 +94,13 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         self, options: T, user: AuthenticatedUser, logger: BoundLogger
     ) -> None:
         super().__init__(options, user, logger)
-        self._client = JupyterClient(user, logger, options.jupyter)
-        self._image: Optional[JupyterImage] = None
+        self._client = JupyterClient(
+            user=user,
+            url_prefix=options.url_prefix,
+            image_config=options.image,
+            logger=logger,
+        )
+        self._image: Optional[RunningImage] = None
         self._node: Optional[str] = None
 
     @abstractmethod
@@ -118,8 +129,8 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         and then add things to the resulting dictionary.
         """
         result = {}
-        if self._image:
-            result["image"] = self._image.name
+        if self._image and self._image.description:
+            result["image"] = self._image.description
         if self._node:
             result["node"] = self._node
         return result
@@ -183,7 +194,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
     async def spawn_lab(self) -> bool:
         with self.timings.start("spawn_lab", self.annotations()) as sw:
             timeout = self.options.spawn_timeout
-            self._image = await self._client.spawn_lab()
+            await self._client.spawn_lab()
 
             # Pause before using the progress API, since otherwise it may not
             # have attached to the spawner and will not return a full stream
@@ -235,6 +246,12 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         with self.timings.start("create_session", self.annotations()):
             session = await self._client.create_labsession(notebook_name)
         with self.timings.start("execute_setup", self.annotations()):
+            image_data = await self._client.run_python(session, _GET_IMAGE)
+            reference, description = image_data.strip().split("\n", 1)
+            self._image = RunningImage(
+                reference=reference or None,
+                description=description or None,
+            )
             if self.options.get_node:
                 # Our libraries currently spew warning messages when imported.
                 # The node is only the last line of the output.

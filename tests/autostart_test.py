@@ -13,6 +13,8 @@ from httpx import AsyncClient
 from mobu.config import config
 
 from .support.gafaelfawr import mock_gafaelfawr
+from .support.jupyter import MockJupyter
+from .support.util import wait_for_flock_start
 
 AUTOSTART_CONFIG = """
 - name: basic
@@ -37,10 +39,10 @@ AUTOSTART_CONFIG = """
     type: JupyterPythonLoop
     restart: True
     options:
-      jupyter:
+      image:
         image_class: latest-weekly
-        image_size: Large
-      spawn_settle_time: 10
+        size: Large
+      spawn_settle_time: 0
 """
 
 
@@ -57,7 +59,7 @@ def configure_autostart(
 
 
 @pytest.mark.asyncio
-async def test_autostart(client: AsyncClient) -> None:
+async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
     r = await client.get("/mobu/flocks/basic")
     assert r.status_code == 200
     expected_monkeys = [
@@ -96,6 +98,7 @@ async def test_autostart(client: AsyncClient) -> None:
         "monkeys": expected_monkeys,
     }
 
+    await wait_for_flock_start(client, "python")
     r = await client.get("/mobu/flocks/python")
     assert r.status_code == 200
     assert r.json() == {
@@ -118,11 +121,11 @@ async def test_autostart(client: AsyncClient) -> None:
                 "type": "JupyterPythonLoop",
                 "restart": True,
                 "options": {
-                    "jupyter": {
+                    "image": {
                         "image_class": "latest-weekly",
-                        "image_size": "Large",
+                        "size": "Large",
                     },
-                    "spawn_settle_time": 10,
+                    "spawn_settle_time": 0,
                 },
             },
         },
@@ -132,18 +135,16 @@ async def test_autostart(client: AsyncClient) -> None:
                 "business": {
                     "failure_count": 0,
                     "image": {
-                        "digest": ANY,
-                        "name": "Weekly 2021_35",
+                        "description": "Recommended (Weekly 2077_43)",
                         "reference": (
-                            "registry.hub.docker.com/lsstsqre/sciplat-lab"
-                            ":w_2021_35"
+                            "lighthouse.ceres/library/sketchbook:recommended"
                         ),
                     },
                     "name": "JupyterPythonLoop",
                     "success_count": ANY,
                     "timings": ANY,
                 },
-                "state": ANY,
+                "state": "RUNNING",
                 "user": {
                     "scopes": ["exec:notebook"],
                     "token": ANY,
@@ -157,18 +158,16 @@ async def test_autostart(client: AsyncClient) -> None:
                 "business": {
                     "failure_count": 0,
                     "image": {
-                        "digest": ANY,
-                        "name": "Weekly 2021_35",
+                        "description": "Recommended (Weekly 2077_43)",
                         "reference": (
-                            "registry.hub.docker.com/lsstsqre/sciplat-lab"
-                            ":w_2021_35"
+                            "lighthouse.ceres/library/sketchbook:recommended"
                         ),
                     },
                     "name": "JupyterPythonLoop",
                     "success_count": ANY,
                     "timings": ANY,
                 },
-                "state": ANY,
+                "state": "RUNNING",
                 "user": {
                     "scopes": ["exec:notebook"],
                     "token": ANY,

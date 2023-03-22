@@ -33,6 +33,7 @@ class NotebookRunnerOptions(NubladoBusinessOptions):
             " left off."
         ),
         example=25,
+        ge=1,
     )
 
     repo_branch: str = Field(

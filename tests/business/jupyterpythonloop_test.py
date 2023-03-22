@@ -520,7 +520,7 @@ async def test_delete_timeout(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Image*\nRecommended (Weekly 2021_33)",
+                            "text": "*Image*\nRecommended (Weekly 2077_43)",
                             "verbatim": True,
                         },
                     ],
@@ -591,7 +591,7 @@ async def test_code_exception(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Image*\nRecommended (Weekly 2021_33)",
+                            "text": "*Image*\nRecommended (Weekly 2077_43)",
                             "verbatim": True,
                         },
                         {
@@ -636,6 +636,7 @@ async def test_code_exception(
 @pytest.mark.asyncio
 async def test_long_error(
     client: AsyncClient,
+    jupyter: MockJupyter,
     slack: MockSlackWebhook,
     mock_aioresponses: aioresponses,
 ) -> None:
@@ -652,9 +653,9 @@ async def test_long_error(
                 "type": "JupyterPythonLoop",
                 "options": {
                     "code": "long_error_for_test()",
-                    "jupyter": {
+                    "image": {
                         "image_class": "by-reference",
-                        "image_reference": (
+                        "reference": (
                             "registry.hub.docker.com/lsstsqre/sciplat-lab"
                             ":d_2021_08_30"
                         ),
@@ -666,6 +667,14 @@ async def test_long_error(
         },
     )
     assert r.status_code == 201
+    assert jupyter.lab_form["testuser1"] == {
+        "image_list": (
+            "registry.hub.docker.com/lsstsqre/sciplat-lab:d_2021_08_30"
+            "|d_2021_08_30|"
+        ),
+        "image_dropdown": "use_image_from_dropdown",
+        "size": "Large",
+    }
 
     # Wait until we've finished one loop.
     data = await wait_for_business(client, "testuser1")
@@ -705,7 +714,7 @@ async def test_long_error(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Image*\nd_2021_08_30",
+                            "text": "*Image*\nRecommended (Weekly 2077_43)",
                             "verbatim": True,
                         },
                         {
@@ -743,3 +752,101 @@ async def test_long_error(
             ],
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_lab_controller(
+    client: AsyncClient,
+    jupyter: MockJupyter,
+    mock_aioresponses: aioresponses,
+) -> None:
+    mock_gafaelfawr(mock_aioresponses)
+    config.use_cachemachine = False
+
+    try:
+        # Image by reference.
+        r = await client.put(
+            "/mobu/flocks",
+            json={
+                "name": "test",
+                "count": 1,
+                "users": [{"username": "testuser"}],
+                "scopes": ["exec:notebook"],
+                "business": {
+                    "type": "JupyterPythonLoop",
+                    "options": {
+                        "image": {
+                            "image_class": "by-reference",
+                            "reference": (
+                                "registry.hub.docker.com/lsstsqre/sciplat-lab"
+                                ":d_2021_08_30"
+                            ),
+                        },
+                    },
+                },
+            },
+        )
+        assert r.status_code == 201
+        assert jupyter.lab_form["testuser"] == {
+            "image_list": (
+                "registry.hub.docker.com/lsstsqre/sciplat-lab:d_2021_08_30"
+            ),
+            "size": "Large",
+        }
+        r = await client.delete(r.headers["Location"])
+        assert r.status_code == 204
+
+        # Image by class.
+        r = await client.put(
+            "/mobu/flocks",
+            json={
+                "name": "test",
+                "count": 1,
+                "users": [{"username": "testuser"}],
+                "scopes": ["exec:notebook"],
+                "business": {
+                    "type": "JupyterPythonLoop",
+                    "options": {
+                        "image": {
+                            "image_class": "latest-daily",
+                            "size": "Medium",
+                        },
+                    },
+                },
+            },
+        )
+        assert r.status_code == 201
+        assert jupyter.lab_form["testuser"] == {
+            "image_class": "latest-daily",
+            "size": "Medium",
+        }
+        r = await client.delete(r.headers["Location"])
+        assert r.status_code == 204
+
+        # Image by tag.
+        r = await client.put(
+            "/mobu/flocks",
+            json={
+                "name": "test",
+                "count": 1,
+                "users": [{"username": "testuser"}],
+                "scopes": ["exec:notebook"],
+                "business": {
+                    "type": "JupyterPythonLoop",
+                    "options": {
+                        "image": {
+                            "image_class": "by-tag",
+                            "tag": "w_2077_44",
+                            "size": "Small",
+                        },
+                    },
+                },
+            },
+        )
+        assert r.status_code == 201
+        assert jupyter.lab_form["testuser"] == {
+            "image_tag": "w_2077_44",
+            "size": "Small",
+        }
+    finally:
+        config.use_cachemachine = True

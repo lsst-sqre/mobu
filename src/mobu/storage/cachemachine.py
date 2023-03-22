@@ -2,11 +2,56 @@
 
 from __future__ import annotations
 
+from typing import Optional, Self
+
 from aiohttp import ClientSession
+from pydantic import BaseModel, Field
 
 from ..config import config
 from ..exceptions import CachemachineError
-from ..models.jupyter import JupyterImage
+
+
+class JupyterCachemachineImage(BaseModel):
+    """Represents an image to spawn as a Jupyter Lab."""
+
+    reference: str = Field(
+        ...,
+        title="Docker reference for the image",
+        example="registry.hub.docker.com/lsstsqre/sciplat-lab:w_2021_13",
+    )
+
+    name: str = Field(
+        ...,
+        title="Human-readable name for the image",
+        example="Weekly 2021_34",
+    )
+
+    digest: Optional[str] = Field(
+        ...,
+        title="Hash of the last layer of the Docker container",
+        description="May be null if the digest isn't known",
+        example=(
+            "sha256:419c4b7e14603711b25fa9e0569460a753c4b2449fe275bb5f89743b"
+            "01794a30"
+        ),
+    )
+
+    def __str__(self) -> str:
+        return "|".join([self.reference, self.name, self.digest or ""])
+
+    @classmethod
+    def from_dict(cls, data: dict[str, str]) -> Self:
+        return cls(
+            reference=data["image_url"],
+            name=data["name"],
+            digest=data["image_hash"],
+        )
+
+    @classmethod
+    def from_reference(cls, reference: str) -> Self:
+        return cls(
+            reference=reference, name=reference.rsplit(":", 1)[1], digest=""
+        )
 
 
 class CachemachineClient:
@@ -32,17 +77,17 @@ class CachemachineClient:
             + config.cachemachine_image_policy.value
         )
 
-    async def get_latest_weekly(self) -> JupyterImage:
+    async def get_latest_weekly(self) -> JupyterCachemachineImage:
         """Image for the latest weekly version.
 
         Returns
         -------
-        mobu.models.jupyter.JupyterImage
-            The corresponding image.
+        JupyterCachemachineImage
+            Corresponding image.
 
         Raises
         ------
-        mobu.exceptions.CachemachineError
+        CachemachineError
             Some error occurred talking to cachemachine or cachemachine does
             not have any weekly images.
         """
@@ -51,17 +96,17 @@ class CachemachineClient:
                 return image
         raise CachemachineError(self._username, "No weekly images found")
 
-    async def get_recommended(self) -> JupyterImage:
+    async def get_recommended(self) -> JupyterCachemachineImage:
         """Image string for the latest recommended version.
 
         Returns
         -------
-        mobu.models.jupyter.JupyterImage
-            The corresponding image.
+        JupyterCachemachineImage
+            Corresponding image.
 
         Raises
         ------
-        mobu.exceptions.CachemachineError
+        CachemachineError
             Some error occurred talking to cachemachine.
         """
         images = await self._get_images()
@@ -69,7 +114,7 @@ class CachemachineClient:
             raise CachemachineError(self._username, "No images found")
         return images[0]
 
-    async def _get_images(self) -> list[JupyterImage]:
+    async def _get_images(self) -> list[JupyterCachemachineImage]:
         headers = {"Authorization": f"bearer {self._token}"}
         async with self._session.get(self._url, headers=headers) as r:
             if r.status != 200:
@@ -77,7 +122,10 @@ class CachemachineClient:
                 raise CachemachineError(self._username, msg)
             try:
                 data = await r.json()
-                return [JupyterImage.from_dict(i) for i in data["images"]]
+                return [
+                    JupyterCachemachineImage.from_dict(i)
+                    for i in data["images"]
+                ]
             except Exception as e:
                 msg = f"Invalid response: {type(e).__name__}: {str(e)}"
                 raise CachemachineError(self._username, msg)
