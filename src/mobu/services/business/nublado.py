@@ -41,7 +41,7 @@ print(os.getenv("JUPYTER_IMAGE"), os.getenv("IMAGE_DESCRIPTION"), sep="\\n")
 """Code to get information about the lab image."""
 
 _GET_NODE = """
-from rubin_jupyter_utils.lab.notebook.utils import get_node
+from lsst.rsp import get_node
 print(get_node(), end="")
 """
 """Code to get the node on which the lab is running."""
@@ -255,8 +255,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             if self.options.get_node:
                 # Our libraries currently spew warning messages when imported.
                 # The node is only the last line of the output.
-                node_data = await self._client.run_python(session, _GET_NODE)
-                self._node = node_data.split("\n")[-1]
+                self._node = await self._client.run_python(session, _GET_NODE)
                 self.logger.info(f"Running on node {self._node}")
             if self.options.working_directory:
                 path = self.options.working_directory
