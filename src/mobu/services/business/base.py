@@ -178,9 +178,10 @@ class Business(Generic[T], metaclass=ABCMeta):
         by the business. It happens outside of `run` and therefore must handle
         acknowledging a shutdown request.
         """
-        self.logger.warning("Restarting failed monkey after 60s")
+        error_idle = self.options.error_idle_time
+        self.logger.warning(f"Restarting failed monkey after {error_idle}s")
         try:
-            await self.pause(60)
+            await self.pause(error_idle)
         finally:
             if self.stopping:
                 self.control.task_done()

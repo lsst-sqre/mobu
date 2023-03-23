@@ -18,6 +18,12 @@ class BusinessOptions(BaseModel):
     from this class and adds any additional options that it supports.
     """
 
+    error_idle_time: int = Field(
+        60,
+        title="How long to wait after an error before restarting",
+        example=600,
+    )
+
     idle_time: int = Field(
         60,
         title="How long to wait between business executions",
