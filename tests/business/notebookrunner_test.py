@@ -141,10 +141,9 @@ async def test_alert(
         "business": {
             "failure_count": 1,
             "image": {
-                "digest": ANY,
-                "name": "Recommended (Weekly 2021_33)",
+                "description": "Recommended (Weekly 2077_43)",
                 "reference": (
-                    "registry.hub.docker.com/lsstsqre/sciplat-lab:recommended"
+                    "lighthouse.ceres/library/sketchbook:recommended"
                 ),
             },
             "name": "NotebookRunner",
@@ -190,7 +189,7 @@ async def test_alert(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Image*\nRecommended (Weekly 2021_33)",
+                            "text": "*Image*\nRecommended (Weekly 2077_43)",
                             "verbatim": True,
                         },
                         {

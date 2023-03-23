@@ -2,17 +2,117 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from abc import ABCMeta, abstractmethod
+from enum import Enum
+from typing import Literal, Optional
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
-from ..jupyter import JupyterConfig, JupyterImage
 from .base import BusinessData, BusinessOptions
 
 __all__ = [
     "NubladoBusinessData",
     "NubladoBusinessOptions",
 ]
+
+
+class NubladoImageClass(str, Enum):
+    """Possible ways of selecting an image."""
+
+    RECOMMENDED = "recommended"
+    LATEST_RELEASE = "latest-release"
+    LATEST_WEEKLY = "latest-weekly"
+    LATEST_DAILY = "latest-daily"
+    BY_REFERENCE = "by-reference"
+    BY_TAG = "by-tag"
+
+
+class NubladoImageSize(Enum):
+    """Acceptable sizes of images to spawn."""
+
+    Fine = "Fine"
+    Diminutive = "Diminutive"
+    Tiny = "Tiny"
+    Small = "Small"
+    Medium = "Medium"
+    Large = "Large"
+    Huge = "Huge"
+    Gargantuan = "Gargantuan"
+    Colossal = "Colossal"
+
+
+class NubladoImage(BaseModel, metaclass=ABCMeta):
+    """Base class for different ways of specifying the lab image to spawn."""
+
+    # Ideally this would just be class, but it is a keyword and adding all the
+    # plumbing to correctly serialize Pydantic models by alias instead of
+    # field name is tedious and annoying. Live with the somewhat verbose name.
+    image_class: NubladoImageClass = Field(
+        ...,
+        title="Class of image to spawn",
+    )
+
+    size: NubladoImageSize = Field(
+        NubladoImageSize.Large,
+        title="Size of image to spawn",
+        description="Must be one of the sizes understood by Nublado.",
+    )
+
+    @abstractmethod
+    def to_spawn_form(self) -> dict[str, str]:
+        """Convert to data suitable for posting to JupyterHub's spawn form.
+
+        Returns
+        -------
+        dict of str to str
+            Post data to send to the JupyterHub spawn page.
+        """
+
+
+class NubladoImageByClass(NubladoImage):
+    """Spawn the recommended image."""
+
+    image_class: Literal[
+        NubladoImageClass.RECOMMENDED,
+        NubladoImageClass.LATEST_RELEASE,
+        NubladoImageClass.LATEST_WEEKLY,
+        NubladoImageClass.LATEST_DAILY,
+    ] = Field(
+        NubladoImageClass.RECOMMENDED,
+        title="Class of image to spawn",
+    )
+
+    def to_spawn_form(self) -> dict[str, str]:
+        return {
+            "image_class": self.image_class.value,
+            "size": self.size.value,
+        }
+
+
+class NubladoImageByReference(NubladoImage):
+    """Spawn an image by full Docker reference."""
+
+    image_class: Literal[NubladoImageClass.BY_REFERENCE] = Field(
+        NubladoImageClass.BY_REFERENCE, title="Class of image to spawn"
+    )
+
+    reference: str = Field(..., title="Docker reference of lab image to spawn")
+
+    def to_spawn_form(self) -> dict[str, str]:
+        return {"image_list": self.reference, "size": self.size.value}
+
+
+class NubladoImageByTag(NubladoImage):
+    """Spawn an image by image tag."""
+
+    image_class: Literal[NubladoImageClass.BY_TAG] = Field(
+        NubladoImageClass.BY_TAG, title="Class of image to spawn"
+    )
+
+    tag: str = Field(..., title="Tag of image to spawn")
+
+    def to_spawn_form(self) -> dict[str, str]:
+        return {"image_tag": self.tag, "size": self.size.value}
 
 
 class NubladoBusinessOptions(BusinessOptions):
@@ -33,6 +133,17 @@ class NubladoBusinessOptions(BusinessOptions):
         60, title="Timeout for deleting a lab in seconds", example=60
     )
 
+    # Zero-to-JupyterHub forces the spawner timeout to 10 minutes, and this is
+    # not unreasonable if the user is trying to spawn an image that isn't
+    # prepulled. Since JupyterHub won't let us delete a lab while it's waiting
+    # for spawn, increase the error idle time to long enough that JupyterHub
+    # will have timed out.
+    error_idle_time: int = Field(
+        600,
+        title="How long to wait after an error before restarting",
+        example=600,
+    )
+
     execution_idle_time: int = Field(
         1,
         title="How long to wait between cell executions in seconds",
@@ -50,6 +161,12 @@ class NubladoBusinessOptions(BusinessOptions):
         ),
     )
 
+    image: (
+        NubladoImageByClass | NubladoImageByReference | NubladoImageByTag
+    ) = Field(
+        default_factory=NubladoImageByClass, title="Nublado lab image to use"
+    )
+
     jitter: int = Field(
         0,
         title="Maximum random time to pause",
@@ -62,11 +179,6 @@ class NubladoBusinessOptions(BusinessOptions):
             " herd problem."
         ),
         example=60,
-    )
-
-    jupyter: JupyterConfig = Field(
-        default_factory=JupyterConfig,
-        title="Jupyter lab spawning configuration",
     )
 
     spawn_settle_time: int = Field(
@@ -85,6 +197,8 @@ class NubladoBusinessOptions(BusinessOptions):
         610, title="Timeout for spawning a lab in seconds", example=610
     )
 
+    url_prefix: str = Field("/nb/", title="URL prefix for JupyterHub")
+
     working_directory: Optional[str] = Field(
         None,
         title="Working directory when running code",
@@ -92,10 +206,24 @@ class NubladoBusinessOptions(BusinessOptions):
     )
 
 
+class RunningImage(BaseModel):
+    """Information about the running JupyterLab image."""
+
+    reference: Optional[str] = Field(
+        None,
+        title="Docker reference for the image",
+    )
+
+    description: Optional[str] = Field(
+        None,
+        title="Human-readable description of the image",
+    )
+
+
 class NubladoBusinessData(BusinessData):
     """Status of a running Nublado business."""
 
-    image: Optional[JupyterImage] = Field(
+    image: Optional[RunningImage] = Field(
         None,
         title="JupyterLab image information",
         description="Will only be present when there is an active Jupyter lab",

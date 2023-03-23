@@ -23,7 +23,7 @@ from safir.datetime import current_datetime
 from yarl import URL
 
 from mobu.config import config
-from mobu.services.business.nublado import _GET_NODE
+from mobu.services.business.nublado import _GET_IMAGE, _GET_NODE
 from mobu.storage.jupyter import JupyterLabSession
 
 
@@ -71,6 +71,7 @@ class MockJupyter:
         self.delete_immediate = True
         self.spawn_timeout = False
         self.redirect_loop = False
+        self.lab_form: dict[str, dict[str, str]] = {}
         self._delete_at: dict[str, datetime | None] = {}
         self._fail: dict[str, dict[JupyterAction, bool]] = {}
 
@@ -160,6 +161,7 @@ class MockJupyter:
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         assert state == JupyterState.LOGGED_IN
         self.state[user] = JupyterState.SPAWN_PENDING
+        self.lab_form[user] = kwargs["data"]
         return CallbackResult(
             status=302,
             headers={"Location": _url(f"hub/spawn-pending/{user}")},
@@ -296,7 +298,19 @@ class MockJupyterWebSocket(Mock):
 
     async def receive_json(self) -> dict[str, Any]:
         assert self._header
-        if self._code == _GET_NODE:
+        if self._code == _GET_IMAGE:
+            self._code = None
+            return {
+                "msg_type": "stream",
+                "parent_header": self._header,
+                "content": {
+                    "text": (
+                        "lighthouse.ceres/library/sketchbook:recommended\n"
+                        "Recommended (Weekly 2077_43)\n"
+                    )
+                },
+            }
+        elif self._code == _GET_NODE:
             self._code = None
             return {
                 "msg_type": "stream",

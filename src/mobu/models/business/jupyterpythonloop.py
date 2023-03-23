@@ -31,6 +31,7 @@ class JupyterPythonLoopOptions(NubladoBusinessOptions):
             "The number of code snippets to execute before restarting the lab."
         ),
         example=25,
+        ge=1,
     )
 
 

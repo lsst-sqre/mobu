@@ -61,6 +61,17 @@ class Configuration(BaseSettings):
         example="https://data.example.org/",
     )
 
+    use_cachemachine: bool = Field(
+        True,
+        field="Whether to use cachemachine to look up an image",
+        description=(
+            "Set this to false in environments using the new Nublado lab"
+            " controller."
+        ),
+        env="USE_CACHEMACHINE",
+        example=False,
+    )
+
     cachemachine_image_policy: CachemachinePolicy = Field(
         CachemachinePolicy.available,
         field="Class of cachemachine images to use",

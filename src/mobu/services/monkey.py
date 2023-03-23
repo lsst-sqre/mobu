@@ -211,8 +211,8 @@ class Monkey:
         )
         fileHandler = logging.FileHandler(logfile.name)
         fileHandler.setFormatter(formatter)
-        logger = logging.getLogger("mobu")
-        logger.handlers.clear()
+        logger = logging.getLogger(self._name)
+        logger.handlers = []
         logger.setLevel(logging.INFO)
         logger.addHandler(fileHandler)
         logger.propagate = False

@@ -15,6 +15,13 @@ from ..support.util import wait_for_business
 
 
 @pytest.mark.asyncio
+async def test_empty(client: AsyncClient) -> None:
+    r = await client.get("/mobu/flocks")
+    assert r.status_code == 200
+    assert r.json() == []
+
+
+@pytest.mark.asyncio
 async def test_start_stop(
     client: AsyncClient, mock_aioresponses: aioresponses
 ) -> None:

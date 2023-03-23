@@ -12,11 +12,13 @@ __all__ = [
 
 
 class BusinessOptions(BaseModel):
-    """Options for monkey business.
+    """Options for monkey business."""
 
-    Each type of business should create its own options class that inherits
-    from this class and adds any additional options that it supports.
-    """
+    error_idle_time: int = Field(
+        60,
+        title="How long to wait after an error before restarting",
+        example=600,
+    )
 
     idle_time: int = Field(
         60,

@@ -37,9 +37,14 @@ from ..exceptions import (
     JupyterResponseError,
     JupyterWebSocketError,
 )
-from ..models.jupyter import JupyterConfig, JupyterImage, JupyterImageClass
+from ..models.business.nublado import (
+    NubladoImage,
+    NubladoImageByClass,
+    NubladoImageByReference,
+    NubladoImageClass,
+)
 from ..models.user import AuthenticatedUser
-from .cachemachine import CachemachineClient
+from .cachemachine import CachemachineClient, JupyterCachemachineImage
 
 __all__ = ["JupyterClient", "JupyterLabSession"]
 
@@ -215,18 +220,18 @@ class JupyterClient:
 
     def __init__(
         self,
+        *,
         user: AuthenticatedUser,
-        log: BoundLogger,
-        jupyter_config: JupyterConfig,
+        url_prefix: str,
+        image_config: NubladoImage,
+        logger: BoundLogger,
     ) -> None:
         self.user = user
-        self.log = log
-        self.config = jupyter_config
+        self.log = logger
+        self.config = image_config
         if not config.environment_url:
             raise RuntimeError("environment_url not set")
-        self.jupyter_url = (
-            str(config.environment_url).rstrip("/") + jupyter_config.url_prefix
-        )
+        self.jupyter_url = str(config.environment_url).rstrip("/") + url_prefix
 
         xsrftoken = "".join(
             random.choices(string.ascii_uppercase + string.digits, k=16)
@@ -240,10 +245,13 @@ class JupyterClient:
 
         # We also send the XSRF token to cachemachine because of how we're
         # sharing the session, but that shouldn't matter.
-        assert config.gafaelfawr_token
-        self.cachemachine = CachemachineClient(
-            session, config.gafaelfawr_token, self.user.username
-        )
+        self._cachemachine = None
+        if config.use_cachemachine:
+            if not config.gafaelfawr_token:
+                raise RuntimeError("GAFAELFAWR_TOKEN not set")
+            self._cachemachine = CachemachineClient(
+                session, config.gafaelfawr_token, self.user.username
+            )
 
     async def close(self) -> None:
         await self.session.close()
@@ -291,18 +299,31 @@ class JupyterClient:
         return result
 
     @_convert_exception
-    async def spawn_lab(self) -> JupyterImage:
+    async def spawn_lab(self) -> None:
         spawn_url = self.jupyter_url + "hub/spawn"
 
         # Determine what image to spawn.
-        if self.config.image_class == JupyterImageClass.RECOMMENDED:
-            image = await self.cachemachine.get_recommended()
-        elif self.config.image_class == JupyterImageClass.LATEST_WEEKLY:
-            image = await self.cachemachine.get_latest_weekly()
+        if self._cachemachine:
+            image_class = self.config.image_class
+            if isinstance(self.config, NubladoImageByClass):
+                if image_class == NubladoImageClass.RECOMMENDED:
+                    image = await self._cachemachine.get_recommended()
+                elif image_class == NubladoImageClass.LATEST_WEEKLY:
+                    image = await self._cachemachine.get_latest_weekly()
+                else:
+                    msg = f"Unsupported image class {image_class}"
+                    raise ValueError(msg)
+            elif isinstance(self.config, NubladoImageByReference):
+                reference = self.config.reference
+                image = JupyterCachemachineImage.from_reference(reference)
+            else:
+                msg = f"Unsupported image class {image_class}"
+                raise ValueError(msg)
+            spawn_form = self._build_spawn_form_from_cachemachine(image)
         else:
-            assert self.config.image_reference
-            image = JupyterImage.from_reference(self.config.image_reference)
-        msg = f"Spawning lab image {image.name} for {self.user.username}"
+            spawn_form = self.config.to_spawn_form()
+
+        msg = f"Spawning lab image for {self.user.username}"
         self.log.info(msg)
 
         # Retrieving the spawn page before POSTing to it appears to trigger
@@ -313,16 +334,11 @@ class JupyterClient:
 
         # POST the options form to the spawn page.  This should redirect to
         # the spawn-pending page, which will return a 200.
-        data = self._build_jupyter_spawn_form(image)
-        async with self.session.post(spawn_url, data=data) as r:
+        async with self.session.post(spawn_url, data=spawn_form) as r:
             if r.status != 200:
                 raise await JupyterResponseError.from_response(
                     self.user.username, r
                 )
-
-        # Return information about the image spawned so that we can use it to
-        # annotate timers and get it into error reports.
-        return image
 
     async def spawn_progress(self) -> AsyncIterator[ProgressMessage]:
         """Monitor lab spawn progress.
@@ -497,10 +513,12 @@ class JupyterClient:
         """
         return _ANSI_REGEX.sub("", string)
 
-    def _build_jupyter_spawn_form(self, image: JupyterImage) -> dict[str, str]:
+    def _build_spawn_form_from_cachemachine(
+        self, image: JupyterCachemachineImage
+    ) -> dict[str, str]:
         """Construct the form to submit to the JupyterHub login page."""
         return {
             "image_list": str(image),
             "image_dropdown": "use_image_from_dropdown",
-            "size": self.config.image_size,
+            "size": self.config.size.value,
         }
