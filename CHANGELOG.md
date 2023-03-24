@@ -4,6 +4,12 @@ Versioning follows [semver](https://semver.org/).
 
 Dependencies are updated to the latest available version during each release. Those changes are not noted here explicitly.
 
+## 5.0.1 (unreleased)
+
+### Bug fixes
+
+- The code to determine the Docker reference and description of the running Nublado image is now more robust against unexpected output.
+
 ## 5.0.0 (2023-03-22)
 
 ### Backwards-incompatible changes
