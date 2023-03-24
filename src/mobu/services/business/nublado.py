@@ -247,10 +247,16 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             session = await self._client.create_labsession(notebook_name)
         with self.timings.start("execute_setup", self.annotations()):
             image_data = await self._client.run_python(session, _GET_IMAGE)
-            reference, description = image_data.strip().split("\n", 1)
+            if "\n" in image_data:
+                reference, description = image_data.split("\n", 1)
+            else:
+                msg = "Unable to get running image from reply"
+                self.logger.warning(msg, image_data=image_data)
+                reference = None
+                description = None
             self._image = RunningImage(
-                reference=reference or None,
-                description=description or None,
+                reference=reference.strip() if reference else None,
+                description=description.strip() if description else None,
             )
             if self.options.get_node:
                 # Our libraries currently spew warning messages when imported.
