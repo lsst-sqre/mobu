@@ -136,6 +136,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         return result
 
     async def startup(self) -> None:
+        await self.hub_logout()
         if self.options.jitter:
             with self.timings.start("pre_login_delay"):
                 max_delay = self.options.jitter
@@ -190,6 +191,11 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         self.logger.info("Logging in to hub")
         with self.timings.start("hub_login"):
             await self._client.hub_login()
+
+    async def hub_logout(self) -> None:
+        self.logger.info("Logging out of hub")
+        with self.timings.start("hub_logout"):
+            await self._client.hub_logout()
 
     async def spawn_lab(self) -> bool:
         with self.timings.start("spawn_lab", self.annotations()) as sw:

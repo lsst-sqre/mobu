@@ -29,6 +29,7 @@ from mobu.storage.jupyter import JupyterLabSession
 
 class JupyterAction(Enum):
     LOGIN = "login"
+    LOGOUT = "logout"
     HOME = "home"
     HUB = "hub"
     USER = "user"
@@ -88,6 +89,13 @@ class MockJupyter:
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         if state == JupyterState.LOGGED_OUT:
             self.state[user] = JupyterState.LOGGED_IN
+        return CallbackResult(status=200)
+
+    def logout(self, url: URL, **kwargs: Any) -> CallbackResult:
+        user = self._get_user(kwargs["headers"]["Authorization"])
+        if JupyterAction.LOGOUT in self._fail.get(user, {}):
+            return CallbackResult(status=500)
+        self.state[user] = JupyterState.LOGGED_OUT
         return CallbackResult(status=200)
 
     def user(self, url: URL, **kwargs: Any) -> CallbackResult:
@@ -365,6 +373,7 @@ def mock_jupyter(mocked: aioresponses) -> MockJupyter:
     """
     mock = MockJupyter()
     mocked.get(_url("hub/login"), callback=mock.login, repeat=True)
+    mocked.get(_url("hub/logout"), callback=mock.logout, repeat=True)
     mocked.get(_url("hub/spawn"), repeat=True)
     mocked.post(_url("hub/spawn"), callback=mock.spawn, repeat=True)
     mocked.get(

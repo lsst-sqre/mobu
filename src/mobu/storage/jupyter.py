@@ -265,6 +265,14 @@ class JupyterClient:
                 )
 
     @_convert_exception
+    async def hub_logout(self) -> None:
+        async with self.session.get(self.jupyter_url + "hub/logout") as r:
+            if r.status != 200:
+                raise await JupyterResponseError.from_response(
+                    self.user.username, r
+                )
+
+    @_convert_exception
     async def lab_login(self) -> None:
         self.log.info("Logging into lab")
         lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
