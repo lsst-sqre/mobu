@@ -74,10 +74,46 @@ class MobuSlackException(SlackException):
         exception type field that we don't care about and adds some additional
         text to the main message that we don't want.
         """
-        return SlackMessage(message=str(self), fields=self.common_fields())
+        return SlackMessage(
+            message=str(self),
+            blocks=self.common_blocks(),
+            fields=self.common_fields(),
+        )
+
+    def common_blocks(self) -> list[SlackBaseBlock]:
+        """Return common blocks to put in any alert.
+
+        Returns
+        -------
+        list of SlackBaseBlock
+            Common blocks to add to the Slack message.
+        """
+        blocks: list[SlackBaseBlock] = []
+        if self.annotations.get("node"):
+            node = self.annotations["node"]
+            blocks.append(SlackTextBlock(heading="Node", text=node))
+        if self.annotations.get("notebook"):
+            notebook = self.annotations["notebook"]
+            if self.annotations.get("cell"):
+                cell = self.annotations["cell"]
+                text = f"`{notebook}` cell {cell}"
+                blocks.append(SlackTextBlock(heading="Cell", text=text))
+            else:
+                block = SlackTextBlock(heading="Notebook", text=notebook)
+                blocks.append(block)
+        elif self.annotations.get("cell"):
+            cell = self.annotations["cell"]
+            blocks.append(SlackTextBlock(heading="Cell", text=cell))
+        return blocks
 
     def common_fields(self) -> list[SlackBaseField]:
-        """Return common fields to put in any alert."""
+        """Return common fields to put in any alert.
+
+        Returns
+        -------
+        list of SlackBaseField
+            Common fields to add to the Slack message.
+        """
         failed_at = format_datetime_for_logging(self.failed_at)
         fields: list[SlackBaseField] = [
             SlackTextField(heading="Failed at", text=failed_at),
@@ -93,21 +129,6 @@ class MobuSlackException(SlackException):
         if self.annotations.get("image"):
             image = self.annotations["image"]
             fields.append(SlackTextField(heading="Image", text=image))
-        if self.annotations.get("node"):
-            node = self.annotations["node"]
-            fields.append(SlackTextField(heading="Node", text=node))
-        if self.annotations.get("notebook"):
-            notebook = self.annotations["notebook"]
-            if self.annotations.get("cell"):
-                cell = self.annotations["cell"]
-                text = f"`{notebook}` cell {cell}"
-                fields.append(SlackTextField(heading="Cell", text=text))
-            else:
-                field = SlackTextField(heading="Notebook", text=notebook)
-                fields.append(field)
-        elif self.annotations.get("cell"):
-            cell = self.annotations["cell"]
-            fields.append(SlackTextField(heading="Cell", text=cell))
         return fields
 
 
@@ -169,7 +190,10 @@ class CodeExecutionError(MobuSlackException):
             attachment = SlackCodeBlock(heading="Error", code=self.error)
             attachments.insert(0, attachment)
         return SlackMessage(
-            message=intro, fields=self.common_fields(), attachments=attachments
+            message=intro,
+            fields=self.common_fields(),
+            blocks=self.common_blocks(),
+            attachments=attachments,
         )
 
 
@@ -236,7 +260,9 @@ class JupyterResponseError(MobuSlackException):
         fields = self.common_fields()
         if self.reason:
             fields.append(SlackTextField(heading="Message", text=self.reason))
-        return SlackMessage(message=intro, fields=fields)
+        return SlackMessage(
+            message=intro, fields=fields, blocks=self.common_blocks()
+        )
 
 
 class JupyterSpawnError(MobuSlackException):
@@ -259,7 +285,7 @@ class JupyterSpawnError(MobuSlackException):
     def to_slack(self) -> SlackMessage:
         """Format the error as a Slack Block Kit message."""
         message = super().to_slack()
-        message.blocks = [SlackTextBlock(heading="Log", text=self.log)]
+        message.blocks.append(SlackTextBlock(heading="Log", text=self.log))
         return message
 
 
@@ -274,7 +300,7 @@ class JupyterTimeoutError(MobuSlackException):
         """Format the error as a Slack Block Kit message."""
         message = super().to_slack()
         if self.log:
-            message.blocks = [SlackTextBlock(heading="Log", text=self.log)]
+            message.blocks.append(SlackTextBlock(heading="Log", text=self.log))
         return message
 
 
