@@ -133,17 +133,6 @@ class NubladoBusinessOptions(BusinessOptions):
         60, title="Timeout for deleting a lab in seconds", example=60
     )
 
-    # Zero-to-JupyterHub forces the spawner timeout to 10 minutes, and this is
-    # not unreasonable if the user is trying to spawn an image that isn't
-    # prepulled. Since JupyterHub won't let us delete a lab while it's waiting
-    # for spawn, increase the error idle time to long enough that JupyterHub
-    # will have timed out.
-    error_idle_time: int = Field(
-        600,
-        title="How long to wait after an error before restarting",
-        example=600,
-    )
-
     execution_idle_time: int = Field(
         1,
         title="How long to wait between cell executions in seconds",
