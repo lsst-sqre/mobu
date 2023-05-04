@@ -594,12 +594,15 @@ async def test_code_exception(
                             "text": "*Image*\nRecommended (Weekly 2077_43)",
                             "verbatim": True,
                         },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Node*\nsome-node",
-                            "verbatim": True,
-                        },
                     ],
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "*Node*\nsome-node",
+                        "verbatim": True,
+                    },
                 },
             ],
             "attachments": [
@@ -717,12 +720,15 @@ async def test_long_error(
                             "text": "*Image*\nRecommended (Weekly 2077_43)",
                             "verbatim": True,
                         },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Node*\nsome-node",
-                            "verbatim": True,
-                        },
                     ],
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "*Node*\nsome-node",
+                        "verbatim": True,
+                    },
                 },
             ],
             "attachments": [

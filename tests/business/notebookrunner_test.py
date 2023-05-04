@@ -192,20 +192,25 @@ async def test_alert(
                             "text": "*Image*\nRecommended (Weekly 2077_43)",
                             "verbatim": True,
                         },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Node*\nsome-node",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": (
-                                "*Cell*\n`exception.ipynb`"
-                                " cell `ed399c0a` (#2)"
-                            ),
-                            "verbatim": True,
-                        },
                     ],
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "*Node*\nsome-node",
+                        "verbatim": True,
+                    },
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": (
+                            "*Cell*\n`exception.ipynb` cell `ed399c0a` (#2)"
+                        ),
+                        "verbatim": True,
+                    },
                 },
             ],
             "attachments": [
