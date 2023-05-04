@@ -253,6 +253,8 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             image_data = await self._client.run_python(session, _GET_IMAGE)
             if "\n" in image_data:
                 reference, description = image_data.split("\n", 1)
+                msg = f"Running on image {reference} ({description})"
+                self.logger.info(msg)
             else:
                 msg = "Unable to get running image from reply"
                 self.logger.warning(msg, image_data=image_data)
