@@ -128,9 +128,9 @@ attrs==23.1.0 \
     #   -c requirements/main.txt
     #   aiohttp
     #   scriv
-certifi==2022.12.7 \
-    --hash=sha256:35824b4c3a97115964b408844d64aa14db1cc518f6562e8d7261699d1350a9e3 \
-    --hash=sha256:4ad3232f5e926d6718ec31cfc1fcadfde020920e278684144551c91769c7bc18
+certifi==2023.5.7 \
+    --hash=sha256:0f0d56dc5a6ad56fd4ba36484d6cc34451e1c6548c61daad8c320169f91eddc7 \
+    --hash=sha256:c6c2e98f5c7869efca1f8916fed228dd91539f9f1b444c314c06eef02980c716
     # via
     #   -c requirements/main.txt
     #   httpcore
@@ -701,9 +701,9 @@ types-pyyaml==6.0.12.9 \
     --hash=sha256:5aed5aa66bd2d2e158f75dda22b059570ede988559f030cf294871d3b647e3e8 \
     --hash=sha256:c51b1bd6d99ddf0aa2884a7a328810ebf70a4262c292195d3f4f9a0005f9eeb6
     # via -r requirements/dev.in
-types-requests==2.29.0.0 \
-    --hash=sha256:4cf6e323e856c779fbe8815bb977a5bf5d6c5034713e4c17ff2a9a20610f5b27 \
-    --hash=sha256:c86f4a955d943d2457120dbe719df24ef0924e11177164d10a0373cf311d7b4d
+types-requests==2.30.0.0 \
+    --hash=sha256:c6cf08e120ca9f0dc4fa4e32c3f953c3fba222bcc1db6b97695bce8da1ba9864 \
+    --hash=sha256:dec781054324a70ba64430ae9e62e7e9c8e4618c185a5cb3f87a6738251b5a31
     # via -r requirements/dev.in
 types-urllib3==1.26.25.12 \
     --hash=sha256:3ba3d3a8ee46e0d5512c6bd0594da4f10b2584b47a470f8422044a2ab462f1df \
