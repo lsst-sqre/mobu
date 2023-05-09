@@ -52,9 +52,11 @@ class Timings:
 class Stopwatch:
     """Container for time data.
 
-    A metric container for time data and its serialization.  Use as a context
-    manager.  Will automatically close the timer when the context manager is
-    exited.
+    A metric container for time data and its serialization. Normally, this
+    should be used as a context manager and it will automatically close the
+    timer when the context manager is exited. It can instead be stored in a
+    variable and stopped explicitly with ``stop`` in cases where a context
+    manager isn't appropriate.
 
     Parameters
     ----------
@@ -119,3 +121,7 @@ class Stopwatch:
             elapsed=elapsed,
             failed=self.failed,
         )
+
+    def stop(self) -> None:
+        """Explicitly stop the stopwatch, outside of a context manager."""
+        self.stop_time = current_datetime(microseconds=True)

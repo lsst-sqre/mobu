@@ -6,16 +6,17 @@
 #     make update-deps
 
 # These dependencies are for fastapi including some optional features.
-aiofiles
 fastapi
 starlette
 uvicorn[standard]
 
 # Other dependencies.
 GitPython
-aiohttp
 aiojobs
 click
+httpx
+httpx-sse
+httpx-ws
 jinja2
 pydantic
 pyvo

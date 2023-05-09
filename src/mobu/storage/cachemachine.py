@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional, Self
 
-from aiohttp import ClientSession
+from httpx import AsyncClient, HTTPError, HTTPStatusError
 from pydantic import BaseModel, Field
 
 from ..config import config
@@ -64,9 +64,9 @@ class CachemachineClient:
     """
 
     def __init__(
-        self, session: ClientSession, token: str, username: str
+        self, http_client: AsyncClient, token: str, username: str
     ) -> None:
-        self._session = session
+        self._http_client = http_client
         self._token = token
         self._username = username
         if not config.environment_url:
@@ -116,16 +116,21 @@ class CachemachineClient:
 
     async def _get_images(self) -> list[JupyterCachemachineImage]:
         headers = {"Authorization": f"bearer {self._token}"}
-        async with self._session.get(self._url, headers=headers) as r:
-            if r.status != 200:
-                msg = f"Cannot get image status: {r.status} {r.reason}"
-                raise CachemachineError(self._username, msg)
-            try:
-                data = await r.json()
-                return [
-                    JupyterCachemachineImage.from_dict(i)
-                    for i in data["images"]
-                ]
-            except Exception as e:
-                msg = f"Invalid response: {type(e).__name__}: {str(e)}"
-                raise CachemachineError(self._username, msg)
+        try:
+            r = await self._http_client.get(self._url, headers=headers)
+            r.raise_for_status()
+        except HTTPStatusError as e:
+            msg = f"Cannot get image status: {e.response.status_code}"
+            raise CachemachineError(self._username, msg)
+        except HTTPError as e:
+            msg = f"Cannot get image status: {type(e).__name__}: {str(e)}"
+            raise CachemachineError(self._username, msg)
+
+        try:
+            data = r.json()
+            return [
+                JupyterCachemachineImage.from_dict(i) for i in data["images"]
+            ]
+        except Exception as e:
+            msg = f"Invalid response: {type(e).__name__}: {str(e)}"
+            raise CachemachineError(self._username, msg)

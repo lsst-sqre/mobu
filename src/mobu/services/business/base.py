@@ -9,6 +9,7 @@ from collections.abc import AsyncIterable, AsyncIterator
 from enum import Enum
 from typing import Generic, TypeVar
 
+from httpx import AsyncClient
 from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
 
@@ -53,18 +54,22 @@ class Business(Generic[T], metaclass=ABCMeta):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+    http_client
+        Shared HTTP client.
     logger
         Logger to use to report the results of business.
 
     Attributes
     ----------
-    logger
-        Logger to use to report the results of business. This will generally
-        be attached to a file rather than the main logger.
     options
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+    http_client
+        Shared HTTP client.
+    logger
+        Logger to use to report the results of business. This will generally
+        be attached to a file rather than the main logger.
     success_count
         Number of successes.
     failure_count
@@ -76,11 +81,16 @@ class Business(Generic[T], metaclass=ABCMeta):
     """
 
     def __init__(
-        self, options: T, user: AuthenticatedUser, logger: BoundLogger
+        self,
+        options: T,
+        user: AuthenticatedUser,
+        http_client: AsyncClient,
+        logger: BoundLogger,
     ) -> None:
-        self.logger = logger
         self.options = options
         self.user = user
+        self.http_client = http_client
+        self.logger = logger
         self.success_count = 0
         self.failure_count = 0
         self.timings = Timings()

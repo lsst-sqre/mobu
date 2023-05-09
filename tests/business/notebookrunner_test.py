@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import ANY
 
 import pytest
-from aioresponses import aioresponses
+import respx
 from git.repo import Repo
 from git.util import Actor
 from httpx import AsyncClient
@@ -20,9 +20,9 @@ from ..support.util import wait_for_business
 
 @pytest.mark.asyncio
 async def test_run(
-    client: AsyncClient, mock_aioresponses: aioresponses, tmp_path: Path
+    client: AsyncClient, respx_mock: respx.Router, tmp_path: Path
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
 
     # Set up a notebook repository.
     source_path = Path(__file__).parent.parent / "notebooks"
@@ -91,10 +91,10 @@ async def test_run(
 async def test_alert(
     client: AsyncClient,
     slack: MockSlackWebhook,
-    mock_aioresponses: aioresponses,
+    respx_mock: respx.Router,
     tmp_path: Path,
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
 
     # Set up a notebook repository with the exception notebook.
     source_path = Path(__file__).parent.parent / "notebooks"
@@ -177,6 +177,11 @@ async def test_alert(
                     "fields": [
                         {"type": "mrkdwn", "text": ANY, "verbatim": True},
                         {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Exception type*\nCodeExecutionError",
+                            "verbatim": True,
+                        },
                         {
                             "type": "mrkdwn",
                             "text": "*User*\ntestuser1",

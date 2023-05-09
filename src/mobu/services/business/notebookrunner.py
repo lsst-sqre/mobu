@@ -8,11 +8,14 @@ from __future__ import annotations
 
 import json
 import random
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Optional
 
 from git.repo import Repo
+from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from ...exceptions import NotebookRepositoryError
@@ -36,6 +39,8 @@ class NotebookRunner(NubladoBusiness):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+    http_client
+        Shared HTTP client for general web access.
     logger
         Logger to use to report the results of business.
     """
@@ -44,9 +49,10 @@ class NotebookRunner(NubladoBusiness):
         self,
         options: NotebookRunnerOptions,
         user: AuthenticatedUser,
+        http_client: AsyncClient,
         logger: BoundLogger,
     ) -> None:
-        super().__init__(options, user, logger)
+        super().__init__(options, user, http_client, logger)
         self._notebook: Optional[Path] = None
         self._notebook_paths: Optional[list[Path]] = None
         self._repo_dir = TemporaryDirectory()
@@ -84,7 +90,7 @@ class NotebookRunner(NubladoBusiness):
             ]
             if not notebooks:
                 msg = "No notebooks found in {self._repo_dir.name}"
-                raise NotebookRepositoryError(msg)
+                raise NotebookRepositoryError(msg, self.user.username)
             random.shuffle(notebooks)
         return notebooks
 
@@ -101,7 +107,7 @@ class NotebookRunner(NubladoBusiness):
                 cells = json.loads(notebook_text)["cells"]
             except Exception as e:
                 msg = f"Invalid notebook {notebook.name}: {str(e)}"
-                raise NotebookRepositoryError(msg)
+                raise NotebookRepositoryError(msg, self.user.username)
 
         # Add cell numbers to all the cells, which we'll use in exception
         # reporting and to annotate timing events so that we can find cells
@@ -114,13 +120,15 @@ class NotebookRunner(NubladoBusiness):
 
         return cells
 
-    async def create_session(
+    @asynccontextmanager
+    async def open_session(
         self, notebook_name: Optional[str] = None
-    ) -> JupyterLabSession:
+    ) -> AsyncIterator[JupyterLabSession]:
         """Override to add the notebook name."""
         if not notebook_name:
             notebook_name = self._notebook.name if self._notebook else None
-        return await super().create_session(notebook_name)
+        async with super().open_session(notebook_name) as session:
+            yield session
 
     async def execute_code(self, session: JupyterLabSession) -> None:
         for count in range(self.options.max_executions):
@@ -152,7 +160,7 @@ class NotebookRunner(NubladoBusiness):
         self.logger.info(f"Executing cell {cell_id}:\n{code}\n")
         with self.timings.start("execute_cell", self.annotations(cell_id)):
             self._running_code = code
-            reply = await self._client.run_python(session, code)
+            reply = await session.run_python(code)
             self._running_code = None
         self.logger.info(f"Result:\n{reply}\n")
 

@@ -7,8 +7,8 @@ import math
 from datetime import datetime
 from typing import Optional
 
-from aiohttp import ClientSession
 from aiojobs import Scheduler
+from httpx import AsyncClient
 from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
 
@@ -21,20 +21,32 @@ __all__ = ["Flock"]
 
 
 class Flock:
-    """Container for a group of monkeys all running the same business."""
+    """Container for a group of monkeys all running the same business.
+
+    Parameters
+    ----------
+    flock_config
+        Configuration for this flock of monkeys.
+    scheduler
+        Job scheduler used to manage the tasks for the monkeys.
+    http_client
+        Shared HTTP client.
+    logger
+        Global logger.
+    """
 
     def __init__(
         self,
         *,
         flock_config: FlockConfig,
         scheduler: Scheduler,
-        session: ClientSession,
+        http_client: AsyncClient,
         logger: BoundLogger,
     ) -> None:
         self.name = flock_config.name
         self._config = flock_config
         self._scheduler = scheduler
-        self._session = session
+        self._http_client = http_client
         self._logger = logger.bind(flock=self.name)
         self._monkeys: dict[str, Monkey] = {}
         self._start_time: Optional[datetime] = None
@@ -105,7 +117,7 @@ class Flock:
             name=user.username,
             business_config=self._config.business,
             user=user,
-            session=self._session,
+            http_client=self._http_client,
             logger=self._logger,
         )
 
@@ -118,7 +130,7 @@ class Flock:
             users = self._users_from_spec(self._config.user_spec, count)
         scopes = self._config.scopes
         return [
-            await AuthenticatedUser.create(u, scopes, self._session)
+            await AuthenticatedUser.create(u, scopes, self._http_client)
             for u in users
         ]
 

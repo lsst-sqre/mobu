@@ -6,7 +6,7 @@ from typing import Any
 from unittest.mock import ANY
 
 import pytest
-from aioresponses import aioresponses
+import respx
 from httpx import AsyncClient
 
 from ..support.constants import TEST_BASE_URL
@@ -23,9 +23,9 @@ async def test_empty(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_start_stop(
-    client: AsyncClient, mock_aioresponses: aioresponses
+    client: AsyncClient, respx_mock: respx.Router
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
 
     config = {
         "name": "test",
@@ -136,9 +136,9 @@ async def test_start_stop(
 
 @pytest.mark.asyncio
 async def test_user_list(
-    client: AsyncClient, mock_aioresponses: aioresponses
+    client: AsyncClient, respx_mock: respx.Router
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses, any_uid=True)
+    mock_gafaelfawr(respx_mock, any_uid=True)
 
     config = {
         "name": "test",
@@ -215,10 +215,8 @@ async def test_user_list(
 
 
 @pytest.mark.asyncio
-async def test_errors(
-    client: AsyncClient, mock_aioresponses: aioresponses
-) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
+    mock_gafaelfawr(respx_mock)
 
     # Both users and user_spec given.
     r = await client.put(

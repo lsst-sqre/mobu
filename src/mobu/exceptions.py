@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Optional, Self
 
-from aiohttp import ClientResponse, ClientResponseError
+from httpx_ws import HTTPXWSException, WebSocketDisconnect
 from safir.datetime import format_datetime_for_logging
 from safir.slack.blockkit import (
     SlackBaseBlock,
@@ -15,50 +16,64 @@ from safir.slack.blockkit import (
     SlackMessage,
     SlackTextBlock,
     SlackTextField,
+    SlackWebException,
 )
+
+_ANSI_REGEX = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
+"""Regex that matches ANSI escape sequences."""
 
 __all__ = [
     "CachemachineError",
     "CodeExecutionError",
     "FlockNotFoundException",
-    "JupyterError",
-    "JupyterResponseError",
+    "GafaelfawrWebError",
     "JupyterTimeoutError",
+    "JupyterWebError",
     "MobuSlackException",
+    "MobuSlackWebException",
     "MonkeyNotFoundException",
     "TAPClientError",
 ]
 
 
-class FlockNotFoundException(Exception):
-    """The named flock was not found."""
+def _remove_ansi_escapes(string: str) -> str:
+    """Remove ANSI escape sequences from a string.
 
-    def __init__(self, flock: str) -> None:
-        self.flock = flock
-        super().__init__(f"Flock {flock} not found")
+    Jupyter labs like to format error messages with lots of ANSI escape
+    sequences, and Slack doesn't like that in messages (nor do humans want to
+    see them). Strip them out.
+
+    Based on `this StackOverflow answer
+    <https://stackoverflow.com/questions/14693701/>`__.
+
+    Parameters
+    ----------
+    string
+        String to strip ANSI escapes from.
+
+    Returns
+    -------
+    str
+        Sanitized string.
+    """
+    return _ANSI_REGEX.sub("", string)
 
 
-class MonkeyNotFoundException(Exception):
-    """The named monkey was not found."""
-
-    def __init__(self, monkey: str) -> None:
-        self.monkey = monkey
-        super().__init__(f"Monkey {monkey} not found")
-
-
-class NotebookRepositoryError(Exception):
-    """The repository containing notebooks to run is not valid."""
+class GafaelfawrWebError(SlackWebException):
+    """An API call to Gafaelfawr failed."""
 
 
 class MobuSlackException(SlackException):
     """Represents an exception that can be reported to Slack.
 
-    This is equivalent to `~safir.slack.blockkit.SlackException` except it
-    adds some additional fields that mobu uses. It is intended to be
-    subclassed. Subclasses must override the `to_slack` method.
+    This adds some additional fields to `~safir.slack.blockkit.SlackException`
+    but is otherwise equivalent. It is intended to be subclassed. Subclasses
+    must override the `to_slack` method.
     """
 
-    def __init__(self, user: str, msg: str) -> None:
+    def __init__(
+        self, msg: str, user: str, *, failed_at: Optional[datetime] = None
+    ) -> None:
         super().__init__(msg, user)
         self.started_at: Optional[datetime] = None
         self.event: Optional[str] = None
@@ -69,10 +84,11 @@ class MobuSlackException(SlackException):
 
         This is the generic version that only reports the text of the
         exception and common fields. Most classes will want to override it.
-        Do not use any of the formatting of the general Safir
-        `~safir.slack.blockkit.SlackException` class, since it includes an
-        exception type field that we don't care about and adds some additional
-        text to the main message that we don't want.
+
+        Returns
+        -------
+        SlackMessage
+            Formatted Slack message.
         """
         return SlackMessage(
             message=str(self),
@@ -117,13 +133,14 @@ class MobuSlackException(SlackException):
         failed_at = format_datetime_for_logging(self.failed_at)
         fields: list[SlackBaseField] = [
             SlackTextField(heading="Failed at", text=failed_at),
+            SlackTextField(heading="Exception type", text=type(self).__name__),
         ]
-        if self.user:
-            fields.append(SlackTextField(heading="User", text=self.user))
         if self.started_at:
             started_at = format_datetime_for_logging(self.started_at)
             field = SlackTextField(heading="Started at", text=started_at)
             fields.insert(0, field)
+        if self.user:
+            fields.append(SlackTextField(heading="User", text=self.user))
         if self.event:
             fields.append(SlackTextField(heading="Event", text=self.event))
         if self.annotations.get("image"):
@@ -132,10 +149,40 @@ class MobuSlackException(SlackException):
         return fields
 
 
+class MobuSlackWebException(SlackWebException, MobuSlackException):
+    """Represents an exception that can be reported to Slack.
+
+    Similar to `MobuSlackException`, this adds some additional fields to
+    `~safir.slack.blockkit.SlackWebException` but is otherwise equivalent. It
+    is intended to be subclassed. Subclasses may want to override the
+    `to_slack` method.
+    """
+
+
+class FlockNotFoundException(Exception):
+    """The named flock was not found."""
+
+    def __init__(self, flock: str) -> None:
+        self.flock = flock
+        super().__init__(f"Flock {flock} not found")
+
+
+class MonkeyNotFoundException(Exception):
+    """The named monkey was not found."""
+
+    def __init__(self, monkey: str) -> None:
+        self.monkey = monkey
+        super().__init__(f"Monkey {monkey} not found")
+
+
+class NotebookRepositoryError(MobuSlackException):
+    """The repository containing notebooks to run is not valid."""
+
+
 class CachemachineError(MobuSlackException):
     """Failed to obtain a valid image list from cachemachine."""
 
-    def __init__(self, user: str, msg: str) -> None:
+    def __init__(self, msg: str, user: str) -> None:
         super().__init__(user, f"Cachemachine error: {msg}")
 
 
@@ -144,14 +191,14 @@ class CodeExecutionError(MobuSlackException):
 
     def __init__(
         self,
-        user: str,
-        code: str,
         *,
+        user: str,
+        code: Optional[str] = None,
         code_type: str = "code",
         error: Optional[str] = None,
         status: Optional[str] = None,
     ) -> None:
-        super().__init__(user, "Code execution failed")
+        super().__init__("Code execution failed", user)
         self.code = code
         self.code_type = code_type
         self.error = error
@@ -167,9 +214,13 @@ class CodeExecutionError(MobuSlackException):
                 msg = f"{self.user}: cell of notebook {notebook} failed"
             if self.status:
                 msg += f" (status: {self.status})"
-            msg += f"\nCode: {self.code}"
+            if self.code:
+                msg += f"\nCode: {_remove_ansi_escapes(self.code)}"
+        elif self.code:
+            code = _remove_ansi_escapes(self.code)
+            msg = f"{self.user}: running {self.code_type} '{code}' failed"
         else:
-            msg = f"{self.user}: running {self.code_type} '{self.code}' failed"
+            msg = f"{self.user}: running {self.code_type} failed"
         msg += f"\nError: {self.error}"
         return msg
 
@@ -183,12 +234,15 @@ class CodeExecutionError(MobuSlackException):
         if self.status:
             intro += f" (status: {self.status})"
 
-        attachments: list[SlackBaseBlock] = [
-            SlackCodeBlock(heading="Code executed", code=self.code)
-        ]
+        attachments: list[SlackBaseBlock] = []
         if self.error:
             attachment = SlackCodeBlock(heading="Error", code=self.error)
-            attachments.insert(0, attachment)
+            attachments.append(attachment)
+        if self.code:
+            code = _remove_ansi_escapes(self.code)
+            attachment = SlackCodeBlock(heading="Code executed", code=code)
+            attachments.append(attachment)
+
         return SlackMessage(
             message=intro,
             fields=self.common_fields(),
@@ -197,103 +251,37 @@ class CodeExecutionError(MobuSlackException):
         )
 
 
-class JupyterError(MobuSlackException):
-    """An exception occurred when talking to JupyterHub or JupyterLab."""
-
-    def __init__(self, user: str, exc: Exception) -> None:
-        super().__init__(user, f"{type(exc).__name__}: {str(exc)}")
-
-
-class JupyterResponseError(MobuSlackException):
-    """Web response error from JupyterHub or JupyterLab."""
-
-    @classmethod
-    def from_exception(cls, user: str, exc: ClientResponseError) -> Self:
-        return cls(
-            url=str(exc.request_info.url),
-            user=user,
-            status=exc.status,
-            reason=exc.message or type(exc).__name__,
-            method=exc.request_info.method,
-        )
-
-    @classmethod
-    async def from_response(cls, user: str, response: ClientResponse) -> Self:
-        return cls(
-            url=str(response.url),
-            user=user,
-            status=response.status,
-            reason=response.reason or "",
-            method=response.method,
-            body=await response.text(),
-        )
-
-    def __init__(
-        self,
-        *,
-        url: str,
-        user: str,
-        status: int,
-        reason: str,
-        method: str,
-        body: Optional[str] = None,
-    ) -> None:
-        super().__init__(user, f"Status {status} from {method} {url}")
-        self.url = url
-        self.status = status
-        self.reason = reason
-        self.method = method
-        self.body = body
-
-    def __str__(self) -> str:
-        result = (
-            f"{self.user}: status {self.status} ({self.reason}) from"
-            f" {self.method} {self.url}"
-        )
-        if self.body:
-            result += f"\nBody:\n{self.body}\n"
-        return result
-
-    def to_slack(self) -> SlackMessage:
-        """Format the error as a Slack Block Kit message."""
-        intro = f"Status {self.status} from {self.method} {self.url}"
-        fields = self.common_fields()
-        if self.reason:
-            fields.append(SlackTextField(heading="Message", text=self.reason))
-        return SlackMessage(
-            message=intro, fields=fields, blocks=self.common_blocks()
-        )
-
-
 class JupyterSpawnError(MobuSlackException):
     """The Jupyter Lab pod failed to spawn."""
 
     @classmethod
-    def from_exception(cls, user: str, log: str, exc: Exception) -> Self:
-        return cls(user, log, f"{type(exc).__name__}: {str(exc)}")
+    def from_exception(cls, log: str, exc: Exception, user: str) -> Self:
+        return cls(log, user, f"{type(exc).__name__}: {str(exc)}")
 
     def __init__(
-        self, user: str, log: str, message: Optional[str] = None
+        self, log: str, user: str, message: Optional[str] = None
     ) -> None:
         if message:
             message = f"Spawning lab failed: {message}"
         else:
             message = "Spawning lab failed"
-        super().__init__(user, message)
+        super().__init__(message, user)
         self.log = log
 
     def to_slack(self) -> SlackMessage:
         """Format the error as a Slack Block Kit message."""
         message = super().to_slack()
-        message.blocks.append(SlackTextBlock(heading="Log", text=self.log))
+        if self.log:
+            block = SlackTextBlock(heading="Log", text=self.log)
+            message.blocks.append(block)
         return message
 
 
 class JupyterTimeoutError(MobuSlackException):
     """Timed out waiting for the lab to spawn."""
 
-    def __init__(self, user: str, msg: str, log: Optional[str] = None) -> None:
-        super().__init__(user, msg)
+    def __init__(self, msg: str, user: str, log: Optional[str] = None) -> None:
+        super().__init__(msg, user)
         self.log = log
 
     def to_slack(self) -> SlackMessage:
@@ -304,13 +292,77 @@ class JupyterTimeoutError(MobuSlackException):
         return message
 
 
+class JupyterWebError(MobuSlackWebException):
+    """An error occurred when talking to JupyterHub or JupyterLab."""
+
+
 class JupyterWebSocketError(MobuSlackException):
-    """Unexpected messages on the session WebSocket."""
+    """An error occurred talking to the Jupyter lab WebSocket."""
+
+    @classmethod
+    def from_exception(cls, exc: HTTPXWSException, user: str) -> Self:
+        """Convert from an `~httpx_ws.HTTPXWSException`.
+
+        Parameters
+        ----------
+        exc
+            Underlying exception.
+        user
+            User the monkey is running as.
+
+        Returns
+        -------
+        JupyterWebSocketError
+            Newly-created exception.
+        """
+        if isinstance(exc, WebSocketDisconnect):
+            return cls(
+                "WebSocket unexpectedly disconnected",
+                user,
+                code=exc.code,
+                reason=exc.reason,
+            )
+        else:
+            return cls(f"{type(exc).__name__}: {str(exc)}", user)
+
+    def __init__(
+        self,
+        msg: str,
+        user: str,
+        *,
+        code: Optional[int] = None,
+        reason: Optional[str] = None,
+    ) -> None:
+        super().__init__(msg, user)
+        self.code = code
+        self.reason = reason
+
+    def to_slack(self) -> SlackMessage:
+        """Format this exception as a Slack notification.
+
+        Returns
+        -------
+        SlackMessage
+            Formatted message.
+        """
+        message = super().to_slack()
+        if self.reason:
+            reason = self.reason
+            if self.code:
+                reason = f"{self.reason} ({self.code})"
+            else:
+                reason = self.reason
+            field = SlackTextField(heading="Reason", text=reason)
+            message.fields.append(field)
+        elif self.code:
+            field = SlackTextField(heading="Code", text=str(self.code))
+            message.fields.append(field)
+        return message
 
 
 class TAPClientError(MobuSlackException):
     """Creating a TAP client failed."""
 
-    def __init__(self, user: str, exc: Exception) -> None:
+    def __init__(self, exc: Exception, *, user: str) -> None:
         msg = f"Unable to create TAP client: {type(exc).__name__}: {str(exc)}"
-        super().__init__(user, msg)
+        super().__init__(msg, user)

@@ -14,6 +14,7 @@ import pyvo
 import requests
 import shortuuid
 import yaml
+from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from ...config import config
@@ -35,6 +36,8 @@ class TAPQueryRunner(Business):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+    http_client
+        Shared HTTP client for general web access.
     logger
         Logger to use to report the results of business.
     """
@@ -43,9 +46,10 @@ class TAPQueryRunner(Business):
         self,
         options: TAPQueryRunnerOptions,
         user: AuthenticatedUser,
+        http_client: AsyncClient,
         logger: BoundLogger,
     ) -> None:
-        super().__init__(options, user, logger)
+        super().__init__(options, user, http_client, logger)
         self._running_query: Optional[str] = None
         self._client: Optional[pyvo.dal.TAPService] = None
         self._pool = ThreadPoolExecutor(max_workers=1)
@@ -85,8 +89,8 @@ class TAPQueryRunner(Business):
                     await self.run_async_query(query)
             except Exception as e:
                 raise CodeExecutionError(
-                    self.user.username,
-                    query,
+                    user=self.user.username,
+                    code=query,
                     code_type="TAP query",
                     error=f"{type(e).__name__}: {str(e)}",
                 ) from e
@@ -135,7 +139,7 @@ class TAPQueryRunner(Business):
             auth.add_security_method_for_url(tap_url + "/tables", "lsst-token")
             return pyvo.dal.TAPService(tap_url, auth)
         except Exception as e:
-            raise TAPClientError(self.user.username, e) from e
+            raise TAPClientError(e, user=self.user.username) from e
 
     def _generate_random_polygon(
         self,

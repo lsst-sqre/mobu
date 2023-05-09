@@ -8,9 +8,9 @@ from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from typing import Optional
 
 import structlog
-from aiohttp import ClientSession
 from aiojobs import Scheduler
 from aiojobs._job import Job
+from httpx import AsyncClient
 from safir.datetime import current_datetime, format_datetime_for_logging
 from safir.logging import Profile
 from safir.slack.blockkit import SlackException, SlackMessage, SlackTextField
@@ -37,7 +37,21 @@ DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 class Monkey:
-    """Runs one business and manages its log and configuration."""
+    """Runs one business and manages its log and configuration.
+
+    Parameters
+    ----------
+    name
+        Name of this monkey.
+    business_config
+        Configuration for the business it should run.
+    user
+        User the monkey should run as.
+    http_client
+        Shared HTTP client.
+    logger
+        Global logger.
+    """
 
     def __init__(
         self,
@@ -45,12 +59,12 @@ class Monkey:
         name: str,
         business_config: BusinessConfig,
         user: AuthenticatedUser,
-        session: ClientSession,
+        http_client: AsyncClient,
         logger: BoundLogger,
     ):
         self._name = name
         self._restart = business_config.restart
-        self._session = session
+        self._http_client = http_client
         self._user = user
 
         self._state = MonkeyState.IDLE
@@ -67,19 +81,19 @@ class Monkey:
         self.business: Business
         if isinstance(business_config, EmptyLoopConfig):
             self.business = EmptyLoop(
-                business_config.options, user, self._logger
+                business_config.options, user, self._http_client, self._logger
             )
         elif isinstance(business_config, JupyterPythonLoopConfig):
             self.business = JupyterPythonLoop(
-                business_config.options, user, self._logger
+                business_config.options, user, self._http_client, self._logger
             )
         elif isinstance(business_config, NotebookRunnerConfig):
             self.business = NotebookRunner(
-                business_config.options, user, self._logger
+                business_config.options, user, self._http_client, self._logger
             )
         elif isinstance(business_config, TAPQueryRunnerConfig):
             self.business = TAPQueryRunner(
-                business_config.options, user, self._logger
+                business_config.options, user, self._http_client, self._logger
             )
         else:
             msg = f"Unknown business config {business_config}"
@@ -173,13 +187,12 @@ class Monkey:
         self.state = MonkeyState.FINISHED
 
     async def stop(self) -> None:
-        if self._state == MonkeyState.FINISHED:
-            return
-        elif self._state in (MonkeyState.RUNNING, MonkeyState.ERROR):
+        if self._state in (MonkeyState.RUNNING, MonkeyState.ERROR):
             self._state = MonkeyState.STOPPING
             await self.business.stop()
         if self._job:
             await self._job.wait()
+            self._job = None
         self._state = MonkeyState.FINISHED
 
     def dump(self) -> MonkeyData:
