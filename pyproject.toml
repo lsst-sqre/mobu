@@ -81,6 +81,19 @@ line_length = 79
 known_first_party = ["mobu", "tests"]
 skip = ["docs/conf.py"]
 
+[tool.pydocstyle]
+# Reference: https://www.pydocstyle.org/en/stable/error_codes.html
+convention = "numpy"
+add-ignore = [
+    "D105", # Missing docstring in magic method
+    "D104", # Missing docstring in public package
+    "D102", # Missing docstring in public method (docstring inheritance)
+    "D100", # Missing docstring in public module
+    # Nested classes named Config are used by Pydantic for configuration, and
+    # don't have a meaningful docstring.
+    "D106",
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
 filterwarnings = [

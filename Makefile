@@ -25,4 +25,4 @@ update: update-deps init
 
 .PHONY: run
 run:
-	adev runserver --app-factory create_app src/mobu/app.py
+	tox run -e run

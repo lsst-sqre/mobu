@@ -10,7 +10,7 @@ from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from ..config import config
-from ..exceptions import FlockNotFoundException
+from ..exceptions import FlockNotFoundError
 from ..models.flock import FlockConfig, FlockSummary
 from .flock import Flock
 
@@ -98,12 +98,12 @@ class FlockManager:
 
         Raises
         ------
-        FlockNotFoundException
+        FlockNotFoundError
             Raised if no flock was found with that name.
         """
         flock = self._flocks.get(name)
         if flock is None:
-            raise FlockNotFoundException(name)
+            raise FlockNotFoundError(name)
         return flock
 
     def list_flocks(self) -> list[str]:
@@ -133,9 +133,14 @@ class FlockManager:
         ----------
         name
             Name of flock to stop.
+
+        Raises
+        ------
+        FlockNotFoundError
+            Raised if no flock was found with that name.
         """
         flock = self._flocks.get(name)
         if flock is None:
-            raise FlockNotFoundException(name)
+            raise FlockNotFoundError(name)
         del self._flocks[name]
         await flock.stop()

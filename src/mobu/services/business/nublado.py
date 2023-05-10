@@ -113,7 +113,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
 
     @abstractmethod
     async def execute_code(self, session: JupyterLabSession) -> None:
-        """The core of the execution loop.
+        """Execute some code inside the Jupyter lab.
 
         Must be overridden by subclasses to use the provided lab session to
         perform whatever operations are desired inside the lab. If multiple
@@ -158,7 +158,6 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
                 self.logger.warning(msg)
 
     async def execute(self) -> None:
-        """The work done in each iteration of the loop."""
         if self.options.delete_lab or await self._client.is_lab_stopped():
             self._image = None
             if not await self.spawn_lab():
@@ -171,7 +170,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             await self.delete_lab()
 
     async def execution_idle(self) -> bool:
-        """Executed between each unit of work execution.
+        """Pause between each unit of work execution.
 
         This is not used directly by `NubladoBusiness`. It should be called by
         subclasses in `execute_code` in between each block of code that is
@@ -184,7 +183,6 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         await self.delete_lab()
 
     async def idle(self) -> None:
-        """The idle pause at the end of each loop."""
         if self.options.jitter:
             self.logger.info("Idling...")
             with self.timings.start("idle"):

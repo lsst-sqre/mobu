@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from safir.datetime import current_datetime
 from safir.metadata import get_metadata
 from safir.models import ErrorModel
+from safir.slack.webhook import SlackRouteErrorHandler
 
 from ..config import config
 from ..dependencies.context import RequestContext, context_dependency
@@ -16,8 +17,10 @@ from ..models.index import Index
 from ..models.monkey import MonkeyData
 from ..models.solitary import SolitaryConfig, SolitaryResult
 
-external_router = APIRouter()
+external_router = APIRouter(route_class=SlackRouteErrorHandler)
 """FastAPI router for all external handlers."""
+
+__all__ = ["external_router"]
 
 
 class FormattedJSONResponse(JSONResponse):

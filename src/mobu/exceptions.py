@@ -6,8 +6,11 @@ import re
 from datetime import datetime
 from typing import Optional, Self
 
+from fastapi import status
 from httpx_ws import HTTPXWSException, WebSocketDisconnect
 from safir.datetime import format_datetime_for_logging
+from safir.fastapi import ClientRequestError
+from safir.models import ErrorLocation
 from safir.slack.blockkit import (
     SlackBaseBlock,
     SlackBaseField,
@@ -25,13 +28,13 @@ _ANSI_REGEX = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
 __all__ = [
     "CachemachineError",
     "CodeExecutionError",
-    "FlockNotFoundException",
+    "FlockNotFoundError",
     "GafaelfawrWebError",
     "JupyterTimeoutError",
     "JupyterWebError",
     "MobuSlackException",
     "MobuSlackWebException",
-    "MonkeyNotFoundException",
+    "MonkeyNotFoundError",
     "TAPClientError",
 ]
 
@@ -61,6 +64,30 @@ def _remove_ansi_escapes(string: str) -> str:
 
 class GafaelfawrWebError(SlackWebException):
     """An API call to Gafaelfawr failed."""
+
+
+class FlockNotFoundError(ClientRequestError):
+    """The named flock was not found."""
+
+    error = "flock_not_found"
+    status_code = status.HTTP_404_NOT_FOUND
+
+    def __init__(self, flock: str) -> None:
+        self.flock = flock
+        msg = f"Flock {flock} not found"
+        super().__init__(msg, ErrorLocation.path, ["flock"])
+
+
+class MonkeyNotFoundError(ClientRequestError):
+    """The named monkey was not found."""
+
+    error = "monkey_not_found"
+    status_code = status.HTTP_404_NOT_FOUND
+
+    def __init__(self, monkey: str) -> None:
+        self.monkey = monkey
+        msg = f"Monkey {monkey} not found"
+        super().__init__(msg, ErrorLocation.path, ["monkey"])
 
 
 class MobuSlackException(SlackException):
@@ -157,22 +184,6 @@ class MobuSlackWebException(SlackWebException, MobuSlackException):
     is intended to be subclassed. Subclasses may want to override the
     `to_slack` method.
     """
-
-
-class FlockNotFoundException(Exception):
-    """The named flock was not found."""
-
-    def __init__(self, flock: str) -> None:
-        self.flock = flock
-        super().__init__(f"Flock {flock} not found")
-
-
-class MonkeyNotFoundException(Exception):
-    """The named monkey was not found."""
-
-    def __init__(self, monkey: str) -> None:
-        self.monkey = monkey
-        super().__init__(f"Monkey {monkey} not found")
 
 
 class NotebookRepositoryError(MobuSlackException):
