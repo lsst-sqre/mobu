@@ -104,6 +104,12 @@ class Configuration(BaseSettings):
         env="SAFIR_NAME",
     )
 
+    path_prefix: str = Field(
+        "/mobu",
+        title="URL prefix for application API",
+        env="SAFIR_PATH_PREFIX",
+    )
+
     profile: Profile = Field(
         Profile.development,
         title="Application logging profile",

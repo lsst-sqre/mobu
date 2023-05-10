@@ -28,7 +28,7 @@ __all__ = ["app", "config"]
 
 
 configure_logging(
-    profile=config.profile, log_level=config.log_level, name="mobu"
+    name="mobu", profile=config.profile, log_level=config.log_level
 )
 if config.profile == Profile.production:
     configure_uvicorn_logging(config.log_level)
@@ -37,15 +37,15 @@ app = FastAPI(
     title="mobu",
     description=metadata("mobu")["Summary"],
     version=version("mobu"),
-    openapi_url=f"/{config.name}/openapi.json",
-    docs_url=f"/{config.name}/docs",
-    redoc_url=f"/{config.name}/redoc",
+    openapi_url=f"{config.path_prefix}/openapi.json",
+    docs_url=f"{config.path_prefix}/docs",
+    redoc_url=f"{config.path_prefix}/redoc",
 )
 """The main FastAPI application for mobu."""
 
 # Attach the routers.
 app.include_router(internal_router)
-app.include_router(external_router, prefix=f"/{config.name}")
+app.include_router(external_router, prefix=config.path_prefix)
 
 # Add middleware.
 app.add_middleware(XForwardedMiddleware)
