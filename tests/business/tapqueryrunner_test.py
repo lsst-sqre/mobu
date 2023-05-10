@@ -8,10 +8,11 @@ from unittest.mock import ANY, patch
 
 import pytest
 import pyvo
+import respx
 import structlog
 import yaml
-from aioresponses import aioresponses
 from httpx import AsyncClient
+from safir.dependencies.http_client import http_client_dependency
 from safir.testing.slack import MockSlackWebhook
 
 import mobu
@@ -24,10 +25,8 @@ from ..support.util import wait_for_business
 
 
 @pytest.mark.asyncio
-async def test_run(
-    client: AsyncClient, mock_aioresponses: aioresponses
-) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
+    mock_gafaelfawr(respx_mock)
 
     with patch.object(pyvo.dal, "TAPService"):
         r = await client.put(
@@ -71,14 +70,14 @@ async def test_run(
 async def test_setup_error(
     client: AsyncClient,
     slack: MockSlackWebhook,
-    mock_aioresponses: aioresponses,
+    respx_mock: respx.Router,
 ) -> None:
     """Test that client creation is deferred to setup.
 
     This also doubles as a test that failures during setup are recorded as a
     failed test execution and result in a Slack alert.
     """
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
 
     r = await client.put(
         "/mobu/flocks",
@@ -117,6 +116,11 @@ async def test_setup_error(
                         {"type": "mrkdwn", "text": ANY, "verbatim": True},
                         {
                             "type": "mrkdwn",
+                            "text": "*Exception type*\nTAPClientError",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*User*\ntapuser",
                             "verbatim": True,
                         },
@@ -135,11 +139,9 @@ async def test_setup_error(
 
 @pytest.mark.asyncio
 async def test_alert(
-    client: AsyncClient,
-    slack: MockSlackWebhook,
-    mock_aioresponses: aioresponses,
+    client: AsyncClient, slack: MockSlackWebhook, respx_mock: respx.Router
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
 
     with patch.object(pyvo.dal, "TAPService") as mock:
         mock.return_value.search.side_effect = [Exception("some error")]
@@ -176,6 +178,11 @@ async def test_alert(
                     "fields": [
                         {"type": "mrkdwn", "text": ANY, "verbatim": True},
                         {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Exception type*\nCodeExecutionError",
+                            "verbatim": True,
+                        },
                         {
                             "type": "mrkdwn",
                             "text": "*User*\ntestuser1",
@@ -236,8 +243,9 @@ async def test_random_object() -> None:
         )
         logger = structlog.get_logger(__file__)
         options = TAPQueryRunnerOptions(query_set=query_set)
+        http_client = await http_client_dependency()
         with patch.object(pyvo.dal, "TAPService"):
-            runner = TAPQueryRunner(options, user, logger)
+            runner = TAPQueryRunner(options, user, http_client, logger)
         parameters = runner._generate_parameters()
 
         assert parameters["object"] in objects

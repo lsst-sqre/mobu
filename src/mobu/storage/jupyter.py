@@ -7,34 +7,34 @@ jupyter kernels remotely.
 from __future__ import annotations
 
 import asyncio
-import json
 import random
-import re
 import string
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Callable, Coroutine
 from dataclasses import dataclass
 from functools import wraps
-from http.cookies import BaseCookie
-from typing import Any, Optional, TypeVar, cast
+from types import TracebackType
+from typing import (
+    Any,
+    Concatenate,
+    Literal,
+    Optional,
+    ParamSpec,
+    Self,
+    TypeVar,
+)
+from urllib.parse import urlparse
 from uuid import uuid4
 
-from aiohttp import (
-    ClientError,
-    ClientResponse,
-    ClientResponseError,
-    ClientSession,
-    ClientWebSocketResponse,
-    TCPConnector,
-)
-from aiohttp.client import _RequestContextManager, _WSRequestContextManager
+from httpx import AsyncClient, HTTPError
+from httpx_sse import EventSource, aconnect_sse
+from httpx_ws import AsyncWebSocketSession, HTTPXWSException, aconnect_ws
 from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
 
 from ..config import config
 from ..exceptions import (
     CodeExecutionError,
-    JupyterError,
-    JupyterResponseError,
+    JupyterWebError,
     JupyterWebSocketError,
 )
 from ..models.business.nublado import (
@@ -46,30 +46,14 @@ from ..models.business.nublado import (
 from ..models.user import AuthenticatedUser
 from .cachemachine import CachemachineClient, JupyterCachemachineImage
 
+P = ParamSpec("P")
+T = TypeVar("T")
+
 __all__ = ["JupyterClient", "JupyterLabSession"]
 
-_ANSI_REGEX = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
-"""Regex that matches ANSI escape sequences.
 
-See https://stackoverflow.com/questions/14693701/
-"""
-
-
-@dataclass(frozen=True)
-class JupyterLabSession:
-    """Represents an open session with a Jupyter Lab.
-
-    This holds the information a client needs to talk to the Lab in order to
-    execute code.
-    """
-
-    session_id: str
-    kernel_id: str
-    websocket: ClientWebSocketResponse
-
-
-@dataclass(frozen=True)
-class ProgressMessage:
+@dataclass(frozen=True, slots=True)
+class SpawnProgressMessage:
     """A progress message from lab spawning."""
 
     progress: int
@@ -85,33 +69,48 @@ class ProgressMessage:
 class JupyterSpawnProgress:
     """Provides status and polling of lab spawn progress.
 
-    This wraps an ongoing call to the progress API, which is an EventStream
-    API that provides status messages for a spawning lab.
+    This parses messages from the progress API, which is an EventStream API
+    that provides status messages for a spawning lab.
+
+    Parameters
+    ----------
+    event_source
+        Open EventStream connection.
+    logger
+        Logger to use.
     """
 
-    def __init__(self, response: ClientResponse, logger: BoundLogger) -> None:
-        self._response = response
+    def __init__(self, event_source: EventSource, logger: BoundLogger) -> None:
+        self._source = event_source
         self._logger = logger
         self._start = current_datetime(microseconds=True)
 
-    async def __aiter__(self) -> AsyncIterator[ProgressMessage]:
-        """Iterate over spawn progress events."""
-        async for line in self._response.content:
-            if not line.startswith(b"data:"):
-                continue
-            raw_event = line[len(b"data:") :].decode().strip()
+    async def __aiter__(self) -> AsyncIterator[SpawnProgressMessage]:
+        """Iterate over spawn progress events.
 
-            # We have a valid event.  Parse it.
+        Yields
+        ------
+        SpawnProgressMessage
+            The next progress message.
+
+        Raises
+        ------
+        httpx.HTTPError
+            Raised if a protocol error occurred while connecting to the
+            EventStream API or reading or parsing a message from it.
+        """
+        async for sse in self._source.aiter_sse():
             try:
-                event_dict = json.loads(raw_event)
-                event = ProgressMessage(
+                event_dict = sse.json()
+                event = SpawnProgressMessage(
                     progress=event_dict["progress"],
                     message=event_dict["message"],
                     ready=event_dict.get("ready", False),
                 )
             except Exception as e:
-                msg = f"Ignoring invalid progress event: {raw_event}: {str(e)}"
-                self._logger.warning(msg)
+                err = f"{type(e).__name__}: {str(e)}"
+                msg = f"Error parsing progress event, ignoring: {err}"
+                self._logger.warning(msg, type=sse.event, data=sse.data)
                 continue
 
             # Log the event and yield it.
@@ -126,324 +125,125 @@ class JupyterSpawnProgress:
             yield event
 
 
-class JupyterClientSession:
-    """Wrapper around `aiohttp.ClientSession` using token authentication.
+@dataclass(frozen=True, slots=True)
+class JupyterOutput:
+    """Output from a Jupyter lab kernel.
 
-    Unfortunately, aioresponses does not capture headers set on the session
-    instead of with each individual call, which means that we can't see the
-    token and thus determine what user we should interact with in the test
-    suite.  Work around this with this wrapper class around
-    `aiohttp.ClientSession` that just adds the token header to every call.
+    Parsing WebSocket messages will result in a stream of these objects with
+    partial output, ending in a final one with the ``done`` flag set.
+    """
+
+    content: str
+    """Partial output from code execution (may be empty)."""
+
+    done: bool = False
+    """Whether this indicates the end of execution."""
+
+
+class JupyterLabSession:
+    """Represents an open session with a Jupyter Lab.
+
+    A context manager providing an open WebSocket session. The session will be
+    automatically deleted when exiting the context manager. Objects of this
+    type should be created by calling `JupyterClient.open_lab_session`.
 
     Parameters
     ----------
-    session
-        The session to wrap.
-    token
-        The token to send.
-
-    Notes
-    -----
-    Please do not add any business logic to this class.  It's a workaround for
-    https://github.com/pnuckowski/aioresponses/issues/111 and should expose
-    exactly the same API as `aiohttp.ClientSesssion` except for the
-    constructor.  The goal is to delete it in its entirety and set the
-    ``Authorization`` header in the `aiohttp.ClientSession` once that
-    aioresponses issue is fixed.
-    """
-
-    def __init__(self, session: ClientSession, token: str) -> None:
-        self._session = session
-        self._token = token
-
-    async def close(self) -> None:
-        await self._session.close()
-
-    def request(
-        self, method: str, url: str, **kwargs: Any
-    ) -> _RequestContextManager:
-        if "headers" not in kwargs:
-            kwargs["headers"] = {}
-        kwargs["headers"]["Authorization"] = f"Bearer {self._token}"
-        return self._session.request(method, url, **kwargs)
-
-    def delete(self, url: str, **kwargs: Any) -> _RequestContextManager:
-        return self.request("delete", url, **kwargs)
-
-    def get(self, url: str, **kwargs: Any) -> _RequestContextManager:
-        return self.request("get", url, **kwargs)
-
-    def post(self, url: str, **kwargs: Any) -> _RequestContextManager:
-        return self.request("post", url, **kwargs)
-
-    def ws_connect(
-        self, *args: Any, **kwargs: Any
-    ) -> _WSRequestContextManager:
-        if "headers" not in kwargs:
-            kwargs["headers"] = {}
-        kwargs["headers"]["Authorization"] = f"Bearer {self._token}"
-        return self._session.ws_connect(*args, **kwargs)
-
-
-# Type of method that can be decorated with _convert_exception.
-F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
-
-
-def _convert_exception(f: F) -> F:
-    """Convert web errors to a `~mobu.exceptions.MobuSlackException`."""
-
-    @wraps(f)
-    async def wrapper(*args: Any, **kwargs: Any) -> Any:
-        try:
-            return await f(*args, **kwargs)
-        except ClientResponseError as e:
-            obj = args[0]
-            username = obj.user.username
-            raise JupyterResponseError.from_exception(username, e) from e
-        except (ClientError, ConnectionResetError, asyncio.TimeoutError) as e:
-            obj = args[0]
-            username = obj.user.username
-            raise JupyterError(username, e) from e
-
-    return cast(F, wrapper)
-
-
-class JupyterClient:
-    """Client for talking to JupyterHub and Jupyter labs.
-
-    Notes
-    -----
-    This class creates its own `aiohttp.ClientSession` for each instance,
-    separate from the one used by the rest of the application so that it can
-    add some custom settings.
+    username
+        User the session is for.
+    session_id
+        Identifier of the Jupyter lab session, which must be created before
+        creating this session.
+    websocket_url
+        URL on which to create a WebSocket session.
+    close_url
+        URL to which to send a DELETE to close the lab session.
+    client
+        HTTP client to talk to the Jupyter lab.
+    logger
+        Logger to use.
     """
 
     def __init__(
         self,
         *,
-        user: AuthenticatedUser,
-        url_prefix: str,
-        image_config: NubladoImage,
+        username: str,
+        session_id: str,
+        websocket_url: str,
+        close_url: str,
+        client: AsyncClient,
         logger: BoundLogger,
     ) -> None:
-        self.user = user
-        self.log = logger
-        self.config = image_config
-        if not config.environment_url:
-            raise RuntimeError("environment_url not set")
-        self.jupyter_url = str(config.environment_url).rstrip("/") + url_prefix
+        self._username = username
+        self._session_id = session_id
+        self._websocket_url = websocket_url
+        self._close_url = close_url
+        self._client = client
+        self._logger = logger
+        self._socket: Optional[AsyncWebSocketSession] = None
 
-        xsrftoken = "".join(
-            random.choices(string.ascii_uppercase + string.digits, k=16)
-        )
-        headers = {"x-xsrftoken": xsrftoken}
-        session = ClientSession(
-            headers=headers, connector=TCPConnector(limit=10000)
-        )
-        session.cookie_jar.update_cookies(BaseCookie({"_xsrf": xsrftoken}))
-        self.session = JupyterClientSession(session, user.token)
+    async def __aenter__(self) -> Self:
+        url = self._websocket_url
+        try:
+            self._socket = await aconnect_ws(url, self._client).__aenter__()
+        except HTTPXWSException as e:
+            user = self._username
+            raise JupyterWebSocketError.from_exception(e, user) from e
+        return self
 
-        # We also send the XSRF token to cachemachine because of how we're
-        # sharing the session, but that shouldn't matter.
-        self._cachemachine = None
-        if config.use_cachemachine:
-            if not config.gafaelfawr_token:
-                raise RuntimeError("GAFAELFAWR_TOKEN not set")
-            self._cachemachine = CachemachineClient(
-                session, config.gafaelfawr_token, self.user.username
-            )
+    async def __aexit__(
+        self,
+        exc_type: type[Exception] | None,
+        exc_val: Exception | None,
+        exc_tb: TracebackType | None,
+    ) -> Literal[False]:
+        try:
+            r = await self._client.delete(self._close_url)
+            r.raise_for_status()
+        except HTTPError as e:
+            # Be careful to not raise an exception if we're already processing
+            # an exception, since the exception from inside the context
+            # manager is almost certainly more interesting than the exception
+            # from closing the lab session.
+            if exc_type:
+                self._logger.exception("Failed to close session")
+            else:
+                raise JupyterWebError.from_exception(e, self._username) from e
+        return False
 
-    async def close(self) -> None:
-        await self.session.close()
-
-    @_convert_exception
-    async def hub_login(self) -> None:
-        async with self.session.get(self.jupyter_url + "hub/login") as r:
-            if r.status != 200:
-                raise await JupyterResponseError.from_response(
-                    self.user.username, r
-                )
-
-    @_convert_exception
-    async def lab_login(self) -> None:
-        self.log.info("Logging into lab")
-        lab_url = self.jupyter_url + f"user/{self.user.username}/lab"
-        async with self.session.get(lab_url) as r:
-            if r.status != 200:
-                raise await JupyterResponseError.from_response(
-                    self.user.username, r
-                )
-
-    @_convert_exception
-    async def is_lab_stopped(self, final: bool = False) -> bool:
-        """Determine if the lab is fully stopped.
+    async def run_python(self, code: str) -> str:
+        """Run a block of Python code in a Jupyter lab kernel.
 
         Parameters
         ----------
-        final
-            The last attempt, so log some additional information if the lab
-            still isn't gone.
+        code
+            Code to run.
+
+        Returns
+        -------
+        str
+            Output from the kernel.
+
+        Raises
+        ------
+        JupyterCodeExecutionError
+            Raised if an error was reported by the Jupyter lab kernel.
+        JupyterWebSocketError
+            Raised if there was a WebSocket protocol error while running code
+            or waiting for the response.
+        RuntimeError
+            Raised if called before entering the context and thus before
+            creating the WebSocket session.
         """
-        user_url = self.jupyter_url + f"hub/api/users/{self.user.username}"
-        headers = {"Referer": self.jupyter_url + "hub/home"}
-        async with self.session.get(user_url, headers=headers) as r:
-            if r.status != 200:
-                raise await JupyterResponseError.from_response(
-                    self.user.username, r
-                )
-            data = await r.json()
-        result = data["servers"] == {}
-        if final and not result:
-            msg = f'Server data still shows running lab: {data["servers"]}'
-            self.log.warning(msg)
-        return result
-
-    @_convert_exception
-    async def spawn_lab(self) -> None:
-        spawn_url = self.jupyter_url + "hub/spawn"
-
-        # Determine what image to spawn.
-        if self._cachemachine:
-            image_class = self.config.image_class
-            if isinstance(self.config, NubladoImageByClass):
-                if image_class == NubladoImageClass.RECOMMENDED:
-                    image = await self._cachemachine.get_recommended()
-                elif image_class == NubladoImageClass.LATEST_WEEKLY:
-                    image = await self._cachemachine.get_latest_weekly()
-                else:
-                    msg = f"Unsupported image class {image_class}"
-                    raise ValueError(msg)
-            elif isinstance(self.config, NubladoImageByReference):
-                reference = self.config.reference
-                image = JupyterCachemachineImage.from_reference(reference)
-            else:
-                msg = f"Unsupported image class {image_class}"
-                raise ValueError(msg)
-            spawn_form = self._build_spawn_form_from_cachemachine(image)
-        else:
-            spawn_form = self.config.to_spawn_form()
-
-        msg = f"Spawning lab image for {self.user.username}"
-        self.log.info(msg)
-
-        # Retrieving the spawn page before POSTing to it appears to trigger
-        # some necessary internal state construction (and also more accurately
-        # simulates a user interaction).  See DM-23864.
-        async with self.session.get(spawn_url) as r:
-            await r.text()
-
-        # POST the options form to the spawn page.  This should redirect to
-        # the spawn-pending page, which will return a 200.
-        async with self.session.post(spawn_url, data=spawn_form) as r:
-            if r.status != 200:
-                raise await JupyterResponseError.from_response(
-                    self.user.username, r
-                )
-
-    async def spawn_progress(self) -> AsyncIterator[ProgressMessage]:
-        """Monitor lab spawn progress.
-
-        This is an EventStream API, which provides a stream of events until
-        the lab is spawned or the spawn fails.
-
-        Unlike other `JupyterClient` methods, the caller is responsible for
-        handling exceptions and converting them to an exception that can
-        produce a Slack notification.
-        """
-        progress_url = (
-            self.jupyter_url
-            + f"hub/api/users/{self.user.username}/server/progress"
-        )
-        headers = {"Referer": self.jupyter_url + "hub/home"}
-        while True:
-            async with self.session.get(progress_url, headers=headers) as r:
-                if r.status != 200:
-                    raise await JupyterResponseError.from_response(
-                        self.user.username, r
-                    )
-                progress = JupyterSpawnProgress(r, self.log)
-                async for message in progress:
-                    yield message
-
-            # Sometimes we get only the initial request message and then the
-            # progress API immediately closes the connection.  If that
-            # happens, try reconnecting to the progress stream after a short
-            # delay.
-            if message.progress > 0:
-                break
-            await asyncio.sleep(1)
-            self.log.info("Retrying spawn progress request")
-
-    @_convert_exception
-    async def delete_lab(self) -> None:
-        if await self.is_lab_stopped():
-            self.log.info("Lab is already stopped")
-            return
-        user = self.user.username
-        server_url = self.jupyter_url + f"hub/api/users/{user}/server"
-        headers = {"Referer": self.jupyter_url + "hub/home"}
-        async with self.session.delete(server_url, headers=headers) as r:
-            if r.status not in [200, 202, 204]:
-                raise await JupyterResponseError.from_response(
-                    self.user.username, r
-                )
-
-    @_convert_exception
-    async def create_labsession(
-        self, notebook_name: Optional[str] = None, *, kernel_name: str = "LSST"
-    ) -> JupyterLabSession:
-        session_url = (
-            self.jupyter_url + f"user/{self.user.username}/api/sessions"
-        )
-        session_type = "notebook" if notebook_name else "console"
-        body = {
-            "kernel": {"name": kernel_name},
-            "name": notebook_name or "(no notebook)",
-            "path": notebook_name if notebook_name else uuid4().hex,
-            "type": session_type,
-        }
-
-        async with self.session.post(session_url, json=body) as r:
-            if r.status != 201:
-                raise await JupyterResponseError.from_response(
-                    self.user.username, r
-                )
-            response = await r.json()
-
-        kernel_id = response["kernel"]["id"]
-        channels_url = (
-            self.jupyter_url
-            + f"user/{self.user.username}/api/kernels/"
-            + f"{kernel_id}/channels"
-        )
-        websocket = await self.session.ws_connect(channels_url, max_msg_size=0)
-        return JupyterLabSession(
-            session_id=response["id"], kernel_id=kernel_id, websocket=websocket
-        )
-
-    @_convert_exception
-    async def delete_labsession(self, session: JupyterLabSession) -> None:
-        user = self.user.username
-        session_url = (
-            self.jupyter_url + f"user/{user}/api/sessions/{session.session_id}"
-        )
-
-        await session.websocket.close()
-        async with self.session.delete(session_url) as r:
-            if r.status != 204:
-                raise await JupyterResponseError.from_response(
-                    self.user.username, r
-                )
-
-    async def run_python(self, session: JupyterLabSession, code: str) -> str:
-        username = self.user.username
-        msg_id = uuid4().hex
-        msg = {
+        if not self._socket:
+            raise RuntimeError("JupyterLabSession not opened")
+        message_id = uuid4().hex
+        message = {
             "header": {
-                "username": username,
+                "username": self._username,
                 "version": "5.0",
-                "session": session.session_id,
-                "msg_id": msg_id,
+                "session": self._session_id,
+                "msg_id": message_id,
                 "msg_type": "execute_request",
             },
             "parent_header": {},
@@ -458,60 +258,400 @@ class JupyterClient:
             "metadata": {},
             "buffers": {},
         }
+        await self._socket.send_json(message)
 
-        await session.websocket.send_json(msg)
-
+        # Consume messages waiting for the response.
         result = ""
         while True:
             try:
-                r = await session.websocket.receive_json()
-            except TypeError as e:
-                # The aiohttp WebSocket code raises TypeError on various
-                # WebSocket problems, including the unhelpful error message
-                # TypeError("Received message 257:None is not str") if the
-                # WebSocket connection is abruptly closed.  Translate these
-                # into useful errors that we can annotate.
-                if "Received message 257" in str(e):
-                    error = "WebSocket unexpectedly closed"
-                elif "Received message 258:" in str(e):
-                    error = str(e).removeprefix("Received message 258:")
-                else:
-                    error = str(e)
-                error = error.removesuffix(" is not str")
-                raise JupyterWebSocketError(username, error) from e
+                message = await self._socket.receive_json()
+            except HTTPXWSException as e:
+                user = self._username
+                raise JupyterWebSocketError.from_exception(e, user) from e
+            self._logger.debug("Received kernel message", message=message)
 
-            self.log.debug(f"Recieved kernel message: {r}")
-            msg_type = r["msg_type"]
-            if r.get("parent_header", {}).get("msg_id") != msg_id:
-                # Ignore messages not intended for us. The web socket is
-                # rather chatty with broadcast status messages.
+            # Parse the received message.
+            try:
+                output = self._parse_message(message, message_id)
+            except CodeExecutionError as e:
+                e.code = code
+                raise
+            except Exception as e:
+                error = f"{type(e).__name__}: {str(e)}"
+                msg = "Ignoring unparsable web socket message"
+                self._logger.warning(msg, error=error, message=message)
+
+            # Accumulate the results if they are of interest, and exit and
+            # return the results if this message indicated the end of
+            # execution.
+            if not output:
                 continue
-            if msg_type == "error":
-                error = "".join(r["content"]["traceback"])
-                if result:
-                    error = result + "\n" + error
-                error = self._remove_ansi_escapes(error)
-                raise CodeExecutionError(username, code, error=error)
-            elif msg_type == "stream":
-                result += r["content"]["text"]
-            elif msg_type == "execute_reply":
-                status = r["content"]["status"]
-                if status == "ok":
-                    return result
-                else:
-                    raise CodeExecutionError(username, code, status=status)
+            result += output.content
+            if output.done:
+                break
 
-    @staticmethod
-    def _remove_ansi_escapes(string: str) -> str:
-        """Remove ANSI escape sequences from a string.
+        # Return the accumulated output.
+        return result
 
-        Jupyter Lab likes to format error messages with lots of ANSI escape
-        sequences, and Slack doesn't like that in messages (nor do humans want
-        to see them).  Strip them out.
+    def _parse_message(
+        self, message: dict[str, Any], message_id: str
+    ) -> JupyterOutput | None:
+        """Parse a WebSocket message from a Jupyter lab kernel.
 
-        See https://stackoverflow.com/questions/14693701/
+        Parameters
+        ----------
+        message
+            Raw message decoded from JSON.
+        message_id
+            Identifier of message we sent, used to ignore messages that aren't
+            in response to our message.
+
+        Returns
+        -------
+        JupyterOutput or None
+            Parsed message, or `None` if the message wasn't of interest.
+
+        Raises
+        ------
+        KeyError
+            Raised if the WebSocket message wasn't in the expected format.
         """
-        return _ANSI_REGEX.sub("", string)
+        msg_type = message["msg_type"]
+
+        # Ignore headers not intended for us. Thie web socket is rather
+        # chatty with broadcast status messages.
+        if message.get("parent_header", {}).get("msg_id") != message_id:
+            return None
+
+        # Analyse the message type to figure out what to do with the response.
+        if msg_type in ("execute_input", "status"):
+            return None
+        elif msg_type == "stream":
+            return JupyterOutput(content=message["content"]["text"])
+        elif msg_type == "execute_reply":
+            status = message["content"]["status"]
+            if status == "ok":
+                return JupyterOutput(content="", done=True)
+            else:
+                raise CodeExecutionError(user=self._username, status=status)
+        elif msg_type == "error":
+            error = "".join(message["content"]["traceback"])
+            raise CodeExecutionError(user=self._username, error=error)
+        else:
+            msg = "Ignoring unrecognized WebSocket message"
+            self._logger.warning(msg, message_type=msg_type, message=message)
+            return None
+
+
+def _convert_exception(
+    f: Callable[Concatenate[JupyterClient, P], Coroutine[None, None, T]]
+) -> Callable[Concatenate[JupyterClient, P], Coroutine[None, None, T]]:
+    """Convert web errors to a `~mobu.exceptions.JupyterWebError`.
+
+    This can only be used as a decorator on `JupyterClientSession` or another
+    object that has a ``user`` property containing an
+    `~mobu.models.user.AuthenticatedUser`.
+    """
+
+    @wraps(f)
+    async def wrapper(
+        client: JupyterClient, *args: P.args, **kwargs: P.kwargs
+    ) -> T:
+        try:
+            return await f(client, *args, **kwargs)
+        except HTTPError as e:
+            username = client.user.username
+            raise JupyterWebError.from_exception(e, username) from e
+
+    return wrapper
+
+
+def _convert_iterator_exception(
+    f: Callable[Concatenate[JupyterClient, P], AsyncIterator[T]]
+) -> Callable[Concatenate[JupyterClient, P], AsyncIterator[T]]:
+    """Convert web errors to a `~mobu.exceptions.JupyterWebError`.
+
+    This can only be used as a decorator on `JupyterClientSession` or another
+    object that has a ``user`` property containing an
+    `~mobu.models.user.AuthenticatedUser`.
+    """
+
+    @wraps(f)
+    async def wrapper(
+        client: JupyterClient, *args: P.args, **kwargs: P.kwargs
+    ) -> AsyncIterator[T]:
+        try:
+            async for result in f(client, *args, **kwargs):
+                yield result
+        except HTTPError as e:
+            username = client.user.username
+            raise JupyterWebError.from_exception(e, username) from e
+
+    return wrapper
+
+
+class JupyterClient:
+    """Client for talking to JupyterHub and Jupyter labs.
+
+    Parameters
+    ----------
+    user
+        User as which to authenticate.
+    url_prefix
+        URL prefix to talk to JupyterHub.
+    image_config
+        Specification for image to request when spawning.
+    logger
+        Logger to use.
+
+    Notes
+    -----
+    This class creates its own `httpx.AsyncClient` for each instance, separate
+    from the one used by the rest of the application, since it needs to
+    isolate the cookies set by JupyterHub and the lab from those for any other
+    user.
+    """
+
+    def __init__(
+        self,
+        *,
+        user: AuthenticatedUser,
+        url_prefix: str,
+        image_config: NubladoImage,
+        logger: BoundLogger,
+    ) -> None:
+        self.user = user
+        self._logger = logger.bind(user=user.username)
+        if not config.environment_url:
+            raise RuntimeError("environment_url not set")
+        self._config = image_config
+        base_url = str(config.environment_url).rstrip("/")
+        self._jupyter_url = base_url + url_prefix
+
+        # Construct a connection pool to use for requets to JupyterHub. We
+        # have to create a separate connection pool for every monkey, since
+        # each will get user-specific cookies set by JupyterHub. If we shared
+        # connection pools, monkeys would overwrite each other's cookies and
+        # get authentication failures from labs.
+        #
+        # Add the XSRF token used by JupyterHub to the headers and cookie.
+        # Ideally we would use whatever path causes these to be set in a
+        # normal browser, but I haven't figured that out.
+        alphabet = string.ascii_uppercase + string.digits
+        xsrf_token = "".join(random.choices(alphabet, k=16))
+        headers = {
+            "Authorization": f"Bearer {user.token}",
+            "X-XSRFToken": xsrf_token,
+        }
+        cookies = {"_xsrf": xsrf_token}
+        self._client = AsyncClient(
+            headers=headers,
+            cookies=cookies,
+            follow_redirects=True,
+            timeout=30.0,  # default is 5, but JupyterHub can be slow
+        )
+
+        # Use the same client to talk to cachemachine. This means we'll send
+        # the same headers and cookies there, but that won't matter (the
+        # header gets overridden), and cachemachine support is soon going away
+        # so it's not worth a lot of effort.
+        self._cachemachine = None
+        if config.use_cachemachine:
+            if not config.gafaelfawr_token:
+                raise RuntimeError("GAFAELFAWR_TOKEN not set")
+            self._cachemachine = CachemachineClient(
+                self._client, config.gafaelfawr_token, self.user.username
+            )
+
+    async def close(self) -> None:
+        """Close the underlying HTTP connection pool."""
+        await self._client.aclose()
+
+    @_convert_exception
+    async def auth_to_hub(self) -> None:
+        """Retrieve the JupyterHub login page.
+
+        This forces a refresh of the authentication cookies set in the client
+        session, which may be required to use API calls that return 401 errors
+        instead of redirecting the user to log in.
+        """
+        url = self._url_for("hub/login")
+        r = await self._client.get(url, follow_redirects=False)
+
+        # JupyterHub returns a 302 redirect to either the spawn form or the
+        # running lab on success, but we don't want to follow that
+        # redirect. We only want to accept and set the cookies included in the
+        # initial response.
+        if r.status_code >= 400:
+            r.raise_for_status()
+
+    @_convert_exception
+    async def auth_to_lab(self) -> None:
+        """Authenticate to the Jupyter lab.
+
+        Request the top-level lab page, which will force the OpenID Connect
+        authentication with JupyterHub and set authentication cookies. This is
+        required before making API calls to the lab, such as running code.
+        """
+        url = self._url_for(f"user/{self.user.username}/lab")
+        r = await self._client.get(url)
+        r.raise_for_status()
+
+    @_convert_exception
+    async def is_lab_stopped(self, log_running: bool = False) -> bool:
+        """Determine if the lab is fully stopped.
+
+        Parameters
+        ----------
+        log_running
+            Log a warning with additional information if the lab still
+            exists.
+        """
+        url = self._url_for(f"hub/api/users/{self.user.username}")
+        headers = {"Referer": self._url_for("hub/home")}
+        r = await self._client.get(url, headers=headers)
+        r.raise_for_status()
+
+        # We currently only support a single lab per user, so the lab is
+        # running if and only if the server data for the user is not empty.
+        data = r.json()
+        result = data["servers"] == {}
+        if log_running and not result:
+            msg = "User API data still shows running lab"
+            self._logger.warning(msg, servers=data["servers"])
+        return result
+
+    @_convert_exception
+    async def open_lab_session(
+        self, notebook_name: Optional[str] = None, *, kernel_name: str = "LSST"
+    ) -> JupyterLabSession:
+        """Open a Jupyter lab session.
+
+        Returns a context manager object so must be called via ``async with``
+        or the equivalent. The lab session will automatically be deleted when
+        the context manager exits.
+
+        Parameters
+        ----------
+        nobebook_name
+            Name of the notebook we will be running, which is passed to the
+            session and might influence logging on the lab side. If set, the
+            session type will be set to ``notebook``. If not set, the session
+            type will be set to ``console``.
+        kernel_name
+            Name of the kernel to use for the session.
+
+        Returns
+        -------
+        JupyterLabSession
+            Context manager to open the WebSocket session.
+        """
+        username = self.user.username
+        url = self._url_for(f"user/{username}/api/sessions")
+        body = {
+            "kernel": {"name": kernel_name},
+            "name": notebook_name or "(no notebook)",
+            "path": notebook_name if notebook_name else uuid4().hex,
+            "type": "notebook" if notebook_name else "console",
+        }
+        r = await self._client.post(url, json=body)
+        r.raise_for_status()
+        response = r.json()
+        session_id = response["id"]
+        kernel_id = response["kernel"]["id"]
+        close_url = self._url_for(f"user/{username}/api/sessions/{session_id}")
+        return JupyterLabSession(
+            username=username,
+            websocket_url=self._url_for_lab_websocket(username, kernel_id),
+            close_url=close_url,
+            session_id=session_id,
+            client=self._client,
+            logger=self._logger,
+        )
+
+    @_convert_exception
+    async def spawn_lab(self) -> None:
+        """Spawn a Jupyter lab pod."""
+        url = self._url_for("hub/spawn")
+        data = await self._build_spawn_form()
+
+        # Retrieving the spawn page before POSTing to it appears to trigger
+        # some necessary internal state construction (and also more accurately
+        # simulates a user interaction). See DM-23864.
+        r = await self._client.get(url)
+        r.raise_for_status()
+
+        # POST the options form to the spawn page. This should redirect to
+        # the spawn-pending page, which will return a 200.
+        self._logger.info("Spawning lab image", user=self.user.username)
+        r = await self._client.post(url, data=data)
+        r.raise_for_status()
+
+    @_convert_exception
+    async def stop_lab(self) -> None:
+        """Stop the user's Jupyter lab."""
+        if await self.is_lab_stopped():
+            self._logger.info("Lab is already stopped")
+            return
+        url = self._url_for(f"hub/api/users/{self.user.username}/server")
+        headers = {"Referer": self._url_for("hub/home")}
+        r = await self._client.delete(url, headers=headers)
+        r.raise_for_status()
+
+    @_convert_iterator_exception
+    async def watch_spawn_progress(
+        self,
+    ) -> AsyncIterator[SpawnProgressMessage]:
+        """Monitor lab spawn progress.
+
+        This is an EventStream API, which provides a stream of events until
+        the lab is spawned or the spawn fails.
+
+        Yields
+        ------
+        SpawnProgressMessage
+            Next progress message from JupyterHub.
+        """
+        client = self._client
+        username = self.user.username
+        url = self._url_for(f"hub/api/users/{username}/server/progress")
+        headers = {"Referer": self._url_for("hub/home")}
+        while True:
+            async with aconnect_sse(client, "GET", url, headers=headers) as s:
+                async for message in JupyterSpawnProgress(s, self._logger):
+                    yield message
+
+            # Sometimes we get only the initial request message and then the
+            # progress API immediately closes the connection. If that happens,
+            # try reconnecting to the progress stream after a short delay.  I
+            # beleive this was a bug in kubespawner, so once we've switched to
+            # the lab controller everywhere, we can probably drop this code.
+            if message.progress > 0:
+                break
+            await asyncio.sleep(1)
+            self._logger.info("Retrying spawn progress request")
+
+    async def _build_spawn_form(self) -> dict[str, str]:
+        """Construct the form data to post to JupyterHub's spawn form."""
+        if self._cachemachine:
+            image_class = self._config.image_class
+            if isinstance(self._config, NubladoImageByClass):
+                if image_class == NubladoImageClass.RECOMMENDED:
+                    image = await self._cachemachine.get_recommended()
+                elif image_class == NubladoImageClass.LATEST_WEEKLY:
+                    image = await self._cachemachine.get_latest_weekly()
+                else:
+                    msg = f"Unsupported image class {image_class}"
+                    raise ValueError(msg)
+            elif isinstance(self._config, NubladoImageByReference):
+                reference = self._config.reference
+                image = JupyterCachemachineImage.from_reference(reference)
+            else:
+                msg = f"Unsupported image class {image_class}"
+                raise ValueError(msg)
+            return self._build_spawn_form_from_cachemachine(image)
+        else:
+            return self._config.to_spawn_form()
 
     def _build_spawn_form_from_cachemachine(
         self, image: JupyterCachemachineImage
@@ -520,5 +660,28 @@ class JupyterClient:
         return {
             "image_list": str(image),
             "image_dropdown": "use_image_from_dropdown",
-            "size": self.config.size.value,
+            "size": self._config.size.value,
         }
+
+    def _url_for(self, partial: str) -> str:
+        """Construct a JupyterHub or Jupyter lab URL from a partial URL.
+
+        Parameters
+        ----------
+        partial
+            Part of the URL after the prefix for JupyterHub.
+
+        Returns
+        -------
+        str
+            Full URL to use.
+        """
+        if self._jupyter_url.endswith("/"):
+            return f"{self._jupyter_url}{partial}"
+        else:
+            return f"{self._jupyter_url}/{partial}"
+
+    def _url_for_lab_websocket(self, username: str, kernel: str) -> str:
+        """Build the URL for the WebSocket to a lab kernel."""
+        url = self._url_for(f"user/{username}/api/kernels/{kernel}/channels")
+        return urlparse(url)._replace(scheme="wss").geturl()

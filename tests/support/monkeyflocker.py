@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 
-from aioresponses import aioresponses
+import respx
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -41,9 +41,8 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     async def startup_event() -> None:
-        mocked = aioresponses()
-        mocked.start()
-        mock_gafaelfawr(mocked)
-        mock_jupyter(mocked)
+        respx.start()
+        mock_gafaelfawr(respx.mock)
+        mock_jupyter(respx.mock)
 
     return app

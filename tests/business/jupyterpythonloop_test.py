@@ -8,7 +8,7 @@ from unittest.mock import ANY
 from urllib.parse import urljoin
 
 import pytest
-from aioresponses import aioresponses
+import respx
 from httpx import AsyncClient
 from safir.testing.slack import MockSlackWebhook
 
@@ -21,11 +21,9 @@ from ..support.util import wait_for_business
 
 @pytest.mark.asyncio
 async def test_run(
-    client: AsyncClient, jupyter: MockJupyter, mock_aioresponses: aioresponses
+    client: AsyncClient, jupyter: MockJupyter, respx_mock: respx.Router
 ) -> None:
-    mock_gafaelfawr(
-        mock_aioresponses, username="testuser1", uid=1000, gid=1000
-    )
+    mock_gafaelfawr(respx_mock, username="testuser1", uid=1000, gid=1000)
 
     r = await client.put(
         "/mobu/flocks",
@@ -79,9 +77,9 @@ async def test_run(
 
 @pytest.mark.asyncio
 async def test_reuse_lab(
-    client: AsyncClient, jupyter: MockJupyter, mock_aioresponses: aioresponses
+    client: AsyncClient, jupyter: MockJupyter, respx_mock: respx.Router
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
 
     r = await client.put(
         "/mobu/flocks",
@@ -113,9 +111,9 @@ async def test_reuse_lab(
 
 @pytest.mark.asyncio
 async def test_server_shutdown(
-    client: AsyncClient, mock_aioresponses: aioresponses
+    client: AsyncClient, respx_mock: respx.Router
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
 
     r = await client.put(
         "/mobu/flocks",
@@ -140,10 +138,10 @@ async def test_server_shutdown(
 
 
 @pytest.mark.asyncio
-async def test_delayed_lab_delete(
-    client: AsyncClient, jupyter: MockJupyter, mock_aioresponses: aioresponses
+async def test_delayed_delete(
+    client: AsyncClient, jupyter: MockJupyter, respx_mock: respx.Router
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
 
     r = await client.put(
         "/mobu/flocks",
@@ -173,9 +171,9 @@ async def test_hub_failed(
     client: AsyncClient,
     jupyter: MockJupyter,
     slack: MockSlackWebhook,
-    mock_aioresponses: aioresponses,
+    respx_mock: respx.Router,
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
     jupyter.fail("testuser2", JupyterAction.SPAWN)
 
     r = await client.put(
@@ -219,6 +217,11 @@ async def test_hub_failed(
                         {"type": "mrkdwn", "text": ANY, "verbatim": True},
                         {
                             "type": "mrkdwn",
+                            "text": "*Exception type*\nJupyterWebError",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*User*\ntestuser2",
                             "verbatim": True,
                         },
@@ -227,12 +230,15 @@ async def test_hub_failed(
                             "text": "*Event*\nspawn_lab",
                             "verbatim": True,
                         },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Message*\nfoo",
-                            "verbatim": True,
-                        },
                     ],
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*URL*\nPOST {url}",
+                        "verbatim": True,
+                    },
                 },
                 {"type": "divider"},
             ]
@@ -245,9 +251,9 @@ async def test_redirect_loop(
     client: AsyncClient,
     jupyter: MockJupyter,
     slack: MockSlackWebhook,
-    mock_aioresponses: aioresponses,
+    respx_mock: respx.Router,
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
     jupyter.redirect_loop = True
 
     r = await client.put(
@@ -283,7 +289,10 @@ async def test_redirect_loop(
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"Status 303 from GET {url}",
+                        "text": (
+                            "TooManyRedirects: Exceeded maximum allowed"
+                            " redirects."
+                        ),
                         "verbatim": True,
                     },
                 },
@@ -294,6 +303,11 @@ async def test_redirect_loop(
                         {"type": "mrkdwn", "text": ANY, "verbatim": True},
                         {
                             "type": "mrkdwn",
+                            "text": "*Exception type*\nJupyterWebError",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*User*\ntestuser1",
                             "verbatim": True,
                         },
@@ -302,12 +316,15 @@ async def test_redirect_loop(
                             "text": "*Event*\nspawn_lab",
                             "verbatim": True,
                         },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Message*\nTooManyRedirects",
-                            "verbatim": True,
-                        },
                     ],
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*URL*\nGET {url}",
+                        "verbatim": True,
+                    },
                 },
                 {"type": "divider"},
             ]
@@ -320,9 +337,9 @@ async def test_spawn_timeout(
     client: AsyncClient,
     jupyter: MockJupyter,
     slack: MockSlackWebhook,
-    mock_aioresponses: aioresponses,
+    respx_mock: respx.Router,
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
     jupyter.spawn_timeout = True
 
     r = await client.put(
@@ -363,6 +380,11 @@ async def test_spawn_timeout(
                         {"type": "mrkdwn", "text": ANY, "verbatim": True},
                         {
                             "type": "mrkdwn",
+                            "text": "*Exception type*\nJupyterTimeoutError",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*User*\ntestuser1",
                             "verbatim": True,
                         },
@@ -384,9 +406,9 @@ async def test_spawn_failed(
     client: AsyncClient,
     jupyter: MockJupyter,
     slack: MockSlackWebhook,
-    mock_aioresponses: aioresponses,
+    respx_mock: respx.Router,
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
     jupyter.fail("testuser1", JupyterAction.PROGRESS)
 
     r = await client.put(
@@ -427,6 +449,11 @@ async def test_spawn_failed(
                         {"type": "mrkdwn", "text": ANY, "verbatim": True},
                         {
                             "type": "mrkdwn",
+                            "text": "*Exception type*\nJupyterSpawnError",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*User*\ntestuser1",
                             "verbatim": True,
                         },
@@ -460,9 +487,9 @@ async def test_delete_timeout(
     client: AsyncClient,
     jupyter: MockJupyter,
     slack: MockSlackWebhook,
-    mock_aioresponses: aioresponses,
+    respx_mock: respx.Router,
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
     jupyter.delete_immediate = False
 
     # Set delete_timeout to 1s even though we pause in increments of 2s since
@@ -510,6 +537,11 @@ async def test_delete_timeout(
                         {"type": "mrkdwn", "text": ANY, "verbatim": True},
                         {
                             "type": "mrkdwn",
+                            "text": "*Exception type*\nJupyterTimeoutError",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*User*\ntestuser1",
                             "verbatim": True,
                         },
@@ -533,11 +565,9 @@ async def test_delete_timeout(
 
 @pytest.mark.asyncio
 async def test_code_exception(
-    client: AsyncClient,
-    slack: MockSlackWebhook,
-    mock_aioresponses: aioresponses,
+    client: AsyncClient, slack: MockSlackWebhook, respx_mock: respx.Router
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
 
     r = await client.put(
         "/mobu/flocks",
@@ -579,6 +609,11 @@ async def test_code_exception(
                     "fields": [
                         {"type": "mrkdwn", "text": ANY, "verbatim": True},
                         {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Exception type*\nCodeExecutionError",
+                            "verbatim": True,
+                        },
                         {
                             "type": "mrkdwn",
                             "text": "*User*\ntestuser1",
@@ -641,9 +676,9 @@ async def test_long_error(
     client: AsyncClient,
     jupyter: MockJupyter,
     slack: MockSlackWebhook,
-    mock_aioresponses: aioresponses,
+    respx_mock: respx.Router,
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
 
     r = await client.put(
         "/mobu/flocks",
@@ -707,6 +742,11 @@ async def test_long_error(
                         {"type": "mrkdwn", "text": ANY, "verbatim": True},
                         {
                             "type": "mrkdwn",
+                            "text": "*Exception type*\nCodeExecutionError",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*User*\ntestuser1",
                             "verbatim": True,
                         },
@@ -762,11 +802,9 @@ async def test_long_error(
 
 @pytest.mark.asyncio
 async def test_lab_controller(
-    client: AsyncClient,
-    jupyter: MockJupyter,
-    mock_aioresponses: aioresponses,
+    client: AsyncClient, jupyter: MockJupyter, respx_mock: respx.Router
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
     config.use_cachemachine = False
 
     try:

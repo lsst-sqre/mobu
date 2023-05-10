@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import base64
+import json
 import os
 import time
-from typing import Any, Optional
+from typing import Optional
 from unittest.mock import ANY
 
-from aioresponses import CallbackResult, aioresponses
+import respx
+from httpx import Request, Response
 
 from mobu.config import config
 
@@ -32,7 +34,7 @@ def make_gafaelfawr_token(user: Optional[str] = None) -> str:
 
 
 def mock_gafaelfawr(
-    mocked: aioresponses,
+    respx_mock: respx.Router,
     username: Optional[str] = None,
     uid: Optional[int] = None,
     gid: Optional[int] = None,
@@ -48,8 +50,8 @@ def mock_gafaelfawr(
     assert admin_token
     assert admin_token.startswith("gt-")
 
-    def handler(url: str, **kwargs: Any) -> CallbackResult:
-        assert kwargs["headers"] == {"Authorization": f"Bearer {admin_token}"}
+    def handler(request: Request) -> Response:
+        assert request.headers["Authorization"] == f"Bearer {admin_token}"
         expected = {
             "username": username if username else ANY,
             "token_type": "user",
@@ -65,13 +67,12 @@ def mock_gafaelfawr(
         elif any_uid:
             expected["uid"] = ANY
             expected["gid"] = ANY
-        assert kwargs["json"] == expected
-        assert kwargs["json"]["token_name"].startswith("mobu ")
-        assert kwargs["json"]["expires"] > time.time()
-        response = {"token": make_gafaelfawr_token(kwargs["json"]["username"])}
-        return CallbackResult(payload=response, status=200)
+        body = json.loads(request.content)
+        assert body == expected
+        assert body["token_name"].startswith("mobu ")
+        assert body["expires"] > time.time()
+        response = {"token": make_gafaelfawr_token(body["username"])}
+        return Response(200, json=response)
 
     base_url = str(config.environment_url).rstrip("/")
-    mocked.post(
-        f"{base_url}/auth/api/v1/tokens", callback=handler, repeat=True
-    )
+    respx_mock.post(f"{base_url}/auth/api/v1/tokens").mock(side_effect=handler)

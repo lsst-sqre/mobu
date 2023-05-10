@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import ANY
 
 import pytest
-from aioresponses import aioresponses
+import respx
 from httpx import AsyncClient
 
 from mobu.config import config
@@ -48,10 +48,10 @@ AUTOSTART_CONFIG = """
 
 @pytest.fixture(autouse=True)
 def configure_autostart(
-    tmp_path: Path, mock_aioresponses: aioresponses
+    tmp_path: Path, respx_mock: respx.Router
 ) -> Iterator[None]:
     """Set up the autostart configuration."""
-    mock_gafaelfawr(mock_aioresponses, any_uid=True)
+    mock_gafaelfawr(respx_mock, any_uid=True)
     config.autostart = tmp_path / "autostart.yaml"
     config.autostart.write_text(AUTOSTART_CONFIG)
     yield

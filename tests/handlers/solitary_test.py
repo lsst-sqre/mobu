@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import ANY
 
 import pytest
-from aioresponses import aioresponses
+import respx
 from httpx import AsyncClient
 from safir.testing.slack import MockSlackWebhook
 
@@ -13,10 +13,8 @@ from ..support.gafaelfawr import mock_gafaelfawr
 
 
 @pytest.mark.asyncio
-async def test_run(
-    client: AsyncClient, mock_aioresponses: aioresponses
-) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
+    mock_gafaelfawr(respx_mock)
 
     r = await client.post(
         "/mobu/run",
@@ -35,11 +33,9 @@ async def test_run(
 
 @pytest.mark.asyncio
 async def test_error(
-    client: AsyncClient,
-    slack: MockSlackWebhook,
-    mock_aioresponses: aioresponses,
+    client: AsyncClient, slack: MockSlackWebhook, respx_mock: respx.Router
 ) -> None:
-    mock_gafaelfawr(mock_aioresponses)
+    mock_gafaelfawr(respx_mock)
 
     r = await client.post(
         "/mobu/run",

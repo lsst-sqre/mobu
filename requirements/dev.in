@@ -8,21 +8,18 @@
 -c main.txt
 
 # Testing
-aioresponses
 asgi-lifespan
 coverage[toml]
-httpx
-multidict
 mypy
 pre-commit
 pytest
 pytest-asyncio
 pytest-cov
 pytest-httpx
+pytest-sugar
 respx
 types-PyYAML
 types-requests
-yarl
 
 # Documentation
 scriv[toml]

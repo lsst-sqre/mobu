@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from aiohttp import ClientSession
+from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from ..models.solitary import SolitaryConfig, SolitaryResult
@@ -21,8 +21,8 @@ class Solitary:
     ----------
     solitary_config
         Configuration for the monkey.
-    session
-        HTTP client session.
+    http_client
+        Shared HTTP client.
     logger
         Global logger.
     """
@@ -30,11 +30,11 @@ class Solitary:
     def __init__(
         self,
         solitary_config: SolitaryConfig,
-        session: ClientSession,
+        http_client: AsyncClient,
         logger: BoundLogger,
     ) -> None:
         self._config = solitary_config
-        self._session = session
+        self._http_client = http_client
         self._logger = logger
 
     async def run(self) -> SolitaryResult:
@@ -46,13 +46,13 @@ class Solitary:
             Result of monkey run.
         """
         user = await AuthenticatedUser.create(
-            self._config.user, self._config.scopes, self._session
+            self._config.user, self._config.scopes, self._http_client
         )
         monkey = Monkey(
             name=f"solitary-{user.username}",
             business_config=self._config.business,
             user=user,
-            session=self._session,
+            http_client=self._http_client,
             logger=self._logger,
         )
         error = await monkey.run_once()

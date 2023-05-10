@@ -2,22 +2,20 @@
 
 from __future__ import annotations
 
-import asyncio
 import random
 from abc import ABCMeta, abstractmethod
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Generic, Optional, TypeVar
 
-from aiohttp import ClientError, ClientResponseError
+from httpx import AsyncClient
 from safir.datetime import current_datetime, format_datetime_for_logging
+from safir.slack.blockkit import SlackException
 from structlog.stdlib import BoundLogger
 
-from ...exceptions import (
-    JupyterResponseError,
-    JupyterSpawnError,
-    JupyterTimeoutError,
-)
+from ...exceptions import JupyterSpawnError, JupyterTimeoutError
 from ...models.business.nublado import (
     NubladoBusinessData,
     NubladoBusinessOptions,
@@ -90,14 +88,20 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+    http_client
+        Shared HTTP client for general web access.
     logger
         Logger to use to report the results of business.
     """
 
     def __init__(
-        self, options: T, user: AuthenticatedUser, logger: BoundLogger
+        self,
+        options: T,
+        user: AuthenticatedUser,
+        http_client: AsyncClient,
+        logger: BoundLogger,
     ) -> None:
-        super().__init__(options, user, logger)
+        super().__init__(options, user, http_client, logger)
         self._client = JupyterClient(
             user=user,
             url_prefix=options.url_prefix,
@@ -160,9 +164,8 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             if not await self.spawn_lab():
                 return
         await self.lab_login()
-        session = await self.create_session()
-        await self.execute_code(session)
-        await self.delete_session(session)
+        async with self.open_session() as session:
+            await self.execute_code(session)
         if self.options.delete_lab:
             await self.hub_login()
             await self.delete_lab()
@@ -193,7 +196,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
     async def hub_login(self) -> None:
         self.logger.info("Logging in to hub")
         with self.timings.start("hub_login"):
-            await self._client.hub_login()
+            await self._client.auth_to_hub()
 
     async def spawn_lab(self) -> bool:
         with self.timings.start("spawn_lab", self.annotations()) as sw:
@@ -209,23 +212,21 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
 
             # Watch the progress API until the lab has spawned.
             log_messages = []
-            progress = self._client.spawn_progress()
+            progress = self._client.watch_spawn_progress()
             try:
                 async for message in self.iter_with_timeout(progress, timeout):
                     log_messages.append(ProgressLogMessage(message.message))
                     if message.ready:
                         return True
-            except ClientResponseError as e:
-                username = self.user.username
-                raise JupyterResponseError.from_exception(username, e) from e
-            except (
-                ClientError,
-                ConnectionResetError,
-                asyncio.TimeoutError,
-            ) as e:
-                username = self.user.username
+            except TimeoutError:
                 log = "\n".join([str(m) for m in log_messages])
-                raise JupyterSpawnError.from_exception(username, log, e) from e
+                raise JupyterSpawnError(log, self.user.username)
+            except SlackException:
+                raise
+            except Exception as e:
+                log = "\n".join([str(m) for m in log_messages])
+                user = self.user.username
+                raise JupyterSpawnError.from_exception(log, e, user)
 
             # We only fall through if the spawn failed, timed out, or if we're
             # stopping the business.
@@ -235,58 +236,59 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             if sw.elapsed.total_seconds() > timeout:
                 elapsed = round(sw.elapsed.total_seconds())
                 msg = f"Lab did not spawn after {elapsed}s"
-                raise JupyterTimeoutError(self.user.username, msg, log)
+                raise JupyterTimeoutError(msg, self.user.username, log)
             else:
-                raise JupyterSpawnError(self.user.username, log)
+                raise JupyterSpawnError(log, self.user.username)
 
     async def lab_login(self) -> None:
+        self.logger.info("Logging in to lab")
         with self.timings.start("lab_login", self.annotations()):
-            await self._client.lab_login()
+            await self._client.auth_to_lab()
 
-    async def create_session(
-        self, notebook_name: Optional[str] = None
-    ) -> JupyterLabSession:
+    @asynccontextmanager
+    async def open_session(
+        self, notebook: Optional[str] = None
+    ) -> AsyncIterator[JupyterLabSession]:
         self.logger.info("Creating lab session")
-        with self.timings.start("create_session", self.annotations()):
-            session = await self._client.create_labsession(notebook_name)
-        with self.timings.start("execute_setup", self.annotations()):
-            image_data = await self._client.run_python(session, _GET_IMAGE)
-            if "\n" in image_data:
-                reference, description = image_data.split("\n", 1)
-                msg = f"Running on image {reference} ({description})"
-                self.logger.info(msg)
-            else:
-                msg = "Unable to get running image from reply"
-                self.logger.warning(msg, image_data=image_data)
-                reference = None
-                description = None
-            self._image = RunningImage(
-                reference=reference.strip() if reference else None,
-                description=description.strip() if description else None,
-            )
-            if self.options.get_node:
-                # Our libraries currently spew warning messages when imported.
-                # The node is only the last line of the output.
-                self._node = await self._client.run_python(session, _GET_NODE)
-                self.logger.info(f"Running on node {self._node}")
-            if self.options.working_directory:
-                path = self.options.working_directory
-                code = _CHDIR_TEMPLATE.format(wd=path)
-                self.logger.info(f"Changing directories to {path}")
-                await self._client.run_python(session, code)
-        return session
-
-    async def delete_session(self, session: JupyterLabSession) -> None:
-        await self.lab_login()
-        self.logger.info("Deleting lab session")
-        with self.timings.start("delete_session", self.annotations()):
-            await self._client.delete_labsession(session)
+        stopwatch = self.timings.start("create_session", self.annotations())
+        async with await self._client.open_lab_session(notebook) as session:
+            stopwatch.stop()
+            with self.timings.start("execute_setup", self.annotations()):
+                await self.setup_session(session)
+            yield session
+            await self.lab_login()
+            stopwatch = self.timings.start("delete_sesion", self.annotations())
+        stopwatch.stop()
         self._node = None
+
+    async def setup_session(self, session: JupyterLabSession) -> None:
+        image_data = await session.run_python(_GET_IMAGE)
+        if "\n" in image_data:
+            reference, description = image_data.split("\n", 1)
+            msg = f"Running on image {reference} ({description})"
+            self.logger.info(msg)
+        else:
+            msg = "Unable to get running image from reply"
+            self.logger.warning(msg, image_data=image_data)
+            reference = None
+            description = None
+        self._image = RunningImage(
+            reference=reference.strip() if reference else None,
+            description=description.strip() if description else None,
+        )
+        if self.options.get_node:
+            self._node = await session.run_python(_GET_NODE)
+            self.logger.info(f"Running on node {self._node}")
+        if self.options.working_directory:
+            path = self.options.working_directory
+            code = _CHDIR_TEMPLATE.format(wd=path)
+            self.logger.info(f"Changing directories to {path}")
+            await session.run_python(code)
 
     async def delete_lab(self) -> None:
         self.logger.info("Deleting lab")
         with self.timings.start("delete_lab", self.annotations()):
-            await self._client.delete_lab()
+            await self._client.stop_lab()
             if self.stopping:
                 return
 
@@ -299,9 +301,9 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
                 now = current_datetime(microseconds=True)
                 elapsed = round((now - start).total_seconds())
                 if elapsed > timeout:
-                    if not await self._client.is_lab_stopped(final=True):
+                    if not await self._client.is_lab_stopped(log_running=True):
                         msg = f"Lab not deleted after {elapsed}s"
-                        raise JupyterTimeoutError(self.user.username, msg)
+                        raise JupyterTimeoutError(msg, self.user.username)
                 msg = f"Waiting for lab deletion ({elapsed}s elapsed)"
                 self.logger.info(msg)
                 if not await self.pause(2):

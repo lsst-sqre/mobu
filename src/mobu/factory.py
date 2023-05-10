@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 import structlog
-from aiohttp import ClientSession
+from httpx import AsyncClient
 from safir.slack.webhook import SlackWebhookClient
 from structlog.stdlib import BoundLogger
 
@@ -23,17 +23,22 @@ class ProcessContext:
     This object caches all of the per-process singletons that can be reused
     for every request.
 
+    Parameters
+    ----------
+    http_client
+        Shared HTTP client.
+
     Attributes
     ----------
+    http_client
+        Shared HTTP client.
     manager
         Manager for all running flocks.
-    session
-        Shared HTTP client session.
     """
 
-    def __init__(self) -> None:
-        self.session = ClientSession()
-        self.manager = FlockManager(self.session, structlog.get_logger("mobu"))
+    def __init__(self, http_client: AsyncClient) -> None:
+        self.http_client = http_client
+        self.manager = FlockManager(http_client, structlog.get_logger("mobu"))
 
     async def aclose(self) -> None:
         """Clean up a process context.
@@ -41,7 +46,6 @@ class ProcessContext:
         Called before shutdown to free resources.
         """
         await self.manager.aclose()
-        await self.session.close()
 
 
 class Factory:
@@ -88,4 +92,6 @@ class Factory:
         Solitary
             Newly-created solitary manager.
         """
-        return Solitary(solitary_config, self._context.session, self._logger)
+        return Solitary(
+            solitary_config, self._context.http_client, self._logger
+        )

@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
-from typing import Any
+from contextlib import asynccontextmanager
 from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
 import respx
-from aiohttp import ClientSession
-from aioresponses import aioresponses
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import AsyncClient
@@ -65,8 +63,8 @@ async def app(
     mocking is undone before the app is shut down, which causes it to try to
     make real web socket calls.
 
-    A tests in business/jupyterloginloop_test.py depends on the exact shutdown
-    timeout.
+    A tests in :file:`business/jupyterloginloop_test.py` depends on the exact
+    shutdown timeout.
     """
     async with LifespanManager(main.app, shutdown_timeout=10):
         yield main.app
@@ -82,30 +80,26 @@ async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture
-def mock_aioresponses() -> Iterator[aioresponses]:
-    """Set up aioresponses for aiohttp mocking."""
-    with aioresponses() as mocked:
-        yield mocked
-
-
-@pytest.fixture
-def cachemachine(mock_aioresponses: aioresponses) -> MockCachemachine:
+def cachemachine(respx_mock: respx.Router) -> MockCachemachine:
     """Mock out cachemachine."""
-    return mock_cachemachine(mock_aioresponses)
+    return mock_cachemachine(respx_mock)
 
 
 @pytest.fixture
-def jupyter(mock_aioresponses: aioresponses) -> Iterator[MockJupyter]:
+def jupyter(respx_mock: respx.Router) -> Iterator[MockJupyter]:
     """Mock out JupyterHub/Lab."""
-    jupyter_mock = mock_jupyter(mock_aioresponses)
+    jupyter_mock = mock_jupyter(respx_mock)
 
-    # aioresponses has no mechanism to mock ws_connect, so we have to do it
+    # respx has no mechanism to mock aconnect_ws, so we have to do it
     # ourselves.
-    async def mock_ws_connect(url: str, **kwargs: Any) -> MockJupyterWebSocket:
-        return mock_jupyter_websocket(url, jupyter_mock)
+    @asynccontextmanager
+    async def mock_aconnect_ws(
+        url: str, client: AsyncClient
+    ) -> AsyncIterator[MockJupyterWebSocket]:
+        yield mock_jupyter_websocket(url, jupyter_mock)
 
-    with patch.object(ClientSession, "ws_connect") as mock:
-        mock.side_effect = mock_ws_connect
+    with patch("mobu.storage.jupyter.aconnect_ws") as mock:
+        mock.side_effect = mock_aconnect_ws
         yield jupyter_mock
 
 

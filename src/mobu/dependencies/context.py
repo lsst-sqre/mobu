@@ -11,6 +11,7 @@ from typing import Optional
 
 from fastapi import Depends, Request
 from safir.dependencies.gafaelfawr import auth_logger_dependency
+from safir.dependencies.http_client import http_client_dependency
 from structlog.stdlib import BoundLogger
 
 from ..factory import Factory, ProcessContext
@@ -77,7 +78,8 @@ class ContextDependency:
         """Initialize the process-wide shared context."""
         if self._process_context:
             await self._process_context.aclose()
-        self._process_context = ProcessContext()
+        http_client = await http_client_dependency()
+        self._process_context = ProcessContext(http_client)
 
     async def aclose(self) -> None:
         """Clean up the per-process configuration."""

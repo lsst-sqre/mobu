@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 
 import yaml
-from aiohttp import ClientSession
 from aiojobs import Scheduler
+from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from ..config import config
@@ -26,14 +26,14 @@ class FlockManager:
 
     Parameters
     ----------
-    session
-        HTTP client session to use.
+    http_client
+        Shared HTTP client.
     logger
         Global logger to use for process-wide (not monkey) logging.
     """
 
-    def __init__(self, session: ClientSession, logger: BoundLogger) -> None:
-        self._session = session
+    def __init__(self, http_client: AsyncClient, logger: BoundLogger) -> None:
+        self._http_client = http_client
         self._logger = logger
         self._flocks: dict[str, Flock] = {}
         self._scheduler = Scheduler(limit=1000, pending_limit=0)
@@ -74,7 +74,7 @@ class FlockManager:
         flock = Flock(
             flock_config=flock_config,
             scheduler=self._scheduler,
-            session=self._session,
+            http_client=self._http_client,
             logger=self._logger,
         )
         if flock.name in self._flocks:

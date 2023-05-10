@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import json
-from typing import Any
-
-from aioresponses import CallbackResult, aioresponses
+import respx
+from httpx import Request, Response
 
 from mobu.config import config
 
@@ -79,14 +77,14 @@ class MockCachemachine:
             },
         ]
 
-    def available(self, url: str, **kwargs: Any) -> CallbackResult:
+    def available(self, request: Request) -> Response:
         body = {"images": self.images}
-        return CallbackResult(status=200, body=json.dumps(body))
+        return Response(200, json=body)
 
 
-def mock_cachemachine(mocked: aioresponses) -> MockCachemachine:
+def mock_cachemachine(respx_mock: respx.Router) -> MockCachemachine:
     """Set up a mock cachemachine."""
     mock = MockCachemachine()
     url = f"{config.environment_url}/cachemachine/jupyter/available"
-    mocked.get(url, callback=mock.available, repeat=True)
+    respx_mock.get(url).mock(side_effect=mock.available)
     return mock

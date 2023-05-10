@@ -5,10 +5,11 @@ from __future__ import annotations
 import time
 from typing import Any, Optional, Self
 
-from aiohttp import ClientSession
+from httpx import AsyncClient, HTTPError
 from pydantic import BaseModel, Field
 
 from ..config import config
+from ..exceptions import GafaelfawrWebError
 
 __all__ = ["AuthenticatedUser", "User", "UserSpec"]
 
@@ -93,7 +94,7 @@ class AuthenticatedUser(User):
 
     @classmethod
     async def create(
-        cls, user: User, scopes: list[str], session: ClientSession
+        cls, user: User, scopes: list[str], http_client: AsyncClient
     ) -> Self:
         if not config.environment_url:
             raise RuntimeError("environment_url not set")
@@ -116,13 +117,16 @@ class AuthenticatedUser(User):
                 data["gid"] = user.uidnumber
         elif user.gidnumber is not None:
             data["gid"] = user.gidnumber
-        r = await session.post(
-            token_url,
-            headers={"Authorization": f"Bearer {config.gafaelfawr_token}"},
-            json=data,
-            raise_for_status=True,
-        )
-        body = await r.json()
+        try:
+            r = await http_client.post(
+                token_url,
+                headers={"Authorization": f"Bearer {config.gafaelfawr_token}"},
+                json=data,
+            )
+            r.raise_for_status()
+        except HTTPError as e:
+            raise GafaelfawrWebError.from_exception(e, user.username)
+        body = r.json()
         return cls(
             username=user.username,
             uidnumber=data["uid"] if "uid" in data else None,
