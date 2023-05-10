@@ -12,7 +12,7 @@ from httpx import AsyncClient
 from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
 
-from ..exceptions import MonkeyNotFoundException
+from ..exceptions import MonkeyNotFoundError
 from ..models.flock import FlockConfig, FlockData, FlockSummary
 from ..models.user import AuthenticatedUser, User, UserSpec
 from .monkey import Monkey
@@ -60,10 +60,26 @@ class Flock:
         )
 
     def get_monkey(self, name: str) -> Monkey:
-        """Retrieve a given monkey by name."""
+        """Retrieve a given monkey by name.
+
+        Parameters
+        ----------
+        name
+            Name of monkey to return.
+
+        Returns
+        -------
+        Monkey
+            Requested monkey.
+
+        Raises
+        ------
+        MonkeyNotFoundError
+            Raised if no monkey was found with that name.
+        """
         monkey = self._monkeys.get(name)
         if not monkey:
-            raise MonkeyNotFoundException(name)
+            raise MonkeyNotFoundError(name)
         return monkey
 
     def list_monkeys(self) -> list[str]:
