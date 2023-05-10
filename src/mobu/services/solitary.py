@@ -8,7 +8,7 @@ from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from ..models.solitary import SolitaryConfig, SolitaryResult
-from ..models.user import AuthenticatedUser
+from ..storage.gafaelfawr import GafaelfawrStorage
 from .monkey import Monkey
 
 __all__ = ["Solitary"]
@@ -21,6 +21,8 @@ class Solitary:
     ----------
     solitary_config
         Configuration for the monkey.
+    gafaelfawr_storage
+        Gafaelfawr storage client.
     http_client
         Shared HTTP client.
     logger
@@ -29,11 +31,14 @@ class Solitary:
 
     def __init__(
         self,
+        *,
         solitary_config: SolitaryConfig,
+        gafaelfawr_storage: GafaelfawrStorage,
         http_client: AsyncClient,
         logger: BoundLogger,
     ) -> None:
         self._config = solitary_config
+        self._gafaelfawr = gafaelfawr_storage
         self._http_client = http_client
         self._logger = logger
 
@@ -45,8 +50,8 @@ class Solitary:
         SolitaryResult
             Result of monkey run.
         """
-        user = await AuthenticatedUser.create(
-            self._config.user, self._config.scopes, self._http_client
+        user = await self._gafaelfawr.create_service_token(
+            self._config.user, self._config.scopes
         )
         monkey = Monkey(
             name=f"solitary-{user.username}",

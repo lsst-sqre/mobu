@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-import time
-from typing import Any, Optional, Self
+from typing import Optional
 
-from httpx import AsyncClient, HTTPError
 from pydantic import BaseModel, Field
 
-from ..config import config
-from ..exceptions import GafaelfawrWebError
-
-__all__ = ["AuthenticatedUser", "User", "UserSpec"]
+__all__ = [
+    "AuthenticatedUser",
+    "User",
+    "UserSpec",
+]
 
 
 class User(BaseModel):
@@ -91,46 +90,3 @@ class AuthenticatedUser(User):
         title="Authentication token for user",
         example="gt-1PhgAeB-9Fsa-N1NhuTu_w.oRvMvAQp1bWfx8KCJKNohg",
     )
-
-    @classmethod
-    async def create(
-        cls, user: User, scopes: list[str], http_client: AsyncClient
-    ) -> Self:
-        if not config.environment_url:
-            raise RuntimeError("environment_url not set")
-        token_url = (
-            str(config.environment_url).rstrip("/") + "/auth/api/v1/tokens"
-        )
-        data: dict[str, Any] = {
-            "username": user.username,
-            "name": "Mobu Test User",
-            "token_type": "user",
-            "token_name": f"mobu {str(float(time.time()))}",
-            "scopes": scopes,
-            "expires": int(time.time() + 60 * 60 * 24 * 365),
-        }
-        if user.uidnumber is not None:
-            data["uid"] = user.uidnumber
-            if user.gidnumber is not None:
-                data["gid"] = user.gidnumber
-            else:
-                data["gid"] = user.uidnumber
-        elif user.gidnumber is not None:
-            data["gid"] = user.gidnumber
-        try:
-            r = await http_client.post(
-                token_url,
-                headers={"Authorization": f"Bearer {config.gafaelfawr_token}"},
-                json=data,
-            )
-            r.raise_for_status()
-        except HTTPError as e:
-            raise GafaelfawrWebError.from_exception(e, user.username)
-        body = r.json()
-        return cls(
-            username=user.username,
-            uidnumber=data["uid"] if "uid" in data else None,
-            gidnumber=data["gid"] if "gid" in data else None,
-            token=body["token"],
-            scopes=scopes,
-        )

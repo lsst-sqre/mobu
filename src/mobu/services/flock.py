@@ -15,6 +15,7 @@ from structlog.stdlib import BoundLogger
 from ..exceptions import MonkeyNotFoundError
 from ..models.flock import FlockConfig, FlockData, FlockSummary
 from ..models.user import AuthenticatedUser, User, UserSpec
+from ..storage.gafaelfawr import GafaelfawrStorage
 from .monkey import Monkey
 
 __all__ = ["Flock"]
@@ -29,6 +30,8 @@ class Flock:
         Configuration for this flock of monkeys.
     scheduler
         Job scheduler used to manage the tasks for the monkeys.
+    gafaelfawr_storage
+        Gafaelfawr storage client.
     http_client
         Shared HTTP client.
     logger
@@ -40,12 +43,14 @@ class Flock:
         *,
         flock_config: FlockConfig,
         scheduler: Scheduler,
+        gafaelfawr_storage: GafaelfawrStorage,
         http_client: AsyncClient,
         logger: BoundLogger,
     ) -> None:
         self.name = flock_config.name
         self._config = flock_config
         self._scheduler = scheduler
+        self._gafaelfawr = gafaelfawr_storage
         self._http_client = http_client
         self._logger = logger.bind(flock=self.name)
         self._monkeys: dict[str, Monkey] = {}
@@ -146,7 +151,7 @@ class Flock:
             users = self._users_from_spec(self._config.user_spec, count)
         scopes = self._config.scopes
         return [
-            await AuthenticatedUser.create(u, scopes, self._http_client)
+            await self._gafaelfawr.create_service_token(u, scopes)
             for u in users
         ]
 

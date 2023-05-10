@@ -13,6 +13,7 @@ from .config import config
 from .models.solitary import SolitaryConfig
 from .services.manager import FlockManager
 from .services.solitary import Solitary
+from .storage.gafaelfawr import GafaelfawrStorage
 
 __all__ = ["Factory", "ProcessContext"]
 
@@ -38,7 +39,9 @@ class ProcessContext:
 
     def __init__(self, http_client: AsyncClient) -> None:
         self.http_client = http_client
-        self.manager = FlockManager(http_client, structlog.get_logger("mobu"))
+        logger = structlog.get_logger("mobu")
+        gafaelfawr = GafaelfawrStorage(http_client, logger)
+        self.manager = FlockManager(gafaelfawr, http_client, logger)
 
     async def aclose(self) -> None:
         """Clean up a process context.
@@ -93,5 +96,10 @@ class Factory:
             Newly-created solitary manager.
         """
         return Solitary(
-            solitary_config, self._context.http_client, self._logger
+            solitary_config=solitary_config,
+            gafaelfawr_storage=GafaelfawrStorage(
+                self._context.http_client, self._logger
+            ),
+            http_client=self._context.http_client,
+            logger=self._logger,
         )
