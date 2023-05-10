@@ -19,6 +19,8 @@ from ..models.solitary import SolitaryConfig, SolitaryResult
 external_router = APIRouter()
 """FastAPI router for all external handlers."""
 
+__all__ = ["external_router"]
+
 
 class FormattedJSONResponse(JSONResponse):
     """The same as ``fastapi.JSONResponse`` except formatted for humans."""

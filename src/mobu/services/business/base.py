@@ -105,7 +105,7 @@ class Business(Generic[T], metaclass=ABCMeta):
 
     @abstractmethod
     async def execute(self) -> None:
-        """The business done in each loop."""
+        """Execute the core of each business loop."""
 
     async def close(self) -> None:
         """Clean up any allocated resources.
@@ -116,7 +116,7 @@ class Business(Generic[T], metaclass=ABCMeta):
         pass
 
     async def shutdown(self) -> None:
-        """Any cleanup to do before exiting after stopping."""
+        """Perform any cleanup required after stopping."""
         pass
 
     # Public Business API called by the Monkey class. These methods handle the
@@ -124,12 +124,14 @@ class Business(Generic[T], metaclass=ABCMeta):
     # be overridden.
 
     async def run(self) -> None:
-        """The core business logic, run in a background task.
+        """Execute the core business logic.
 
         Calls `startup`, and then loops calling `execute` followed by `idle`,
         tracking failures by watching for exceptions and updating
         ``success_count`` and ``failure_count``. When told to stop, calls
         `shutdown` followed by `close`.
+
+        This method is normally run in a background task.
         """
         self.logger.info("Starting up...")
         try:
@@ -162,7 +164,7 @@ class Business(Generic[T], metaclass=ABCMeta):
                 self.control.task_done()
 
     async def run_once(self) -> None:
-        """The core business logic, run only once.
+        """Execute the core business logic, only once.
 
         Calls `startup`, `execute`, `shutdown`, and `close`.
         """
@@ -176,7 +178,7 @@ class Business(Generic[T], metaclass=ABCMeta):
             await self.close()
 
     async def idle(self) -> None:
-        """The idle pause at the end of each loop."""
+        """Pause at the end of each business loop."""
         self.logger.info("Idling...")
         with self.timings.start("idle"):
             await self.pause(self.options.idle_time)
@@ -302,7 +304,10 @@ class Business(Generic[T], metaclass=ABCMeta):
         )
 
     async def _pause_no_return(self, seconds: float) -> None:
-        """Same as `pause` but returns `None`.
+        """Pause for up to the number of seconds, handling commands.
+
+        The same as `pause`, but returns `None`, needed for proper typing of
+        `iter_with_timeout`.
 
         Parameters
         ----------

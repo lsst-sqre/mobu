@@ -13,10 +13,7 @@ from .client import MonkeyflockerClient
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(message="%(version)s")
 def main() -> None:
-    """monkeyflocker main.
-
-    Command-line interface to manage mobu monkeys.
-    """
+    """Command-line interface to manage mobu monkeys."""
     pass
 
 
