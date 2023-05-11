@@ -58,6 +58,8 @@ class NubladoImage(BaseModel, metaclass=ABCMeta):
         description="Must be one of the sizes understood by Nublado.",
     )
 
+    debug: bool = Field(False, title="Whether to enable lab debugging")
+
     @abstractmethod
     def to_spawn_form(self) -> dict[str, str]:
         """Convert to data suitable for posting to JupyterHub's spawn form.
@@ -83,10 +85,13 @@ class NubladoImageByClass(NubladoImage):
     )
 
     def to_spawn_form(self) -> dict[str, str]:
-        return {
+        result = {
             "image_class": self.image_class.value,
             "size": self.size.value,
         }
+        if self.debug:
+            result["enable_debug"] = "true"
+        return result
 
 
 class NubladoImageByReference(NubladoImage):
@@ -99,7 +104,13 @@ class NubladoImageByReference(NubladoImage):
     reference: str = Field(..., title="Docker reference of lab image to spawn")
 
     def to_spawn_form(self) -> dict[str, str]:
-        return {"image_list": self.reference, "size": self.size.value}
+        result = {
+            "image_list": self.reference,
+            "size": self.size.value,
+        }
+        if self.debug:
+            result["enable_debug"] = "true"
+        return result
 
 
 class NubladoImageByTag(NubladoImage):
@@ -112,7 +123,10 @@ class NubladoImageByTag(NubladoImage):
     tag: str = Field(..., title="Tag of image to spawn")
 
     def to_spawn_form(self) -> dict[str, str]:
-        return {"image_tag": self.tag, "size": self.size.value}
+        result = {"image_tag": self.tag, "size": self.size.value}
+        if self.debug:
+            result["enable_debug"] = "true"
+        return result
 
 
 class NubladoBusinessOptions(BusinessOptions):

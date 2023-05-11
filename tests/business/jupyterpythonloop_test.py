@@ -854,6 +854,7 @@ async def test_lab_controller(
                         "image": {
                             "image_class": "latest-daily",
                             "size": "Medium",
+                            "debug": True,
                         },
                     },
                 },
@@ -861,6 +862,7 @@ async def test_lab_controller(
         )
         assert r.status_code == 201
         assert jupyter.lab_form["testuser"] == {
+            "enable_debug": "true",
             "image_class": "latest-daily",
             "size": "Medium",
         }
