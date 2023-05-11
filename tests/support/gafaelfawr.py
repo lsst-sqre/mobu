@@ -5,12 +5,13 @@ from __future__ import annotations
 import base64
 import json
 import os
-import time
+from datetime import datetime
 from typing import Optional
 from unittest.mock import ANY
 
 import respx
 from httpx import Request, Response
+from safir.datetime import current_datetime
 
 from mobu.config import config
 
@@ -54,8 +55,7 @@ def mock_gafaelfawr(
         assert request.headers["Authorization"] == f"Bearer {admin_token}"
         expected = {
             "username": username if username else ANY,
-            "token_type": "user",
-            "token_name": ANY,
+            "token_type": "service",
             "scopes": ["exec:notebook"],
             "expires": ANY,
             "name": "Mobu Test User",
@@ -69,8 +69,7 @@ def mock_gafaelfawr(
             expected["gid"] = ANY
         body = json.loads(request.content)
         assert body == expected
-        assert body["token_name"].startswith("mobu ")
-        assert body["expires"] > time.time()
+        assert datetime.fromisoformat(body["expires"]) > current_datetime()
         response = {"token": make_gafaelfawr_token(body["username"])}
         return Response(200, json=response)
 

@@ -8,6 +8,7 @@ from typing import Optional, Self
 
 from fastapi import status
 from httpx_ws import HTTPXWSException, WebSocketDisconnect
+from pydantic import ValidationError
 from safir.datetime import format_datetime_for_logging
 from safir.fastapi import ClientRequestError
 from safir.models import ErrorLocation
@@ -29,6 +30,7 @@ __all__ = [
     "CachemachineError",
     "CodeExecutionError",
     "FlockNotFoundError",
+    "GafaelfawrParseError",
     "GafaelfawrWebError",
     "JupyterTimeoutError",
     "JupyterWebError",
@@ -60,6 +62,60 @@ def _remove_ansi_escapes(string: str) -> str:
         Sanitized string.
     """
     return _ANSI_REGEX.sub("", string)
+
+
+class GafaelfawrParseError(SlackException):
+    """Unable to parse the reply from Gafaelfawr.
+
+    Parameters
+    ----------
+    message
+        Summary error message.
+    error
+        Detailed error message, possibly multi-line.
+    user
+        Username of the user involved.
+    """
+
+    @classmethod
+    def from_exception(
+        cls, exc: ValidationError, user: Optional[str] = None
+    ) -> Self:
+        """Create an exception from a Pydantic parse failure.
+
+        Parameters
+        ----------
+        exc
+            Pydantic exception.
+        user
+            Username of the user involved.
+
+        Returns
+        -------
+        GafaelfawrParseError
+            Constructed exception.
+        """
+        error = f"{type(exc).__name__}: {str(exc)}"
+        return cls("Unable to parse reply from Gafalefawr", error, user)
+
+    def __init__(
+        self, message: str, error: str, user: Optional[str] = None
+    ) -> None:
+        super().__init__(message, user)
+        self.error = error
+
+    def to_slack(self) -> SlackMessage:
+        """Convert to a Slack message for Slack alerting.
+
+        Returns
+        -------
+        SlackMessage
+            Slack message suitable for posting as an alert.
+        """
+        message = super().to_slack()
+        block = SlackCodeBlock(heading="Error", code=self.error)
+        message.blocks.append(block)
+        return message
 
 
 class GafaelfawrWebError(SlackWebException):
