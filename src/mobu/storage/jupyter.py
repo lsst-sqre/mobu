@@ -27,6 +27,7 @@ from websockets.client import connect as websocket_connect
 from websockets.exceptions import WebSocketException
 
 from ..config import config
+from ..constants import WEBSOCKET_MESSAGE_SIZE_LIMIT
 from ..exceptions import (
     CodeExecutionError,
     JupyterWebError,
@@ -228,7 +229,9 @@ class JupyterLabSession:
         self._logger.debug("Opening WebSocket connection")
         try:
             self._socket = await websocket_connect(
-                self._url_for_websocket(url), extra_headers=headers
+                self._url_for_websocket(url),
+                extra_headers=headers,
+                max_size=WEBSOCKET_MESSAGE_SIZE_LIMIT,
             ).__aenter__()
         except WebSocketException as e:
             user = self._username

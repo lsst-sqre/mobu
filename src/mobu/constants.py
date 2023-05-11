@@ -26,6 +26,13 @@ An expiration exists primarily to ensure that the tokens don't accumulate
 forever.
 """
 
+WEBSOCKET_MESSAGE_SIZE_LIMIT: int | None = None
+"""Largest WebSocket message size allowed from lab (in bytes).
+
+This has to be large enough to hold HTML and image output from executing
+notebook cells, even though we discard that data. Set to `None` for no limit.
+"""
+
 # This must be kept in sync with Gafaelfawr until we can import the models
 # from Gafaelfawr directly.
 USERNAME_REGEX = (
