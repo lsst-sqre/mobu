@@ -33,6 +33,9 @@ This has to be large enough to hold HTML and image output from executing
 notebook cells, even though we discard that data. Set to `None` for no limit.
 """
 
+WEBSOCKET_OPEN_TIMEOUT: int = 60
+"""How long to wait for a WebSocket connection to open (in seconds)."""
+
 # This must be kept in sync with Gafaelfawr until we can import the models
 # from Gafaelfawr directly.
 USERNAME_REGEX = (
