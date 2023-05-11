@@ -373,7 +373,7 @@ class MockJupyterWebSocket(Mock):
 def mock_jupyter(respx_mock: respx.Router) -> MockJupyter:
     """Set up a mock JupyterHub and lab."""
     mock = MockJupyter()
-    respx_mock.get(_url("hub/login")).mock(side_effect=mock.login)
+    respx_mock.get(_url("hub/home")).mock(side_effect=mock.login)
     respx_mock.get(_url("hub/spawn")).mock(return_value=Response(200))
     respx_mock.post(_url("hub/spawn")).mock(side_effect=mock.spawn)
     regex = _url_regex("hub/spawn-pending/[^/]+$")

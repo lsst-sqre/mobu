@@ -469,21 +469,15 @@ class JupyterClient:
 
     @_convert_exception
     async def auth_to_hub(self) -> None:
-        """Retrieve the JupyterHub login page.
+        """Retrieve the JupyterHub home page.
 
         This forces a refresh of the authentication cookies set in the client
         session, which may be required to use API calls that return 401 errors
         instead of redirecting the user to log in.
         """
-        url = self._url_for("hub/login")
-        r = await self._client.get(url, follow_redirects=False)
-
-        # JupyterHub returns a 302 redirect to either the spawn form or the
-        # running lab on success, but we don't want to follow that
-        # redirect. We only want to accept and set the cookies included in the
-        # initial response.
-        if r.status_code >= 400:
-            r.raise_for_status()
+        url = self._url_for("hub/home")
+        r = await self._client.get(url)
+        r.raise_for_status()
 
     @_convert_exception
     async def auth_to_lab(self) -> None:
