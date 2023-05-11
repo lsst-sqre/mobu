@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import Optional, Self
 
 from fastapi import status
-from httpx_ws import HTTPXWSException, WebSocketDisconnect
 from pydantic import ValidationError
 from safir.datetime import format_datetime_for_logging
 from safir.fastapi import ClientRequestError
@@ -22,6 +21,7 @@ from safir.slack.blockkit import (
     SlackTextField,
     SlackWebException,
 )
+from websockets.exceptions import InvalidStatus, WebSocketException
 
 _ANSI_REGEX = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
 """Regex that matches ANSI escape sequences."""
@@ -367,8 +367,8 @@ class JupyterWebSocketError(MobuSlackException):
     """An error occurred talking to the Jupyter lab WebSocket."""
 
     @classmethod
-    def from_exception(cls, exc: HTTPXWSException, user: str) -> Self:
-        """Convert from an `~httpx_ws.HTTPXWSException`.
+    def from_exception(cls, exc: WebSocketException, user: str) -> Self:
+        """Convert from a `~websockets.exceptions.WebSocketException`.
 
         Parameters
         ----------
@@ -382,27 +382,33 @@ class JupyterWebSocketError(MobuSlackException):
         JupyterWebSocketError
             Newly-created exception.
         """
-        if isinstance(exc, WebSocketDisconnect):
+        error = f"{type(exc).__name__}: {str(exc)}"
+        if isinstance(exc, InvalidStatus):
+            status = exc.response.status_code
             return cls(
-                "WebSocket unexpectedly disconnected",
-                user,
-                code=exc.code,
-                reason=exc.reason,
+                f"Lab WebSocket unexpectedly closed: {error}",
+                user=user,
+                status=status,
+                body=exc.response.body,
             )
         else:
-            return cls(f"{type(exc).__name__}: {str(exc)}", user)
+            return cls(f"Error talking to lab WebSocket: {error}", user=user)
 
     def __init__(
         self,
         msg: str,
-        user: str,
         *,
+        user: str,
         code: Optional[int] = None,
         reason: Optional[str] = None,
+        status: Optional[int] = None,
+        body: Optional[bytes] = None,
     ) -> None:
         super().__init__(msg, user)
         self.code = code
         self.reason = reason
+        self.status = status
+        self.body = body.decode() if body else None
 
     def to_slack(self) -> SlackMessage:
         """Format this exception as a Slack notification.
@@ -413,6 +419,7 @@ class JupyterWebSocketError(MobuSlackException):
             Formatted message.
         """
         message = super().to_slack()
+
         if self.reason:
             reason = self.reason
             if self.code:
@@ -424,6 +431,11 @@ class JupyterWebSocketError(MobuSlackException):
         elif self.code:
             field = SlackTextField(heading="Code", text=str(self.code))
             message.fields.append(field)
+
+        if self.body:
+            block = SlackTextBlock(heading="Body", text=self.body)
+            message.blocks.append(block)
+
         return message
 
 

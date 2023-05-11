@@ -13,7 +13,6 @@ anyio==3.6.2 \
     --hash=sha256:fbbe32bd270d2a2ef3ed1c5d45041250284e31fc0a4df4a5a6071842051a51e3
     # via
     #   httpcore
-    #   httpx-ws
     #   starlette
     #   watchfiles
 astropy==5.2.2 \
@@ -256,13 +255,10 @@ h11==0.14.0 \
     # via
     #   httpcore
     #   uvicorn
-    #   wsproto
 httpcore==0.17.0 \
     --hash=sha256:0fdfea45e94f0c9fd96eab9286077f9ff788dd186635ae61b312693e4d943599 \
     --hash=sha256:cc045a3241afbf60ce056202301b4d8b6af08845e3294055eb26b09913ef903c
-    # via
-    #   httpx
-    #   httpx-ws
+    # via httpx
 httptools==0.5.0 \
     --hash=sha256:0297822cea9f90a38df29f48e40b42ac3d48a28637368f3ec6d15eebefd182f9 \
     --hash=sha256:1af91b3650ce518d226466f30bbba5b6376dbd3ddb1b2be8b0658c6799dd450b \
@@ -311,15 +307,10 @@ httpx==0.24.0 \
     --hash=sha256:507d676fc3e26110d41df7d35ebd8b3b8585052450f4097401c9be59d928c63e
     # via
     #   -r requirements/main.in
-    #   httpx-ws
     #   safir
 httpx-sse==0.3.0 \
     --hash=sha256:a558b027ef3d04b0f744a242787cec585b44773979a92f0875b8a7e05cf51249 \
     --hash=sha256:ff50c067ba7a0bae31416cf44cdc874127db4c3d4e1085159c85b3cc03b8e22c
-    # via -r requirements/main.in
-httpx-ws==0.3.1 \
-    --hash=sha256:326773de2f1e4d20ce9aba1fe7972483c589997cf11f061572a82bea2d7057df \
-    --hash=sha256:6ec8341bc8fd4d1b983e9e041d986b4b1c2786658313317ef88808be61100b4e
     # via -r requirements/main.in
 idna==3.4 \
     --hash=sha256:814f528e8dead7d329833b91c5faa87d60bf71824cd12a7530b5526063d02cb4 \
@@ -743,8 +734,6 @@ websockets==11.0.3 \
     --hash=sha256:f61bdb1df43dc9c131791fbc2355535f9024b9a04398d3bd0684fc16ab07df74 \
     --hash=sha256:fb06eea71a00a7af0ae6aefbb932fb8a7df3cb390cc217d51a9ad7343de1b8d0 \
     --hash=sha256:ffd7dcaf744f25f82190856bc26ed81721508fc5cbf2a330751e135ff1283564
-    # via uvicorn
-wsproto==1.2.0 \
-    --hash=sha256:ad565f26ecb92588a3e43bc3d96164de84cd9902482b130d0ddbaa9664a85065 \
-    --hash=sha256:b9acddd652b585d75b20477888c56642fdade28bdfd3579aa24a4d2c037dd736
-    # via httpx-ws
+    # via
+    #   -r requirements/main.in
+    #   uvicorn

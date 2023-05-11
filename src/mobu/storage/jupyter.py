@@ -7,29 +7,24 @@ jupyter kernels remotely.
 from __future__ import annotations
 
 import asyncio
+import json
 import random
 import string
 from collections.abc import AsyncIterator, Callable, Coroutine
 from dataclasses import dataclass
 from functools import wraps
 from types import TracebackType
-from typing import (
-    Any,
-    Concatenate,
-    Literal,
-    Optional,
-    ParamSpec,
-    Self,
-    TypeVar,
-)
+from typing import Concatenate, Literal, Optional, ParamSpec, Self, TypeVar
 from urllib.parse import urlparse
 from uuid import uuid4
 
 from httpx import AsyncClient, HTTPError
 from httpx_sse import EventSource, aconnect_sse
-from httpx_ws import AsyncWebSocketSession, HTTPXWSException, aconnect_ws
 from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
+from websockets.client import WebSocketClientProtocol
+from websockets.client import connect as websocket_connect
+from websockets.exceptions import WebSocketException
 
 from ..config import config
 from ..exceptions import (
@@ -67,7 +62,7 @@ class SpawnProgressMessage:
 
 
 class JupyterSpawnProgress:
-    """Provides status and polling of lab spawn progress.
+    """Async iterator returning spawn progress messages.
 
     This parses messages from the progress API, which is an EventStream API
     that provides status messages for a spawning lab.
@@ -151,14 +146,16 @@ class JupyterLabSession:
     ----------
     username
         User the session is for.
-    session_id
-        Identifier of the Jupyter lab session, which must be created before
-        creating this session.
-    websocket_url
-        URL on which to create a WebSocket session.
-    close_url
-        URL to which to send a DELETE to close the lab session.
-    client
+    jupyter_url
+        Base URL for talking to JupyterHub or the lab (via the proxy).
+    kernel_name
+        Name of the kernel to use for the session.
+    nobebook_name
+        Name of the notebook we will be running, which is passed to the
+        session and might influence logging on the lab side. If set, the
+        session type will be set to ``notebook``. If not set, the session type
+        will be set to ``console``.
+    http_client
         HTTP client to talk to the Jupyter lab.
     logger
         Logger to use.
@@ -168,25 +165,72 @@ class JupyterLabSession:
         self,
         *,
         username: str,
-        session_id: str,
-        websocket_url: str,
-        close_url: str,
-        client: AsyncClient,
+        jupyter_url: str,
+        kernel_name: str = "LSST",
+        notebook_name: Optional[str] = None,
+        http_client: AsyncClient,
         logger: BoundLogger,
     ) -> None:
         self._username = username
-        self._session_id = session_id
-        self._websocket_url = websocket_url
-        self._close_url = close_url
-        self._client = client
+        self._jupyter_url = jupyter_url
+        self._kernel_name = kernel_name
+        self._notebook_name = notebook_name
+        self._client = http_client
         self._logger = logger
-        self._socket: Optional[AsyncWebSocketSession] = None
+
+        self._session_id: Optional[str] = None
+        self._socket: Optional[WebSocketClientProtocol] = None
 
     async def __aenter__(self) -> Self:
-        url = self._websocket_url
+        """Create the session and open the WebSocket connection."""
+        # This class implements an explicit context manager instead of using
+        # an async generator and contextlib.asynccontextmanager, and similarly
+        # explicitly calls the __aenter__ and __aexit__ methods in the
+        # WebSocket library rather than using it as a context manager.
+        #
+        # Initially, it was implemented as a generator, but when using that
+        # approach the code after the yield in the generator was called at an
+        # arbitrary time in the future, rather than when the context manager
+        # exited. This meant that it was often called after the httpx client
+        # had been closed, which meant it was unable to delete the lab session
+        # and raised background exceptions. This approach allows more explicit
+        # control of when the context manager is shut down and ensures it
+        # happens immediately when the context exits.
+        username = self._username
+        notebook = self._notebook_name
+        url = self._url_for(f"user/{username}/api/sessions")
+        body = {
+            "kernel": {"name": self._kernel_name},
+            "name": notebook or "(no notebook)",
+            "path": notebook if notebook else uuid4().hex,
+            "type": "notebook" if notebook else "console",
+        }
         try:
-            self._socket = await aconnect_ws(url, self._client).__aenter__()
-        except HTTPXWSException as e:
+            r = await self._client.post(url, json=body)
+            r.raise_for_status()
+        except HTTPError as e:
+            raise JupyterWebError.from_exception(e, self._username) from e
+        response = r.json()
+        self._session_id = response["id"]
+        kernel = response["kernel"]["id"]
+
+        # Build a request for the same URL using httpx so that it will
+        # generate request headers, and copy select headers required for
+        # authentication into the WebSocket call.
+        url = self._url_for(f"user/{username}/api/kernels/{kernel}/channels")
+        request = self._client.build_request("GET", url)
+        headers = {
+            h: request.headers[h]
+            for h in ("x-xsrftoken", "authorization", "cookie")
+        }
+
+        # Open the WebSocket connection using those headers.
+        self._logger.debug("Opening WebSocket connection")
+        try:
+            self._socket = await websocket_connect(
+                self._url_for_websocket(url), extra_headers=headers
+            ).__aenter__()
+        except WebSocketException as e:
             user = self._username
             raise JupyterWebSocketError.from_exception(e, user) from e
         return self
@@ -197,8 +241,22 @@ class JupyterLabSession:
         exc_val: Exception | None,
         exc_tb: TracebackType | None,
     ) -> Literal[False]:
+        """Shut down the open WebSocket and delete the session."""
+        username = self._username
+        session_id = self._session_id
+
+        # Close the WebSocket.
+        if self._socket:
+            try:
+                await self._socket.close()
+            except WebSocketException as e:
+                raise JupyterWebSocketError.from_exception(e, username) from e
+            self._socket = None
+
+        # Delete the lab session.
+        url = self._url_for(f"user/{username}/api/sessions/{session_id}")
         try:
-            r = await self._client.delete(self._close_url)
+            r = await self._client.delete(url)
             r.raise_for_status()
         except HTTPError as e:
             # Be careful to not raise an exception if we're already processing
@@ -209,6 +267,7 @@ class JupyterLabSession:
                 self._logger.exception("Failed to close session")
             else:
                 raise JupyterWebError.from_exception(e, self._username) from e
+
         return False
 
     async def run_python(self, code: str) -> str:
@@ -238,7 +297,7 @@ class JupyterLabSession:
         if not self._socket:
             raise RuntimeError("JupyterLabSession not opened")
         message_id = uuid4().hex
-        message = {
+        request = {
             "header": {
                 "username": self._username,
                 "version": "5.0",
@@ -258,53 +317,49 @@ class JupyterLabSession:
             "metadata": {},
             "buffers": {},
         }
-        await self._socket.send_json(message)
+        await self._socket.send(json.dumps(request))
 
         # Consume messages waiting for the response.
         result = ""
-        while True:
-            try:
-                message = await self._socket.receive_json()
-            except HTTPXWSException as e:
-                user = self._username
-                raise JupyterWebSocketError.from_exception(e, user) from e
-            self._logger.debug("Received kernel message", message=message)
+        try:
+            async for message in self._socket:
+                try:
+                    output = self._parse_message(message, message_id)
+                except CodeExecutionError as e:
+                    e.code = code
+                    raise
+                except Exception as e:
+                    error = f"{type(e).__name__}: {str(e)}"
+                    msg = "Ignoring unparsable web socket message"
+                    self._logger.warning(msg, error=error, message=message)
 
-            # Parse the received message.
-            try:
-                output = self._parse_message(message, message_id)
-            except CodeExecutionError as e:
-                e.code = code
-                raise
-            except Exception as e:
-                error = f"{type(e).__name__}: {str(e)}"
-                msg = "Ignoring unparsable web socket message"
-                self._logger.warning(msg, error=error, message=message)
-
-            # Accumulate the results if they are of interest, and exit and
-            # return the results if this message indicated the end of
-            # execution.
-            if not output:
-                continue
-            result += output.content
-            if output.done:
-                break
+                # Accumulate the results if they are of interest, and exit and
+                # return the results if this message indicated the end of
+                # execution.
+                if not output:
+                    continue
+                result += output.content
+                if output.done:
+                    break
+        except WebSocketException as e:
+            user = self._username
+            raise JupyterWebSocketError.from_exception(e, user) from e
 
         # Return the accumulated output.
         return result
 
     def _parse_message(
-        self, message: dict[str, Any], message_id: str
+        self, message: str | bytes, message_id: str
     ) -> JupyterOutput | None:
         """Parse a WebSocket message from a Jupyter lab kernel.
 
         Parameters
         ----------
         message
-            Raw message decoded from JSON.
+            Raw message.
         message_id
-            Identifier of message we sent, used to ignore messages that aren't
-            in response to our message.
+            Message ID of the message we went, so that we can look for
+            replies.
 
         Returns
         -------
@@ -316,31 +371,68 @@ class JupyterLabSession:
         KeyError
             Raised if the WebSocket message wasn't in the expected format.
         """
-        msg_type = message["msg_type"]
+        if isinstance(message, bytes):
+            message = message.decode()
+        data = json.loads(message)
+        self._logger.debug("Received kernel message", message=data)
 
         # Ignore headers not intended for us. Thie web socket is rather
         # chatty with broadcast status messages.
-        if message.get("parent_header", {}).get("msg_id") != message_id:
+        if data.get("parent_header", {}).get("msg_id") != message_id:
             return None
 
         # Analyse the message type to figure out what to do with the response.
+        msg_type = data["msg_type"]
         if msg_type in ("execute_input", "status"):
             return None
         elif msg_type == "stream":
-            return JupyterOutput(content=message["content"]["text"])
+            return JupyterOutput(content=data["content"]["text"])
         elif msg_type == "execute_reply":
-            status = message["content"]["status"]
+            status = data["content"]["status"]
             if status == "ok":
                 return JupyterOutput(content="", done=True)
             else:
                 raise CodeExecutionError(user=self._username, status=status)
         elif msg_type == "error":
-            error = "".join(message["content"]["traceback"])
+            error = "".join(data["content"]["traceback"])
             raise CodeExecutionError(user=self._username, error=error)
         else:
             msg = "Ignoring unrecognized WebSocket message"
-            self._logger.warning(msg, message_type=msg_type, message=message)
+            self._logger.warning(msg, message_type=msg_type, message=data)
             return None
+
+    def _url_for(self, partial: str) -> str:
+        """Construct a JupyterHub or Jupyter lab URL from a partial URL.
+
+        Parameters
+        ----------
+        partial
+            Part of the URL after the prefix for JupyterHub.
+
+        Returns
+        -------
+        str
+            Full URL to use.
+        """
+        if self._jupyter_url.endswith("/"):
+            return f"{self._jupyter_url}{partial}"
+        else:
+            return f"{self._jupyter_url}/{partial}"
+
+    def _url_for_websocket(self, url: str) -> str:
+        """Convert a URL to a WebSocket URL.
+
+        Parameters
+        ----------
+        url
+            Regular HTTP URL.
+
+        Returns
+        -------
+        str
+            URL converted to the ``wss`` scheme.
+        """
+        return urlparse(url)._replace(scheme="wss").geturl()
 
 
 def _convert_exception(
@@ -421,10 +513,13 @@ class JupyterClient:
         logger: BoundLogger,
     ) -> None:
         self.user = user
+        self._url_prefix = url_prefix
+        self._config = image_config
         self._logger = logger.bind(user=user.username)
+
+        # Determine the base URL for talking to JupyterHub.
         if not config.environment_url:
             raise RuntimeError("environment_url not set")
-        self._config = image_config
         base_url = str(config.environment_url).rstrip("/")
         self._jupyter_url = base_url + url_prefix
 
@@ -515,8 +610,7 @@ class JupyterClient:
             self._logger.warning(msg, servers=data["servers"])
         return result
 
-    @_convert_exception
-    async def open_lab_session(
+    def open_lab_session(
         self, notebook_name: Optional[str] = None, *, kernel_name: str = "LSST"
     ) -> JupyterLabSession:
         """Open a Jupyter lab session.
@@ -540,26 +634,12 @@ class JupyterClient:
         JupyterLabSession
             Context manager to open the WebSocket session.
         """
-        username = self.user.username
-        url = self._url_for(f"user/{username}/api/sessions")
-        body = {
-            "kernel": {"name": kernel_name},
-            "name": notebook_name or "(no notebook)",
-            "path": notebook_name if notebook_name else uuid4().hex,
-            "type": "notebook" if notebook_name else "console",
-        }
-        r = await self._client.post(url, json=body)
-        r.raise_for_status()
-        response = r.json()
-        session_id = response["id"]
-        kernel_id = response["kernel"]["id"]
-        close_url = self._url_for(f"user/{username}/api/sessions/{session_id}")
         return JupyterLabSession(
-            username=username,
-            websocket_url=self._url_for_lab_websocket(username, kernel_id),
-            close_url=close_url,
-            session_id=session_id,
-            client=self._client,
+            username=self.user.username,
+            jupyter_url=self._jupyter_url,
+            kernel_name=kernel_name,
+            notebook_name=notebook_name,
+            http_client=self._client,
             logger=self._logger,
         )
 

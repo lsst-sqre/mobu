@@ -93,13 +93,13 @@ def jupyter(respx_mock: respx.Router) -> Iterator[MockJupyter]:
     # respx has no mechanism to mock aconnect_ws, so we have to do it
     # ourselves.
     @asynccontextmanager
-    async def mock_aconnect_ws(
-        url: str, client: AsyncClient
+    async def mock_connect(
+        url: str, extra_headers: dict[str, str]
     ) -> AsyncIterator[MockJupyterWebSocket]:
-        yield mock_jupyter_websocket(url, jupyter_mock)
+        yield mock_jupyter_websocket(url, extra_headers, jupyter_mock)
 
-    with patch("mobu.storage.jupyter.aconnect_ws") as mock:
-        mock.side_effect = mock_aconnect_ws
+    with patch("mobu.storage.jupyter.websocket_connect") as mock:
+        mock.side_effect = mock_connect
         yield jupyter_mock
 
 
