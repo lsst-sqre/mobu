@@ -1,10 +1,11 @@
 """Handlers for the app's external root, ``/mobu/``."""
 
 import json
+from collections.abc import Iterator
 from typing import Any
 
 from fastapi import APIRouter, Depends, Response
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from safir.datetime import current_datetime
 from safir.metadata import get_metadata
 from safir.models import ErrorModel
@@ -152,21 +153,37 @@ async def get_monkey(
 @external_router.get(
     "/flocks/{flock}/monkeys/{monkey}/log",
     description="Returns the monkey log output as a file",
-    response_class=FileResponse,
+    response_class=StreamingResponse,
     responses={
         404: {"description": "Monkey or flock not found", "model": ErrorModel}
     },
     summary="Log for monkey",
 )
-async def get_monkey_log(
+def get_monkey_log(
     flock: str,
     monkey: str,
     context: RequestContext = Depends(context_dependency),
-) -> FileResponse:
-    return FileResponse(
-        path=context.manager.get_flock(flock).get_monkey(monkey).logfile(),
+) -> StreamingResponse:
+    logfile = context.manager.get_flock(flock).get_monkey(monkey).logfile()
+
+    # We can't use FileResponse because the log file is constantly changing
+    # while it is being streamed back to the client, and Starlette commits to
+    # a length but doesn't stop sending the file at that length, resulting in
+    # an HTTP protocol error because the content is longer than the declared
+    # Content-Length. Instead use a StreamingResponse, but simulate a
+    # FileResponse by setting Content-Disposition.
+    #
+    # Note that this is not async, so this handler must be sync so that
+    # FastAPI will run it in a thread pool.
+    def iterfile() -> Iterator[bytes]:
+        with open(logfile, "rb") as fh:
+            yield from fh
+
+    filename = f"{flock}-{monkey}-{current_datetime()}"
+    return StreamingResponse(
+        iterfile(),
         media_type="text/plain",
-        filename=f"{flock}-{monkey}-{current_datetime()}",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
