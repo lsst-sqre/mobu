@@ -26,14 +26,14 @@ An expiration exists primarily to ensure that the tokens don't accumulate
 forever.
 """
 
-WEBSOCKET_MESSAGE_SIZE_LIMIT: int | None = None
+WEBSOCKET_MESSAGE_SIZE_LIMIT = 4 * 1024 * 1024
 """Largest WebSocket message size allowed from lab (in bytes).
 
 This has to be large enough to hold HTML and image output from executing
 notebook cells, even though we discard that data. Set to `None` for no limit.
 """
 
-WEBSOCKET_OPEN_TIMEOUT: int = 60
+WEBSOCKET_OPEN_TIMEOUT = 60
 """How long to wait for a WebSocket connection to open (in seconds)."""
 
 # This must be kept in sync with Gafaelfawr until we can import the models
