@@ -731,11 +731,14 @@ class JupyterClient:
         self, image: JupyterCachemachineImage
     ) -> dict[str, str]:
         """Construct the form to submit to the JupyterHub login page."""
-        return {
+        result = {
             "image_list": str(image),
             "image_dropdown": "use_image_from_dropdown",
             "size": self._config.size.value,
         }
+        if self._config.debug:
+            result["enable_debug"] = "true"
+        return result
 
     def _url_for(self, partial: str) -> str:
         """Construct a JupyterHub or Jupyter lab URL from a partial URL.
