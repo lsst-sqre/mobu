@@ -94,7 +94,7 @@ def jupyter(respx_mock: respx.Router) -> Iterator[MockJupyter]:
     # ourselves.
     @asynccontextmanager
     async def mock_connect(
-        url: str, extra_headers: dict[str, str]
+        url: str, extra_headers: dict[str, str], max_size: int | None
     ) -> AsyncIterator[MockJupyterWebSocket]:
         yield mock_jupyter_websocket(url, extra_headers, jupyter_mock)
 
