@@ -6,6 +6,7 @@ import asyncio
 import json
 import re
 from base64 import urlsafe_b64decode
+from collections.abc import AsyncIterator
 from contextlib import redirect_stdout
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -14,13 +15,12 @@ from io import StringIO
 from re import Pattern
 from traceback import format_exc
 from typing import Any, Optional
-from unittest.mock import ANY, Mock
+from unittest.mock import ANY
 from urllib.parse import parse_qs
 from uuid import uuid4
 
 import respx
 from httpx import Request, Response
-from httpx_ws import AsyncWebSocketSession
 from safir.datetime import current_datetime
 
 from mobu.config import config
@@ -85,6 +85,14 @@ class MockJupyter:
         self._delete_at: dict[str, datetime | None] = {}
         self._fail: dict[str, dict[JupyterAction, bool]] = {}
 
+    @staticmethod
+    def get_user(authorization: str) -> str:
+        """Get the user from the Authorization header."""
+        assert authorization.startswith("Bearer ")
+        token = authorization.split(" ", 1)[1]
+        user = urlsafe_b64decode(token[3:].split(".", 1)[0].encode())
+        return user.decode()
+
     def fail(self, user: str, action: JupyterAction) -> None:
         """Configure the given action to fail for the given user."""
         if user not in self._fail:
@@ -92,7 +100,7 @@ class MockJupyter:
         self._fail[user][action] = True
 
     def login(self, request: Request) -> Response:
-        user = self._get_user(request.headers["Authorization"])
+        user = self.get_user(request.headers["Authorization"])
         if JupyterAction.LOGIN in self._fail.get(user, {}):
             return Response(500, request=request)
         state = self.state.get(user, JupyterState.LOGGED_OUT)
@@ -101,7 +109,7 @@ class MockJupyter:
         return Response(200, request=request)
 
     def user(self, request: Request) -> Response:
-        user = self._get_user(request.headers["Authorization"])
+        user = self.get_user(request.headers["Authorization"])
         if JupyterAction.USER in self._fail.get(user, {}):
             return Response(500, request=request)
         assert str(request.url).endswith(f"/hub/api/users/{user}")
@@ -128,7 +136,7 @@ class MockJupyter:
             return Response(
                 303, headers={"Location": str(request.url)}, request=request
             )
-        user = self._get_user(request.headers["Authorization"])
+        user = self.get_user(request.headers["Authorization"])
         expected_suffix = f"/hub/api/users/{user}/server/progress"
         assert str(request.url).endswith(expected_suffix)
         state = self.state.get(user, JupyterState.LOGGED_OUT)
@@ -165,7 +173,7 @@ class MockJupyter:
         )
 
     def spawn(self, request: Request) -> Response:
-        user = self._get_user(request.headers["Authorization"])
+        user = self.get_user(request.headers["Authorization"])
         if JupyterAction.SPAWN in self._fail.get(user, {}):
             return Response(500, request=request)
         state = self.state.get(user, JupyterState.LOGGED_OUT)
@@ -178,7 +186,7 @@ class MockJupyter:
         return Response(302, headers={"Location": url}, request=request)
 
     def spawn_pending(self, request: Request) -> Response:
-        user = self._get_user(request.headers["Authorization"])
+        user = self.get_user(request.headers["Authorization"])
         assert str(request.url).endswith(f"/hub/spawn-pending/{user}")
         if JupyterAction.SPAWN_PENDING in self._fail.get(user, {}):
             return Response(500, request=request)
@@ -187,12 +195,12 @@ class MockJupyter:
         return Response(200, request=request)
 
     def missing_lab(self, request: Request) -> Response:
-        user = self._get_user(request.headers["Authorization"])
+        user = self.get_user(request.headers["Authorization"])
         assert str(request.url).endswith(f"/hub/user/{user}/lab")
         return Response(503, request=request)
 
     def lab(self, request: Request) -> Response:
-        user = self._get_user(request.headers["Authorization"])
+        user = self.get_user(request.headers["Authorization"])
         assert str(request.url).endswith(f"/user/{user}/lab")
         if JupyterAction.LAB in self._fail.get(user, {}):
             return Response(500, request=request)
@@ -207,7 +215,7 @@ class MockJupyter:
             )
 
     def delete_lab(self, request: Request) -> Response:
-        user = self._get_user(request.headers["Authorization"])
+        user = self.get_user(request.headers["Authorization"])
         assert str(request.url).endswith(f"/users/{user}/server")
         if JupyterAction.DELETE_LAB in self._fail.get(user, {}):
             return Response(500, request=request)
@@ -221,7 +229,7 @@ class MockJupyter:
         return Response(202, request=request)
 
     def create_session(self, request: Request) -> Response:
-        user = self._get_user(request.headers["Authorization"])
+        user = self.get_user(request.headers["Authorization"])
         assert str(request.url).endswith(f"/user/{user}/api/sessions")
         assert user not in self.sessions
         if JupyterAction.CREATE_SESSION in self._fail.get(user, {}):
@@ -246,7 +254,7 @@ class MockJupyter:
         )
 
     def delete_session(self, request: Request) -> Response:
-        user = self._get_user(request.headers["Authorization"])
+        user = self.get_user(request.headers["Authorization"])
         session_id = self.sessions[user].session_id
         expected_suffix = f"/user/{user}/api/sessions/{session_id}"
         assert str(request.url).endswith(expected_suffix)
@@ -257,35 +265,30 @@ class MockJupyter:
         del self.sessions[user]
         return Response(204, request=request)
 
-    @staticmethod
-    def _get_user(authorization: str) -> str:
-        """Get the user from the Authorization header."""
-        assert authorization.startswith("Bearer ")
-        token = authorization.split(" ", 1)[1]
-        user = urlsafe_b64decode(token[3:].split(".", 1)[0].encode())
-        return user.decode()
 
-
-class MockJupyterWebSocket(Mock):
+class MockJupyterWebSocket:
     """Simulate the WebSocket connection to a Jupyter Lab.
 
     Note
     ----
-    The methods are named the reverse of what you would expect.  For example,
-    ``send_json`` receives a message, and ``receive_json`` sends a message
-    back to the caller. This is so that this class can be used as a mock of
-    an `~httpx_ws.AsyncWebSocketSession`.
+    The methods are named the reverse of what you would expect:  ``send``
+    receives a message, and ``recv`` sends a message back to the caller. This
+    is because this is a mock of a client library but is simulating a server,
+    so is operating in the reverse direction.
     """
 
     def __init__(self, user: str, session_id: str) -> None:
-        super().__init__(spec=AsyncWebSocketSession)
         self.user = user
         self.session_id = session_id
         self._header: Optional[dict[str, str]] = None
         self._code: Optional[str] = None
         self._state: dict[str, Any] = {}
 
-    async def send_json(self, message: dict[str, Any]) -> None:
+    async def close(self) -> None:
+        pass
+
+    async def send(self, message_str: str) -> None:
+        message = json.loads(message_str)
         assert message == {
             "header": {
                 "username": self.user,
@@ -309,8 +312,13 @@ class MockJupyterWebSocket(Mock):
         self._header = message["header"]
         self._code = message["content"]["code"]
 
-    async def receive_json(self) -> dict[str, Any]:
-        assert self._header
+    async def __aiter__(self) -> AsyncIterator[str]:
+        while True:
+            assert self._header
+            response = self._build_response()
+            yield json.dumps(response)
+
+    def _build_response(self) -> dict[str, Any]:
         if self._code == _GET_IMAGE:
             self._code = None
             return {
@@ -331,11 +339,11 @@ class MockJupyterWebSocket(Mock):
                 "content": {"text": "some-node"},
             }
         elif self._code == "long_error_for_test()":
-            self._code = None
             error = ""
             line = "this is a single line of output to test trimming errors"
             for i in range(int(3000 / len(line))):
                 error += f"{line} #{i}\n"
+            self._code = None
             return {
                 "msg_type": "error",
                 "parent_header": self._header,
@@ -396,13 +404,28 @@ def mock_jupyter(respx_mock: respx.Router) -> MockJupyter:
 
 
 def mock_jupyter_websocket(
-    url: str, jupyter: MockJupyter
+    url: str, headers: dict[str, str], jupyter: MockJupyter
 ) -> MockJupyterWebSocket:
-    """Create a new mock ClientWebSocketResponse that simulates a lab."""
+    """Create a new mock ClientWebSocketResponse that simulates a lab.
+
+    Parameters
+    ----------
+    url
+        URL of the request to open a WebSocket.
+    headers
+        Extra headers sent with that request.
+    jupyter
+        Mock JupyterHub.
+
+    Returns
+    -------
+    MockJupyterWebSocket
+        Mock WebSocket connection.
+    """
     match = re.search("/user/([^/]+)/api/kernels/([^/]+)/channels", url)
     assert match
     user = match.group(1)
-    assert user
+    assert user == jupyter.get_user(headers["authorization"])
     session = jupyter.sessions[user]
     assert match.group(2) == session.kernel_id
     return MockJupyterWebSocket(user, session.session_id)

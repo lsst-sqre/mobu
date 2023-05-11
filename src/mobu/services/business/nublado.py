@@ -249,12 +249,13 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
     ) -> AsyncIterator[JupyterLabSession]:
         self.logger.info("Creating lab session")
         stopwatch = self.timings.start("create_session", self.annotations())
-        async with await self._client.open_lab_session(notebook) as session:
+        async with self._client.open_lab_session(notebook) as session:
             stopwatch.stop()
             with self.timings.start("execute_setup", self.annotations()):
                 await self.setup_session(session)
             yield session
             await self.lab_login()
+            self.logger.info("Deleting lab session")
             stopwatch = self.timings.start("delete_sesion", self.annotations())
         stopwatch.stop()
         self._node = None
