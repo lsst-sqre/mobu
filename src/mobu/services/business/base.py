@@ -101,7 +101,6 @@ class Business(Generic[T], metaclass=ABCMeta):
 
     async def startup(self) -> None:
         """Run before the start of the first iteration and then not again."""
-        pass
 
     @abstractmethod
     async def execute(self) -> None:
@@ -113,11 +112,9 @@ class Business(Generic[T], metaclass=ABCMeta):
         This should be overridden by child classes to free any resources that
         were allocated in ``__init__``.
         """
-        pass
 
     async def shutdown(self) -> None:
         """Perform any cleanup required after stopping."""
-        pass
 
     # Public Business API called by the Monkey class. These methods handle the
     # complex state logic of looping and handling a stop signal and should not

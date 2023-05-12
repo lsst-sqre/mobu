@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import structlog
 from httpx import AsyncClient
 from safir.slack.webhook import SlackWebhookClient
@@ -64,7 +62,7 @@ class Factory:
     """
 
     def __init__(
-        self, context: ProcessContext, logger: Optional[BoundLogger] = None
+        self, context: ProcessContext, logger: BoundLogger | None = None
     ) -> None:
         self._context = context
         self._logger = logger if logger else structlog.get_logger("mobu")

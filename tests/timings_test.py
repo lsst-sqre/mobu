@@ -31,11 +31,11 @@ def test_timings() -> None:
     assert first_sw.elapsed == first_sw.stop_time - first_sw.start_time
     assert first_sw.elapsed >= old_elapsed
 
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError, match="some exception"):
         with timings.start("else", {"foo": "bar"}) as sw:
             assert sw.annotations == {"foo": "bar"}
             assert sw.stop_time is None
-            raise Exception("some exception")
+            raise ValueError("some exception")
 
     second_sw = sw
     assert second_sw.stop_time

@@ -31,7 +31,7 @@ from .support.jupyter import (
 
 
 @pytest.fixture(autouse=True)
-def configure() -> Iterator[None]:
+def _configure() -> Iterator[None]:
     """Set minimal configuration settings.
 
     Add an environment URL for testing purposes and create a Gafaelfawr admin

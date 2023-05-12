@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import random
 from abc import ABCMeta, abstractmethod
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Generic, Optional, TypeVar
+from random import SystemRandom
+from typing import Generic, TypeVar
 
 from httpx import AsyncClient
 from safir.datetime import current_datetime, format_datetime_for_logging
@@ -108,8 +108,9 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             image_config=options.image,
             logger=logger,
         )
-        self._image: Optional[RunningImage] = None
-        self._node: Optional[str] = None
+        self._image: RunningImage | None = None
+        self._node: str | None = None
+        self._random = SystemRandom()
 
     @abstractmethod
     async def execute_code(self, session: JupyterLabSession) -> None:
@@ -147,7 +148,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         if self.options.jitter:
             with self.timings.start("pre_login_delay"):
                 max_delay = self.options.jitter
-                if not await self.pause(random.uniform(0, max_delay)):
+                if not await self.pause(self._random.uniform(0, max_delay)):
                     return
         await self.hub_login()
         if not await self._client.is_lab_stopped():
@@ -186,7 +187,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         if self.options.jitter:
             self.logger.info("Idling...")
             with self.timings.start("idle"):
-                extra_delay = random.uniform(0, self.options.jitter)
+                extra_delay = self._random.uniform(0, self.options.jitter)
                 await self.pause(self.options.idle_time + extra_delay)
         else:
             await super().idle()
@@ -218,13 +219,13 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
                         return True
             except TimeoutError:
                 log = "\n".join([str(m) for m in log_messages])
-                raise JupyterSpawnError(log, self.user.username)
+                raise JupyterSpawnError(log, self.user.username) from None
             except SlackException:
                 raise
             except Exception as e:
                 log = "\n".join([str(m) for m in log_messages])
                 user = self.user.username
-                raise JupyterSpawnError.from_exception(log, e, user)
+                raise JupyterSpawnError.from_exception(log, e, user) from e
 
             # We only fall through if the spawn failed, timed out, or if we're
             # stopping the business.
@@ -235,8 +236,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
                 elapsed = round(sw.elapsed.total_seconds())
                 msg = f"Lab did not spawn after {elapsed}s"
                 raise JupyterTimeoutError(msg, self.user.username, log)
-            else:
-                raise JupyterSpawnError(log, self.user.username)
+            raise JupyterSpawnError(log, self.user.username)
 
     async def lab_login(self) -> None:
         self.logger.info("Logging in to lab")
@@ -245,7 +245,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
 
     @asynccontextmanager
     async def open_session(
-        self, notebook: Optional[str] = None
+        self, notebook: str | None = None
     ) -> AsyncIterator[JupyterLabSession]:
         self.logger.info("Creating lab session")
         stopwatch = self.timings.start("create_session", self.annotations())

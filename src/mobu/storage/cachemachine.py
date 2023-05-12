@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Self
+from typing import Self
 
 from httpx import AsyncClient, HTTPError, HTTPStatusError
 from pydantic import BaseModel, Field
@@ -26,7 +26,7 @@ class JupyterCachemachineImage(BaseModel):
         example="Weekly 2021_34",
     )
 
-    digest: Optional[str] = Field(
+    digest: str | None = Field(
         ...,
         title="Hash of the last layer of the Docker container",
         description="May be null if the digest isn't known",
@@ -41,6 +41,18 @@ class JupyterCachemachineImage(BaseModel):
 
     @classmethod
     def from_dict(cls, data: dict[str, str]) -> Self:
+        """Convert from the cachemachine API reply.
+
+        Paramaters
+        ----------
+        data
+            Image data from cachemachine.
+
+        Returns
+        -------
+        JupyterCachemachineImage
+            Corresponding image.
+        """
         return cls(
             reference=data["image_url"],
             name=data["name"],
@@ -49,6 +61,18 @@ class JupyterCachemachineImage(BaseModel):
 
     @classmethod
     def from_reference(cls, reference: str) -> Self:
+        """Convert from a Docker reference.
+
+        Parameters
+        ----------
+        reference
+            Docker reference for an image.
+
+        Returns
+        -------
+        JupyterCachemachineImage
+            Corresponding image.
+        """
         return cls(
             reference=reference, name=reference.rsplit(":", 1)[1], digest=""
         )
@@ -121,10 +145,10 @@ class CachemachineClient:
             r.raise_for_status()
         except HTTPStatusError as e:
             msg = f"Cannot get image status: {e.response.status_code}"
-            raise CachemachineError(self._username, msg)
+            raise CachemachineError(self._username, msg) from e
         except HTTPError as e:
             msg = f"Cannot get image status: {type(e).__name__}: {str(e)}"
-            raise CachemachineError(self._username, msg)
+            raise CachemachineError(self._username, msg) from e
 
         try:
             data = r.json()
@@ -133,4 +157,4 @@ class CachemachineClient:
             ]
         except Exception as e:
             msg = f"Invalid response: {type(e).__name__}: {str(e)}"
-            raise CachemachineError(self._username, msg)
+            raise CachemachineError(self._username, msg) from e

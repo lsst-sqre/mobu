@@ -55,7 +55,8 @@ class MonkeyflockerClient:
 
     async def start(self, spec_file: Path) -> None:
         """Start a flock of monkeys from a specification."""
-        assert self._client, "Must be used as a context manager"
+        if not self._client:
+            raise RuntimeError("Must be used as a context manager")
         with spec_file.open("r") as f:
             spec = yaml.safe_load(f)
         self._logger.info(f"Starting flock {spec['name']}")
@@ -66,7 +67,8 @@ class MonkeyflockerClient:
 
     async def report(self, name: str, output: Path) -> None:
         """Generate status and output data for all monkeys."""
-        assert self._client, "Must be used as a context manager"
+        if not self._client:
+            raise RuntimeError("Must be used as a context manager")
         output.mkdir(parents=True, exist_ok=True)
 
         self._logger.info(f"Getting status of monkeys in flock {name}")
@@ -88,7 +90,8 @@ class MonkeyflockerClient:
 
     async def stop(self, name: str) -> None:
         """Stop a flock of monkeys."""
-        assert self._client, "Must be used as a context manager"
+        if not self._client:
+            raise RuntimeError("Must be used as a context manager")
         url = urljoin(self._base_url, f"/mobu/flocks/{name}")
         r = await self._client.delete(url)
         r.raise_for_status()
@@ -98,10 +101,10 @@ class MonkeyflockerClient:
         formatter = logging.Formatter(
             fmt="%(asctime)s %(message)s", datefmt=DATE_FORMAT
         )
-        streamHandler = logging.StreamHandler(stream=sys.stdout)
-        streamHandler.setFormatter(formatter)
+        stream_handler = logging.StreamHandler(stream=sys.stdout)
+        stream_handler.setFormatter(formatter)
         logger = logging.getLogger("monkeyflocker")
         logger.handlers.clear()
         logger.setLevel(logging.INFO)
-        logger.addHandler(streamHandler)
+        logger.addHandler(stream_handler)
         return structlog.wrap_logger(logger)

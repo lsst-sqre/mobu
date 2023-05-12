@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import Optional, Self
+from typing import Self
 
 from fastapi import status
 from pydantic import ValidationError
@@ -79,7 +79,7 @@ class GafaelfawrParseError(SlackException):
 
     @classmethod
     def from_exception(
-        cls, exc: ValidationError, user: Optional[str] = None
+        cls, exc: ValidationError, user: str | None = None
     ) -> Self:
         """Create an exception from a Pydantic parse failure.
 
@@ -99,7 +99,7 @@ class GafaelfawrParseError(SlackException):
         return cls("Unable to parse reply from Gafalefawr", error, user)
 
     def __init__(
-        self, message: str, error: str, user: Optional[str] = None
+        self, message: str, error: str, user: str | None = None
     ) -> None:
         super().__init__(message, user)
         self.error = error
@@ -155,11 +155,11 @@ class MobuSlackException(SlackException):
     """
 
     def __init__(
-        self, msg: str, user: str, *, failed_at: Optional[datetime] = None
+        self, msg: str, user: str, *, failed_at: datetime | None = None
     ) -> None:
-        super().__init__(msg, user)
-        self.started_at: Optional[datetime] = None
-        self.event: Optional[str] = None
+        super().__init__(msg, user, failed_at=failed_at)
+        self.started_at: datetime | None = None
+        self.event: str | None = None
         self.annotations: dict[str, str] = {}
 
     def to_slack(self) -> SlackMessage:
@@ -260,10 +260,10 @@ class CodeExecutionError(MobuSlackException):
         self,
         *,
         user: str,
-        code: Optional[str] = None,
+        code: str | None = None,
         code_type: str = "code",
-        error: Optional[str] = None,
-        status: Optional[str] = None,
+        error: str | None = None,
+        status: str | None = None,
     ) -> None:
         super().__init__("Code execution failed", user)
         self.code = code
@@ -323,10 +323,26 @@ class JupyterSpawnError(MobuSlackException):
 
     @classmethod
     def from_exception(cls, log: str, exc: Exception, user: str) -> Self:
+        """Convert from an arbitrary exception to a spawn error.
+
+        Parameters
+        ----------
+        log
+            Log of the spawn to this point.
+        exc
+            Exception that terminated the spawn attempt.
+        user
+            Username of the user spawning the lab.
+
+        Returns
+        -------
+        JupyterSpawnError
+            Converted exception.
+        """
         return cls(log, user, f"{type(exc).__name__}: {str(exc)}")
 
     def __init__(
-        self, log: str, user: str, message: Optional[str] = None
+        self, log: str, user: str, message: str | None = None
     ) -> None:
         if message:
             message = f"Spawning lab failed: {message}"
@@ -347,7 +363,7 @@ class JupyterSpawnError(MobuSlackException):
 class JupyterTimeoutError(MobuSlackException):
     """Timed out waiting for the lab to spawn."""
 
-    def __init__(self, msg: str, user: str, log: Optional[str] = None) -> None:
+    def __init__(self, msg: str, user: str, log: str | None = None) -> None:
         super().__init__(msg, user)
         self.log = log
 
@@ -399,10 +415,10 @@ class JupyterWebSocketError(MobuSlackException):
         msg: str,
         *,
         user: str,
-        code: Optional[int] = None,
-        reason: Optional[str] = None,
-        status: Optional[int] = None,
-        body: Optional[bytes] = None,
+        code: int | None = None,
+        reason: str | None = None,
+        status: int | None = None,
+        body: bytes | None = None,
     ) -> None:
         super().__init__(msg, user)
         self.code = code

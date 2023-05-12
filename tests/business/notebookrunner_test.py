@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import shutil
 from pathlib import Path
 from unittest.mock import ANY
@@ -28,7 +27,7 @@ async def test_run(
     source_path = Path(__file__).parent.parent / "notebooks"
     repo_path = tmp_path / "notebooks"
     shutil.copytree(str(source_path), str(repo_path))
-    os.remove(str(repo_path / "exception.ipynb"))
+    (repo_path / "exception.ipynb").unlink()
     repo = Repo.init(str(repo_path), initial_branch="main")
     for path in repo_path.iterdir():
         if not path.name.startswith("."):

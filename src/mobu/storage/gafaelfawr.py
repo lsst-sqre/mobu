@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 from httpx import AsyncClient, HTTPError
 from pydantic import BaseModel, Field, ValidationError
@@ -46,10 +45,10 @@ class _AdminTokenRequest(BaseModel):
     )
     token_type: _TokenType = Field(...)
     scopes: list[str] = Field([])
-    expires: Optional[datetime] = Field(None)
-    name: Optional[str] = Field(None, min_length=1)
-    uid: Optional[int] = Field(None, ge=1)
-    gid: Optional[int] = Field(None, ge=1)
+    expires: datetime | None = Field(None)
+    name: str | None = Field(None, min_length=1)
+    uid: int | None = Field(None, ge=1)
+    gid: int | None = Field(None, ge=1)
 
 
 class _NewToken(BaseModel):
@@ -145,6 +144,6 @@ class GafaelfawrStorage:
                 scopes=scopes,
             )
         except HTTPError as e:
-            raise GafaelfawrWebError.from_exception(e, user.username)
+            raise GafaelfawrWebError.from_exception(e, user.username) from e
         except ValidationError as e:
-            raise GafaelfawrParseError.from_exception(e, user.username)
+            raise GafaelfawrParseError.from_exception(e, user.username) from e

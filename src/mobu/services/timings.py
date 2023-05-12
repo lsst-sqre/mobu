@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from types import TracebackType
-from typing import Literal, Optional
+from typing import Literal
 
 from safir.datetime import current_datetime
 
@@ -20,11 +20,11 @@ class Timings:
     """
 
     def __init__(self) -> None:
-        self._last: Optional[Stopwatch] = None
+        self._last: Stopwatch | None = None
         self._stopwatches: list[Stopwatch] = []
 
     def start(
-        self, event: str, annotations: Optional[dict[str, str]] = None
+        self, event: str, annotations: dict[str, str] | None = None
     ) -> Stopwatch:
         """Start a stopwatch.
 
@@ -73,12 +73,12 @@ class Stopwatch:
         self,
         event: str,
         annotations: dict[str, str],
-        previous: Optional[Stopwatch] = None,
+        previous: Stopwatch | None = None,
     ) -> None:
         self.event = event
         self.annotations = annotations
         self.start_time = current_datetime(microseconds=True)
-        self.stop_time: Optional[datetime] = None
+        self.stop_time: datetime | None = None
         self.failed = False
         self._previous = previous
 

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 from .business.empty import EmptyLoopConfig
@@ -42,6 +40,6 @@ class SolitaryResult(BaseModel):
 
     success: bool = Field(..., title="Whether the business succeeded")
 
-    error: Optional[str] = Field(None, title="Error if the business failed")
+    error: str | None = Field(None, title="Error if the business failed")
 
     log: str = Field(..., title="Log of the business execution")

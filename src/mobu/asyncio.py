@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from asyncio import Task
 from collections.abc import Awaitable, Callable, Coroutine
 from typing import TypeVar
@@ -40,12 +41,10 @@ async def wait_first(*args: Coroutine[None, None, T]) -> T | None:
         [asyncio.create_task(a) for a in args],
         return_when=asyncio.FIRST_COMPLETED,
     )
-    gather = asyncio.gather(*pending)
-    gather.cancel()
-    try:
+    with contextlib.suppress(asyncio.CancelledError):
+        gather = asyncio.gather(*pending)
+        gather.cancel()
         await gather
-    except asyncio.CancelledError:
-        pass
     try:
         return done.pop().result()
     except StopAsyncIteration:

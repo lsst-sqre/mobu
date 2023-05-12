@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -23,7 +23,7 @@ async def test_post_status(
             FlockSummary(
                 name="notebook",
                 business="NotebookRunner",
-                start_time=datetime(2021, 8, 20, 17, 3, tzinfo=timezone.utc),
+                start_time=datetime(2021, 8, 20, 17, 3, tzinfo=UTC),
                 monkey_count=5,
                 success_count=487,
                 failure_count=3,
@@ -31,7 +31,7 @@ async def test_post_status(
             FlockSummary(
                 name="tap",
                 business="TAPQueryRunner",
-                start_time=datetime(2021, 8, 20, 12, 40, tzinfo=timezone.utc),
+                start_time=datetime(2021, 8, 20, 12, 40, tzinfo=UTC),
                 monkey_count=1,
                 success_count=200000,
                 failure_count=1,

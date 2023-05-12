@@ -5,9 +5,8 @@ from __future__ import annotations
 import asyncio
 import importlib.resources
 import math
-import random
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
+from random import SystemRandom
 
 import jinja2
 import pyvo
@@ -50,8 +49,9 @@ class TAPQueryRunner(Business):
         logger: BoundLogger,
     ) -> None:
         super().__init__(options, user, http_client, logger)
-        self._running_query: Optional[str] = None
-        self._client: Optional[pyvo.dal.TAPService] = None
+        self._running_query: str | None = None
+        self._client: pyvo.dal.TAPService | None = None
+        self._random = SystemRandom()
         self._pool = ThreadPoolExecutor(max_workers=1)
 
         # Load templates and parameters. The path has to be specified in two
@@ -61,6 +61,7 @@ class TAPQueryRunner(Business):
         self._env = jinja2.Environment(
             loader=jinja2.PackageLoader("mobu", "/".join(template_path)),
             undefined=jinja2.StrictUndefined,
+            autoescape=jinja2.select_autoescape(disabled_extensions=["sql"]),
         )
         files = importlib.resources.files("mobu")
         for directory in template_path:
@@ -75,7 +76,7 @@ class TAPQueryRunner(Business):
             self._client = self._make_client(self.user.token)
 
     async def execute(self) -> None:
-        template_name = random.choice(self._env.list_templates(["sql"]))
+        template_name = self._random.choice(self._env.list_templates(["sql"]))
         template = self._env.get_template(template_name)
         query = template.render(self._generate_parameters())
 
@@ -143,6 +144,7 @@ class TAPQueryRunner(Business):
 
     def _generate_random_polygon(
         self,
+        *,
         min_ra: float,
         max_ra: float,
         min_dec: float,
@@ -151,11 +153,11 @@ class TAPQueryRunner(Business):
         radius_range: float,
     ) -> str:
         """Generate a random polygon as comma-separated ra/dec values."""
-        ra = min_ra + random.random() * (max_ra - min_ra)
-        dec = min_dec + random.random() * (max_dec - min_dec)
-        r = min_radius + random.random() * radius_range
-        n = random.randrange(3, 8)
-        phi = random.random() * 2 * math.pi
+        ra = min_ra + self._random.random() * (max_ra - min_ra)
+        dec = min_dec + self._random.random() * (max_dec - min_dec)
+        r = min_radius + self._random.random() * radius_range
+        n = self._random.randrange(3, 8)
+        phi = self._random.random() * 2 * math.pi
         poly = []
         for theta in [phi + i * 2 * math.pi / n for i in range(n)]:
             poly.append(ra + r * math.sin(theta))
@@ -171,27 +173,34 @@ class TAPQueryRunner(Business):
         min_radius = self._params.get("min_radius", 0.01)
         radius_range = self._params.get("radius_range", 0.04)
         radius_near_range = self._params.get("radius_near_range", 0.09)
-        min_flux = 0.0 + random.random() * 0.00100
-        min_mag = 15.0 + random.random() * 15.0
+        min_flux = 0.0 + self._random.random() * 0.00100
+        min_mag = 15.0 + self._random.random() * 15.0
         result = {
-            "ra": min_ra + random.random() * (max_ra - min_ra),
-            "dec": min_dec + random.random() * (max_dec - min_dec),
+            "ra": min_ra + self._random.random() * (max_ra - min_ra),
+            "dec": min_dec + self._random.random() * (max_dec - min_dec),
             "min_flux": min_flux,
             "max_flux": min_flux + 0.00001,
             "min_mag": min_mag,
             "max_mag": min_mag + 0.1,
             "polygon": self._generate_random_polygon(
-                min_ra, max_ra, min_dec, max_dec, min_radius, radius_range
+                min_ra=min_ra,
+                max_ra=max_ra,
+                min_dec=min_dec,
+                max_dec=max_dec,
+                min_radius=min_radius,
+                radius_range=radius_range,
             ),
-            "radius": min_radius + random.random() * radius_range,
-            "radius_near": min_radius + random.random() * radius_near_range,
+            "radius": min_radius + self._random.random() * radius_range,
+            "radius_near": (
+                min_radius + self._random.random() * radius_near_range
+            ),
             "username": self.user.username,
             "query_id": "mobu-" + shortuuid.uuid(),
         }
         object_ids = self._params.get("object_ids")
         if object_ids:
-            result["object"] = str(random.choice(object_ids))
+            result["object"] = str(self._random.choice(object_ids))
             result["objects"] = ", ".join(
-                str(o) for o in random.choices(object_ids, k=12)
+                str(o) for o in self._random.choices(object_ids, k=12)
             )
         return result

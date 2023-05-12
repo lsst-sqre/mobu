@@ -7,7 +7,6 @@ constructed when this module is loaded and is not deferred until a function is
 called.
 """
 
-import asyncio
 from importlib.metadata import metadata, version
 
 import structlog
@@ -75,7 +74,3 @@ async def startup_event() -> None:
 async def shutdown_event() -> None:
     await context_dependency.aclose()
     app.state.periodic_status.cancel()
-    try:
-        await app.state.periodic_status
-    except asyncio.CancelledError:
-        pass

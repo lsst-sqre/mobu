@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import Field
 
@@ -51,7 +51,7 @@ class TAPQueryRunnerConfig(BusinessConfig):
 class TAPQueryRunnerData(BusinessData):
     """Status of a running TAPQueryRunner business."""
 
-    running_query: Optional[str] = Field(
+    running_query: str | None = Field(
         None,
         title="Currently running query",
         description="Will not be present if no query is being executed",

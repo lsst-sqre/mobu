@@ -61,7 +61,7 @@ class FlockManager:
         """
         if not config.autostart:
             return
-        with open(config.autostart, "r") as f:
+        with config.autostart.open("r") as f:
             autostart = yaml.safe_load(f)
         flock_configs = [FlockConfig.parse_obj(flock) for flock in autostart]
         for flock_config in flock_configs:
