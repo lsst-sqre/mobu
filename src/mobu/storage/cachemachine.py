@@ -147,7 +147,7 @@ class CachemachineClient:
             msg = f"Cannot get image status: {e.response.status_code}"
             raise CachemachineError(self._username, msg) from e
         except HTTPError as e:
-            msg = f"Cannot get image status: {type(e).__name__}: {str(e)}"
+            msg = f"Cannot get image status: {type(e).__name__}: {e!s}"
             raise CachemachineError(self._username, msg) from e
 
         try:
@@ -156,5 +156,5 @@ class CachemachineClient:
                 JupyterCachemachineImage.from_dict(i) for i in data["images"]
             ]
         except Exception as e:
-            msg = f"Invalid response: {type(e).__name__}: {str(e)}"
+            msg = f"Invalid response: {type(e).__name__}: {e!s}"
             raise CachemachineError(self._username, msg) from e

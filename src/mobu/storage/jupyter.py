@@ -104,7 +104,7 @@ class JupyterSpawnProgress:
                     ready=event_dict.get("ready", False),
                 )
             except Exception as e:
-                err = f"{type(e).__name__}: {str(e)}"
+                err = f"{type(e).__name__}: {e!s}"
                 msg = f"Error parsing progress event, ignoring: {err}"
                 self._logger.warning(msg, type=sse.event, data=sse.data)
                 continue
@@ -330,7 +330,7 @@ class JupyterLabSession:
                     e.code = code
                     raise
                 except Exception as e:
-                    error = f"{type(e).__name__}: {str(e)}"
+                    error = f"{type(e).__name__}: {e!s}"
                     msg = "Ignoring unparsable web socket message"
                     self._logger.warning(msg, error=error, message=message)
 

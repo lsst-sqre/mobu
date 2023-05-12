@@ -93,7 +93,7 @@ class TAPQueryRunner(Business):
                     user=self.user.username,
                     code=query,
                     code_type="TAP query",
-                    error=f"{type(e).__name__}: {str(e)}",
+                    error=f"{type(e).__name__}: {e!s}",
                 ) from e
 
             self._running_query = None
