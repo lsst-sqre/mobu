@@ -30,6 +30,7 @@ from ..config import config
 from ..constants import WEBSOCKET_MESSAGE_SIZE_LIMIT, WEBSOCKET_OPEN_TIMEOUT
 from ..exceptions import (
     CodeExecutionError,
+    JupyterTimeoutError,
     JupyterWebError,
     JupyterWebSocketError,
 )
@@ -180,7 +181,18 @@ class JupyterLabSession:
         self._socket: WebSocketClientProtocol | None = None
 
     async def __aenter__(self) -> Self:
-        """Create the session and open the WebSocket connection."""
+        """Create the session and open the WebSocket connection.
+
+        Raises
+        ------
+        JupyterTimeoutError
+            Raised if the attempt to open a WebSocket to the lab timed out.
+        JupyterWebError
+            Raised if an error occurred while creating the lab session.
+        JupyterWebSocketError
+            Raised if a protocol or network error occurred while trying to
+            create the WebSocket.
+        """
         # This class implements an explicit context manager instead of using
         # an async generator and contextlib.asynccontextmanager, and similarly
         # explicitly calls the __aenter__ and __aexit__ methods in the
@@ -224,6 +236,7 @@ class JupyterLabSession:
 
         # Open the WebSocket connection using those headers.
         self._logger.debug("Opening WebSocket connection")
+        start = current_datetime(microseconds=True)
         try:
             self._socket = await websocket_connect(
                 self._url_for_websocket(url),
@@ -234,6 +247,9 @@ class JupyterLabSession:
         except WebSocketException as e:
             user = self._username
             raise JupyterWebSocketError.from_exception(e, user) from e
+        except TimeoutError as e:
+            msg = "Timed out attempting to open WebSocket to lab session"
+            raise JupyterTimeoutError(msg, user, started_at=start) from e
         return self
 
     async def __aexit__(
