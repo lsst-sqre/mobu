@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-import random
 import string
 from collections.abc import AsyncIterator, Callable, Coroutine
 from dataclasses import dataclass
 from functools import wraps
+from random import SystemRandom
 from types import TracebackType
-from typing import Concatenate, Literal, Optional, ParamSpec, Self, TypeVar
+from typing import Concatenate, Literal, ParamSpec, Self, TypeVar
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -112,12 +112,9 @@ class JupyterSpawnProgress:
             # Log the event and yield it.
             now = current_datetime(microseconds=True)
             elapsed = int((now - self._start).total_seconds())
-            if event.ready:
-                status = "complete"
-            else:
-                status = "in progress"
+            status = "complete" if event.ready else "in progress"
             msg = f"Spawn {status} ({elapsed}s elapsed): {event.message}"
-            self._logger.info(msg)
+            self._logger.info(msg, elapsed=elapsed, status=status)
             yield event
 
 
@@ -168,7 +165,7 @@ class JupyterLabSession:
         username: str,
         jupyter_url: str,
         kernel_name: str = "LSST",
-        notebook_name: Optional[str] = None,
+        notebook_name: str | None = None,
         http_client: AsyncClient,
         logger: BoundLogger,
     ) -> None:
@@ -179,8 +176,8 @@ class JupyterLabSession:
         self._client = http_client
         self._logger = logger
 
-        self._session_id: Optional[str] = None
-        self._socket: Optional[WebSocketClientProtocol] = None
+        self._session_id: str | None = None
+        self._socket: WebSocketClientProtocol | None = None
 
     async def __aenter__(self) -> Self:
         """Create the session and open the WebSocket connection."""
@@ -537,7 +534,7 @@ class JupyterClient:
         # Ideally we would use whatever path causes these to be set in a
         # normal browser, but I haven't figured that out.
         alphabet = string.ascii_uppercase + string.digits
-        xsrf_token = "".join(random.choices(alphabet, k=16))
+        xsrf_token = "".join(SystemRandom().choices(alphabet, k=16))
         headers = {
             "Authorization": f"Bearer {user.token}",
             "X-XSRFToken": xsrf_token,
@@ -591,7 +588,7 @@ class JupyterClient:
         r.raise_for_status()
 
     @_convert_exception
-    async def is_lab_stopped(self, log_running: bool = False) -> bool:
+    async def is_lab_stopped(self, *, log_running: bool = False) -> bool:
         """Determine if the lab is fully stopped.
 
         Parameters
@@ -615,7 +612,7 @@ class JupyterClient:
         return result
 
     def open_lab_session(
-        self, notebook_name: Optional[str] = None, *, kernel_name: str = "LSST"
+        self, notebook_name: str | None = None, *, kernel_name: str = "LSST"
     ) -> JupyterLabSession:
         """Open a Jupyter lab session.
 
@@ -726,7 +723,7 @@ class JupyterClient:
                 image = JupyterCachemachineImage.from_reference(reference)
             else:
                 msg = f"Unsupported image class {image_class}"
-                raise ValueError(msg)
+                raise TypeError(msg)
             return self._build_spawn_form_from_cachemachine(image)
         else:
             return self._config.to_spawn_form()

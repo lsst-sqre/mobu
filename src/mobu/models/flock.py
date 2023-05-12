@@ -1,7 +1,7 @@
 """Models for a collection of monkeys."""
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, validator
 
@@ -24,7 +24,7 @@ class FlockConfig(BaseModel):
 
     count: int = Field(..., title="How many monkeys to run", example=100)
 
-    users: Optional[list[User]] = Field(
+    users: list[User] | None = Field(
         None,
         title="Explicit list of users to run as",
         description=(
@@ -34,7 +34,7 @@ class FlockConfig(BaseModel):
         ),
     )
 
-    user_spec: Optional[UserSpec] = Field(
+    user_spec: UserSpec | None = Field(
         None,
         title="Specification to generate users",
         description="Specify either this or users but not both",
@@ -97,7 +97,7 @@ class FlockSummary(BaseModel):
         example="NotebookRunner",
     )
 
-    start_time: Optional[datetime] = Field(
+    start_time: datetime | None = Field(
         ...,
         title="When the flock was started",
         description="Will be null if the flock hasn't started",

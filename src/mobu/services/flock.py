@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import math
 from datetime import datetime
-from typing import Optional
 
 from aiojobs import Scheduler
 from httpx import AsyncClient
@@ -54,7 +53,7 @@ class Flock:
         self._http_client = http_client
         self._logger = logger.bind(flock=self.name)
         self._monkeys: dict[str, Monkey] = {}
-        self._start_time: Optional[datetime] = None
+        self._start_time: datetime | None = None
 
     def dump(self) -> FlockData:
         """Return information about all running monkeys."""
@@ -146,7 +145,8 @@ class Flock:
         """Create the authenticated users the monkeys will run as."""
         users = self._config.users
         if not users:
-            assert self._config.user_spec
+            if not self._config.user_spec:
+                raise RuntimeError("Neither users nor user_spec set")
             count = self._config.count
             users = self._users_from_spec(self._config.user_spec, count)
         scopes = self._config.scopes

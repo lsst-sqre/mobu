@@ -12,7 +12,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Optional
+from typing import Any
 
 from git.repo import Repo
 from httpx import AsyncClient
@@ -53,13 +53,13 @@ class NotebookRunner(NubladoBusiness):
         logger: BoundLogger,
     ) -> None:
         super().__init__(options, user, http_client, logger)
-        self._notebook: Optional[Path] = None
-        self._notebook_paths: Optional[list[Path]] = None
+        self._notebook: Path | None = None
+        self._notebook_paths: list[Path] | None = None
         self._repo_dir = TemporaryDirectory()
-        self._repo: Optional[Repo] = None
-        self._running_code: Optional[str] = None
+        self._repo: Repo | None = None
+        self._running_code: str | None = None
 
-    def annotations(self, cell_id: Optional[str] = None) -> dict[str, str]:
+    def annotations(self, cell_id: str | None = None) -> dict[str, str]:
         result = super().annotations()
         if self._notebook:
             result["notebook"] = self._notebook.name
@@ -107,7 +107,7 @@ class NotebookRunner(NubladoBusiness):
                 cells = json.loads(notebook_text)["cells"]
             except Exception as e:
                 msg = f"Invalid notebook {notebook.name}: {str(e)}"
-                raise NotebookRepositoryError(msg, self.user.username)
+                raise NotebookRepositoryError(msg, self.user.username) from e
 
         # Add cell numbers to all the cells, which we'll use in exception
         # reporting and to annotate timing events so that we can find cells
@@ -122,7 +122,7 @@ class NotebookRunner(NubladoBusiness):
 
     @asynccontextmanager
     async def open_session(
-        self, notebook_name: Optional[str] = None
+        self, notebook_name: str | None = None
     ) -> AsyncIterator[JupyterLabSession]:
         """Override to add the notebook name."""
         if not notebook_name:

@@ -6,7 +6,6 @@ import base64
 import json
 import os
 from datetime import datetime
-from typing import Optional
 from unittest.mock import ANY
 
 import respx
@@ -18,7 +17,7 @@ from mobu.config import config
 __all__ = ["make_gafaelfawr_token", "mock_gafaelfawr"]
 
 
-def make_gafaelfawr_token(user: Optional[str] = None) -> str:
+def make_gafaelfawr_token(user: str | None = None) -> str:
     """Create a random or user Gafaelfawr token.
 
     If a user is given, embed the username in the key portion of the token so
@@ -36,9 +35,9 @@ def make_gafaelfawr_token(user: Optional[str] = None) -> str:
 
 def mock_gafaelfawr(
     respx_mock: respx.Router,
-    username: Optional[str] = None,
-    uid: Optional[int] = None,
-    gid: Optional[int] = None,
+    username: str | None = None,
+    uid: int | None = None,
+    gid: int | None = None,
     *,
     any_uid: bool = False,
 ) -> None:

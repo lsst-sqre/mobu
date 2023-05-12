@@ -1,7 +1,6 @@
 """Models for timing data."""
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -21,14 +20,14 @@ class StopwatchData(BaseModel):
         ..., title="Start of event", example="2021-07-21T19:43:40.446072+00:00"
     )
 
-    stop: Optional[datetime] = Field(
+    stop: datetime | None = Field(
         None,
         title="End of event",
         description="Will be null if the event is ongoing",
         example="2021-07-21T19:43:40.514623+00:00",
     )
 
-    elapsed: Optional[float] = Field(
+    elapsed: float | None = Field(
         None,
         title="Duration of event in seconds",
         description="Will be null if the event is ongoing",

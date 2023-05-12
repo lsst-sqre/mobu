@@ -69,7 +69,6 @@ def test_start_report_stop(
             config.gafaelfawr_token,
         ],
     )
-    print(result.stdout)
     assert result.exit_code == 0
 
     expected: dict[str, Any] = {

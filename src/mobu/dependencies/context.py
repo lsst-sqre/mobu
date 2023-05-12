@@ -7,7 +7,6 @@ including from dependencies.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 from fastapi import Depends, Request
 from safir.dependencies.gafaelfawr import auth_logger_dependency
@@ -51,7 +50,7 @@ class ContextDependency:
     """
 
     def __init__(self) -> None:
-        self._process_context: Optional[ProcessContext] = None
+        self._process_context: ProcessContext | None = None
 
     async def __call__(
         self,

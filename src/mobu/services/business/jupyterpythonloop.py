@@ -43,7 +43,7 @@ class JupyterPythonLoop(NubladoBusiness):
 
     async def execute_code(self, session: JupyterLabSession) -> None:
         code = self.options.code
-        for count in range(self.options.max_executions):
+        for _count in range(self.options.max_executions):
             with self.timings.start("execute_code", self.annotations()):
                 reply = await session.run_python(code)
             self.logger.info(f"{code} -> {reply}")

@@ -14,7 +14,7 @@ from enum import Enum
 from io import StringIO
 from re import Pattern
 from traceback import format_exc
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import ANY
 from urllib.parse import parse_qs
 from uuid import uuid4
@@ -28,6 +28,8 @@ from mobu.services.business.nublado import _GET_IMAGE, _GET_NODE
 
 
 class JupyterAction(Enum):
+    """Possible actions on the Jupyter lab state machine."""
+
     LOGIN = "login"
     HOME = "home"
     HUB = "hub"
@@ -43,11 +45,15 @@ class JupyterAction(Enum):
 
 @dataclass
 class JupyterLabSession:
+    """Metadata for an open Jupyter lab session."""
+
     session_id: str
     kernel_id: str
 
 
 class JupyterState(Enum):
+    """Possible states the Jupyter lab can be in."""
+
     LOGGED_OUT = "logged out"
     LOGGED_IN = "logged in"
     SPAWN_PENDING = "spawn pending"
@@ -280,8 +286,8 @@ class MockJupyterWebSocket:
     def __init__(self, user: str, session_id: str) -> None:
         self.user = user
         self.session_id = session_id
-        self._header: Optional[dict[str, str]] = None
-        self._code: Optional[str] = None
+        self._header: dict[str, str] | None = None
+        self._code: str | None = None
         self._state: dict[str, Any] = {}
 
     async def close(self) -> None:
@@ -353,7 +359,7 @@ class MockJupyterWebSocket:
             try:
                 output = StringIO()
                 with redirect_stdout(output):
-                    exec(self._code, self._state)
+                    exec(self._code, self._state)  # noqa: S102
                 self._code = None
                 return {
                     "msg_type": "stream",

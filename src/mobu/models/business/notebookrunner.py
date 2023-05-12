@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import Field
 
@@ -65,14 +65,14 @@ class NotebookRunnerConfig(BusinessConfig):
 class NotebookRunnerData(NubladoBusinessData):
     """Status of a running NotebookRunner business."""
 
-    notebook: Optional[str] = Field(
+    notebook: str | None = Field(
         None,
         title="Name of the currently running notebook",
         description="Will not be present if no notebook is being executed",
         example="cluster.ipynb",
     )
 
-    running_code: Optional[str] = Field(
+    running_code: str | None = Field(
         None,
         title="Currently running code",
         description="Will not be present if no code is being executed",

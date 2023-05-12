@@ -14,7 +14,6 @@ from .client import MonkeyflockerClient
 @click.version_option(message="%(version)s")
 def main() -> None:
     """Command-line interface to manage mobu monkeys."""
-    pass
 
 
 @main.command()
@@ -30,7 +29,8 @@ def help(ctx: click.Context, topic: str | None) -> None:
         else:
             raise click.UsageError(f"Unknown help topic {topic}", ctx)
     else:
-        assert ctx.parent
+        if not ctx.parent:
+            raise RuntimeError("help somehow called without parent or topic")
         click.echo(ctx.parent.get_help())
 
 

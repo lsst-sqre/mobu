@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, Response
@@ -176,7 +177,7 @@ def get_monkey_log(
     # Note that this is not async, so this handler must be sync so that
     # FastAPI will run it in a thread pool.
     def iterfile() -> Iterator[bytes]:
-        with open(logfile, "rb") as fh:
+        with Path(logfile).open("rb") as fh:
             yield from fh
 
     filename = f"{flock}-{monkey}-{current_datetime()}"

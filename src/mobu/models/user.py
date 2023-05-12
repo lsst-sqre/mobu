@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 __all__ = [
@@ -18,7 +16,7 @@ class User(BaseModel):
 
     username: str = Field(..., title="Username", example="testuser")
 
-    uidnumber: Optional[int] = Field(
+    uidnumber: int | None = Field(
         None,
         title="Numeric UID",
         description=(
@@ -28,7 +26,7 @@ class User(BaseModel):
         example=60001,
     )
 
-    gidnumber: Optional[int] = Field(
+    gidnumber: int | None = Field(
         None,
         title="Primary GID",
         description=(
@@ -51,7 +49,7 @@ class UserSpec(BaseModel):
         example="lsptestuser",
     )
 
-    uid_start: Optional[int] = Field(
+    uid_start: int | None = Field(
         None,
         title="Starting UID",
         description=(
@@ -62,7 +60,7 @@ class UserSpec(BaseModel):
         example=60000,
     )
 
-    gid_start: Optional[int] = Field(
+    gid_start: int | None = Field(
         None,
         title="Starting GID",
         description=(

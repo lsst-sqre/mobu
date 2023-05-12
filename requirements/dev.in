@@ -18,6 +18,7 @@ pytest-cov
 pytest-httpx
 pytest-sugar
 respx
+ruff
 types-PyYAML
 types-requests
 

@@ -47,7 +47,7 @@ AUTOSTART_CONFIG = """
 
 
 @pytest.fixture(autouse=True)
-def configure_autostart(
+def _configure_autostart(
     tmp_path: Path, respx_mock: respx.Router
 ) -> Iterator[None]:
     """Set up the autostart configuration."""

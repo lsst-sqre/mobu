@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import sys
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
-from typing import Optional
 
 import structlog
 from aiojobs import Scheduler
@@ -61,7 +60,7 @@ class Monkey:
         user: AuthenticatedUser,
         http_client: AsyncClient,
         logger: BoundLogger,
-    ):
+    ) -> None:
         self._name = name
         self._restart = business_config.restart
         self._http_client = http_client
@@ -73,7 +72,7 @@ class Monkey:
         self._global_logger = logger.bind(
             monkey=self._name, user=self._user.username
         )
-        self._job: Optional[Job] = None
+        self._job: Job | None = None
 
         # Determine the business class from the type of configuration we got,
         # which in turn will be based on Pydantic validation of the value of
@@ -97,7 +96,7 @@ class Monkey:
             )
         else:
             msg = f"Unknown business config {business_config}"
-            raise RuntimeError(msg)
+            raise TypeError(msg)
 
         self._slack = None
         if config.alert_hook and config.alert_hook != "None":
@@ -105,7 +104,14 @@ class Monkey:
                 config.alert_hook, "Mobu", self._global_logger
             )
 
-    async def alert(self, e: Exception) -> None:
+    async def alert(self, exc: Exception) -> None:
+        """Send an alert to Slack.
+
+        Parameters
+        ----------
+        exc
+            Exception prompting the alert.
+        """
         if self._state in (MonkeyState.STOPPING, MonkeyState.FINISHED):
             state = self._state.name
             self._logger.info(f"Not sending alert because state is {state}")
@@ -114,16 +120,17 @@ class Monkey:
             self._logger.info("Alert hook isn't set, so not sending to Slack")
             return
 
-        if isinstance(e, SlackException):
+        if isinstance(exc, SlackException):
             # Avoid post_exception here since it adds the application name,
             # but mobu (unusually) uses a dedicated web hook and therefore
             # doesn't need to label its alerts.
-            await self._slack.post(e.to_slack())
+            await self._slack.post(exc.to_slack())
         else:
             now = current_datetime(microseconds=True)
             date = format_datetime_for_logging(now)
+            error = f"{type(exc).__name__}: {str(exc)}"
             message = SlackMessage(
-                message=f"Unexpected exception {type(e).__name__}: {str(e)}",
+                message=f"Unexpected exception {error}",
                 fields=[
                     SlackTextField(heading="Date", text=date),
                     SlackTextField(heading="User", text=self._user.username),
@@ -134,6 +141,7 @@ class Monkey:
         self._global_logger.info("Sent alert to Slack")
 
     def logfile(self) -> str:
+        """Get the log file for a monkey's log."""
         self._logfile.flush()
         return self._logfile.name
 
@@ -158,9 +166,16 @@ class Monkey:
         return error
 
     async def start(self, scheduler: Scheduler) -> None:
+        """Start the monkey."""
         self._job = await scheduler.spawn(self._runner())
 
     async def _runner(self) -> None:
+        """Core monkey execution loop.
+
+        This is the top-level function that represents a running monkey. It
+        executes the business, catches exceptions, reports them, and restarts
+        or exits as intended.
+        """
         run = True
 
         while run:
@@ -187,6 +202,7 @@ class Monkey:
         self.state = MonkeyState.FINISHED
 
     async def stop(self) -> None:
+        """Stop the monkey."""
         if self._state in (MonkeyState.RUNNING, MonkeyState.ERROR):
             self._state = MonkeyState.STOPPING
             await self.business.stop()
@@ -196,6 +212,7 @@ class Monkey:
         self._state = MonkeyState.FINISHED
 
     def dump(self) -> MonkeyData:
+        """Return information about a running monkey."""
         return MonkeyData(
             name=self._name,
             business=self.business.dump(),
@@ -222,17 +239,17 @@ class Monkey:
         formatter = logging.Formatter(
             fmt="%(asctime)s %(message)s", datefmt=DATE_FORMAT
         )
-        fileHandler = logging.FileHandler(logfile.name)
-        fileHandler.setFormatter(formatter)
+        file_handler = logging.FileHandler(logfile.name)
+        file_handler.setFormatter(formatter)
         logger = logging.getLogger(self._name)
         logger.handlers = []
         logger.setLevel(logging.INFO)
-        logger.addHandler(fileHandler)
+        logger.addHandler(file_handler)
         logger.propagate = False
         if config.profile == Profile.development:
-            streamHandler = logging.StreamHandler(stream=sys.stdout)
-            streamHandler.setFormatter(formatter)
-            logger.addHandler(streamHandler)
+            stream_handler = logging.StreamHandler(stream=sys.stdout)
+            stream_handler.setFormatter(formatter)
+            logger.addHandler(stream_handler)
         result = structlog.wrap_logger(logger, wrapper_class=BoundLogger)
         result.info("Starting new file logger", file=logfile.name)
         return result

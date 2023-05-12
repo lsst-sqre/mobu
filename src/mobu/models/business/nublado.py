@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -202,7 +202,7 @@ class NubladoBusinessOptions(BusinessOptions):
 
     url_prefix: str = Field("/nb/", title="URL prefix for JupyterHub")
 
-    working_directory: Optional[str] = Field(
+    working_directory: str | None = Field(
         None,
         title="Working directory when running code",
         example="notebooks/tutorial-notebooks",
@@ -212,12 +212,12 @@ class NubladoBusinessOptions(BusinessOptions):
 class RunningImage(BaseModel):
     """Information about the running JupyterLab image."""
 
-    reference: Optional[str] = Field(
+    reference: str | None = Field(
         None,
         title="Docker reference for the image",
     )
 
-    description: Optional[str] = Field(
+    description: str | None = Field(
         None,
         title="Human-readable description of the image",
     )
@@ -226,7 +226,7 @@ class RunningImage(BaseModel):
 class NubladoBusinessData(BusinessData):
     """Status of a running Nublado business."""
 
-    image: Optional[RunningImage] = Field(
+    image: RunningImage | None = Field(
         None,
         title="JupyterLab image information",
         description="Will only be present when there is an active Jupyter lab",
