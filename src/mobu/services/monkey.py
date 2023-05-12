@@ -128,7 +128,7 @@ class Monkey:
         else:
             now = current_datetime(microseconds=True)
             date = format_datetime_for_logging(now)
-            error = f"{type(exc).__name__}: {str(exc)}"
+            error = f"{type(exc).__name__}: {exc!s}"
             message = SlackMessage(
                 message=f"Unexpected exception {error}",
                 fields=[

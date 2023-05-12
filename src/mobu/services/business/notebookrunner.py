@@ -106,7 +106,7 @@ class NotebookRunner(NubladoBusiness):
                 notebook_text = notebook.read_text()
                 cells = json.loads(notebook_text)["cells"]
             except Exception as e:
-                msg = f"Invalid notebook {notebook.name}: {str(e)}"
+                msg = f"Invalid notebook {notebook.name}: {e!s}"
                 raise NotebookRepositoryError(msg, self.user.username) from e
 
         # Add cell numbers to all the cells, which we'll use in exception

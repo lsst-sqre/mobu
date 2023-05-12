@@ -95,7 +95,7 @@ class GafaelfawrParseError(SlackException):
         GafaelfawrParseError
             Constructed exception.
         """
-        error = f"{type(exc).__name__}: {str(exc)}"
+        error = f"{type(exc).__name__}: {exc!s}"
         return cls("Unable to parse reply from Gafalefawr", error, user)
 
     def __init__(
@@ -339,7 +339,7 @@ class JupyterSpawnError(MobuSlackException):
         JupyterSpawnError
             Converted exception.
         """
-        return cls(log, user, f"{type(exc).__name__}: {str(exc)}")
+        return cls(log, user, f"{type(exc).__name__}: {exc!s}")
 
     def __init__(
         self, log: str, user: str, message: str | None = None
@@ -398,7 +398,7 @@ class JupyterWebSocketError(MobuSlackException):
         JupyterWebSocketError
             Newly-created exception.
         """
-        error = f"{type(exc).__name__}: {str(exc)}"
+        error = f"{type(exc).__name__}: {exc!s}"
         if isinstance(exc, InvalidStatus):
             status = exc.response.status_code
             return cls(
@@ -459,5 +459,5 @@ class TAPClientError(MobuSlackException):
     """Creating a TAP client failed."""
 
     def __init__(self, exc: Exception, *, user: str) -> None:
-        msg = f"Unable to create TAP client: {type(exc).__name__}: {str(exc)}"
+        msg = f"Unable to create TAP client: {type(exc).__name__}: {exc!s}"
         super().__init__(msg, user)
