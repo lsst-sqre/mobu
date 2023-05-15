@@ -163,6 +163,17 @@ class MobuSlackException(SlackException):
         When the operation started.
     failed_at
         When the operation failed (defaults to the current time).
+
+    Attributes
+    ----------
+    started_at
+        When the operation that ended in an exception started.
+    monkey
+        The running monkey in which the exception happened.
+    event
+        Name of the business event that provoked the exception.
+    annotations
+        Additional annotations for the running business.
     """
 
     def __init__(
@@ -175,6 +186,7 @@ class MobuSlackException(SlackException):
     ) -> None:
         super().__init__(msg, user, failed_at=failed_at)
         self.started_at = started_at
+        self.monkey: str | None = None
         self.event: str | None = None
         self.annotations: dict[str, str] = {}
 
@@ -238,6 +250,8 @@ class MobuSlackException(SlackException):
             started_at = format_datetime_for_logging(self.started_at)
             field = SlackTextField(heading="Started at", text=started_at)
             fields.insert(0, field)
+        if self.monkey:
+            fields.append(SlackTextField(heading="Monkey", text=self.monkey))
         if self.user:
             fields.append(SlackTextField(heading="User", text=self.user))
         if self.event:

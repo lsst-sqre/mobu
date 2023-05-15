@@ -121,6 +121,11 @@ async def test_setup_error(
                         },
                         {
                             "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/tapuser",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*User*\ntapuser",
                             "verbatim": True,
                         },
@@ -181,6 +186,11 @@ async def test_alert(
                         {
                             "type": "mrkdwn",
                             "text": "*Exception type*\nCodeExecutionError",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/testuser1",
                             "verbatim": True,
                         },
                         {

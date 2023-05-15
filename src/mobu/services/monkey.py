@@ -16,6 +16,7 @@ from safir.slack.webhook import SlackWebhookClient
 from structlog.stdlib import BoundLogger
 
 from ..config import config
+from ..exceptions import MobuSlackException
 from ..models.business.base import BusinessConfig
 from ..models.business.empty import EmptyLoopConfig
 from ..models.business.jupyterpythonloop import JupyterPythonLoopConfig
@@ -41,6 +42,9 @@ class Monkey:
     ----------
     name
         Name of this monkey.
+    flock
+        Name of the flock this monkey belongs to, or `None` if it is running
+        as a solitary.
     business_config
         Configuration for the business it should run.
     user
@@ -55,12 +59,14 @@ class Monkey:
         self,
         *,
         name: str,
+        flock: str | None = None,
         business_config: BusinessConfig,
         user: AuthenticatedUser,
         http_client: AsyncClient,
         logger: BoundLogger,
     ) -> None:
         self._name = name
+        self._flock = flock
         self._restart = business_config.restart
         self._http_client = http_client
         self._user = user
@@ -127,11 +133,18 @@ class Monkey:
         else:
             now = current_datetime(microseconds=True)
             date = format_datetime_for_logging(now)
-            error = f"{type(exc).__name__}: {exc!s}"
+            name = type(exc).__name__
+            error = f"{name}: {exc!s}"
+            if self._flock:
+                monkey = f"{self._flock}/{self._name}"
+            else:
+                monkey = self._name
             message = SlackMessage(
                 message=f"Unexpected exception {error}",
                 fields=[
-                    SlackTextField(heading="Date", text=date),
+                    SlackTextField(heading="Exception type", text=name),
+                    SlackTextField(heading="Failed at", text=date),
+                    SlackTextField(heading="Monkey", text=monkey),
                     SlackTextField(heading="User", text=self._user.username),
                 ],
             )
@@ -184,6 +197,11 @@ class Monkey:
                 run = False
             except Exception as e:
                 msg = "Exception thrown while doing monkey business"
+                if isinstance(e, MobuSlackException):
+                    if self._flock:
+                        e.monkey = f"{self._flock}/{self._name}"
+                    else:
+                        e.monkey = self._name
                 self._logger.exception(msg)
                 await self.alert(e)
                 run = self._restart and self._state == MonkeyState.RUNNING
