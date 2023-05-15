@@ -9,6 +9,33 @@ Dependencies are updated to the latest available version during each release. Th
 This project uses [scriv](https://scriv.readthedocs.io/) to maintain the change log.
 Changes for the upcoming release can be found in [changelog.d](https://github.com/lsst-sqre/mobu/tree/main/changelog.d/).
 
+<!-- scriv-insert-here -->
+
+<a id='changelog-5.1.0'></a>
+## 5.1.0 (2023-05-15)
+
+### New features
+
+- mobu now uses httpx instead of aiohttp for all HTTP requests (including websockets for WebSocket connections and httpx-sse for EventStream connections) and makes use of the Safir framework for parsing and reporting HTTP client exceptions. Alerts for failing web requests will be somewhat different and hopefully clearer.
+- mobu now sends keep-alive pings on the WebSocket connection to the lab, hopefully allowing successful execution of cells that take more than five minutes to run.
+- Nublado-based businesses can now set `debug` to true in the image specification to request that debugging be enabled in the spawned Jupyter lab.
+- mobu now catches timeouts attempting to open a WebSocket to the lab and reports them to Slack with more details.
+- Slack alerts from monkeys now include the flock and monkey name as a field in the alert.
+- Unexpected business exceptions now include an "Exception type" heading and use "Failed at" instead of "Date" to match the display of expected exceptions.
+- The prefix for mobu routes (`/mobu` by default) can now be configured with `SAFIR_PATH_PREFIX`.
+- Uncaught exceptions from mobu's route handlers are now also reported to Slack.
+
+### Bug fixes
+
+- The code to determine the Docker reference and description of the running Nublado image is now more robust against unexpected output.
+- Node and cell information in Slack error reports for Nublado errors are now formatted as full blocks rather than fields, since they are often too wide to fit nicely in the limited width of a Slack Block Kit field.
+
+### Other changes
+
+- The default `error_idle_time` for Nublado-based business is back to 60 seconds instead of 10 minutes. The problem the longer timeout was working around should be fixed in the new Nublado lab controller.
+- Nublado-based notebooks now request the `JUPYTER_IMAGE_SPEC` environment variable instead of `JUPYTER_IMAGE` to get the running image for error reporting purposes. This is now the preferred environment variable and `JUPYTER_IMAGE` is deprecated.
+- mobu now uses the [Ruff](https://beta.ruff.rs/docs/) linter instead of flake8, isort, and pydocstyle.
+
 ## 5.0.0 (2023-03-22)
 
 ### Backwards-incompatible changes
