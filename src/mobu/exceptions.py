@@ -152,13 +152,29 @@ class MobuSlackException(SlackException):
     This adds some additional fields to `~safir.slack.blockkit.SlackException`
     but is otherwise equivalent. It is intended to be subclassed. Subclasses
     must override the `to_slack` method.
+
+    Parameters
+    ----------
+    msg
+        Exception message.
+    user
+        User mobu was operating as when the exception happened.
+    started_at
+        When the operation started.
+    failed_at
+        When the operation failed (defaults to the current time).
     """
 
     def __init__(
-        self, msg: str, user: str, *, failed_at: datetime | None = None
+        self,
+        msg: str,
+        user: str,
+        *,
+        started_at: datetime | None = None,
+        failed_at: datetime | None = None,
     ) -> None:
         super().__init__(msg, user, failed_at=failed_at)
-        self.started_at: datetime | None = None
+        self.started_at = started_at
         self.event: str | None = None
         self.annotations: dict[str, str] = {}
 
@@ -363,8 +379,15 @@ class JupyterSpawnError(MobuSlackException):
 class JupyterTimeoutError(MobuSlackException):
     """Timed out waiting for the lab to spawn."""
 
-    def __init__(self, msg: str, user: str, log: str | None = None) -> None:
-        super().__init__(msg, user)
+    def __init__(
+        self,
+        msg: str,
+        user: str,
+        log: str | None = None,
+        *,
+        started_at: datetime | None = None,
+    ) -> None:
+        super().__init__(msg, user, started_at=started_at)
         self.log = log
 
     def to_slack(self) -> SlackMessage:

@@ -7,8 +7,7 @@ import sys
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 
 import structlog
-from aiojobs import Scheduler
-from aiojobs._job import Job
+from aiojobs import Job, Scheduler
 from httpx import AsyncClient
 from safir.datetime import current_datetime, format_datetime_for_logging
 from safir.logging import Profile
