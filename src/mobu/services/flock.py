@@ -135,6 +135,7 @@ class Flock:
         """Create a monkey that will run as a given user."""
         return Monkey(
             name=user.username,
+            flock=self.name,
             business_config=self._config.business,
             user=user,
             http_client=self._http_client,

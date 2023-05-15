@@ -222,6 +222,11 @@ async def test_hub_failed(
                         },
                         {
                             "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/testuser2",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*User*\ntestuser2",
                             "verbatim": True,
                         },
@@ -308,6 +313,11 @@ async def test_redirect_loop(
                         },
                         {
                             "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/testuser1",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*User*\ntestuser1",
                             "verbatim": True,
                         },
@@ -385,6 +395,11 @@ async def test_spawn_timeout(
                         },
                         {
                             "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/testuser1",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*User*\ntestuser1",
                             "verbatim": True,
                         },
@@ -450,6 +465,11 @@ async def test_spawn_failed(
                         {
                             "type": "mrkdwn",
                             "text": "*Exception type*\nJupyterSpawnError",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/testuser1",
                             "verbatim": True,
                         },
                         {
@@ -542,6 +562,11 @@ async def test_delete_timeout(
                         },
                         {
                             "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/testuser1",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*User*\ntestuser1",
                             "verbatim": True,
                         },
@@ -612,6 +637,11 @@ async def test_code_exception(
                         {
                             "type": "mrkdwn",
                             "text": "*Exception type*\nCodeExecutionError",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/testuser1",
                             "verbatim": True,
                         },
                         {
@@ -743,6 +773,11 @@ async def test_long_error(
                         {
                             "type": "mrkdwn",
                             "text": "*Exception type*\nCodeExecutionError",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/testuser1",
                             "verbatim": True,
                         },
                         {

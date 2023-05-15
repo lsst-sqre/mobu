@@ -183,6 +183,11 @@ async def test_alert(
                         },
                         {
                             "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/testuser1",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*User*\ntestuser1",
                             "verbatim": True,
                         },
