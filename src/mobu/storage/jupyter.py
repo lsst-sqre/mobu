@@ -402,7 +402,7 @@ class JupyterLabSession:
 
         # Analyse the message type to figure out what to do with the response.
         msg_type = data["msg_type"]
-        if msg_type in ("execute_input", "status"):
+        if msg_type in ("display_data", "execute_input", "status"):
             return None
         elif msg_type == "stream":
             return JupyterOutput(content=data["content"]["text"])
