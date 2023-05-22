@@ -179,7 +179,7 @@ class MobuSlackException(SlackException):
     def __init__(
         self,
         msg: str,
-        user: str,
+        user: str | None = None,
         *,
         started_at: datetime | None = None,
         failed_at: datetime | None = None,
@@ -279,8 +279,8 @@ class NotebookRepositoryError(MobuSlackException):
 class CachemachineError(MobuSlackException):
     """Failed to obtain a valid image list from cachemachine."""
 
-    def __init__(self, msg: str, user: str) -> None:
-        super().__init__(user, f"Cachemachine error: {msg}")
+    def __init__(self, msg: str) -> None:
+        super().__init__(f"Cachemachine error: {msg}")
 
 
 class CodeExecutionError(MobuSlackException):
