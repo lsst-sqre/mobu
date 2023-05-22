@@ -27,7 +27,7 @@ from websockets.client import connect as websocket_connect
 from websockets.exceptions import WebSocketException
 
 from ..config import config
-from ..constants import WEBSOCKET_MESSAGE_SIZE_LIMIT, WEBSOCKET_OPEN_TIMEOUT
+from ..constants import WEBSOCKET_OPEN_TIMEOUT
 from ..exceptions import (
     CodeExecutionError,
     JupyterTimeoutError,
@@ -167,6 +167,7 @@ class JupyterLabSession:
         jupyter_url: str,
         kernel_name: str = "LSST",
         notebook_name: str | None = None,
+        max_websocket_size: int | None,
         http_client: AsyncClient,
         logger: BoundLogger,
     ) -> None:
@@ -174,6 +175,7 @@ class JupyterLabSession:
         self._jupyter_url = jupyter_url
         self._kernel_name = kernel_name
         self._notebook_name = notebook_name
+        self._max_websocket_size = max_websocket_size
         self._client = http_client
         self._logger = logger
 
@@ -242,7 +244,7 @@ class JupyterLabSession:
                 self._url_for_websocket(url),
                 extra_headers=headers,
                 open_timeout=WEBSOCKET_OPEN_TIMEOUT,
-                max_size=WEBSOCKET_MESSAGE_SIZE_LIMIT,
+                max_size=self._max_websocket_size,
             ).__aenter__()
         except WebSocketException as e:
             user = self._username
@@ -628,7 +630,11 @@ class JupyterClient:
         return result
 
     def open_lab_session(
-        self, notebook_name: str | None = None, *, kernel_name: str = "LSST"
+        self,
+        notebook_name: str | None = None,
+        *,
+        max_websocket_size: int | None = None,
+        kernel_name: str = "LSST",
     ) -> JupyterLabSession:
         """Open a Jupyter lab session.
 
@@ -643,6 +649,8 @@ class JupyterClient:
             session and might influence logging on the lab side. If set, the
             session type will be set to ``notebook``. If not set, the session
             type will be set to ``console``.
+        max_websocket_size
+            Maximum size of a WebSocket message, or `None` for no limit.
         kernel_name
             Name of the kernel to use for the session.
 
@@ -656,6 +664,7 @@ class JupyterClient:
             jupyter_url=self._jupyter_url,
             kernel_name=kernel_name,
             notebook_name=notebook_name,
+            max_websocket_size=max_websocket_size,
             http_client=self._client,
             logger=self._logger,
         )
