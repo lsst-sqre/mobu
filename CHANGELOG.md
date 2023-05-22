@@ -11,6 +11,22 @@ Changes for the upcoming release can be found in [changelog.d](https://github.co
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-6.0.0'></a>
+## 6.0.0 (2023-05-22)
+
+### Backwards-incompatible changes
+
+- Configuration of whether to use cachemachine and, if so, what image policy to use is now done at the business level instead of globally. This allows the same mobu instance to test both Nublado v2 and Nublado v3.
+
+### New features
+
+- The maximum allowable size for a WebSocket message from the Jupyter lab is now configurable per business and defaults to 10MB instead of 4MB.
+
+### Bug fixes
+
+- Revert change in 5.0.0 to number all cells, and go back to counting only code cells for numbering purposes. This matches the way cell numbers are displayed in the Jupyter lab UI.
+- When reporting errors to Slack, mobu 5.0.0 mistakenly started stripping ANSI escape sequences from the code being executed, which should be safe since it comes from local notebooks or configuration, instead of the error output, which is where Jupyter labs like to add formatting. Strip ANSI escape sequences from the error output instead of the code.
+
 <a id='changelog-5.1.0'></a>
 ## 5.1.0 (2023-05-15)
 
