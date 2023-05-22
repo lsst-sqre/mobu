@@ -9,6 +9,7 @@ __all__ = [
     "NOTEBOOK_REPO_BRANCH",
     "TOKEN_LIFETIME",
     "USERNAME_REGEX",
+    "WEBSOCKET_OPEN_TIMEOUT",
 ]
 
 NOTEBOOK_REPO_URL = "https://github.com/lsst-sqre/notebook-demo.git"
@@ -24,13 +25,6 @@ mobu currently has no mechanism for refreshing tokens while running, so this
 should be long enough that mobu will be restarted before the tokens expire.
 An expiration exists primarily to ensure that the tokens don't accumulate
 forever.
-"""
-
-WEBSOCKET_MESSAGE_SIZE_LIMIT = 4 * 1024 * 1024
-"""Largest WebSocket message size allowed from lab (in bytes).
-
-This has to be large enough to hold HTML and image output from executing
-notebook cells, even though we discard that data. Set to `None` for no limit.
 """
 
 WEBSOCKET_OPEN_TIMEOUT = 60

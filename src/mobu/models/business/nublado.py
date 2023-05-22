@@ -184,6 +184,16 @@ class NubladoBusinessOptions(BusinessOptions):
         example=60,
     )
 
+    max_websocket_message_size: int | None = Field(
+        10 * 1024 * 1024,
+        title="Maximum length of WebSocket message (in bytes)",
+        description=(
+            "This has to be large enough to hold HTML and image output from"
+            " executing notebook cells, even though we discard that data."
+            " Set to `null` for no limit."
+        ),
+    )
+
     spawn_settle_time: int = Field(
         10,
         title="How long to wait before polling spawn progress in seconds",
