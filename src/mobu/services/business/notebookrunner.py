@@ -109,14 +109,16 @@ class NotebookRunner(NubladoBusiness):
                 msg = f"Invalid notebook {notebook.name}: {e!s}"
                 raise NotebookRepositoryError(msg, self.user.username) from e
 
-        # Add cell numbers to all the cells, which we'll use in exception
-        # reporting and to annotate timing events so that we can find cells
-        # that take an excessively long time to run.
-        for i, cell in enumerate(cells, start=1):
-            cell["_index"] = str(i)
-
         # Strip non-code cells.
         cells = [c for c in cells if c["cell_type"] == "code"]
+
+        # Add cell numbers to all the cells, which we'll use in exception
+        # reporting and to annotate timing events so that we can find cells
+        # that take an excessively long time to run. This should be done after
+        # stripping non-code cells, since the UI for notebooks displays cell
+        # numbers only counting code cells.
+        for i, cell in enumerate(cells, start=1):
+            cell["_index"] = str(i)
 
         return cells
 
