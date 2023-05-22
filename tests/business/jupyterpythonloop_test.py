@@ -930,3 +930,130 @@ async def test_lab_controller(
         "image_tag": "w_2077_44",
         "size": "Small",
     }
+
+
+@pytest.mark.asyncio
+async def test_ansi_error(
+    client: AsyncClient,
+    jupyter: MockJupyter,
+    slack: MockSlackWebhook,
+    respx_mock: respx.Router,
+) -> None:
+    mock_gafaelfawr(respx_mock)
+
+    r = await client.put(
+        "/mobu/flocks",
+        json={
+            "name": "test",
+            "count": 1,
+            "user_spec": {"username_prefix": "testuser"},
+            "scopes": ["exec:notebook"],
+            "business": {
+                "type": "JupyterPythonLoop",
+                "options": {
+                    "code": (
+                        'raise ValueError("\\033[38;5;28;01mFoo\\033[39;00m")'
+                    ),
+                    "image": {
+                        "image_class": "by-reference",
+                        "reference": (
+                            "registry.hub.docker.com/lsstsqre/sciplat-lab"
+                            ":d_2021_08_30"
+                        ),
+                    },
+                    "spawn_settle_time": 0,
+                    "max_executions": 1,
+                },
+            },
+        },
+    )
+    assert r.status_code == 201
+
+    # Wait until we've finished one loop.
+    data = await wait_for_business(client, "testuser1")
+    assert data["business"]["failure_count"] == 1
+
+    # Check that an appropriate error was posted.
+    assert slack.messages == [
+        {
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "Error while running code",
+                        "verbatim": True,
+                    },
+                },
+                {
+                    "type": "section",
+                    "fields": [
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Exception type*\nCodeExecutionError",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/testuser1",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*User*\ntestuser1",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Event*\nexecute_code",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Image*\nRecommended (Weekly 2077_43)",
+                            "verbatim": True,
+                        },
+                    ],
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "*Node*\nsome-node",
+                        "verbatim": True,
+                    },
+                },
+            ],
+            "attachments": [
+                {
+                    "blocks": [
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": ANY,
+                                "verbatim": True,
+                            },
+                        },
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": (
+                                    "*Code executed*\n"
+                                    '```\nraise ValueError("\\033[38;5;28;01m'
+                                    'Foo\\033[39;00m")\n```'
+                                ),
+                                "verbatim": True,
+                            },
+                        },
+                    ]
+                }
+            ],
+        }
+    ]
+    error = slack.messages[0]["attachments"][0]["blocks"][0]["text"]["text"]
+    assert "ValueError: Foo" in error
+    assert "\033" not in error
