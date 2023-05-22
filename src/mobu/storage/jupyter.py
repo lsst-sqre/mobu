@@ -26,9 +26,9 @@ from websockets.client import WebSocketClientProtocol
 from websockets.client import connect as websocket_connect
 from websockets.exceptions import WebSocketException
 
-from ..config import config
 from ..constants import WEBSOCKET_OPEN_TIMEOUT
 from ..exceptions import (
+    CachemachineError,
     CodeExecutionError,
     JupyterTimeoutError,
     JupyterWebError,
@@ -510,6 +510,11 @@ class JupyterClient:
         User as which to authenticate.
     base_url
         Base URL for JupyterHub and the proxy to talk to the labs.
+    cachemachine
+        Cachemachine client. If provided, the client will use cachemachine to
+        resolve images. If not provided (the default), the client will assume
+        the Nublado lab controller is in use and image specifications can be
+        posted directly to JupyterHub.
     logger
         Logger to use.
 
@@ -526,10 +531,12 @@ class JupyterClient:
         *,
         user: AuthenticatedUser,
         base_url: str,
+        cachemachine: CachemachineClient | None = None,
         logger: BoundLogger,
     ) -> None:
         self.user = user
         self._base_url = base_url
+        self._cachemachine = cachemachine
         self._logger = logger.bind(user=user.username)
 
         # Construct a connection pool to use for requets to JupyterHub. We
@@ -554,18 +561,6 @@ class JupyterClient:
             follow_redirects=True,
             timeout=30.0,  # default is 5, but JupyterHub can be slow
         )
-
-        # Use the same client to talk to cachemachine. This means we'll send
-        # the same headers and cookies there, but that won't matter (the
-        # header gets overridden), and cachemachine support is soon going away
-        # so it's not worth a lot of effort.
-        self._cachemachine = None
-        if config.use_cachemachine:
-            if not config.gafaelfawr_token:
-                raise RuntimeError("GAFAELFAWR_TOKEN not set")
-            self._cachemachine = CachemachineClient(
-                self._client, config.gafaelfawr_token, self.user.username
-            )
 
     async def close(self) -> None:
         """Close the underlying HTTP connection pool."""
@@ -661,7 +656,20 @@ class JupyterClient:
 
     @_convert_exception
     async def spawn_lab(self, config: NubladoImage) -> None:
-        """Spawn a Jupyter lab pod."""
+        """Spawn a Jupyter lab pod.
+
+        Parameters
+        ----------
+        config
+            Image configuration.
+
+        Raises
+        ------
+        CachemachineError
+            Raised if some error occurred talking to cachemachine.
+        JupyterWebError
+            Raised if an error occurred talking to JupyterHub.
+        """
         url = self._url_for("hub/spawn")
         data = await self._build_spawn_form(config)
 
@@ -722,30 +730,73 @@ class JupyterClient:
             self._logger.info("Retrying spawn progress request")
 
     async def _build_spawn_form(self, config: NubladoImage) -> dict[str, str]:
-        """Construct the form data to post to JupyterHub's spawn form."""
+        """Construct the form data to post to JupyterHub's spawn form.
+
+        Parameters
+        ----------
+        config
+            Image configuration.
+
+        Returns
+        -------
+        dict of str to str
+            Spawner form values to submit.
+
+        Raises
+        ------
+        CachemachineError
+            Raised if some error occurred talking to cachemachine.
+        """
         if self._cachemachine:
-            if isinstance(config, NubladoImageByClass):
-                if config.image_class == NubladoImageClass.RECOMMENDED:
-                    image = await self._cachemachine.get_recommended()
-                elif config.image_class == NubladoImageClass.LATEST_WEEKLY:
-                    image = await self._cachemachine.get_latest_weekly()
-                else:
-                    msg = f"Unsupported image class {config.image_class}"
-                    raise ValueError(msg)
-            elif isinstance(config, NubladoImageByReference):
-                reference = config.reference
-                image = JupyterCachemachineImage.from_reference(reference)
-            else:
-                msg = f"Unsupported image class {config.image_class}"
-                raise TypeError(msg)
-            return self._build_spawn_form_from_cachemachine(config, image)
+            try:
+                return await self._build_spawn_form_from_cachemachine(config)
+            except CachemachineError as e:
+                e.user = self.user.username
+                raise
         else:
             return config.to_spawn_form()
 
-    def _build_spawn_form_from_cachemachine(
-        self, config: NubladoImage, image: JupyterCachemachineImage
+    async def _build_spawn_form_from_cachemachine(
+        self, config: NubladoImage
     ) -> dict[str, str]:
-        """Construct the form to submit to the JupyterHub login page."""
+        """Construct the form to submit to the JupyterHub login page.
+
+        Parameters
+        ----------
+        config
+            Image configuration.
+
+        Returns
+        -------
+        dict of str to str
+            Spawner form values to submit.
+
+        Raises
+        ------
+        CachemachineError
+            Raised if some error occurred talking to cachemachine.
+        RuntimeError
+            Raised if cachemachine is not configured.
+        TypeError
+            Raised if the provided image configuration uses an image class not
+            supported by the cachemachine client.
+        """
+        if not self._cachemachine:
+            raise RuntimeError("Use of cachemachine not configured")
+        if isinstance(config, NubladoImageByClass):
+            if config.image_class == NubladoImageClass.RECOMMENDED:
+                image = await self._cachemachine.get_recommended()
+            elif config.image_class == NubladoImageClass.LATEST_WEEKLY:
+                image = await self._cachemachine.get_latest_weekly()
+            else:
+                msg = f"Unsupported image class {config.image_class}"
+                raise ValueError(msg)
+        elif isinstance(config, NubladoImageByReference):
+            reference = config.reference
+            image = JupyterCachemachineImage.from_reference(reference)
+        else:
+            msg = f"Unsupported image class {config.image_class}"
+            raise TypeError(msg)
         result = {
             "image_list": str(image),
             "image_dropdown": "use_image_from_dropdown",

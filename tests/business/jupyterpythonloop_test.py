@@ -840,94 +840,93 @@ async def test_lab_controller(
     client: AsyncClient, jupyter: MockJupyter, respx_mock: respx.Router
 ) -> None:
     mock_gafaelfawr(respx_mock)
-    config.use_cachemachine = False
 
-    try:
-        # Image by reference.
-        r = await client.put(
-            "/mobu/flocks",
-            json={
-                "name": "test",
-                "count": 1,
-                "users": [{"username": "testuser"}],
-                "scopes": ["exec:notebook"],
-                "business": {
-                    "type": "JupyterPythonLoop",
-                    "options": {
-                        "image": {
-                            "image_class": "by-reference",
-                            "reference": (
-                                "registry.hub.docker.com/lsstsqre/sciplat-lab"
-                                ":d_2021_08_30"
-                            ),
-                        },
+    # Image by reference.
+    r = await client.put(
+        "/mobu/flocks",
+        json={
+            "name": "test",
+            "count": 1,
+            "users": [{"username": "testuser"}],
+            "scopes": ["exec:notebook"],
+            "business": {
+                "type": "JupyterPythonLoop",
+                "options": {
+                    "image": {
+                        "image_class": "by-reference",
+                        "reference": (
+                            "registry.hub.docker.com/lsstsqre/sciplat-lab"
+                            ":d_2021_08_30"
+                        ),
                     },
+                    "use_cachemachine": False,
                 },
             },
-        )
-        assert r.status_code == 201
-        assert jupyter.lab_form["testuser"] == {
-            "image_list": (
-                "registry.hub.docker.com/lsstsqre/sciplat-lab:d_2021_08_30"
-            ),
-            "size": "Large",
-        }
-        r = await client.delete(r.headers["Location"])
-        assert r.status_code == 204
+        },
+    )
+    assert r.status_code == 201
+    assert jupyter.lab_form["testuser"] == {
+        "image_list": (
+            "registry.hub.docker.com/lsstsqre/sciplat-lab:d_2021_08_30"
+        ),
+        "size": "Large",
+    }
+    r = await client.delete(r.headers["Location"])
+    assert r.status_code == 204
 
-        # Image by class.
-        r = await client.put(
-            "/mobu/flocks",
-            json={
-                "name": "test",
-                "count": 1,
-                "users": [{"username": "testuser"}],
-                "scopes": ["exec:notebook"],
-                "business": {
-                    "type": "JupyterPythonLoop",
-                    "options": {
-                        "image": {
-                            "image_class": "latest-daily",
-                            "size": "Medium",
-                            "debug": True,
-                        },
+    # Image by class.
+    r = await client.put(
+        "/mobu/flocks",
+        json={
+            "name": "test",
+            "count": 1,
+            "users": [{"username": "testuser"}],
+            "scopes": ["exec:notebook"],
+            "business": {
+                "type": "JupyterPythonLoop",
+                "options": {
+                    "image": {
+                        "image_class": "latest-daily",
+                        "size": "Medium",
+                        "debug": True,
                     },
+                    "use_cachemachine": False,
                 },
             },
-        )
-        assert r.status_code == 201
-        assert jupyter.lab_form["testuser"] == {
-            "enable_debug": "true",
-            "image_class": "latest-daily",
-            "size": "Medium",
-        }
-        r = await client.delete(r.headers["Location"])
-        assert r.status_code == 204
+        },
+    )
+    assert r.status_code == 201
+    assert jupyter.lab_form["testuser"] == {
+        "enable_debug": "true",
+        "image_class": "latest-daily",
+        "size": "Medium",
+    }
+    r = await client.delete(r.headers["Location"])
+    assert r.status_code == 204
 
-        # Image by tag.
-        r = await client.put(
-            "/mobu/flocks",
-            json={
-                "name": "test",
-                "count": 1,
-                "users": [{"username": "testuser"}],
-                "scopes": ["exec:notebook"],
-                "business": {
-                    "type": "JupyterPythonLoop",
-                    "options": {
-                        "image": {
-                            "image_class": "by-tag",
-                            "tag": "w_2077_44",
-                            "size": "Small",
-                        },
+    # Image by tag.
+    r = await client.put(
+        "/mobu/flocks",
+        json={
+            "name": "test",
+            "count": 1,
+            "users": [{"username": "testuser"}],
+            "scopes": ["exec:notebook"],
+            "business": {
+                "type": "JupyterPythonLoop",
+                "options": {
+                    "image": {
+                        "image_class": "by-tag",
+                        "tag": "w_2077_44",
+                        "size": "Small",
                     },
+                    "use_cachemachine": False,
                 },
             },
-        )
-        assert r.status_code == 201
-        assert jupyter.lab_form["testuser"] == {
-            "image_tag": "w_2077_44",
-            "size": "Small",
-        }
-    finally:
-        config.use_cachemachine = True
+        },
+    )
+    assert r.status_code == 201
+    assert jupyter.lab_form["testuser"] == {
+        "image_tag": "w_2077_44",
+        "size": "Small",
+    }

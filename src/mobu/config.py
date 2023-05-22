@@ -2,24 +2,15 @@
 
 from __future__ import annotations
 
-from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseSettings, Field, HttpUrl
 from safir.logging import LogLevel, Profile
 
 __all__ = [
-    "CachemachinePolicy",
     "Configuration",
     "config",
 ]
-
-
-class CachemachinePolicy(Enum):
-    """Policy for what eligible images to retrieve from cachemachine."""
-
-    available = "available"
-    desired = "desired"
 
 
 class Configuration(BaseSettings):
@@ -59,30 +50,6 @@ class Configuration(BaseSettings):
         ),
         env="ENVIRONMENT_URL",
         example="https://data.example.org/",
-    )
-
-    use_cachemachine: bool = Field(
-        True,
-        field="Whether to use cachemachine to look up an image",
-        description=(
-            "Set this to false in environments using the new Nublado lab"
-            " controller."
-        ),
-        env="USE_CACHEMACHINE",
-        example=False,
-    )
-
-    cachemachine_image_policy: CachemachinePolicy = Field(
-        CachemachinePolicy.available,
-        field="Class of cachemachine images to use",
-        description=(
-            "Whether to use the images available on all nodes, or the images"
-            " desired by cachemachine. In instances where image streaming is"
-            " enabled and therefore pulls are fast, ``desired`` is preferred."
-            " The default is ``available``."
-        ),
-        env="CACHEMACHINE_IMAGE_POLICY",
-        example=CachemachinePolicy.desired,
     )
 
     gafaelfawr_token: str | None = Field(

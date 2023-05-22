@@ -23,6 +23,7 @@ from ...models.business.nublado import (
     RunningImage,
 )
 from ...models.user import AuthenticatedUser
+from ...storage.cachemachine import CachemachineClient
 from ...storage.jupyter import JupyterClient, JupyterLabSession
 from .base import Business
 
@@ -107,9 +108,20 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         if not config.environment_url:
             raise RuntimeError("environment_url not set")
         environment_url = str(config.environment_url).rstrip("/")
+        cachemachine = None
+        if options.use_cachemachine:
+            if not config.gafaelfawr_token:
+                raise RuntimeError("GAFAELFAWR_TOKEN not set")
+            cachemachine = CachemachineClient(
+                url=environment_url + "/cachemachine/jupyter",
+                token=config.gafaelfawr_token,
+                http_client=http_client,
+                image_policy=options.cachemachine_image_policy,
+            )
         self._client = JupyterClient(
             user=user,
             base_url=environment_url + options.url_prefix,
+            cachemachine=cachemachine,
             logger=logger,
         )
 

@@ -7,8 +7,13 @@ from typing import Self
 from httpx import AsyncClient, HTTPError, HTTPStatusError
 from pydantic import BaseModel, Field
 
-from ..config import config
 from ..exceptions import CachemachineError
+from ..models.business.nublado import CachemachinePolicy
+
+__all__ = [
+    "CachemachineClient",
+    "JupyterCachemachineImage",
+]
 
 
 class JupyterCachemachineImage(BaseModel):
@@ -85,21 +90,30 @@ class CachemachineClient:
     which image is recommended and what the latest weeklies are.  This client
     queries it and returns the image that matches some selection criteria.
     The resulting string can be passed in to the JupyterHub options form.
+
+    Parameters
+    ----------
+    url
+        URL for cachemachine.
+    token
+        Token to use to authenticate to cachemachine.
+    http_client
+        HTTP client to use.
+    image_policy
+        Cachemachine image policy to use for resolving images.
     """
 
     def __init__(
-        self, http_client: AsyncClient, token: str, username: str
+        self,
+        url: str,
+        token: str,
+        http_client: AsyncClient,
+        *,
+        image_policy: CachemachinePolicy = CachemachinePolicy.desired,
     ) -> None:
-        self._http_client = http_client
         self._token = token
-        self._username = username
-        if not config.environment_url:
-            raise RuntimeError("environment_url not set")
-        self._url = (
-            str(config.environment_url).rstrip("/")
-            + "/cachemachine/jupyter/"
-            + config.cachemachine_image_policy.value
-        )
+        self._http_client = http_client
+        self._url = url.rstrip("/") + "/" + image_policy.value
 
     async def get_latest_weekly(self) -> JupyterCachemachineImage:
         """Image for the latest weekly version.
@@ -118,7 +132,7 @@ class CachemachineClient:
         for image in await self._get_images():
             if image.name.startswith("Weekly"):
                 return image
-        raise CachemachineError(self._username, "No weekly images found")
+        raise CachemachineError("No weekly images found")
 
     async def get_recommended(self) -> JupyterCachemachineImage:
         """Image string for the latest recommended version.
@@ -135,7 +149,7 @@ class CachemachineClient:
         """
         images = await self._get_images()
         if not images or not images[0]:
-            raise CachemachineError(self._username, "No images found")
+            raise CachemachineError("No images found")
         return images[0]
 
     async def _get_images(self) -> list[JupyterCachemachineImage]:
@@ -145,10 +159,10 @@ class CachemachineClient:
             r.raise_for_status()
         except HTTPStatusError as e:
             msg = f"Cannot get image status: {e.response.status_code}"
-            raise CachemachineError(self._username, msg) from e
+            raise CachemachineError(msg) from e
         except HTTPError as e:
             msg = f"Cannot get image status: {type(e).__name__}: {e!s}"
-            raise CachemachineError(self._username, msg) from e
+            raise CachemachineError(msg) from e
 
         try:
             data = r.json()
@@ -157,4 +171,4 @@ class CachemachineClient:
             ]
         except Exception as e:
             msg = f"Invalid response: {type(e).__name__}: {e!s}"
-            raise CachemachineError(self._username, msg) from e
+            raise CachemachineError(msg) from e
