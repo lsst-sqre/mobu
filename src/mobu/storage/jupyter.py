@@ -145,7 +145,7 @@ class JupyterLabSession:
     ----------
     username
         User the session is for.
-    jupyter_url
+    base_url
         Base URL for talking to JupyterHub or the lab (via the proxy).
     kernel_name
         Name of the kernel to use for the session.
@@ -164,7 +164,7 @@ class JupyterLabSession:
         self,
         *,
         username: str,
-        jupyter_url: str,
+        base_url: str,
         kernel_name: str = "LSST",
         notebook_name: str | None = None,
         max_websocket_size: int | None,
@@ -172,7 +172,7 @@ class JupyterLabSession:
         logger: BoundLogger,
     ) -> None:
         self._username = username
-        self._jupyter_url = jupyter_url
+        self._base_url = base_url
         self._kernel_name = kernel_name
         self._notebook_name = notebook_name
         self._max_websocket_size = max_websocket_size
@@ -433,10 +433,10 @@ class JupyterLabSession:
         str
             Full URL to use.
         """
-        if self._jupyter_url.endswith("/"):
-            return f"{self._jupyter_url}{partial}"
+        if self._base_url.endswith("/"):
+            return f"{self._base_url}{partial}"
         else:
-            return f"{self._jupyter_url}/{partial}"
+            return f"{self._base_url}/{partial}"
 
     def _url_for_websocket(self, url: str) -> str:
         """Convert a URL to a WebSocket URL.
@@ -508,10 +508,8 @@ class JupyterClient:
     ----------
     user
         User as which to authenticate.
-    url_prefix
-        URL prefix to talk to JupyterHub.
-    image_config
-        Specification for image to request when spawning.
+    base_url
+        Base URL for JupyterHub and the proxy to talk to the labs.
     logger
         Logger to use.
 
@@ -527,18 +525,12 @@ class JupyterClient:
         self,
         *,
         user: AuthenticatedUser,
-        url_prefix: str,
+        base_url: str,
         logger: BoundLogger,
     ) -> None:
         self.user = user
-        self._url_prefix = url_prefix
+        self._base_url = base_url
         self._logger = logger.bind(user=user.username)
-
-        # Determine the base URL for talking to JupyterHub.
-        if not config.environment_url:
-            raise RuntimeError("environment_url not set")
-        base_url = str(config.environment_url).rstrip("/")
-        self._jupyter_url = base_url + url_prefix
 
         # Construct a connection pool to use for requets to JupyterHub. We
         # have to create a separate connection pool for every monkey, since
@@ -659,7 +651,7 @@ class JupyterClient:
         """
         return JupyterLabSession(
             username=self.user.username,
-            jupyter_url=self._jupyter_url,
+            base_url=self._base_url,
             kernel_name=kernel_name,
             notebook_name=notebook_name,
             max_websocket_size=max_websocket_size,
@@ -776,10 +768,10 @@ class JupyterClient:
         str
             Full URL to use.
         """
-        if self._jupyter_url.endswith("/"):
-            return f"{self._jupyter_url}{partial}"
+        if self._base_url.endswith("/"):
+            return f"{self._base_url}{partial}"
         else:
-            return f"{self._jupyter_url}/{partial}"
+            return f"{self._base_url}/{partial}"
 
     def _url_for_lab_websocket(self, username: str, kernel: str) -> str:
         """Build the URL for the WebSocket to a lab kernel."""
