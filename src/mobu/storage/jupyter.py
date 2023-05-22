@@ -528,12 +528,10 @@ class JupyterClient:
         *,
         user: AuthenticatedUser,
         url_prefix: str,
-        image_config: NubladoImage,
         logger: BoundLogger,
     ) -> None:
         self.user = user
         self._url_prefix = url_prefix
-        self._config = image_config
         self._logger = logger.bind(user=user.username)
 
         # Determine the base URL for talking to JupyterHub.
@@ -670,10 +668,10 @@ class JupyterClient:
         )
 
     @_convert_exception
-    async def spawn_lab(self) -> None:
+    async def spawn_lab(self, config: NubladoImage) -> None:
         """Spawn a Jupyter lab pod."""
         url = self._url_for("hub/spawn")
-        data = await self._build_spawn_form()
+        data = await self._build_spawn_form(config)
 
         # Retrieving the spawn page before POSTing to it appears to trigger
         # some necessary internal state construction (and also more accurately
@@ -731,38 +729,37 @@ class JupyterClient:
             await asyncio.sleep(1)
             self._logger.info("Retrying spawn progress request")
 
-    async def _build_spawn_form(self) -> dict[str, str]:
+    async def _build_spawn_form(self, config: NubladoImage) -> dict[str, str]:
         """Construct the form data to post to JupyterHub's spawn form."""
         if self._cachemachine:
-            image_class = self._config.image_class
-            if isinstance(self._config, NubladoImageByClass):
-                if image_class == NubladoImageClass.RECOMMENDED:
+            if isinstance(config, NubladoImageByClass):
+                if config.image_class == NubladoImageClass.RECOMMENDED:
                     image = await self._cachemachine.get_recommended()
-                elif image_class == NubladoImageClass.LATEST_WEEKLY:
+                elif config.image_class == NubladoImageClass.LATEST_WEEKLY:
                     image = await self._cachemachine.get_latest_weekly()
                 else:
-                    msg = f"Unsupported image class {image_class}"
+                    msg = f"Unsupported image class {config.image_class}"
                     raise ValueError(msg)
-            elif isinstance(self._config, NubladoImageByReference):
-                reference = self._config.reference
+            elif isinstance(config, NubladoImageByReference):
+                reference = config.reference
                 image = JupyterCachemachineImage.from_reference(reference)
             else:
-                msg = f"Unsupported image class {image_class}"
+                msg = f"Unsupported image class {config.image_class}"
                 raise TypeError(msg)
-            return self._build_spawn_form_from_cachemachine(image)
+            return self._build_spawn_form_from_cachemachine(config, image)
         else:
-            return self._config.to_spawn_form()
+            return config.to_spawn_form()
 
     def _build_spawn_form_from_cachemachine(
-        self, image: JupyterCachemachineImage
+        self, config: NubladoImage, image: JupyterCachemachineImage
     ) -> dict[str, str]:
         """Construct the form to submit to the JupyterHub login page."""
         result = {
             "image_list": str(image),
             "image_dropdown": "use_image_from_dropdown",
-            "size": self._config.size.value,
+            "size": config.size.value,
         }
-        if self._config.debug:
+        if config.debug:
             result["enable_debug"] = "true"
         return result
 

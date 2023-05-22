@@ -105,7 +105,6 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         self._client = JupyterClient(
             user=user,
             url_prefix=options.url_prefix,
-            image_config=options.image,
             logger=logger,
         )
         self._image: RunningImage | None = None
@@ -200,7 +199,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
     async def spawn_lab(self) -> bool:
         with self.timings.start("spawn_lab", self.annotations()) as sw:
             timeout = self.options.spawn_timeout
-            await self._client.spawn_lab()
+            await self._client.spawn_lab(self.options.image)
 
             # Pause before using the progress API, since otherwise it may not
             # have attached to the spawner and will not return a full stream
