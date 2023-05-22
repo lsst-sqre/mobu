@@ -312,13 +312,13 @@ class CodeExecutionError(MobuSlackException):
             if self.status:
                 msg += f" (status: {self.status})"
             if self.code:
-                msg += f"\nCode: {_remove_ansi_escapes(self.code)}"
+                msg += f"\nCode: {self.code}"
         elif self.code:
-            code = _remove_ansi_escapes(self.code)
-            msg = f"{self.user}: running {self.code_type} '{code}' failed"
+            msg = f"{self.user}: running {self.code_type} '{self.code}' failed"
         else:
             msg = f"{self.user}: running {self.code_type} failed"
-        msg += f"\nError: {self.error}"
+        if self.error:
+            msg += f"\nError: {_remove_ansi_escapes(self.error)}"
         return msg
 
     def to_slack(self) -> SlackMessage:
@@ -333,11 +333,13 @@ class CodeExecutionError(MobuSlackException):
 
         attachments: list[SlackBaseBlock] = []
         if self.error:
-            attachment = SlackCodeBlock(heading="Error", code=self.error)
+            error = _remove_ansi_escapes(self.error)
+            attachment = SlackCodeBlock(heading="Error", code=error)
             attachments.append(attachment)
         if self.code:
-            code = _remove_ansi_escapes(self.code)
-            attachment = SlackCodeBlock(heading="Code executed", code=code)
+            attachment = SlackCodeBlock(
+                heading="Code executed", code=self.code
+            )
             attachments.append(attachment)
 
         return SlackMessage(
