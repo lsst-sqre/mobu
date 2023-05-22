@@ -216,7 +216,7 @@ async def test_alert(
                     "text": {
                         "type": "mrkdwn",
                         "text": (
-                            "*Cell*\n`exception.ipynb` cell `ed399c0a` (#2)"
+                            "*Cell*\n`exception.ipynb` cell `ed399c0a` (#1)"
                         ),
                         "verbatim": True,
                     },
