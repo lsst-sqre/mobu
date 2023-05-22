@@ -247,8 +247,9 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         self, notebook: str | None = None
     ) -> AsyncIterator[JupyterLabSession]:
         self.logger.info("Creating lab session")
+        opts = {"max_websocket_size": self.options.max_websocket_message_size}
         stopwatch = self.timings.start("create_session", self.annotations())
-        async with self._client.open_lab_session(notebook) as session:
+        async with self._client.open_lab_session(notebook, **opts) as session:
             stopwatch.stop()
             with self.timings.start("execute_setup", self.annotations()):
                 await self.setup_session(session)
