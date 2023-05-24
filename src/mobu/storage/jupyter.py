@@ -160,6 +160,21 @@ class JupyterLabSession:
         Logger to use.
     """
 
+    _IGNORED_MESSAGE_TYPES = (
+        "display_data",
+        "execute_input",
+        "execute_result",
+        "status",
+    )
+    """WebSocket messge types ignored by the parser.
+
+    Jupyter labs send a lot of types of WebSocket messages to provide status
+    or display formatted results. For our purposes, we only care about output
+    and errors, but we want to warn about unrecognized messages so that we
+    notice places where we may be missing part of the protocol. These are
+    message types that we know we don't care about and should ignore.
+    """
+
     def __init__(
         self,
         *,
@@ -402,7 +417,7 @@ class JupyterLabSession:
 
         # Analyse the message type to figure out what to do with the response.
         msg_type = data["msg_type"]
-        if msg_type in ("display_data", "execute_input", "status"):
+        if msg_type in self._IGNORED_MESSAGE_TYPES:
             return None
         elif msg_type == "stream":
             return JupyterOutput(content=data["content"]["text"])
