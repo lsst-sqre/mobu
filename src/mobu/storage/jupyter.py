@@ -266,6 +266,7 @@ class JupyterLabSession:
             raise JupyterWebSocketError.from_exception(e, user) from e
         except TimeoutError as e:
             msg = "Timed out attempting to open WebSocket to lab session"
+            user = self._username
             raise JupyterTimeoutError(msg, user, started_at=start) from e
         return self
 
