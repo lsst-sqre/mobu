@@ -4,9 +4,9 @@
 #
 #    pip-compile --allow-unsafe --generate-hashes --output-file=requirements/dev.txt --resolver=backtracking requirements/dev.in
 #
-anyio==3.6.2 \
-    --hash=sha256:25ea0d673ae30af41a0c442f81cf3b38c7e79fdc7b60335a4c14e05eb0947421 \
-    --hash=sha256:fbbe32bd270d2a2ef3ed1c5d45041250284e31fc0a4df4a5a6071842051a51e3
+anyio==3.7.0 \
+    --hash=sha256:275d9973793619a5374e1c89a4f4ad3f4b0a5510a2b5b939444bee8f4c4d37ce \
+    --hash=sha256:eddca883c4175f14df8aedce21054bfca3adb70ffe76a9f607aef9d7fa2ea7f0
     # via
     #   -c requirements/main.txt
     #   httpcore
@@ -468,9 +468,9 @@ types-urllib3==1.26.25.13 \
     --hash=sha256:3300538c9dc11dad32eae4827ac313f5d986b8b21494801f1bf97a1ac6c03ae5 \
     --hash=sha256:5dbd1d2bef14efee43f5318b5d36d805a489f6600252bb53626d4bfafd95e27c
     # via types-requests
-typing-extensions==4.6.1 \
-    --hash=sha256:558bc0c4145f01e6405f4a5fdbd82050bd221b119f4bf72a961a1cfd471349d6 \
-    --hash=sha256:6bac751f4789b135c43228e72de18637e9a6c29d12777023a703fd1a6858469f
+typing-extensions==4.6.2 \
+    --hash=sha256:06006244c70ac8ee83fa8282cb188f697b8db25bc8b4df07be1873c43897060c \
+    --hash=sha256:3a8b36f13dd5fdc5d1b16fe317f5668545de77fa0b8e02006381fd49d731ab98
     # via
     #   -c requirements/main.txt
     #   mypy
