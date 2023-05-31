@@ -123,6 +123,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             base_url=environment_url + options.url_prefix,
             cachemachine=cachemachine,
             logger=logger,
+            timeout=options.jupyter_timeout,
         )
 
         self._image: RunningImage | None = None

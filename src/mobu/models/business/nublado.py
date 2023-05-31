@@ -212,6 +212,15 @@ class NubladoBusinessOptions(BusinessOptions):
         example=60,
     )
 
+    jupyter_timeout: int = Field(
+        60,
+        title="HTTP client timeout for Jupyter requests",
+        description=(
+            "Used as the connect, read, and write timeout for talking to"
+            " either JupyterHub or Jupyter lab."
+        ),
+    )
+
     max_websocket_message_size: int | None = Field(
         10 * 1024 * 1024,
         title="Maximum length of WebSocket message (in bytes)",
