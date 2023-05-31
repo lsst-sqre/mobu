@@ -371,7 +371,10 @@ class JupyterSpawnError(MobuSlackException):
         JupyterSpawnError
             Converted exception.
         """
-        return cls(log, user, f"{type(exc).__name__}: {exc!s}")
+        if str(exc):
+            return cls(log, user, f"{type(exc).__name__}: {exc!s}")
+        else:
+            return cls(log, user, type(exc).__name__)
 
     def __init__(
         self, log: str, user: str, message: str | None = None
@@ -437,7 +440,10 @@ class JupyterWebSocketError(MobuSlackException):
         JupyterWebSocketError
             Newly-created exception.
         """
-        error = f"{type(exc).__name__}: {exc!s}"
+        if str(exc):
+            error = f"{type(exc).__name__}: {exc!s}"
+        else:
+            error = type(exc).__name__
         if isinstance(exc, InvalidStatus):
             status = exc.response.status_code
             return cls(
@@ -498,5 +504,9 @@ class TAPClientError(MobuSlackException):
     """Creating a TAP client failed."""
 
     def __init__(self, exc: Exception, *, user: str) -> None:
-        msg = f"Unable to create TAP client: {type(exc).__name__}: {exc!s}"
+        if str(exc):
+            error = f"{type(exc).__name__}: {exc!s}"
+        else:
+            error = type(exc).__name__
+        msg = f"Unable to create TAP client: {error}"
         super().__init__(msg, user)
