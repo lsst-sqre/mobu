@@ -533,6 +533,10 @@ class JupyterClient:
         posted directly to JupyterHub.
     logger
         Logger to use.
+    timeout
+        Timeout to use when talking to JupyterHub and Jupyter lab. This is
+        used as a connection, read, and write timeout for all regular HTTP
+        calls.
 
     Notes
     -----
@@ -549,6 +553,7 @@ class JupyterClient:
         base_url: str,
         cachemachine: CachemachineClient | None = None,
         logger: BoundLogger,
+        timeout: int = 30,
     ) -> None:
         self.user = user
         self._base_url = base_url
@@ -575,7 +580,7 @@ class JupyterClient:
             headers=headers,
             cookies=cookies,
             follow_redirects=True,
-            timeout=30.0,  # default is 5, but JupyterHub can be slow
+            timeout=timeout,
         )
 
     async def close(self) -> None:
