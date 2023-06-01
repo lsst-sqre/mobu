@@ -11,6 +11,18 @@ Changes for the upcoming release can be found in [changelog.d](https://github.co
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-6.1.0'></a>
+## 6.1.0 (2023-05-31)
+
+### New features
+
+- The timeout when talking to JupyterHub and Jupyter labs can now be configured in the business options (as ``jupyter_timeout``). The default is now 60s instead of 30s.
+
+### Bug fixes
+
+- When reporting httpx failures to Slack, put the response body into an attachment instead of a block so that it will be collapsed if long.
+- Fix reporting of WebSocket open timeouts to Slack.
+
 <a id='changelog-6.0.0'></a>
 ## 6.0.0 (2023-05-22)
 
