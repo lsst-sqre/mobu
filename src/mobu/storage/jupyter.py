@@ -355,11 +355,11 @@ class JupyterLabSession:
             "metadata": {},
             "buffers": {},
         }
-        await self._socket.send(json.dumps(request))
 
-        # Consume messages waiting for the response.
+        # Send the message and consume messages waiting for the response.
         result = ""
         try:
+            await self._socket.send(json.dumps(request))
             async for message in self._socket:
                 try:
                     output = self._parse_message(message, message_id)
