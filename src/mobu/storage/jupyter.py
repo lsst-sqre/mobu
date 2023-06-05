@@ -161,6 +161,9 @@ class JupyterLabSession:
     """
 
     _IGNORED_MESSAGE_TYPES = (
+        "comm_close",
+        "comm_msg",
+        "comm_open",
         "display_data",
         "execute_input",
         "execute_result",
