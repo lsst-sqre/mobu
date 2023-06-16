@@ -15,7 +15,6 @@ pre-commit
 pytest
 pytest-asyncio
 pytest-cov
-pytest-httpx
 pytest-sugar
 respx
 ruff
