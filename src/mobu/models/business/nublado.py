@@ -34,6 +34,8 @@ class CachemachinePolicy(Enum):
 class NubladoImageClass(str, Enum):
     """Possible ways of selecting an image."""
 
+    __slots__ = ()
+
     RECOMMENDED = "recommended"
     LATEST_RELEASE = "latest-release"
     LATEST_WEEKLY = "latest-weekly"

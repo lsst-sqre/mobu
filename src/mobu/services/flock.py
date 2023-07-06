@@ -96,10 +96,9 @@ class Flock:
         successes = 0
         failures = 0
         for monkey in self._monkeys.values():
-            data = monkey.dump()
             count += 1
-            successes += data.business.success_count
-            failures += data.business.failure_count
+            successes += monkey.business.success_count
+            failures += monkey.business.failure_count
         return FlockSummary(
             name=self.name,
             business=self._config.business.type,
