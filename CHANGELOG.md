@@ -11,6 +11,14 @@ Changes for the upcoming release can be found in [changelog.d](https://github.co
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-6.1.1'></a>
+## 6.1.1 (2023-07-06)
+
+### Bug fixes
+
+- Rather than dumping the full monkey data when summarizing flocks, which can cause long enough delays that in-progress calls fail due to the huge amount of timing data, extract only the success and failure count from the running business. This should be considerably faster and avoid timeout problems.
+- Improve error reporting by catching exceptions thrown while sending code to the lab WebSocket for execution.
+
 <a id='changelog-6.1.0'></a>
 ## 6.1.0 (2023-05-31)
 
