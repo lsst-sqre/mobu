@@ -25,16 +25,11 @@ jobs:
       # Use the oldest supported version of Python to update dependencies,
       # not the matrixed Python version, since this accurately reflects
       # how dependencies should later be updated.
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Run neophile
+        uses: lsst-sqre/run-neophile@v1
         with:
           python-version: "3.11"
-
-      - name: Install neophile
-        run: pip install neophile
-
-      - name: Run neophile
-        run: neophile update
+          mode: update
 
       - name: Run tox
         uses: lsst-sqre/run-tox@v1
