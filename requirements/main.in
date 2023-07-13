@@ -13,11 +13,11 @@ uvicorn[standard]
 # Other dependencies.
 GitPython
 aiojobs
-click!=8.1.4  # see https://github.com/pallets/click/issues/2558
+click!=8.1.4,!=8.1.5  # see https://github.com/pallets/click/issues/2558
 httpx
 httpx-sse
 jinja2
-pydantic
+pydantic<2
 pyvo
 pyyaml
 safir>=3.8.0
