@@ -275,8 +275,8 @@ class JupyterLabSession:
 
     async def __aexit__(
         self,
-        exc_type: type[Exception] | None,
-        exc_val: Exception | None,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> Literal[False]:
         """Shut down the open WebSocket and delete the session."""

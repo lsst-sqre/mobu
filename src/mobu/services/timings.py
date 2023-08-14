@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from types import TracebackType
-from typing import Literal
+from typing import Literal, Self
 
 from safir.datetime import current_datetime
 
@@ -82,13 +82,13 @@ class Stopwatch:
         self.failed = False
         self._previous = previous
 
-    def __enter__(self) -> Stopwatch:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(
         self,
-        exc_type: type | None,
-        exc_val: Exception | None,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> Literal[False]:
         self.stop_time = current_datetime(microseconds=True)
