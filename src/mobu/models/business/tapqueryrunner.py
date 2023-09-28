@@ -34,13 +34,18 @@ class TAPQueryRunnerOptions(BusinessOptions):
         example=True,
     )
 
+    queries: list | None = Field(
+        None,
+        title="Which query list to use for the TapQueryRunner",
+        description="List of queries to be run instead of a query_set",
+        example=True,
+    )
+
 
 class TAPQueryRunnerConfig(BusinessConfig):
     """Configuration specialization for TAPQueryRunner."""
 
-    type: Literal["TAPQueryRunner"] = Field(
-        ..., title="Type of business to run"
-    )
+    type: Literal["TAPQueryRunner"] = Field(..., title="Type of business to run")
 
     options: TAPQueryRunnerOptions = Field(
         default_factory=TAPQueryRunnerOptions,
