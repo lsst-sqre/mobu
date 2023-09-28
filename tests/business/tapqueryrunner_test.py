@@ -213,10 +213,7 @@ async def test_alert(
                             "type": "section",
                             "text": {
                                 "type": "mrkdwn",
-                                "text": (
-                                    "*Error*\n"
-                                    "```\nException: some error\n```"
-                                ),
+                                "text": ("*Error*\n" "```\nException: some error\n```"),
                                 "verbatim": True,
                             },
                         },
@@ -263,3 +260,19 @@ async def test_random_object() -> None:
         assert len(random_objects) == 12
         for obj in random_objects:
             assert obj in objects
+
+
+@pytest.mark.asyncio
+async def test_query_list() -> None:
+    queries = [
+        "SELECT TOP 10 * FROM TAP_SCHEMA.tables",
+        "SELECT TOP 10 * FROM TAP_SCHEMA.columns",
+    ]
+    user = AuthenticatedUser(username="user", scopes=["read:tap"], token="blah blah")
+    logger = structlog.get_logger(__file__)
+    options = TAPQueryRunnerOptions(queries=queries)
+    http_client = await http_client_dependency()
+    with patch.object(pyvo.dal, "TAPService"):
+        runner = TAPQueryRunner(options, user, http_client, logger)
+    generated_query = runner.get_next_query()
+    assert generated_query in queries
