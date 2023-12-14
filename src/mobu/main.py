@@ -7,6 +7,10 @@ constructed when this module is loaded and is not deferred until a function is
 called.
 """
 
+from __future__ import annotations
+
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from importlib.metadata import metadata, version
 
 import structlog
@@ -23,7 +27,24 @@ from .handlers.external import external_router
 from .handlers.internal import internal_router
 from .status import post_status
 
-__all__ = ["app"]
+__all__ = ["app", "lifespan"]
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Set up and tear down the the application."""
+    if not config.environment_url:
+        raise RuntimeError("ENVIRONMENT_URL was not set")
+    if not config.gafaelfawr_token:
+        raise RuntimeError("GAFAELFAWR_TOKEN was not set")
+    await context_dependency.initialize()
+    await context_dependency.process_context.manager.autostart()
+    app.state.periodic_status = schedule_periodic(post_status, 60 * 60 * 24)
+
+    yield
+
+    await context_dependency.aclose()
+    app.state.periodic_status.cancel()
 
 
 configure_logging(
@@ -39,6 +60,7 @@ app = FastAPI(
     openapi_url=f"{config.path_prefix}/openapi.json",
     docs_url=f"{config.path_prefix}/docs",
     redoc_url=f"{config.path_prefix}/redoc",
+    lifespan=lifespan,
 )
 """The main FastAPI application for mobu."""
 
@@ -57,20 +79,3 @@ if config.alert_hook:
 
 # Enable the generic exception handler for client errors.
 app.exception_handler(ClientRequestError)(client_request_error_handler)
-
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    if not config.environment_url:
-        raise RuntimeError("ENVIRONMENT_URL was not set")
-    if not config.gafaelfawr_token:
-        raise RuntimeError("GAFAELFAWR_TOKEN was not set")
-    await context_dependency.initialize()
-    await context_dependency.process_context.manager.autostart()
-    app.state.periodic_status = schedule_periodic(post_status, 60 * 60 * 24)
-
-
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    await context_dependency.aclose()
-    app.state.periodic_status.cancel()

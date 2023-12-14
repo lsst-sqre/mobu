@@ -37,12 +37,8 @@ class AddAuthHeaderMiddleware(BaseHTTPMiddleware):
 
 def create_app() -> FastAPI:
     """Configure the FastAPI app for monkeyflocker testing."""
+    respx.start()
+    mock_gafaelfawr(respx.mock)
+    mock_jupyter(respx.mock)
     app.add_middleware(AddAuthHeaderMiddleware)
-
-    @app.on_event("startup")
-    async def startup_event() -> None:
-        respx.start()
-        mock_gafaelfawr(respx.mock)
-        mock_jupyter(respx.mock)
-
     return app
