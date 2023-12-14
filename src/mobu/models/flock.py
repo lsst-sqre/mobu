@@ -9,6 +9,7 @@ from .business.empty import EmptyLoopConfig
 from .business.jupyterpythonloop import JupyterPythonLoopConfig
 from .business.notebookrunner import NotebookRunnerConfig
 from .business.tapqueryrunner import TAPQueryRunnerConfig
+from .business.tapquerysetrunner import TAPQuerySetRunnerConfig
 from .monkey import MonkeyData
 from .user import User, UserSpec
 
@@ -49,6 +50,7 @@ class FlockConfig(BaseModel):
 
     business: (
         TAPQueryRunnerConfig
+        | TAPQuerySetRunnerConfig
         | NotebookRunnerConfig
         | JupyterPythonLoopConfig
         | EmptyLoopConfig
