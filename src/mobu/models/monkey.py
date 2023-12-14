@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from .business.base import BusinessData
 from .business.notebookrunner import NotebookRunnerData
 from .business.nublado import NubladoBusinessData
-from .business.tapqueryrunner import TAPQueryRunnerData
+from .business.tap import TAPBusinessData
 from .user import AuthenticatedUser
 
 
@@ -38,7 +38,7 @@ class MonkeyData(BaseModel):
     # to avoid the risk that Pydantic plus FastAPI will interpret a class as
     # its parent class.
     business: (
-        TAPQueryRunnerData
+        TAPBusinessData
         | NotebookRunnerData
         | NubladoBusinessData
         | BusinessData

@@ -6,58 +6,36 @@ from typing import Literal
 
 from pydantic import Field
 
-from .base import BusinessConfig, BusinessData, BusinessOptions
+from .base import BusinessConfig
+from .tap import TAPBusinessOptions
 
 __all__ = [
     "TAPQueryRunnerConfig",
-    "TAPQueryRunnerData",
     "TAPQueryRunnerOptions",
 ]
 
 
-class TAPQueryRunnerOptions(BusinessOptions):
+class TAPQueryRunnerOptions(TAPBusinessOptions):
     """Options for TAPQueryRunner monkey business."""
 
-    query_set: str = Field(
-        "dp0.1",
-        title="Which query template set to use for a TapQueryRunner",
-        example="dp0.2",
-    )
-
-    sync: bool = Field(
-        True,
-        title="Whether to run TAP queries as sync or async",
-        description=(
-            "By default, queries to TAP are run via the sync endpoint."
-            " Set this to false to run as an async query."
-        ),
-        example=True,
-    )
-
-    queries: list | None = Field(
-        None,
-        title="Which query list to use for the TapQueryRunner",
-        description="List of queries to be run instead of a query_set",
-        example=True,
+    queries: list[str] = Field(
+        ...,
+        title="TAP queries",
+        description="List of queries to be run",
+        example=[
+            "SELECT TOP 10 * FROM TAP_SCHEMA.schemas",
+            "SELECT TOP 10 * FROM MYDB.MyTable",
+        ],
     )
 
 
 class TAPQueryRunnerConfig(BusinessConfig):
     """Configuration specialization for TAPQueryRunner."""
 
-    type: Literal["TAPQueryRunner"] = Field(..., title="Type of business to run")
-
-    options: TAPQueryRunnerOptions = Field(
-        default_factory=TAPQueryRunnerOptions,
-        title="Options for the monkey business",
+    type: Literal["TAPQueryRunner"] = Field(
+        ..., title="Type of business to run"
     )
 
-
-class TAPQueryRunnerData(BusinessData):
-    """Status of a running TAPQueryRunner business."""
-
-    running_query: str | None = Field(
-        None,
-        title="Currently running query",
-        description="Will not be present if no query is being executed",
+    options: TAPQueryRunnerOptions = Field(
+        ..., title="Options for the monkey business"
     )
