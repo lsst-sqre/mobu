@@ -1,8 +1,9 @@
 """Models for timing data."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PlainSerializer
 
 
 class StopwatchData(BaseModel):
@@ -29,9 +30,16 @@ class StopwatchData(BaseModel):
         examples=["2021-07-21T19:43:40.514623+00:00"],
     )
 
-    elapsed: float | None = Field(
+    elapsed: Annotated[
+        timedelta | None,
+        PlainSerializer(
+            lambda v: v.total_seconds() if v is not None else None,
+            return_type=float,
+            when_used="json",
+        ),
+    ] = Field(
         None,
-        title="Duration of event in seconds",
+        title="Duration of event",
         description="Will be null if the event is ongoing",
         examples=[0.068551],
     )

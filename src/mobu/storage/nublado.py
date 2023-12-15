@@ -11,6 +11,7 @@ import json
 import string
 from collections.abc import AsyncIterator, Callable, Coroutine
 from dataclasses import dataclass
+from datetime import timedelta
 from functools import wraps
 from random import SystemRandom
 from types import TracebackType
@@ -543,7 +544,7 @@ class NubladoClient:
         user: AuthenticatedUser,
         base_url: str,
         logger: BoundLogger,
-        timeout: int = 30,
+        timeout: timedelta = timedelta(seconds=30),
     ) -> None:
         self.user = user
         self._base_url = base_url
@@ -569,7 +570,7 @@ class NubladoClient:
             headers=headers,
             cookies=cookies,
             follow_redirects=True,
-            timeout=timeout,
+            timeout=timeout.total_seconds(),
         )
 
     async def close(self) -> None:

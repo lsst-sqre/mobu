@@ -110,9 +110,7 @@ class Stopwatch:
 
     def dump(self) -> StopwatchData:
         """Convert to a Pydantic model."""
-        elapsed = None
-        if self.stop_time:
-            elapsed = (self.stop_time - self.start_time).total_seconds()
+        elapsed = self.stop_time - self.start_time if self.stop_time else None
         return StopwatchData(
             event=self.event,
             annotations=self.annotations,

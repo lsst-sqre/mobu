@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from datetime import timedelta
 from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from .base import BusinessData, BusinessOptions
+from .base import BusinessData, BusinessOptions, SerializableTimedelta
 
 __all__ = [
     "NubladoBusinessData",
@@ -152,13 +153,13 @@ class NubladoBusinessOptions(BusinessOptions):
         examples=[True],
     )
 
-    delete_timeout: int = Field(
-        60, title="Timeout for deleting a lab in seconds", examples=[60]
+    delete_timeout: SerializableTimedelta = Field(
+        timedelta(minutes=1), title="Timeout for deleting a lab", examples=[60]
     )
 
-    execution_idle_time: int = Field(
-        1,
-        title="How long to wait between cell executions in seconds",
+    execution_idle_time: SerializableTimedelta = Field(
+        timedelta(seconds=1),
+        title="How long to wait between cell executions",
         description="Used by NubladoPythonLoop and NotebookRunner",
         examples=[1],
     )
@@ -178,12 +179,12 @@ class NubladoBusinessOptions(BusinessOptions):
         default_factory=NubladoImageByClass, title="Nublado lab image to use"
     )
 
-    jitter: int = Field(
-        0,
+    jitter: SerializableTimedelta = Field(
+        timedelta(seconds=0),
         title="Maximum random time to pause",
         description=(
             "If set to a non-zero value, pause for a random interval between"
-            " 0 and that many seconds before logging in to JupyterHub, and"
+            " 0 and that interval before logging in to JupyterHub, and"
             " between each iteration of the core execution loop. Use this when"
             " running lots of monkeys for load testing to spread their"
             " execution sequence out more realistically and avoid a thundering"
@@ -192,8 +193,8 @@ class NubladoBusinessOptions(BusinessOptions):
         examples=[60],
     )
 
-    jupyter_timeout: int = Field(
-        60,
+    jupyter_timeout: SerializableTimedelta = Field(
+        timedelta(minutes=1),
         title="HTTP client timeout for Jupyter requests",
         description=(
             "Used as the connect, read, and write timeout for talking to"
@@ -211,9 +212,9 @@ class NubladoBusinessOptions(BusinessOptions):
         ),
     )
 
-    spawn_settle_time: int = Field(
-        10,
-        title="How long to wait before polling spawn progress in seconds",
+    spawn_settle_time: SerializableTimedelta = Field(
+        timedelta(seconds=10),
+        title="How long to wait before polling spawn progress",
         description=(
             "Wait this long after triggering a lab spawn before starting to"
             " poll its progress. KubeSpawner 1.1.0 has a bug where progress"
@@ -223,8 +224,10 @@ class NubladoBusinessOptions(BusinessOptions):
         examples=[10],
     )
 
-    spawn_timeout: int = Field(
-        610, title="Timeout for spawning a lab in seconds", examples=[610]
+    spawn_timeout: SerializableTimedelta = Field(
+        timedelta(seconds=610),
+        title="Timeout for spawning a lab",
+        examples=[610],
     )
 
     url_prefix: str = Field("/nb/", title="URL prefix for JupyterHub")
