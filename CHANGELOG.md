@@ -1,15 +1,27 @@
 # Change log
 
-All notable changes to mobu will be documented in this file.
+mobu is versioned with [semver](https://semver.org/). Dependencies are updated to the latest available version during each release. Those changes are not noted here explicitly.
 
-Versioning follows [semver](https://semver.org/).
-
-Dependencies are updated to the latest available version during each release. Those changes are not noted here explicitly.
-
-This project uses [scriv](https://scriv.readthedocs.io/) to maintain the change log.
-Changes for the upcoming release can be found in [changelog.d](https://github.com/lsst-sqre/mobu/tree/main/changelog.d/).
+Find changes for the upcoming release in the project's [changelog.d](https://github.com/lsst-sqre/mobu/tree/main/changelog.d/).
 
 <!-- scriv-insert-here -->
+
+<a id='changelog-7.0.0'></a>
+## 7.0.0 (2023-12-15)
+
+### Backwards-incompatible changes
+
+- Drop support for cachemachine and Nublado v2. The `cachemachine_image_policy` and `use_cachemachine` configuration options are no longer supported and should be deleted.
+- Rename the existing `TAPQueryRunner` business to `TAPQuerySetRunner` to more accurately capture what it does. Add a new `TAPQueryRunner` business that runs queries chosen randomly from a list. Based on work by @stvoutsin.
+- Rename `JupyterPythonLoop` to `NubladoPythonLoop` to make it explicit that it requires Nublado and will not work with an arbitrary JupyterHub.
+
+### New features
+
+- Convert all configuration options that took intervals in seconds to `timedelta`. Bare numbers will still be interpreted as a number of seconds, but any format Pydantic recognizes as a `timedelta` may now be used.
+
+### Other changes
+
+- All environment variables used to configure mobu now start with `MOBU_`, and several have changed their names. The new settings are `MOBU_ALERT_HOOK`, `MOBU_AUTOSTART_PATH`, `MOBU_ENVIRONMENT_URL`, `MOBU_GAFAELFAWR_TOKEN`, `MOBU_NAME`, `MOBU_PATH_PREFIX`, `MOBU_LOGGING_PROFILE`, and `MOBU_LOG_LEVEL`. This is handled by the Phalanx application, so no configuration changes should be required.
 
 <a id='changelog-6.1.1'></a>
 ## 6.1.1 (2023-07-06)
