@@ -3,7 +3,7 @@
 import json
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -58,7 +58,7 @@ async def get_index() -> Index:
     "/flocks", response_model=list[str], summary="List running flocks"
 )
 async def get_flocks(
-    context: RequestContext = Depends(context_dependency),
+    context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> list[str]:
     return context.manager.list_flocks()
 
@@ -75,7 +75,7 @@ async def get_flocks(
 async def put_flock(
     flock_config: FlockConfig,
     response: Response,
-    context: RequestContext = Depends(context_dependency),
+    context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> FlockData:
     context.logger.info(
         "Creating flock",
@@ -99,7 +99,7 @@ async def put_flock(
 )
 async def get_flock(
     flock: str,
-    context: RequestContext = Depends(context_dependency),
+    context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> FlockData:
     return context.manager.get_flock(flock).dump()
 
@@ -112,7 +112,7 @@ async def get_flock(
 )
 async def delete_flock(
     flock: str,
-    context: RequestContext = Depends(context_dependency),
+    context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> None:
     context.logger.info("Deleting flock", flock=flock)
     await context.manager.stop_flock(flock)
@@ -127,7 +127,7 @@ async def delete_flock(
 )
 async def get_monkeys(
     flock: str,
-    context: RequestContext = Depends(context_dependency),
+    context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> list[str]:
     return context.manager.get_flock(flock).list_monkeys()
 
@@ -146,7 +146,7 @@ async def get_monkeys(
 async def get_monkey(
     flock: str,
     monkey: str,
-    context: RequestContext = Depends(context_dependency),
+    context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> MonkeyData:
     return context.manager.get_flock(flock).get_monkey(monkey).dump()
 
@@ -163,7 +163,7 @@ async def get_monkey(
 def get_monkey_log(
     flock: str,
     monkey: str,
-    context: RequestContext = Depends(context_dependency),
+    context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> StreamingResponse:
     logfile = context.manager.get_flock(flock).get_monkey(monkey).logfile()
 
@@ -197,7 +197,7 @@ def get_monkey_log(
 )
 async def get_flock_summary(
     flock: str,
-    context: RequestContext = Depends(context_dependency),
+    context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> FlockSummary:
     return context.manager.get_flock(flock).summary()
 
@@ -212,7 +212,7 @@ async def get_flock_summary(
 )
 async def put_run(
     solitary_config: SolitaryConfig,
-    context: RequestContext = Depends(context_dependency),
+    context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> SolitaryResult:
     context.logger.info(
         "Running solitary monkey",
@@ -229,6 +229,6 @@ async def put_run(
     summary="Summary of statistics for all flocks",
 )
 async def get_summary(
-    context: RequestContext = Depends(context_dependency),
+    context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> list[FlockSummary]:
     return context.manager.summarize_flocks()
