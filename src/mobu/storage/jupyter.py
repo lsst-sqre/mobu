@@ -474,7 +474,7 @@ class JupyterLabSession:
 
 
 def _convert_exception(
-    f: Callable[Concatenate[JupyterClient, P], Coroutine[None, None, T]]
+    f: Callable[Concatenate[JupyterClient, P], Coroutine[None, None, T]],
 ) -> Callable[Concatenate[JupyterClient, P], Coroutine[None, None, T]]:
     """Convert web errors to a `~mobu.exceptions.JupyterWebError`.
 
@@ -497,7 +497,7 @@ def _convert_exception(
 
 
 def _convert_iterator_exception(
-    f: Callable[Concatenate[JupyterClient, P], AsyncIterator[T]]
+    f: Callable[Concatenate[JupyterClient, P], AsyncIterator[T]],
 ) -> Callable[Concatenate[JupyterClient, P], AsyncIterator[T]]:
     """Convert web errors to a `~mobu.exceptions.JupyterWebError`.
 
