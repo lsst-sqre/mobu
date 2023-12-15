@@ -738,9 +738,7 @@ async def test_long_error(
     assert jupyter.lab_form["testuser1"] == {
         "image_list": (
             "registry.hub.docker.com/lsstsqre/sciplat-lab:d_2021_08_30"
-            "|d_2021_08_30|"
         ),
-        "image_dropdown": "use_image_from_dropdown",
         "size": "Large",
     }
 
@@ -859,7 +857,6 @@ async def test_lab_controller(
                             ":d_2021_08_30"
                         ),
                     },
-                    "use_cachemachine": False,
                 },
             },
         },
@@ -890,7 +887,6 @@ async def test_lab_controller(
                         "size": "Medium",
                         "debug": True,
                     },
-                    "use_cachemachine": False,
                 },
             },
         },
@@ -920,7 +916,6 @@ async def test_lab_controller(
                         "tag": "w_2077_44",
                         "size": "Small",
                     },
-                    "use_cachemachine": False,
                 },
             },
         },

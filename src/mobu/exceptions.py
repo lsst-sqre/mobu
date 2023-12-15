@@ -27,7 +27,6 @@ _ANSI_REGEX = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
 """Regex that matches ANSI escape sequences."""
 
 __all__ = [
-    "CachemachineError",
     "CodeExecutionError",
     "FlockNotFoundError",
     "GafaelfawrParseError",
@@ -274,13 +273,6 @@ class MobuSlackWebException(SlackWebException, MobuSlackException):
 
 class NotebookRepositoryError(MobuSlackException):
     """The repository containing notebooks to run is not valid."""
-
-
-class CachemachineError(MobuSlackException):
-    """Failed to obtain a valid image list from cachemachine."""
-
-    def __init__(self, msg: str) -> None:
-        super().__init__(f"Cachemachine error: {msg}")
 
 
 class CodeExecutionError(MobuSlackException):
