@@ -26,7 +26,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Run pre-commit
         uses: pre-commit/action@v3.0.0
@@ -38,7 +38,7 @@ jobs:
     strategy:
       matrix:
         python:
-          - "3.11"
+          - "3.12"
 
     steps:
       - uses: actions/checkout@v4
@@ -48,20 +48,6 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           tox-envs: "py,coverage-report,typing"
-
-  dependencies:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run neophile
-        uses: lsst-sqre/run-neophile@v1
-        with:
-          python-version: "3.11"
-          mode: check
-          types: python
 
   build:
     runs-on: ubuntu-latest

@@ -17,18 +17,15 @@ jobs:
     strategy:
       matrix:
         python:
-          - "3.11"
+          - "3.12"
 
     steps:
       - uses: actions/checkout@v4
 
-      # Use the oldest supported version of Python to update dependencies,
-      # not the matrixed Python version, since this accurately reflects
-      # how dependencies should later be updated.
       - name: Run neophile
         uses: lsst-sqre/run-neophile@v1
         with:
-          python-version: "3.11"
+          python-version: $(( matrix.python }}
           mode: update
 
       - name: Run tox
