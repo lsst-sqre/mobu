@@ -6,8 +6,8 @@ from typing import Self
 from pydantic import BaseModel, Field, model_validator
 
 from .business.empty import EmptyLoopConfig
-from .business.jupyterpythonloop import JupyterPythonLoopConfig
 from .business.notebookrunner import NotebookRunnerConfig
+from .business.nubladopythonloop import NubladoPythonLoopConfig
 from .business.tapqueryrunner import TAPQueryRunnerConfig
 from .business.tapquerysetrunner import TAPQuerySetRunnerConfig
 from .monkey import MonkeyData
@@ -52,7 +52,7 @@ class FlockConfig(BaseModel):
         TAPQueryRunnerConfig
         | TAPQuerySetRunnerConfig
         | NotebookRunnerConfig
-        | JupyterPythonLoopConfig
+        | NubladoPythonLoopConfig
         | EmptyLoopConfig
     ) = Field(..., title="Business to run")
 

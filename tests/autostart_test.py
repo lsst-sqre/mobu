@@ -36,7 +36,7 @@ AUTOSTART_CONFIG = """
   scopes: ["exec:notebook"]
   restart: true
   business:
-    type: JupyterPythonLoop
+    type: NubladoPythonLoop
     restart: True
     options:
       image:
@@ -118,7 +118,7 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
             ],
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "restart": True,
                 "options": {
                     "image": {
@@ -140,7 +140,7 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
                             "lighthouse.ceres/library/sketchbook:recommended"
                         ),
                     },
-                    "name": "JupyterPythonLoop",
+                    "name": "NubladoPythonLoop",
                     "success_count": ANY,
                     "timings": ANY,
                 },
@@ -163,7 +163,7 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
                             "lighthouse.ceres/library/sketchbook:recommended"
                         ),
                     },
-                    "name": "JupyterPythonLoop",
+                    "name": "NubladoPythonLoop",
                     "success_count": ANY,
                     "timings": ANY,
                 },

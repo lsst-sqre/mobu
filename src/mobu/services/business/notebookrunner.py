@@ -24,7 +24,7 @@ from ...models.business.notebookrunner import (
     NotebookRunnerOptions,
 )
 from ...models.user import AuthenticatedUser
-from ...storage.jupyter import JupyterLabSession
+from ...storage.nublado import JupyterLabSession
 from .nublado import NubladoBusiness
 
 __all__ = ["NotebookRunner"]

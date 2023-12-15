@@ -86,7 +86,7 @@ def cachemachine(respx_mock: respx.Router) -> MockCachemachine:
 
 @pytest.fixture
 def jupyter(respx_mock: respx.Router) -> Iterator[MockJupyter]:
-    """Mock out JupyterHub/Lab."""
+    """Mock out JupyterHub and Jupyter labs."""
     jupyter_mock = mock_jupyter(respx_mock)
 
     # respx has no mechanism to mock aconnect_ws, so we have to do it
@@ -100,7 +100,7 @@ def jupyter(respx_mock: respx.Router) -> Iterator[MockJupyter]:
     ) -> AsyncIterator[MockJupyterWebSocket]:
         yield mock_jupyter_websocket(url, extra_headers, jupyter_mock)
 
-    with patch("mobu.storage.jupyter.websocket_connect") as mock:
+    with patch("mobu.storage.nublado.websocket_connect") as mock:
         mock.side_effect = mock_connect
         yield jupyter_mock
 
