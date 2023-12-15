@@ -1,7 +1,7 @@
-"""AsyncIO client for communicating with Jupyter.
+"""AsyncIO client for communicating with Jupyter using Nublado.
 
-Allows the caller to login to the hub, spawn lab containers, and then run
-jupyter kernels remotely.
+Allows the caller to login to JupyterHub, spawn lab containers, and then run
+Jupyter kernels remotely.
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ from .cachemachine import CachemachineClient, JupyterCachemachineImage
 P = ParamSpec("P")
 T = TypeVar("T")
 
-__all__ = ["JupyterClient", "JupyterLabSession"]
+__all__ = ["NubladoClient", "JupyterLabSession"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,7 +139,7 @@ class JupyterLabSession:
 
     A context manager providing an open WebSocket session. The session will be
     automatically deleted when exiting the context manager. Objects of this
-    type should be created by calling `JupyterClient.open_lab_session`.
+    type should be created by calling `NubladoClient.open_lab_session`.
 
     Parameters
     ----------
@@ -474,8 +474,8 @@ class JupyterLabSession:
 
 
 def _convert_exception(
-    f: Callable[Concatenate[JupyterClient, P], Coroutine[None, None, T]],
-) -> Callable[Concatenate[JupyterClient, P], Coroutine[None, None, T]]:
+    f: Callable[Concatenate[NubladoClient, P], Coroutine[None, None, T]],
+) -> Callable[Concatenate[NubladoClient, P], Coroutine[None, None, T]]:
     """Convert web errors to a `~mobu.exceptions.JupyterWebError`.
 
     This can only be used as a decorator on `JupyterClientSession` or another
@@ -485,7 +485,7 @@ def _convert_exception(
 
     @wraps(f)
     async def wrapper(
-        client: JupyterClient, *args: P.args, **kwargs: P.kwargs
+        client: NubladoClient, *args: P.args, **kwargs: P.kwargs
     ) -> T:
         try:
             return await f(client, *args, **kwargs)
@@ -497,8 +497,8 @@ def _convert_exception(
 
 
 def _convert_iterator_exception(
-    f: Callable[Concatenate[JupyterClient, P], AsyncIterator[T]],
-) -> Callable[Concatenate[JupyterClient, P], AsyncIterator[T]]:
+    f: Callable[Concatenate[NubladoClient, P], AsyncIterator[T]],
+) -> Callable[Concatenate[NubladoClient, P], AsyncIterator[T]]:
     """Convert web errors to a `~mobu.exceptions.JupyterWebError`.
 
     This can only be used as a decorator on `JupyterClientSession` or another
@@ -508,7 +508,7 @@ def _convert_iterator_exception(
 
     @wraps(f)
     async def wrapper(
-        client: JupyterClient, *args: P.args, **kwargs: P.kwargs
+        client: NubladoClient, *args: P.args, **kwargs: P.kwargs
     ) -> AsyncIterator[T]:
         try:
             async for result in f(client, *args, **kwargs):
@@ -520,8 +520,8 @@ def _convert_iterator_exception(
     return wrapper
 
 
-class JupyterClient:
-    """Client for talking to JupyterHub and Jupyter labs.
+class NubladoClient:
+    """Client for talking to JupyterHub and Jupyter labs that use Nublado.
 
     Parameters
     ----------

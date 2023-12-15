@@ -79,11 +79,11 @@ class NubladoImage(BaseModel, metaclass=ABCMeta):
 
     @abstractmethod
     def to_spawn_form(self) -> dict[str, str]:
-        """Convert to data suitable for posting to JupyterHub's spawn form.
+        """Convert to data suitable for posting to Nublado's spawn form.
 
         Returns
         -------
-        dict of str to str
+        dict of str
             Post data to send to the JupyterHub spawn page.
         """
 
@@ -167,8 +167,8 @@ class NubladoBusinessOptions(BusinessOptions):
         title="Whether to delete the lab between iterations",
         description=(
             "By default, the lab is deleted and recreated after each"
-            " iteration of monkey business involving JupyterLab. Set this"
-            " to False to keep the same lab."
+            " iteration of monkey business. Set this to false to keep the"
+            " same lab."
         ),
         examples=[True],
     )
@@ -180,7 +180,7 @@ class NubladoBusinessOptions(BusinessOptions):
     execution_idle_time: int = Field(
         1,
         title="How long to wait between cell executions in seconds",
-        description="Used by JupyterPythonLoop and NotebookRunner",
+        description="Used by NubladoPythonLoop and NotebookRunner",
         examples=[1],
     )
 
@@ -188,9 +188,8 @@ class NubladoBusinessOptions(BusinessOptions):
         True,
         title="Whether to get the node name for error reporting",
         description=(
-            "Used by JupyterPythonLoop and its subclasses. Requires the lab"
-            " have rubin_jupyter_utils.lab.notebook.utils pre-installed and"
-            " able to make Kubernetes API calls."
+            "Used by NubladoPythonLoop and its subclasses. Requires the lab"
+            " have lsst.rsp pre-installed."
         ),
     )
 
@@ -269,7 +268,7 @@ class NubladoBusinessOptions(BusinessOptions):
 
 
 class RunningImage(BaseModel):
-    """Information about the running JupyterLab image."""
+    """Information about the running Jupyter lab image."""
 
     reference: str | None = Field(
         None,
@@ -287,6 +286,6 @@ class NubladoBusinessData(BusinessData):
 
     image: RunningImage | None = Field(
         None,
-        title="JupyterLab image information",
+        title="Jupyter lab image information",
         description="Will only be present when there is an active Jupyter lab",
     )

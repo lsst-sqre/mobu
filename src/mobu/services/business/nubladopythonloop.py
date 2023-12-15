@@ -1,4 +1,4 @@
-"""JupyterPythonLoop logic for mobu.
+"""NubladoPythonLoop logic for mobu.
 
 This business pattern will start a lab and run some code in a loop over and
 over again.
@@ -9,15 +9,15 @@ from __future__ import annotations
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
-from ...models.business.jupyterpythonloop import JupyterPythonLoopOptions
+from ...models.business.nubladopythonloop import NubladoPythonLoopOptions
 from ...models.user import AuthenticatedUser
-from ...storage.jupyter import JupyterLabSession
+from ...storage.nublado import JupyterLabSession
 from .nublado import NubladoBusiness
 
-__all__ = ["JupyterPythonLoop"]
+__all__ = ["NubladoPythonLoop"]
 
 
-class JupyterPythonLoop(NubladoBusiness):
+class NubladoPythonLoop(NubladoBusiness):
     """Run simple Python code in a loop inside a lab kernel.
 
     Parameters
@@ -34,7 +34,7 @@ class JupyterPythonLoop(NubladoBusiness):
 
     def __init__(
         self,
-        options: JupyterPythonLoopOptions,
+        options: NubladoPythonLoopOptions,
         user: AuthenticatedUser,
         http_client: AsyncClient,
         logger: BoundLogger,

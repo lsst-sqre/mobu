@@ -1,4 +1,4 @@
-"""Test the JupyterPythonLoop business logic."""
+"""Test the NubladoPythonLoop business logic."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ async def test_run(
             "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {"spawn_settle_time": 0, "max_executions": 3},
             },
         },
@@ -46,7 +46,7 @@ async def test_run(
         "name": "testuser1",
         "business": {
             "failure_count": 0,
-            "name": "JupyterPythonLoop",
+            "name": "NubladoPythonLoop",
             "success_count": 1,
             "timings": ANY,
         },
@@ -89,7 +89,7 @@ async def test_reuse_lab(
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {
                     "spawn_settle_time": 0,
                     "delete_lab": False,
@@ -123,7 +123,7 @@ async def test_server_shutdown(
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {"spawn_settle_time": 0, "max_executions": 3},
             },
         },
@@ -151,7 +151,7 @@ async def test_delayed_delete(
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {"spawn_settle_time": 0, "delete_lab": False},
             },
         },
@@ -184,7 +184,7 @@ async def test_hub_failed(
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {"spawn_settle_time": 0, "delete_lab": False},
             },
         },
@@ -269,7 +269,7 @@ async def test_redirect_loop(
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {"spawn_settle_time": 0, "delete_lab": False},
             },
         },
@@ -360,7 +360,7 @@ async def test_spawn_timeout(
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {"spawn_settle_time": 0, "spawn_timeout": 1},
             },
         },
@@ -434,7 +434,7 @@ async def test_spawn_failed(
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {"spawn_settle_time": 0, "spawn_timeout": 1},
             },
         },
@@ -522,7 +522,7 @@ async def test_delete_timeout(
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {
                     "spawn_settle_time": 0,
                     "delete_timeout": 1,
@@ -602,7 +602,7 @@ async def test_code_exception(
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {
                     "code": 'raise Exception("some error")',
                     "spawn_settle_time": 0,
@@ -718,7 +718,7 @@ async def test_long_error(
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {
                     "code": "long_error_for_test()",
                     "image": {
@@ -850,7 +850,7 @@ async def test_lab_controller(
             "users": [{"username": "testuser"}],
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {
                     "image": {
                         "image_class": "by-reference",
@@ -883,7 +883,7 @@ async def test_lab_controller(
             "users": [{"username": "testuser"}],
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {
                     "image": {
                         "image_class": "latest-daily",
@@ -913,7 +913,7 @@ async def test_lab_controller(
             "users": [{"username": "testuser"}],
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {
                     "image": {
                         "image_class": "by-tag",
@@ -949,7 +949,7 @@ async def test_ansi_error(
             "user_spec": {"username_prefix": "testuser"},
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {
                     "code": (
                         'raise ValueError("\\033[38;5;28;01mFoo\\033[39;00m")'

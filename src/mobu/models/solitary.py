@@ -5,8 +5,8 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from .business.empty import EmptyLoopConfig
-from .business.jupyterpythonloop import JupyterPythonLoopConfig
 from .business.notebookrunner import NotebookRunnerConfig
+from .business.nubladopythonloop import NubladoPythonLoopConfig
 from .business.tapqueryrunner import TAPQueryRunnerConfig
 from .user import User
 
@@ -30,7 +30,7 @@ class SolitaryConfig(BaseModel):
     business: (
         TAPQueryRunnerConfig
         | NotebookRunnerConfig
-        | JupyterPythonLoopConfig
+        | NubladoPythonLoopConfig
         | EmptyLoopConfig
     ) = Field(..., title="Business to run")
 

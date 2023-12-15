@@ -19,16 +19,16 @@ from ..config import config
 from ..exceptions import MobuSlackException
 from ..models.business.base import BusinessConfig
 from ..models.business.empty import EmptyLoopConfig
-from ..models.business.jupyterpythonloop import JupyterPythonLoopConfig
 from ..models.business.notebookrunner import NotebookRunnerConfig
+from ..models.business.nubladopythonloop import NubladoPythonLoopConfig
 from ..models.business.tapqueryrunner import TAPQueryRunnerConfig
 from ..models.business.tapquerysetrunner import TAPQuerySetRunnerConfig
 from ..models.monkey import MonkeyData, MonkeyState
 from ..models.user import AuthenticatedUser
 from .business.base import Business
 from .business.empty import EmptyLoop
-from .business.jupyterpythonloop import JupyterPythonLoop
 from .business.notebookrunner import NotebookRunner
+from .business.nubladopythonloop import NubladoPythonLoop
 from .business.tapqueryrunner import TAPQueryRunner
 from .business.tapquerysetrunner import TAPQuerySetRunner
 
@@ -89,8 +89,8 @@ class Monkey:
             self.business = EmptyLoop(
                 business_config.options, user, self._http_client, self._logger
             )
-        elif isinstance(business_config, JupyterPythonLoopConfig):
-            self.business = JupyterPythonLoop(
+        elif isinstance(business_config, NubladoPythonLoopConfig):
+            self.business = NubladoPythonLoop(
                 business_config.options, user, self._http_client, self._logger
             )
         elif isinstance(business_config, NotebookRunnerConfig):

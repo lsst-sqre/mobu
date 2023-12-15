@@ -22,8 +22,7 @@ export DEBIAN_FRONTEND=noninteractive
 # Update the package listing, so we know what packages exist.
 apt-get update
 
-# Install various dependencies that may be required to install JupyterHub or
-# our add-on modules, or are wanted at runtime:
+# Install various dependencies that may be required to install mobu:
 #
 # build-essential: sometimes needed to build Python modules
 # git: required by setuptools_scm

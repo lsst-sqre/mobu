@@ -43,7 +43,7 @@ async def test_error(
             "user": {"username": "solitary"},
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "JupyterPythonLoop",
+                "type": "NubladoPythonLoop",
                 "options": {
                     "code": 'raise Exception("some error")',
                     "spawn_settle_time": 0,

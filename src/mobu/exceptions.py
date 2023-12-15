@@ -418,7 +418,7 @@ class JupyterTimeoutError(MobuSlackException):
 
 
 class JupyterWebError(MobuSlackWebException):
-    """An error occurred when talking to JupyterHub or JupyterLab."""
+    """An error occurred when talking to JupyterHub or a Jupyter lab."""
 
 
 class JupyterWebSocketError(MobuSlackException):

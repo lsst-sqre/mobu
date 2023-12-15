@@ -24,7 +24,7 @@ from ...models.business.nublado import (
 )
 from ...models.user import AuthenticatedUser
 from ...storage.cachemachine import CachemachineClient
-from ...storage.jupyter import JupyterClient, JupyterLabSession
+from ...storage.nublado import JupyterLabSession, NubladoClient
 from .base import Business
 
 T = TypeVar("T", bound="NubladoBusinessOptions")
@@ -118,7 +118,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
                 http_client=http_client,
                 image_policy=options.cachemachine_image_policy,
             )
-        self._client = JupyterClient(
+        self._client = NubladoClient(
             user=user,
             base_url=environment_url + options.url_prefix,
             cachemachine=cachemachine,

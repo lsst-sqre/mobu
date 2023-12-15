@@ -1,4 +1,4 @@
-"""Models for the JupyterPythonLoop monkey business."""
+"""Models for the NubladoPythonLoop monkey business."""
 
 from __future__ import annotations
 
@@ -10,13 +10,13 @@ from .base import BusinessConfig
 from .nublado import NubladoBusinessOptions
 
 __all__ = [
-    "JupyterPythonLoopConfig",
-    "JupyterPythonLoopOptions",
+    "NubladoPythonLoopConfig",
+    "NubladoPythonLoopOptions",
 ]
 
 
-class JupyterPythonLoopOptions(NubladoBusinessOptions):
-    """Options for JupyterPythonLoop monkey business."""
+class NubladoPythonLoopOptions(NubladoBusinessOptions):
+    """Options for NubladoPythonLoop monkey business."""
 
     code: str = Field(
         'print(2+2, end="")',
@@ -35,14 +35,14 @@ class JupyterPythonLoopOptions(NubladoBusinessOptions):
     )
 
 
-class JupyterPythonLoopConfig(BusinessConfig):
-    """Configuration specialization for JupyterPythonLoop."""
+class NubladoPythonLoopConfig(BusinessConfig):
+    """Configuration specialization for NubladoPythonLoop."""
 
-    type: Literal["JupyterPythonLoop"] = Field(
+    type: Literal["NubladoPythonLoop"] = Field(
         ..., title="Type of business to run"
     )
 
-    options: JupyterPythonLoopOptions = Field(
-        default_factory=JupyterPythonLoopOptions,
+    options: NubladoPythonLoopOptions = Field(
+        default_factory=NubladoPythonLoopOptions,
         title="Options for the monkey business",
     )
