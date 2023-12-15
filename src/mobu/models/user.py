@@ -14,7 +14,7 @@ __all__ = [
 class User(BaseModel):
     """Configuration for the user whose credentials the monkey will use."""
 
-    username: str = Field(..., title="Username", example="testuser")
+    username: str = Field(..., title="Username", examples=["testuser"])
 
     uidnumber: int | None = Field(
         None,
@@ -23,7 +23,7 @@ class User(BaseModel):
             "If omitted, Gafaelfawr will assign a UID. (Gafaelfawr UID"
             " assignment requires Firestore be configured.)"
         ),
-        example=60001,
+        examples=[60001],
     )
 
     gidnumber: int | None = Field(
@@ -35,7 +35,7 @@ class User(BaseModel):
             " (Gafaelfawr UID and GID assignment requires Firestore and"
             " synthetic user private groups to be configured.)"
         ),
-        example=60001,
+        examples=[60001],
     )
 
 
@@ -46,7 +46,7 @@ class UserSpec(BaseModel):
         ...,
         title="Prefix for usernames",
         description="Each user will be formed by appending a number to this",
-        example="lsptestuser",
+        examples=["lsptestuser"],
     )
 
     uid_start: int | None = Field(
@@ -57,7 +57,7 @@ class UserSpec(BaseModel):
             " omitted, Gafaelfawr will assign UIDs. (Gafaelfawr UID assignment"
             " requires Firestore be configured.)"
         ),
-        example=60000,
+        examples=[60000],
     )
 
     gid_start: int | None = Field(
@@ -70,7 +70,7 @@ class UserSpec(BaseModel):
             " (which requires Firestore and synthetic user private groups to"
             " be configured)."
         ),
-        example=60000,
+        examples=[60000],
     )
 
 
@@ -80,11 +80,11 @@ class AuthenticatedUser(User):
     scopes: list[str] = Field(
         ...,
         title="Token scopes",
-        example=["exec:notebook", "read:tap"],
+        examples=[["exec:notebook", "read:tap"]],
     )
 
     token: str = Field(
         ...,
         title="Authentication token for user",
-        example="gt-1PhgAeB-9Fsa-N1NhuTu_w.oRvMvAQp1bWfx8KCJKNohg",
+        examples=["gt-1PhgAeB-9Fsa-N1NhuTu_w.oRvMvAQp1bWfx8KCJKNohg"],
     )

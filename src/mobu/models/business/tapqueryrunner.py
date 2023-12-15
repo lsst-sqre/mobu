@@ -22,9 +22,11 @@ class TAPQueryRunnerOptions(TAPBusinessOptions):
         ...,
         title="TAP queries",
         description="List of queries to be run",
-        example=[
-            "SELECT TOP 10 * FROM TAP_SCHEMA.schemas",
-            "SELECT TOP 10 * FROM MYDB.MyTable",
+        examples=[
+            [
+                "SELECT TOP 10 * FROM TAP_SCHEMA.schemas",
+                "SELECT TOP 10 * FROM MYDB.MyTable",
+            ]
         ],
     )
 

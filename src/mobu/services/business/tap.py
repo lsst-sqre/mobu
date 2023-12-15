@@ -127,7 +127,7 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
 
     def dump(self) -> TAPBusinessData:
         return TAPBusinessData(
-            running_query=self._running_query, **super().dump().dict()
+            running_query=self._running_query, **super().dump().model_dump()
         )
 
     def _make_client(self, token: str) -> pyvo.dal.TAPService:

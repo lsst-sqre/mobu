@@ -76,9 +76,9 @@ class Factory:
             Newly-created Slack client, or `None` if Slack alerting is not
             configured.
         """
-        if not config.alert_hook or config.alert_hook == "None":
+        if not config.alert_hook:
             return None
-        return SlackWebhookClient(config.alert_hook, "Mobu", self._logger)
+        return SlackWebhookClient(str(config.alert_hook), "Mobu", self._logger)
 
     def create_solitary(self, solitary_config: SolitaryConfig) -> Solitary:
         """Create a runner for a solitary monkey.

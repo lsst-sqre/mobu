@@ -63,7 +63,9 @@ class FlockManager:
             return
         with config.autostart.open("r") as f:
             autostart = yaml.safe_load(f)
-        flock_configs = [FlockConfig.parse_obj(flock) for flock in autostart]
+        flock_configs = [
+            FlockConfig.model_validate(flock) for flock in autostart
+        ]
         for flock_config in flock_configs:
             await self.start_flock(flock_config)
 

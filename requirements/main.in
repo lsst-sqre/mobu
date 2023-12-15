@@ -17,10 +17,11 @@ click!=8.1.4,!=8.1.5  # see https://github.com/pallets/click/issues/2558
 httpx
 httpx-sse
 jinja2
-pydantic<2
+pydantic>2
+pydantic-settings
 pyvo
 pyyaml
-safir>=3.8.0
+safir>=5.0.0
 shortuuid
 structlog
 websockets

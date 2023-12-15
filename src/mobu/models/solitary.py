@@ -24,7 +24,7 @@ class SolitaryConfig(BaseModel):
         ...,
         title="Token scopes",
         description="Must include all scopes required to run the business",
-        example=["exec:notebook", "read:tap"],
+        examples=[["exec:notebook", "read:tap"]],
     )
 
     business: (

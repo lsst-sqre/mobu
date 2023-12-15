@@ -39,8 +39,8 @@ def monkeyflocker_app(tmp_path: Path) -> Iterator[UvicornProcess]:
         working_directory=tmp_path,
         factory="tests.support.monkeyflocker:create_app",
         env={
-            "ENVIRONMENT_URL": str(config.environment_url),
-            "GAFAELFAWR_TOKEN": config.gafaelfawr_token,
+            "MOBU_ENVIRONMENT_URL": str(config.environment_url),
+            "MOBU_GAFAELFAWR_TOKEN": config.gafaelfawr_token,
         },
     )
     yield uvicorn

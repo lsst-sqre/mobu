@@ -34,9 +34,9 @@ __all__ = ["app", "lifespan"]
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Set up and tear down the the application."""
     if not config.environment_url:
-        raise RuntimeError("ENVIRONMENT_URL was not set")
+        raise RuntimeError("MOBU_ENVIRONMENT_URL was not set")
     if not config.gafaelfawr_token:
-        raise RuntimeError("GAFAELFAWR_TOKEN was not set")
+        raise RuntimeError("MOBU_GAFAELFAWR_TOKEN was not set")
     await context_dependency.initialize()
     await context_dependency.process_context.manager.autostart()
     app.state.periodic_status = schedule_periodic(post_status, 60 * 60 * 24)
@@ -74,7 +74,7 @@ app.add_middleware(XForwardedMiddleware)
 # Enable Slack alerting for uncaught exceptions.
 if config.alert_hook:
     logger = structlog.get_logger("mobu")
-    SlackRouteErrorHandler.initialize(config.alert_hook, "mobu", logger)
+    SlackRouteErrorHandler.initialize(str(config.alert_hook), "mobu", logger)
     logger.debug("Initialized Slack webhook")
 
 # Enable the generic exception handler for client errors.

@@ -32,7 +32,7 @@ class NotebookRunnerOptions(NubladoBusinessOptions):
             " lab, controlled by `delete_lab`), and then picks up where it"
             " left off."
         ),
-        example=25,
+        examples=[25],
         ge=1,
     )
 
@@ -69,12 +69,12 @@ class NotebookRunnerData(NubladoBusinessData):
         None,
         title="Name of the currently running notebook",
         description="Will not be present if no notebook is being executed",
-        example="cluster.ipynb",
+        examples=["cluster.ipynb"],
     )
 
     running_code: str | None = Field(
         None,
         title="Currently running code",
         description="Will not be present if no code is being executed",
-        example='import json\nprint(json.dumps({"foo": "bar"})\n',
+        examples=['import json\nprint(json.dumps({"foo": "bar"})\n'],
     )

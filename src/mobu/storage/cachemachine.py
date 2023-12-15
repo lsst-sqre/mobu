@@ -22,23 +22,23 @@ class JupyterCachemachineImage(BaseModel):
     reference: str = Field(
         ...,
         title="Docker reference for the image",
-        example="registry.hub.docker.com/lsstsqre/sciplat-lab:w_2021_13",
+        examples=["registry.hub.docker.com/lsstsqre/sciplat-lab:w_2021_13"],
     )
 
     name: str = Field(
         ...,
         title="Human-readable name for the image",
-        example="Weekly 2021_34",
+        examples=["Weekly 2021_34"],
     )
 
     digest: str | None = Field(
         ...,
         title="Hash of the last layer of the Docker container",
         description="May be null if the digest isn't known",
-        example=(
+        examples=[
             "sha256:419c4b7e14603711b25fa9e0569460a753c4b2449fe275bb5f89743b"
             "01794a30"
-        ),
+        ],
     )
 
     def __str__(self) -> str:

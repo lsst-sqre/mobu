@@ -110,9 +110,9 @@ class Monkey:
             raise TypeError(msg)
 
         self._slack = None
-        if config.alert_hook and config.alert_hook != "None":
+        if config.alert_hook:
             self._slack = SlackWebhookClient(
-                config.alert_hook, "Mobu", self._global_logger
+                str(config.alert_hook), "Mobu", self._global_logger
             )
 
     async def alert(self, exc: Exception) -> None:
