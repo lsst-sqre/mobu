@@ -68,6 +68,7 @@ def test_start_report_stop(
             "-k",
             config.gafaelfawr_token,
         ],
+        catch_exceptions=False,
     )
     assert result.exit_code == 0
 
@@ -114,6 +115,7 @@ def test_start_report_stop(
             config.gafaelfawr_token,
             "basic",
         ],
+        catch_exceptions=False,
     )
     assert result.exit_code == 0
 
@@ -135,6 +137,7 @@ def test_start_report_stop(
             config.gafaelfawr_token,
             "basic",
         ],
+        catch_exceptions=False,
     )
     assert result.exit_code == 0
 
