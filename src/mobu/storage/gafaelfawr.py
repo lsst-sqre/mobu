@@ -41,7 +41,7 @@ class _AdminTokenRequest(BaseModel):
     """
 
     username: str = Field(
-        ..., min_length=1, max_length=64, regex=USERNAME_REGEX
+        ..., min_length=1, max_length=64, pattern=USERNAME_REGEX
     )
     token_type: _TokenType = Field(...)
     scopes: list[str] = Field([])
@@ -132,10 +132,10 @@ class GafaelfawrStorage:
             r = await self._client.post(
                 self._token_url,
                 headers={"Authorization": f"Bearer {config.gafaelfawr_token}"},
-                json=json.loads(request.json(exclude_none=True)),
+                json=json.loads(request.model_dump_json(exclude_none=True)),
             )
             r.raise_for_status()
-            token = _NewToken.parse_obj(r.json())
+            token = _NewToken.model_validate(r.json())
             return AuthenticatedUser(
                 username=user.username,
                 uidnumber=request.uid,

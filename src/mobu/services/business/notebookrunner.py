@@ -170,5 +170,5 @@ class NotebookRunner(NubladoBusiness):
         return NotebookRunnerData(
             notebook=self._notebook.name if self._notebook else None,
             running_code=self._running_code,
-            **super().dump().dict(),
+            **super().dump().model_dump(),
         )

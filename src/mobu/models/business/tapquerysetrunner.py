@@ -21,7 +21,7 @@ class TAPQuerySetRunnerOptions(TAPBusinessOptions):
     query_set: str = Field(
         "dp0.1",
         title="Which query template set to use for a TapQueryRunner",
-        example="dp0.2",
+        examples=["dp0.2"],
     )
 
 

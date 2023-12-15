@@ -1,6 +1,6 @@
 """Base models for monkey business."""
 
-from pydantic import BaseModel, Extra, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ..timings import StopwatchData
 
@@ -17,7 +17,7 @@ class BusinessOptions(BaseModel):
     error_idle_time: int = Field(
         60,
         title="How long to wait after an error before restarting",
-        example=600,
+        examples=[600],
     )
 
     idle_time: int = Field(
@@ -27,11 +27,10 @@ class BusinessOptions(BaseModel):
             "AFter each loop executing monkey business, the monkey will"
             " pause for this long in seconds"
         ),
-        example=60,
+        examples=[60],
     )
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(extra="forbid")
 
 
 class BusinessConfig(BaseModel):
@@ -50,8 +49,10 @@ class BusinessConfig(BaseModel):
     )
 
     restart: bool = Field(
-        False, title="Restart business after failure", example=True
+        False, title="Restart business after failure", examples=[True]
     )
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class BusinessData(BaseModel):
@@ -61,13 +62,12 @@ class BusinessData(BaseModel):
     inheriting from this type and adding that information.
     """
 
-    name: str = Field(..., title="Type of business", example="Business")
+    name: str = Field(..., title="Type of business", examples=["Business"])
 
-    failure_count: int = Field(..., title="Number of failures", example=0)
+    failure_count: int = Field(..., title="Number of failures", examples=[0])
 
-    success_count: int = Field(..., title="Number of successes", example=25)
+    success_count: int = Field(..., title="Number of successes", examples=[25])
 
     timings: list[StopwatchData] = Field(..., title="Timings of events")
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(extra="forbid")

@@ -331,4 +331,6 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         self._image = None
 
     def dump(self) -> NubladoBusinessData:
-        return NubladoBusinessData(image=self._image, **super().dump().dict())
+        return NubladoBusinessData(
+            image=self._image, **super().dump().model_dump()
+        )

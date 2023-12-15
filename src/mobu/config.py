@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import BaseSettings, Field, HttpUrl
+from pydantic import Field, HttpUrl
+from pydantic_settings import BaseSettings
 from safir.logging import LogLevel, Profile
 
 __all__ = [
@@ -23,8 +24,8 @@ class Configuration(BaseSettings):
             "An https URL, which should be considered secret. If not set or"
             " set to `None`, this feature will be disabled."
         ),
-        env="ALERT_HOOK",
-        example="https://slack.example.com/ADFAW1452DAF41/",
+        validation_alias="MOBU_ALERT_HOOK",
+        examples=["https://slack.example.com/ADFAW1452DAF41/"],
     )
 
     autostart: Path | None = Field(
@@ -35,8 +36,8 @@ class Configuration(BaseSettings):
             " specifications. All flocks given there will be automatically"
             " started when mobu starts."
         ),
-        env="AUTOSTART",
-        example="/etc/mobu/autostart.yaml",
+        validation_alias="MOBU_AUTOSTART_PATH",
+        examples=["/etc/mobu/autostart.yaml"],
     )
 
     environment_url: HttpUrl | None = Field(
@@ -48,45 +49,45 @@ class Configuration(BaseSettings):
             " suite easier. If it is not set to a valid URL, mobu will abort"
             " during startup."
         ),
-        env="ENVIRONMENT_URL",
-        example="https://data.example.org/",
+        validation_alias="MOBU_ENVIRONMENT_URL",
+        examples=["https://data.example.org/"],
     )
 
     gafaelfawr_token: str | None = Field(
         None,
-        field="Gafaelfawr admin token used to create user tokens",
+        title="Gafaelfawr admin token",
         description=(
             "This token is used to make an admin API call to Gafaelfawr to"
             " get a token for the user. This is only optional to make writing"
             " tests easier. mobu will abort during startup if it is not set."
         ),
-        env="GAFAELFAWR_TOKEN",
-        example="gt-vilSCi1ifK_MyuaQgMD2dQ.d6SIJhowv5Hs3GvujOyUig",
+        validation_alias="MOBU_GAFAELFAWR_TOKEN",
+        examples=["gt-vilSCi1ifK_MyuaQgMD2dQ.d6SIJhowv5Hs3GvujOyUig"],
     )
 
     name: str = Field(
         "mobu",
         title="Name of application",
         description="Doubles as the root HTTP endpoint path.",
-        env="SAFIR_NAME",
+        validation_alias="MOBU_NAME",
     )
 
     path_prefix: str = Field(
         "/mobu",
         title="URL prefix for application API",
-        env="SAFIR_PATH_PREFIX",
+        validation_alias="MOBU_PATH_PREFIX",
     )
 
     profile: Profile = Field(
         Profile.development,
         title="Application logging profile",
-        env="SAFIR_PROFILE",
+        validation_alias="MOBU_LOGGING_PROFILE",
     )
 
     log_level: LogLevel = Field(
         LogLevel.INFO,
         title="Log level of the application's logger",
-        env="SAFIR_LOG_LEVEL",
+        validation_alias="MOBU_LOG_LEVEL",
     )
 
 

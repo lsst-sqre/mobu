@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import urljoin
+
 import respx
 from httpx import Request, Response
 
@@ -85,6 +87,8 @@ class MockCachemachine:
 def mock_cachemachine(respx_mock: respx.Router) -> MockCachemachine:
     """Set up a mock cachemachine."""
     mock = MockCachemachine()
-    url = f"{config.environment_url}/cachemachine/jupyter/available"
+    url = urljoin(
+        str(config.environment_url), "/cachemachine/jupyter/available"
+    )
     respx_mock.get(url).mock(side_effect=mock.available)
     return mock

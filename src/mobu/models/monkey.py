@@ -27,7 +27,7 @@ class MonkeyData(BaseModel):
     name: str = Field(..., title="Name of the monkey")
 
     state: MonkeyState = Field(
-        ..., title="State of monkey", example=MonkeyState.RUNNING
+        ..., title="State of monkey", examples=[MonkeyState.RUNNING]
     )
 
     user: AuthenticatedUser = Field(

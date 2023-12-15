@@ -151,7 +151,7 @@ class NubladoBusinessOptions(BusinessOptions):
 
     cachemachine_image_policy: CachemachinePolicy = Field(
         CachemachinePolicy.available,
-        field="Class of cachemachine images to use",
+        title="Class of cachemachine images to use",
         description=(
             "Whether to use the images available on all nodes, or the images"
             " desired by cachemachine. In instances where image streaming is"
@@ -159,7 +159,7 @@ class NubladoBusinessOptions(BusinessOptions):
             " The default is ``available``. Only used if ``use_cachemachine``"
             " is true."
         ),
-        example=CachemachinePolicy.desired,
+        examples=[CachemachinePolicy.desired],
     )
 
     delete_lab: bool = Field(
@@ -170,18 +170,18 @@ class NubladoBusinessOptions(BusinessOptions):
             " iteration of monkey business involving JupyterLab. Set this"
             " to False to keep the same lab."
         ),
-        example=True,
+        examples=[True],
     )
 
     delete_timeout: int = Field(
-        60, title="Timeout for deleting a lab in seconds", example=60
+        60, title="Timeout for deleting a lab in seconds", examples=[60]
     )
 
     execution_idle_time: int = Field(
         1,
         title="How long to wait between cell executions in seconds",
         description="Used by JupyterPythonLoop and NotebookRunner",
-        example=1,
+        examples=[1],
     )
 
     get_node: bool = Field(
@@ -211,7 +211,7 @@ class NubladoBusinessOptions(BusinessOptions):
             " execution sequence out more realistically and avoid a thundering"
             " herd problem."
         ),
-        example=60,
+        examples=[60],
     )
 
     jupyter_timeout: int = Field(
@@ -242,29 +242,29 @@ class NubladoBusinessOptions(BusinessOptions):
             " queries prior to starting the spawn will fail with an exception"
             " that closes the progress EventStream."
         ),
-        example=10,
+        examples=[10],
     )
 
     spawn_timeout: int = Field(
-        610, title="Timeout for spawning a lab in seconds", example=610
+        610, title="Timeout for spawning a lab in seconds", examples=[610]
     )
 
     url_prefix: str = Field("/nb/", title="URL prefix for JupyterHub")
 
     use_cachemachine: bool = Field(
         True,
-        field="Whether to use cachemachine to look up an image",
+        title="Whether to use cachemachine to look up an image",
         description=(
             "Set this to false in environments using the new Nublado lab"
             " controller."
         ),
-        example=False,
+        examples=[False],
     )
 
     working_directory: str | None = Field(
         None,
         title="Working directory when running code",
-        example="notebooks/tutorial-notebooks",
+        examples=["notebooks/tutorial-notebooks"],
     )
 
 

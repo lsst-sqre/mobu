@@ -21,7 +21,7 @@ class JupyterPythonLoopOptions(NubladoBusinessOptions):
     code: str = Field(
         'print(2+2, end="")',
         title="Python code to execute",
-        example='print(2+2, end="")',
+        examples=['print(2+2, end="")'],
     )
 
     max_executions: int = Field(
@@ -30,7 +30,7 @@ class JupyterPythonLoopOptions(NubladoBusinessOptions):
         description=(
             "The number of code snippets to execute before restarting the lab."
         ),
-        example=25,
+        examples=[25],
         ge=1,
     )
 

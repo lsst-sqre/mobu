@@ -22,7 +22,7 @@ class TAPBusinessOptions(BusinessOptions):
             "By default, queries to TAP are run via the sync endpoint."
             " Set this to false to run as an async query."
         ),
-        example=True,
+        examples=[True],
     )
 
 

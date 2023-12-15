@@ -80,7 +80,7 @@ async def put_flock(
     context.logger.info(
         "Creating flock",
         flock=flock_config.name,
-        config=flock_config.dict(exclude_unset=True),
+        config=flock_config.model_dump(exclude_unset=True),
     )
     flock = await context.manager.start_flock(flock_config)
     flock_url = context.request.url_for("get_flock", flock=flock.name)
@@ -216,7 +216,7 @@ async def put_run(
 ) -> SolitaryResult:
     context.logger.info(
         "Running solitary monkey",
-        config=solitary_config.dict(exclude_unset=True),
+        config=solitary_config.model_dump(exclude_unset=True),
     )
     solitary = context.factory.create_solitary(solitary_config)
     return await solitary.run()

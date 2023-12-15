@@ -144,15 +144,8 @@ async def test_user_list(
         "name": "test",
         "count": 2,
         "users": [
-            {
-                "username": "testuser",
-                "uidnumber": 1000,
-                "gidnumber": 1056,
-            },
-            {
-                "username": "otheruser",
-                "uidnumber": 60000,
-            },
+            {"username": "testuser", "uidnumber": 1000, "gidnumber": 1056},
+            {"username": "otheruser", "uidnumber": 60000},
         ],
         "scopes": ["exec:notebook"],
         "business": {"type": "EmptyLoop"},
@@ -225,14 +218,8 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
             "name": "test",
             "count": 2,
             "users": [
-                {
-                    "username": "testuser",
-                    "uidnumber": 1000,
-                },
-                {
-                    "username": "otheruser",
-                    "uidnumber": 60000,
-                },
+                {"username": "testuser", "uidnumber": 1000},
+                {"username": "otheruser", "uidnumber": 60000},
             ],
             "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
             "scopes": [],
@@ -243,9 +230,12 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
     assert r.json() == {
         "detail": [
             {
-                "loc": ["body", "user_spec"],
-                "msg": "both users and user_spec provided",
+                "ctx": ANY,
+                "input": ANY,
+                "loc": ["body"],
+                "msg": "Value error, both users and user_spec provided",
                 "type": "value_error",
+                "url": ANY,
             }
         ]
     }
@@ -264,9 +254,14 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
     assert r.json() == {
         "detail": [
             {
-                "loc": ["body", "user_spec"],
-                "msg": "one of users or user_spec must be provided",
+                "ctx": ANY,
+                "input": ANY,
+                "loc": ["body"],
+                "msg": (
+                    "Value error, one of users or user_spec must be provided"
+                ),
                 "type": "value_error",
+                "url": ANY,
             }
         ]
     }
@@ -278,18 +273,9 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
             "name": "test",
             "count": 2,
             "users": [
-                {
-                    "username": "testuser",
-                    "uidnumber": 1000,
-                },
-                {
-                    "username": "otheruser",
-                    "uidnumber": 60000,
-                },
-                {
-                    "username": "thirduser",
-                    "uidnumber": 70000,
-                },
+                {"username": "testuser", "uidnumber": 1000},
+                {"username": "otheruser", "uidnumber": 60000},
+                {"username": "thirduser", "uidnumber": 70000},
             ],
             "scopes": [],
             "business": {"type": "EmptyLoop"},
@@ -299,15 +285,13 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
     assert r.json() == {
         "detail": [
             {
-                "loc": ["body", "users"],
-                "msg": "users list must contain 2 elements",
+                "ctx": ANY,
+                "input": ANY,
+                "loc": ["body"],
+                "msg": "Value error, users list must contain 2 elements",
                 "type": "value_error",
-            },
-            {
-                "loc": ["body", "user_spec"],
-                "msg": "one of users or user_spec must be provided",
-                "type": "value_error",
-            },
+                "url": ANY,
+            }
         ]
     }
 
@@ -317,12 +301,7 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
         json={
             "name": "test",
             "count": 2,
-            "users": [
-                {
-                    "username": "testuser",
-                    "uidnumber": 1000,
-                }
-            ],
+            "users": [{"username": "testuser", "uidnumber": 1000}],
             "scopes": [],
             "business": {"type": "EmptyLoop"},
         },
@@ -331,14 +310,12 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
     assert r.json() == {
         "detail": [
             {
-                "loc": ["body", "users"],
-                "msg": "users list must contain 2 elements",
+                "ctx": ANY,
+                "input": ANY,
+                "loc": ["body"],
+                "msg": "Value error, users list must contain 2 elements",
                 "type": "value_error",
-            },
-            {
-                "loc": ["body", "user_spec"],
-                "msg": "one of users or user_spec must be provided",
-                "type": "value_error",
+                "url": ANY,
             },
         ]
     }
@@ -357,8 +334,10 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
     assert r.status_code == 422
     result = r.json()
     assert result["detail"][0] == {
-        "ctx": {"given": "UnknownBusiness", "permitted": [ANY]},
-        "loc": ["body", "business", "type"],
+        "ctx": ANY,
+        "input": "UnknownBusiness",
+        "loc": ["body", "business", "TAPQueryRunnerConfig", "type"],
         "msg": ANY,
-        "type": "value_error.const",
+        "type": "literal_error",
+        "url": ANY,
     }

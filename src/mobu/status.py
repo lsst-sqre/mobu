@@ -29,7 +29,7 @@ async def post_status() -> None:
     flock_plural = "flock" if flock_count == 1 else "flocks"
     text = (
         f"Currently running {flock_count} {flock_plural} against"
-        f" {config.environment_url}:\n"
+        f' {str(config.environment_url).rstrip("/")}:\n'
     )
     for summary in summaries:
         if summary.start_time:
