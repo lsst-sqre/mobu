@@ -25,7 +25,6 @@ apt-get update
 # Install various dependencies that may be required to install mobu:
 #
 # build-essential: sometimes needed to build Python modules
-# git: required by setuptools_scm
 # libffi-dev: sometimes needed to build cffi, a cryptography dependency
 apt-get -y install --no-install-recommends build-essential git libffi-dev
 

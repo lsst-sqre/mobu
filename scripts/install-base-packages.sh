@@ -24,6 +24,10 @@ apt-get update
 # Install security updates.
 apt-get -y upgrade
 
+# Install dependencies required at runtime. git is used to check out notebook
+# repositories.
+apt-get -y install --no-install-recommends git
+
 # Delete cached files we don't need anymore.
 apt-get clean
 rm -rf /var/lib/apt/lists/*
