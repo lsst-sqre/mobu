@@ -28,20 +28,13 @@ from websockets.exceptions import WebSocketException
 
 from ..constants import WEBSOCKET_OPEN_TIMEOUT
 from ..exceptions import (
-    CachemachineError,
     CodeExecutionError,
     JupyterTimeoutError,
     JupyterWebError,
     JupyterWebSocketError,
 )
-from ..models.business.nublado import (
-    NubladoImage,
-    NubladoImageByClass,
-    NubladoImageByReference,
-    NubladoImageClass,
-)
+from ..models.business.nublado import NubladoImage
 from ..models.user import AuthenticatedUser
-from .cachemachine import CachemachineClient, JupyterCachemachineImage
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -529,11 +522,6 @@ class NubladoClient:
         User as which to authenticate.
     base_url
         Base URL for JupyterHub and the proxy to talk to the labs.
-    cachemachine
-        Cachemachine client. If provided, the client will use cachemachine to
-        resolve images. If not provided (the default), the client will assume
-        the Nublado lab controller is in use and image specifications can be
-        posted directly to JupyterHub.
     logger
         Logger to use.
     timeout
@@ -554,13 +542,11 @@ class NubladoClient:
         *,
         user: AuthenticatedUser,
         base_url: str,
-        cachemachine: CachemachineClient | None = None,
         logger: BoundLogger,
         timeout: int = 30,
     ) -> None:
         self.user = user
         self._base_url = base_url
-        self._cachemachine = cachemachine
         self._logger = logger.bind(user=user.username)
 
         # Construct a connection pool to use for requets to JupyterHub. We
@@ -689,13 +675,11 @@ class NubladoClient:
 
         Raises
         ------
-        CachemachineError
-            Raised if some error occurred talking to cachemachine.
         JupyterWebError
             Raised if an error occurred talking to JupyterHub.
         """
         url = self._url_for("hub/spawn")
-        data = await self._build_spawn_form(config)
+        data = config.to_spawn_form()
 
         # Retrieving the spawn page before POSTing to it appears to trigger
         # some necessary internal state construction (and also more accurately
@@ -752,83 +736,6 @@ class NubladoClient:
                 break
             await asyncio.sleep(1)
             self._logger.info("Retrying spawn progress request")
-
-    async def _build_spawn_form(self, config: NubladoImage) -> dict[str, str]:
-        """Construct the form data to post to JupyterHub's spawn form.
-
-        Parameters
-        ----------
-        config
-            Image configuration.
-
-        Returns
-        -------
-        dict of str to str
-            Spawner form values to submit.
-
-        Raises
-        ------
-        CachemachineError
-            Raised if some error occurred talking to cachemachine.
-        """
-        if self._cachemachine:
-            try:
-                return await self._build_spawn_form_from_cachemachine(config)
-            except CachemachineError as e:
-                e.user = self.user.username
-                raise
-        else:
-            return config.to_spawn_form()
-
-    async def _build_spawn_form_from_cachemachine(
-        self, config: NubladoImage
-    ) -> dict[str, str]:
-        """Construct the form to submit to the JupyterHub login page.
-
-        Parameters
-        ----------
-        config
-            Image configuration.
-
-        Returns
-        -------
-        dict of str to str
-            Spawner form values to submit.
-
-        Raises
-        ------
-        CachemachineError
-            Raised if some error occurred talking to cachemachine.
-        RuntimeError
-            Raised if cachemachine is not configured.
-        TypeError
-            Raised if the provided image configuration uses an image class not
-            supported by the cachemachine client.
-        """
-        if not self._cachemachine:
-            raise RuntimeError("Use of cachemachine not configured")
-        if isinstance(config, NubladoImageByClass):
-            if config.image_class == NubladoImageClass.RECOMMENDED:
-                image = await self._cachemachine.get_recommended()
-            elif config.image_class == NubladoImageClass.LATEST_WEEKLY:
-                image = await self._cachemachine.get_latest_weekly()
-            else:
-                msg = f"Unsupported image class {config.image_class}"
-                raise ValueError(msg)
-        elif isinstance(config, NubladoImageByReference):
-            reference = config.reference
-            image = JupyterCachemachineImage.from_reference(reference)
-        else:
-            msg = f"Unsupported image class {config.image_class}"
-            raise TypeError(msg)
-        result = {
-            "image_list": str(image),
-            "image_dropdown": "use_image_from_dropdown",
-            "size": config.size.value,
-        }
-        if config.debug:
-            result["enable_debug"] = "true"
-        return result
 
     def _url_for(self, partial: str) -> str:
         """Construct a JupyterHub or Jupyter lab URL from a partial URL.

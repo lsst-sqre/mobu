@@ -18,7 +18,6 @@ from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 from mobu import main
 from mobu.config import config
 
-from .support.cachemachine import MockCachemachine, mock_cachemachine
 from .support.constants import TEST_BASE_URL
 from .support.gafaelfawr import make_gafaelfawr_token
 from .support.jupyter import (
@@ -48,9 +47,7 @@ def _configure() -> Iterator[None]:
 
 
 @pytest_asyncio.fixture
-async def app(
-    jupyter: MockJupyter, cachemachine: MockCachemachine
-) -> AsyncIterator[FastAPI]:
+async def app(jupyter: MockJupyter) -> AsyncIterator[FastAPI]:
     """Return a configured test application.
 
     Wraps the application in a lifespan manager so that startup and shutdown
@@ -76,12 +73,6 @@ async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     headers = {"X-Auth-Request-User": "someuser"}
     async with AsyncClient(app=app, base_url=url, headers=headers) as client:
         yield client
-
-
-@pytest.fixture
-def cachemachine(respx_mock: respx.Router) -> MockCachemachine:
-    """Mock out cachemachine."""
-    return mock_cachemachine(respx_mock)
 
 
 @pytest.fixture

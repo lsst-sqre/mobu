@@ -11,7 +11,6 @@ from pydantic import BaseModel, Field
 from .base import BusinessData, BusinessOptions
 
 __all__ = [
-    "CachemachinePolicy",
     "NubladoBusinessData",
     "NubladoBusinessOptions",
     "NubladoImage",
@@ -22,13 +21,6 @@ __all__ = [
     "NubladoImageSize",
     "RunningImage",
 ]
-
-
-class CachemachinePolicy(Enum):
-    """Policy for what eligible images to retrieve from cachemachine."""
-
-    available = "available"
-    desired = "desired"
 
 
 class NubladoImageClass(str, Enum):
@@ -149,19 +141,6 @@ class NubladoImageByTag(NubladoImage):
 class NubladoBusinessOptions(BusinessOptions):
     """Options for any business that runs code in a Nublado lab."""
 
-    cachemachine_image_policy: CachemachinePolicy = Field(
-        CachemachinePolicy.available,
-        title="Class of cachemachine images to use",
-        description=(
-            "Whether to use the images available on all nodes, or the images"
-            " desired by cachemachine. In instances where image streaming is"
-            " enabled and therefore pulls are fast, ``desired`` is preferred."
-            " The default is ``available``. Only used if ``use_cachemachine``"
-            " is true."
-        ),
-        examples=[CachemachinePolicy.desired],
-    )
-
     delete_lab: bool = Field(
         True,
         title="Whether to delete the lab between iterations",
@@ -249,16 +228,6 @@ class NubladoBusinessOptions(BusinessOptions):
     )
 
     url_prefix: str = Field("/nb/", title="URL prefix for JupyterHub")
-
-    use_cachemachine: bool = Field(
-        True,
-        title="Whether to use cachemachine to look up an image",
-        description=(
-            "Set this to false in environments using the new Nublado lab"
-            " controller."
-        ),
-        examples=[False],
-    )
 
     working_directory: str | None = Field(
         None,
