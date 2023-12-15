@@ -1,5 +1,6 @@
 .PHONY: update-deps
 update-deps:
+	pre-commit autoupdate
 	pip install --upgrade pip-tools pip setuptools
 	pip-compile --upgrade --resolver=backtracking --build-isolation	\
 	    --generate-hashes --allow-unsafe				\
