@@ -6,7 +6,7 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from random import SystemRandom
 from typing import Generic, TypeVar
 
@@ -153,8 +153,9 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
     async def startup(self) -> None:
         if self.options.jitter:
             with self.timings.start("pre_login_delay"):
-                max_delay = self.options.jitter
-                if not await self.pause(self._random.uniform(0, max_delay)):
+                max_delay = self.options.jitter.total_seconds()
+                delay = self._random.uniform(0, max_delay)
+                if not await self.pause(timedelta(seconds=delay)):
                     return
         await self.hub_login()
         if not await self._client.is_lab_stopped():
@@ -238,9 +239,9 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             if self.stopping:
                 return False
             log = "\n".join([str(m) for m in log_messages])
-            if sw.elapsed.total_seconds() > timeout:
-                elapsed = round(sw.elapsed.total_seconds())
-                msg = f"Lab did not spawn after {elapsed}s"
+            if sw.elapsed > timeout:
+                elapsed_seconds = round(sw.elapsed.total_seconds())
+                msg = f"Lab did not spawn after {elapsed_seconds}s"
                 raise JupyterTimeoutError(msg, self.user.username, log)
             raise JupyterSpawnError(log, self.user.username)
 
@@ -301,18 +302,17 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             # If we're not stopping, wait for the lab to actually go away.  If
             # we don't do this, we may try to create a new lab while the old
             # one is still shutting down.
-            timeout = self.options.delete_timeout
             start = current_datetime(microseconds=True)
             while not await self._client.is_lab_stopped():
-                now = current_datetime(microseconds=True)
-                elapsed = round((now - start).total_seconds())
-                if elapsed > timeout:
+                elapsed = current_datetime(microseconds=True) - start
+                elapsed_seconds = round(elapsed.total_seconds())
+                if elapsed > self.options.delete_timeout:
                     if not await self._client.is_lab_stopped(log_running=True):
-                        msg = f"Lab not deleted after {elapsed}s"
+                        msg = f"Lab not deleted after {elapsed_seconds}s"
                         raise JupyterTimeoutError(msg, self.user.username)
-                msg = f"Waiting for lab deletion ({elapsed}s elapsed)"
+                msg = f"Waiting for lab deletion ({elapsed_seconds}s elapsed)"
                 self.logger.info(msg)
-                if not await self.pause(2):
+                if not await self.pause(timedelta(seconds=2)):
                     return
 
         self.logger.info("Lab successfully deleted")

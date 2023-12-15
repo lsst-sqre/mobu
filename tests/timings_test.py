@@ -48,7 +48,7 @@ def test_timings() -> None:
             annotations={},
             start=first_sw.start_time,
             stop=first_sw.stop_time,
-            elapsed=first_sw.elapsed.total_seconds(),
+            elapsed=first_sw.elapsed,
             failed=False,
         ),
         StopwatchData(
@@ -56,7 +56,7 @@ def test_timings() -> None:
             annotations={"foo": "bar"},
             start=second_sw.start_time,
             stop=second_sw.stop_time,
-            elapsed=second_sw.elapsed.total_seconds(),
+            elapsed=second_sw.elapsed,
             failed=True,
         ),
     ]

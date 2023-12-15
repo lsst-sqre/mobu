@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import timedelta
 from importlib.metadata import metadata, version
 
 import structlog
@@ -39,7 +40,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         raise RuntimeError("MOBU_GAFAELFAWR_TOKEN was not set")
     await context_dependency.initialize()
     await context_dependency.process_context.manager.autostart()
-    app.state.periodic_status = schedule_periodic(post_status, 60 * 60 * 24)
+    status_interval = timedelta(days=1)
+    app.state.periodic_status = schedule_periodic(post_status, status_interval)
 
     yield
 

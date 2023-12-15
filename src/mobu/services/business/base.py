@@ -6,6 +6,7 @@ import asyncio
 from abc import ABCMeta, abstractmethod
 from asyncio import Queue, QueueEmpty
 from collections.abc import AsyncIterable, AsyncIterator
+from datetime import timedelta
 from enum import Enum
 from typing import Generic, TypeVar
 
@@ -205,8 +206,8 @@ class Business(Generic[T], metaclass=ABCMeta):
 
     # Utility functions that can be used by child classes.
 
-    async def pause(self, seconds: float) -> bool:
-        """Pause for up to the number of seconds, handling commands.
+    async def pause(self, interval: timedelta) -> bool:
+        """Pause for up to the given interval, handling commands.
 
         Parameters
         ----------
@@ -221,7 +222,8 @@ class Business(Generic[T], metaclass=ABCMeta):
         if self.stopping:
             return False
         try:
-            if seconds:
+            if interval:
+                seconds = interval.total_seconds()
                 await asyncio.wait_for(self.control.get(), seconds)
                 return False
             else:
@@ -231,7 +233,7 @@ class Business(Generic[T], metaclass=ABCMeta):
             return True
 
     async def iter_with_timeout(
-        self, iterable: AsyncIterable[U], timeout: float
+        self, iterable: AsyncIterable[U], timeout: timedelta
     ) -> AsyncIterator[U]:
         """Run an iterator with a timeout.
 
@@ -283,8 +285,8 @@ class Business(Generic[T], metaclass=ABCMeta):
         start = current_datetime(microseconds=True)
         while True:
             now = current_datetime(microseconds=True)
-            remaining = timeout - (now - start).total_seconds()
-            if remaining < 0:
+            remaining = timeout - (now - start)
+            if remaining < timedelta(seconds=0):
                 break
             pause = self._pause_no_return(timeout)
             result = await wait_first(iter_next(), pause)
@@ -300,21 +302,22 @@ class Business(Generic[T], metaclass=ABCMeta):
             timings=self.timings.dump(),
         )
 
-    async def _pause_no_return(self, seconds: float) -> None:
-        """Pause for up to the number of seconds, handling commands.
+    async def _pause_no_return(self, interval: timedelta) -> None:
+        """Pause for up to an interval, handling commands.
 
         The same as `pause`, but returns `None`, needed for proper typing of
         `iter_with_timeout`.
 
         Parameters
         ----------
-        seconds
+        interval
             How long to wait.
         """
         if self.stopping:
             return
         try:
-            if seconds:
+            if interval:
+                seconds = interval.total_seconds()
                 await asyncio.wait_for(self.control.get(), seconds)
             else:
                 self.control.get_nowait()
