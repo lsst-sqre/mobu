@@ -25,7 +25,7 @@ jobs:
       - name: Run neophile
         uses: lsst-sqre/run-neophile@v1
         with:
-          python-version: $(( matrix.python }}
+          python-version: ${{ matrix.python }}
           mode: update
 
       - name: Run tox
