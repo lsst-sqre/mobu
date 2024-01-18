@@ -50,9 +50,9 @@ astropy==6.0.0 \
     --hash=sha256:fa10e80bd3ff8b053c56e402246d4171c6e9658da37341fe28d99212d809ebe4 \
     --hash=sha256:fcf2da6f59d3c9636872c533ee358293c743800fff953da3d57deb0d2ee0481f
     # via pyvo
-astropy-iers-data==0.2024.1.8.0.30.55 \
-    --hash=sha256:51d0f2206c8e09540f3bc6b3123fa6c6b5c41ce37088be6c43216425eea173ec \
-    --hash=sha256:e0e57b67c0f69733eb57f24ad1647e5a1c6d26f7936a994e52da87deec75ffb0
+astropy-iers-data==0.2024.1.15.0.30.14 \
+    --hash=sha256:ad35cfb64610e23d0845ce2ed23f0cebc07e02aea5c174cd2328727ef7259579 \
+    --hash=sha256:f531090ecef13bb31f3f5b8908edce170804b8b69af9d19533f2dff0a00087d2
     # via astropy
 certifi==2023.11.17 \
     --hash=sha256:9b469f3a900bf28dc19b8cfbf8019bf47f7fdd1a65a1d4ffb98fc14166beb4d1 \
@@ -241,9 +241,9 @@ cryptography==41.0.7 \
     # via
     #   pyjwt
     #   safir
-fastapi==0.108.0 \
-    --hash=sha256:5056e504ac6395bf68493d71fcfc5352fdbd5fda6f88c21f6420d80d81163296 \
-    --hash=sha256:8c7bc6d315da963ee4cdb605557827071a9a7f95aeb8fcdd3bde48cdc8764dd7
+fastapi==0.109.0 \
+    --hash=sha256:8c77515984cd8e8cfeb58364f8cc7a28f0692088475e2614f7bf03275eba9093 \
+    --hash=sha256:b978095b9ee01a5cf49b19f4bc1ac9b8ca83aa076e770ef8fd9af09a2b88d191
     # via
     #   -r requirements/main.in
     #   safir
@@ -324,9 +324,9 @@ idna==3.6 \
     #   anyio
     #   httpx
     #   requests
-jinja2==3.1.2 \
-    --hash=sha256:31351a702a408a9e7595a8fc6150fc3f43bb6bf7e319770cbc0db9df9437e852 \
-    --hash=sha256:6088930bfe239f0e6710546ab9c19c9ef35e29792895fed6e6e31a023a182a61
+jinja2==3.1.3 \
+    --hash=sha256:7d6d50dd97d52cbc355597bd845fabfbac3f551e1f99619e39a35ce8c370b5fa \
+    --hash=sha256:ac8bd6544d4bb2c9792bf3a159e80bba8fda7f07e81bc3aed565432d5925ba90
     # via -r requirements/main.in
 markupsafe==2.1.3 \
     --hash=sha256:05fb21170423db021895e1ea1e1f3ab3adb85d1c2333cbc2310f2a26bc77272e \
@@ -616,6 +616,7 @@ pyyaml==6.0.1 \
     --hash=sha256:8d4e9c88387b0f5c7d5f281e55304de64cf7f9c0021a3525bd3b1c542da3b0e4 \
     --hash=sha256:9046c58c4395dff28dd494285c82ba00b546adfc7ef001486fbf0324bc174fba \
     --hash=sha256:9eb6caa9a297fc2c2fb8862bc5370d0303ddba53ba97e71f08023b6cd73d16a8 \
+    --hash=sha256:a08c6f0fe150303c1c6b71ebcd7213c2858041a7e01975da3a99aed1e7a378ef \
     --hash=sha256:a0cd17c15d3bb3fa06978b4e8958dcdc6e0174ccea823003a106c7d4d7899ac5 \
     --hash=sha256:afd7e57eddb1a54f0f1a974bc4391af8bcce0b444685d936840f125cf046d5bd \
     --hash=sha256:b1275ad35a5d18c62a7220633c913e1b42d44b46ee12554e5fd39c70a243d6a3 \
@@ -663,9 +664,9 @@ sniffio==1.3.0 \
     # via
     #   anyio
     #   httpx
-starlette==0.32.0.post1 \
-    --hash=sha256:cd0cb10ddb49313f609cedfac62c8c12e56c7314b66d89bb077ba228bada1b09 \
-    --hash=sha256:e54e2b7e2fb06dff9eac40133583f10dfa05913f5a85bf26f427c7a40a9a3d02
+starlette==0.35.1 \
+    --hash=sha256:3e2639dac3520e4f58734ed22553f950d3f3cb1001cd2eaac4d57e8cdc5f66bc \
+    --hash=sha256:50bbbda9baa098e361f398fda0928062abbaf1f54f4fadcbe17c092a01eb9a25
     # via
     #   -r requirements/main.in
     #   fastapi
@@ -691,9 +692,9 @@ urllib3==2.1.0 \
     --hash=sha256:55901e917a5896a349ff771be919f8bd99aff50b79fe58fec595eb37bbc56bb3 \
     --hash=sha256:df7aa8afb0148fa78488e7899b2c59b5f4ffcfa82e6c54ccb9dd37c1d7b52d54
     # via requests
-uvicorn[standard]==0.25.0 \
-    --hash=sha256:6dddbad1d7ee0f5140aba5ec138ddc9612c5109399903828b4874c9937f009c2 \
-    --hash=sha256:ce107f5d9bd02b4636001a77a4e74aab5e1e2b146868ebbad565237145af444c
+uvicorn[standard]==0.26.0 \
+    --hash=sha256:48bfd350fce3c5c57af5fb4995fded8fb50da3b4feb543eb18ad7e0d54589602 \
+    --hash=sha256:cdb58ef6b8188c6c174994b2b1ba2150a9a8ae7ea5fb2f1b856b94a815d6071d
     # via -r requirements/main.in
 uvloop==0.19.0 \
     --hash=sha256:0246f4fd1bf2bf702e06b0d45ee91677ee5c31242f39aab4ea6fe0c51aedd0fd \
