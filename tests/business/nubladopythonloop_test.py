@@ -735,16 +735,18 @@ async def test_long_error(
         },
     )
     assert r.status_code == 201
+
+    # Wait until we've finished one loop.
+    data = await wait_for_business(client, "testuser1")
+    assert data["business"]["failure_count"] == 1
+
+    # Check the lab form.
     assert jupyter.lab_form["testuser1"] == {
         "image_list": (
             "registry.hub.docker.com/lsstsqre/sciplat-lab:d_2021_08_30"
         ),
         "size": "Large",
     }
-
-    # Wait until we've finished one loop.
-    data = await wait_for_business(client, "testuser1")
-    assert data["business"]["failure_count"] == 1
 
     # Check that an appropriate error was posted.
     error = "... truncated ...\n"
@@ -862,6 +864,7 @@ async def test_lab_controller(
         },
     )
     assert r.status_code == 201
+    await asyncio.sleep(0)
     assert jupyter.lab_form["testuser"] == {
         "image_list": (
             "registry.hub.docker.com/lsstsqre/sciplat-lab:d_2021_08_30"
@@ -892,6 +895,7 @@ async def test_lab_controller(
         },
     )
     assert r.status_code == 201
+    await asyncio.sleep(0)
     assert jupyter.lab_form["testuser"] == {
         "enable_debug": "true",
         "image_class": "latest-daily",
@@ -921,6 +925,7 @@ async def test_lab_controller(
         },
     )
     assert r.status_code == 201
+    await asyncio.sleep(0)
     assert jupyter.lab_form["testuser"] == {
         "image_tag": "w_2077_44",
         "size": "Small",
