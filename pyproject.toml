@@ -115,10 +115,13 @@ python_files = ["tests/*.py", "tests/*/*.py"]
 # with noqa markers. This is therefore a reiatively relaxed configuration that
 # errs on the side of disabling legitimate lints.
 #
-# Reference for settings: https://beta.ruff.rs/docs/settings/
-# Reference for rules: https://beta.ruff.rs/docs/rules/
+# Reference for settings: https://docs.astral.sh/ruff/settings/
+# Reference for rules: https://docs.astral.sh/ruff/rules/
 [tool.ruff]
 line-length = 79
+target-version = "py312"
+
+[tool.ruff.lint]
 ignore = [
     "ANN101",  # self should not have a type annotation
     "ANN102",  # cls should not have a type annotation
@@ -177,9 +180,8 @@ ignore = [
     "ISC002",
 ]
 select = ["ALL"]
-target-version = "py312"
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "src/mobu/handlers/**" = [
     "D103",    # FastAPI handlers should not have docstrings
 ]
@@ -194,11 +196,11 @@ target-version = "py312"
     "SLF001",  # tests are allowed to access private members
 ]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["monkeyflocker", "mobu", "tests"]
 split-on-trailing-comma = false
 
-[tool.ruff.flake8-bugbear]
+[tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = [
     "fastapi.Form",
     "fastapi.Header",
@@ -209,18 +211,18 @@ extend-immutable-calls = [
 
 # These are too useful as attributes or functions to allow the conflict with
 # the built-in to rule out their use.
-[tool.ruff.flake8-builtins]
+[tool.ruff.lint.flake8-builtins]
 builtins-ignorelist = [
     "help",
     "id",
     "type",
 ]
 
-[tool.ruff.flake8-pytest-style]
+[tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false
 mark-parentheses = false
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
 [tool.scriv]
