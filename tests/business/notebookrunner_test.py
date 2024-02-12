@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 from unittest.mock import ANY
@@ -22,6 +23,7 @@ async def test_run(
     client: AsyncClient, respx_mock: respx.Router, tmp_path: Path
 ) -> None:
     mock_gafaelfawr(respx_mock)
+    cwd = Path.cwd()
 
     # Set up a notebook repository.
     source_path = Path(__file__).parent.parent / "notebooks"
@@ -35,47 +37,52 @@ async def test_run(
     actor = Actor("Someone", "someone@example.com")
     repo.index.commit("Initial commit", author=actor, committer=actor)
 
-    # Start a monkey.
-    r = await client.put(
-        "/mobu/flocks",
-        json={
-            "name": "test",
-            "count": 1,
-            "user_spec": {"username_prefix": "testuser"},
-            "scopes": ["exec:notebook"],
-            "business": {
-                "type": "NotebookRunner",
-                "options": {
-                    "spawn_settle_time": 0,
-                    "execution_idle_time": 0,
-                    "max_executions": 1,
-                    "repo_url": str(repo_path),
-                    "repo_branch": "main",
-                    "working_directory": str(repo_path),
+    # Start a monkey. We have to do this in a try/finally block since the
+    # runner will change working directories, which because working
+    # directories are process-global may mess up future tests.
+    try:
+        r = await client.put(
+            "/mobu/flocks",
+            json={
+                "name": "test",
+                "count": 1,
+                "user_spec": {"username_prefix": "testuser"},
+                "scopes": ["exec:notebook"],
+                "business": {
+                    "type": "NotebookRunner",
+                    "options": {
+                        "spawn_settle_time": 0,
+                        "execution_idle_time": 0,
+                        "max_executions": 1,
+                        "repo_url": str(repo_path),
+                        "repo_branch": "main",
+                        "working_directory": str(repo_path),
+                    },
                 },
             },
-        },
-    )
-    assert r.status_code == 201
+        )
+        assert r.status_code == 201
 
-    # Wait until we've finished one loop and check the results.
-    data = await wait_for_business(client, "testuser1")
-    assert data == {
-        "name": "testuser1",
-        "business": {
-            "failure_count": 0,
-            "name": "NotebookRunner",
-            "notebook": "test-notebook.ipynb",
-            "success_count": 1,
-            "timings": ANY,
-        },
-        "state": "RUNNING",
-        "user": {
-            "scopes": ["exec:notebook"],
-            "token": ANY,
-            "username": "testuser1",
-        },
-    }
+        # Wait until we've finished one loop and check the results.
+        data = await wait_for_business(client, "testuser1")
+        assert data == {
+            "name": "testuser1",
+            "business": {
+                "failure_count": 0,
+                "name": "NotebookRunner",
+                "notebook": "test-notebook.ipynb",
+                "success_count": 1,
+                "timings": ANY,
+            },
+            "state": "RUNNING",
+            "user": {
+                "scopes": ["exec:notebook"],
+                "token": ANY,
+                "username": "testuser1",
+            },
+        }
+    finally:
+        os.chdir(cwd)
 
     # Get the log and check the cell output.
     r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
