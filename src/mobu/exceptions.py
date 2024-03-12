@@ -38,6 +38,7 @@ __all__ = [
     "MobuSlackWebException",
     "MonkeyNotFoundError",
     "TAPClientError",
+    "GitLFSError",
 ]
 
 
@@ -506,4 +507,16 @@ class TAPClientError(MobuSlackException):
         else:
             error = type(exc).__name__
         msg = f"Unable to create TAP client: {error}"
+        super().__init__(msg, user)
+
+
+class GitLFSError(MobuSlackException):
+    """Running a Git LFS action failed."""
+
+    def __init__(self, exc: Exception, *, user: str) -> None:
+        if str(exc):
+            error = f"{type(exc).__name__}: {exc!s}"
+        else:
+            error = type(exc).__name__
+        msg = f"Unable to execute Git LFS check: {error}"
         super().__init__(msg, user)
