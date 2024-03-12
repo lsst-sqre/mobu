@@ -14,7 +14,6 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
-from git.repo import Repo
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
@@ -24,6 +23,7 @@ from ...models.business.notebookrunner import (
     NotebookRunnerOptions,
 )
 from ...models.user import AuthenticatedUser
+from ...storage.git import Git
 from ...storage.nublado import JupyterLabSession
 from .nublado import NubladoBusiness
 
@@ -56,8 +56,8 @@ class NotebookRunner(NubladoBusiness):
         self._notebook: Path | None = None
         self._notebook_paths: list[Path] | None = None
         self._repo_dir = TemporaryDirectory()
-        self._repo: Repo | None = None
         self._running_code: str | None = None
+        self._git = Git(user=user, logger=logger)
 
     def annotations(self, cell_id: str | None = None) -> dict[str, str]:
         result = super().annotations()
@@ -68,18 +68,18 @@ class NotebookRunner(NubladoBusiness):
         return result
 
     async def startup(self) -> None:
-        if not self._repo:
-            self.clone_repo()
+        if not any(Path(self._repo_dir.name).rglob("*")):
+            # https://stackoverflow.com/questions/25675352/
+            await self.clone_repo()
         self._notebook_paths = self.find_notebooks()
         self.logger.info("Repository cloned and ready")
         await super().startup()
 
-    def clone_repo(self) -> None:
+    async def clone_repo(self) -> None:
         url = self.options.repo_url
         branch = self.options.repo_branch
-        path = self._repo_dir.name
         with self.timings.start("clone_repo"):
-            self._repo = Repo.clone_from(url, path, branch=branch)
+            await self._git.clone("-b", branch, url, self._repo_dir.name)
 
     def find_notebooks(self) -> list[Path]:
         with self.timings.start("find_notebooks"):

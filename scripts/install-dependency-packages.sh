@@ -26,7 +26,7 @@ apt-get update
 #
 # build-essential: sometimes needed to build Python modules
 # libffi-dev: sometimes needed to build cffi, a cryptography dependency
-apt-get -y install --no-install-recommends build-essential git libffi-dev
+apt-get -y install --no-install-recommends build-essential libffi-dev
 
 # Delete cached files we don't need anymore.
 apt-get clean

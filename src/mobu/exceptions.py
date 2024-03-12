@@ -27,6 +27,7 @@ _ANSI_REGEX = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
 """Regex that matches ANSI escape sequences."""
 
 __all__ = [
+    "AsyncioProcessError",
     "CodeExecutionError",
     "FlockNotFoundError",
     "GafaelfawrParseError",
@@ -38,7 +39,7 @@ __all__ = [
     "MobuSlackWebException",
     "MonkeyNotFoundError",
     "TAPClientError",
-    "GitLFSError",
+    "GitError",
 ]
 
 
@@ -510,13 +511,23 @@ class TAPClientError(MobuSlackException):
         super().__init__(msg, user)
 
 
-class GitLFSError(MobuSlackException):
-    """Running a Git LFS action failed."""
+class GitError(MobuSlackException):
+    """Running a Git action failed."""
 
     def __init__(self, exc: Exception, *, user: str) -> None:
         if str(exc):
             error = f"{type(exc).__name__}: {exc!s}"
         else:
             error = type(exc).__name__
-        msg = f"Unable to execute Git LFS check: {error}"
+        msg = f"Unable to execute Git action: {error}"
+        super().__init__(msg, user)
+
+
+class AsyncioProcessError(MobuSlackException):
+    """Running an Asyncio subprocess failed."""
+
+    # Since we did all the processing of the subprocess output and rc to
+    # log a debug message, we just pass the message up rather than trying
+    # to deal with the already-resolved process again.
+    def __init__(self, msg: str, user: str) -> None:
         super().__init__(msg, user)

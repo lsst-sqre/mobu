@@ -9,10 +9,10 @@ from unittest.mock import ANY
 
 import pytest
 import respx
-from git.repo import Repo
-from git.util import Actor
 from httpx import AsyncClient
 from safir.testing.slack import MockSlackWebhook
+
+from mobu.storage.git import Git
 
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
@@ -28,14 +28,20 @@ async def test_run(
     # Set up a notebook repository.
     source_path = Path(__file__).parent.parent / "notebooks"
     repo_path = tmp_path / "notebooks"
+
     shutil.copytree(str(source_path), str(repo_path))
+    # Remove exception notebook
     (repo_path / "exception.ipynb").unlink()
-    repo = Repo.init(str(repo_path), initial_branch="main")
+
+    # Set up git client
+    git = Git(repo=repo_path)
+    await git.init("--initial-branch=main")
+    await git.config("user.email", "gituser@example.com")
+    await git.config("user.name", "Git User")
     for path in repo_path.iterdir():
         if not path.name.startswith("."):
-            repo.index.add(str(path))
-    actor = Actor("Someone", "someone@example.com")
-    repo.index.commit("Initial commit", author=actor, committer=actor)
+            await git.add(str(path))
+    await git.commit("-m", "Initial commit")
 
     # Start a monkey. We have to do this in a try/finally block since the
     # runner will change working directories, which because working
@@ -107,12 +113,17 @@ async def test_alert(
     repo_path = tmp_path / "notebooks"
     repo_path.mkdir()
     shutil.copy(str(source_path / "exception.ipynb"), str(repo_path))
-    repo = Repo.init(str(repo_path), initial_branch="main")
+
+    # Set up git client
+    git = Git(repo=repo_path)
+    await git.init("--initial-branch=main")
+    await git.config("--local", "user.email", "gituser@example.com")
+    await git.config("--local", "user.name", "Git User")
+
     for path in repo_path.iterdir():
         if not path.name.startswith("."):
-            repo.index.add(str(path))
-    actor = Actor("Someone", "someone@example.com")
-    repo.index.commit("Initial commit", author=actor, committer=actor)
+            await git.add(str(path))
+    await git.commit("-m", "Initial commit")
 
     # The bad code run by the exception test.
     bad_code = 'foo = {"bar": "baz"}\nfoo["nothing"]'

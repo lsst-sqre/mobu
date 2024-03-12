@@ -11,7 +11,6 @@ starlette
 uvicorn[standard]
 
 # Other dependencies.
-GitPython
 aiojobs
 click!=8.1.4,!=8.1.5  # see https://github.com/pallets/click/issues/2558
 httpx

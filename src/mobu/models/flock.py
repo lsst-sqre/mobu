@@ -6,6 +6,7 @@ from typing import Self
 from pydantic import BaseModel, Field, model_validator
 
 from .business.empty import EmptyLoopConfig
+from .business.gitlfs import GitLFSConfig
 from .business.notebookrunner import NotebookRunnerConfig
 from .business.nubladopythonloop import NubladoPythonLoopConfig
 from .business.tapqueryrunner import TAPQueryRunnerConfig
@@ -54,6 +55,7 @@ class FlockConfig(BaseModel):
         | NotebookRunnerConfig
         | NubladoPythonLoopConfig
         | EmptyLoopConfig
+        | GitLFSConfig
     ) = Field(..., title="Business to run")
 
     @model_validator(mode="after")

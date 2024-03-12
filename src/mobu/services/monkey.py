@@ -19,6 +19,7 @@ from ..config import config
 from ..exceptions import MobuSlackException
 from ..models.business.base import BusinessConfig
 from ..models.business.empty import EmptyLoopConfig
+from ..models.business.gitlfs import GitLFSConfig
 from ..models.business.notebookrunner import NotebookRunnerConfig
 from ..models.business.nubladopythonloop import NubladoPythonLoopConfig
 from ..models.business.tapqueryrunner import TAPQueryRunnerConfig
@@ -27,6 +28,7 @@ from ..models.monkey import MonkeyData, MonkeyState
 from ..models.user import AuthenticatedUser
 from .business.base import Business
 from .business.empty import EmptyLoop
+from .business.gitlfs import GitLFSBusiness
 from .business.notebookrunner import NotebookRunner
 from .business.nubladopythonloop import NubladoPythonLoop
 from .business.tapqueryrunner import TAPQueryRunner
@@ -87,6 +89,10 @@ class Monkey:
         self.business: Business
         if isinstance(business_config, EmptyLoopConfig):
             self.business = EmptyLoop(
+                business_config.options, user, self._http_client, self._logger
+            )
+        elif isinstance(business_config, GitLFSConfig):
+            self.business = GitLFSBusiness(
                 business_config.options, user, self._http_client, self._logger
             )
         elif isinstance(business_config, NubladoPythonLoopConfig):
