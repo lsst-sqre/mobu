@@ -2,72 +2,250 @@
 abandoned and is distinctly not thread- or async-safe.
 """
 
+import asyncio
+import os
 from pathlib import Path
+from shlex import join
 
 from structlog.stdlib import BoundLogger
 
-from ..models.user import AuthenticatedUser
-from .process import Process
+from ..exceptions import SubprocessError
 
 
 class Git:
-    """A very basic async Git client based on asyncio.subprocess."""
+    """A very basic async Git client based on asyncio.subprocess.
+
+    Parameters
+    ----------
+    repo
+        Filesystem path for the git repository.
+    config_location
+        Filesystem path for the file to use as the user-global Git config.
+    logger
+        Logger to use.
+    """
 
     def __init__(
         self,
         *,
         repo: Path | None = None,
-        user: AuthenticatedUser | None = None,
+        config_location: Path | None = None,
         logger: BoundLogger | None = None,
     ) -> None:
-        self._user = user
-        if self._user is None:
-            self._user = AuthenticatedUser(
-                username="gituser",
-                uidnumber=60001,
-                gidnumber=60001,
-                scopes=[],
-                token="dummy token",
-            )
+        self.repo = repo
         self._logger = logger
-        self._repo = repo
-        self._process = Process(user=self._user, logger=self._logger)
+        self._config_location = config_location
 
-    def set_repo(self, repo: Path) -> None:
-        self._repo = repo
+    async def _exec(
+        self,
+        cmd: str,
+        *args: str,
+        env: dict[str, str] | None = None,
+        cwd: Path | None = None,
+    ) -> None:
+        """Execute a non-interactive subprocess.
+
+        We need this to make the git commands behave correctly in an
+        async environment.  The reason why is a little subtle.  Most git
+        commands let you specify arbitrary paths, but not `git add`.  To
+        run a git add, you have to have a working tree, and that means that
+        the current working directory has to be inside that working tree.
+
+        The current working directory is a per-process global.  So if we
+        didn't do this, then mobu, which may be running many tests at once
+        in different coroutines, will get very confused.
+
+        However, since we're creating a subprocess to run the git
+        executable anyway, we can run it with asyncio.subprocess,
+        optionally with the working directory set to an arbitrary
+        path.  That way, mobu's working directory stays untouched, but
+        the subprocess may execute somewhere else.
+        """
+        l_args = [cmd]
+        l_args.extend(args)
+        cmd_and_args = join(l_args)
+        sub_env = os.environ.copy()
+        if env is not None:
+            sub_env.update(env)
+
+        proc = await asyncio.subprocess.create_subprocess_exec(
+            cmd,
+            *args,
+            cwd=cwd,
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=sub_env,
+        )
+        stdout, stderr = await proc.communicate()  # Waits for process exit
+
+        stdout_text = ""
+        stderr_text = ""
+        if proc.stdout is not None:
+            stdout_text = stdout.decode()
+        if proc.stderr is not None:
+            stderr_text = stderr.decode()
+        if proc.returncode != 0:
+            raise SubprocessError(
+                f"Subprocess '{cmd_and_args}' failed",
+                returncode=proc.returncode,
+                stdout=stdout_text,
+                stderr=stderr_text,
+                cwd=cwd,
+                env=sub_env,
+            )
+        if self._logger:
+            msg = (
+                f"'{cmd_and_args}' exited with rc={proc.returncode};"
+                f" stdout='{stdout_text}'; stderr='{stderr_text}'"
+                f" working_directory='{cwd!s}'; env='{sub_env}'"
+            )
+            self._logger.debug(msg)
 
     async def git(self, *args: str) -> None:
-        await self._process.exec("git", *args, cwd=self._repo)
+        """Run an arbitrary git command with arbitrary string arguments.
+
+        If self.repo is set, use that as the working directory.  If
+        self._config_location is set, use that as the value of
+        GIT_CONFIG_GLOBAL, and set GIT_CONFIG_SYSTEM to the empty string.
+
+        This is intended to constrain where git looks for its definitions,
+        making it both function in mobu business and not break developers'
+        git setups.
+        """
+        env: dict[str, str] | None = None
+        if self._config_location is not None:
+            env = {
+                "GIT_CONFIG_GLOBAL": str(self._config_location),
+                "GIT_CONFIG_SYSTEM": "",
+            }
+        await self._exec("git", *args, cwd=self.repo, env=env)
 
     async def init(self, *args: str) -> None:
+        """Run `git init` with arbitrary arguments.
+
+        If self.repo is None, and this is run, it will set self.repo
+        from the last argument as a side effect.  If there are no
+        arguments, self.repo becomes the current working directory.
+
+        Parameters
+        ----------
+        *args
+            Arguments to command.
+        """
         await self.git("init", *args)
+        if self.repo is None:
+            if len(args) == 0:
+                self.repo = Path()
+            else:
+                self.repo = Path(args[-1])
 
     async def add(self, *args: str) -> None:
+        """Run `git add` with arbitrary arguments.
+
+        Parameters
+        ----------
+        *args
+            Arguments to command.
+        """
         await self.git("add", *args)
 
     async def commit(self, *args: str) -> None:
+        """Run `git commit` with arbitrary arguments.
+
+        Parameters
+        ----------
+        *args
+            Arguments to command.
+        """
         await self.git("commit", *args)
 
     async def push(self, *args: str) -> None:
+        """Run `git commit` with arbitrary arguments.
+
+        Parameters
+        ----------
+        *args
+            Arguments to command.
+        """
         await self.git("push", *args)
 
     async def config(self, *args: str) -> None:
+        """Run `git config` with arbitrary arguments.
+
+        Parameters
+        ----------
+        *args
+            Arguments to command.
+        """
         await self.git("config", *args)
 
     async def pull(self, *args: str) -> None:
+        """Run `git pull` with arbitrary arguments.
+
+        Parameters
+        ----------
+        *args
+            Arguments to command.
+        """
         await self.git("pull", *args)
 
     async def fetch(self, *args: str) -> None:
+        """Run `git fetch` with arbitrary arguments.
+
+        Parameters
+        ----------
+        *args
+            Arguments to command.
+        """
         await self.git("fetch", *args)
 
     async def branch(self, *args: str) -> None:
+        """Run `git branch` with arbitrary arguments.
+
+        Parameters
+        ----------
+        *args
+            Arguments to command.
+        """
         await self.git("branch", *args)
 
     async def clone(self, *args: str) -> None:
+        """Run `git clone` with arbitrary arguments.
+
+        Parameters
+        ----------
+        *args
+            Arguments to command.
+        """
         await self.git("clone", *args)
 
     async def lfs(self, *args: str) -> None:
+        """Run `git lfs` with arbitrary arguments.
+
+        Parameters
+        ----------
+        *args
+            Arguments to command.
+        """
         await self.git("lfs", *args)
 
     async def checkout(self, *args: str) -> None:
+        """Run `git checkout` with arbitrary arguments.
+
+        Parameters
+        ----------
+        *args
+            Arguments to command.
+        """
         await self.git("checkout", *args)
+
+    async def reset(self, *args: str) -> None:
+        """Run `git reset` with arbitrary arguments.
+
+        Parameters
+        ----------
+        *args
+            Arguments to command.
+        """
+        await self.git("reset", *args)

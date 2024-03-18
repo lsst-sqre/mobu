@@ -54,8 +54,8 @@ class FlockConfig(BaseModel):
         | TAPQuerySetRunnerConfig
         | NotebookRunnerConfig
         | NubladoPythonLoopConfig
-        | EmptyLoopConfig
         | GitLFSConfig
+        | EmptyLoopConfig
     ) = Field(..., title="Business to run")
 
     @model_validator(mode="after")

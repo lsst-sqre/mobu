@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime
+from pathlib import Path
 from typing import Self
 
 from fastapi import status
@@ -27,7 +29,6 @@ _ANSI_REGEX = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
 """Regex that matches ANSI escape sequences."""
 
 __all__ = [
-    "AsyncioProcessError",
     "CodeExecutionError",
     "FlockNotFoundError",
     "GafaelfawrParseError",
@@ -39,7 +40,8 @@ __all__ = [
     "MobuSlackWebException",
     "MonkeyNotFoundError",
     "TAPClientError",
-    "GitError",
+    "SubprocessError",
+    "ComparisonError",
 ]
 
 
@@ -511,23 +513,102 @@ class TAPClientError(MobuSlackException):
         super().__init__(msg, user)
 
 
-class GitError(MobuSlackException):
-    """Running a Git action failed."""
+class SubprocessError(MobuSlackException):
+    """Running a subprocess failed."""
 
-    def __init__(self, exc: Exception, *, user: str) -> None:
-        if str(exc):
-            error = f"{type(exc).__name__}: {exc!s}"
-        else:
-            error = type(exc).__name__
-        msg = f"Unable to execute Git action: {error}"
+    def __init__(
+        self,
+        msg: str,
+        *,
+        user: str | None = None,
+        returncode: int | None = None,
+        stdout: str | None = None,
+        stderr: str | None = None,
+        cwd: Path | None = None,
+        env: dict[str, str] | None = None,
+    ) -> None:
         super().__init__(msg, user)
+        self.msg = msg
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+        self.cwd = cwd
+        self.env = env
+
+    def __str__(self) -> str:
+        return (
+            f"{self.msg} with rc={self.returncode};"
+            f" stdout='{self.stdout}'; stderr='{self.stderr}'"
+            f" cwd='{self.cwd}'; env='{self.env}'"
+        )
+
+    def to_slack(self) -> SlackMessage:
+        """Format this exception as a Slack notification.
+
+        Returns
+        -------
+        SlackMessage
+            Formatted message.
+        """
+        message = SlackMessage(
+            message=self.msg,
+            blocks=self.common_blocks(),
+            fields=self.common_fields(),
+        )
+
+        field = SlackTextField(
+            heading="Return Code", text=str(self.returncode)
+        )
+        message.fields.append(field)
+        if self.cwd:
+            message.fields.append(field)
+            field = SlackTextField(heading="Directory", text=str(self.cwd))
+        if self.stdout:
+            block = SlackCodeBlock(heading="Stdout", code=self.stdout)
+            message.blocks.append(block)
+        if self.stderr:
+            block = SlackCodeBlock(heading="Stderr", code=self.stderr)
+            message.blocks.append(block)
+        if self.env:
+            block = SlackCodeBlock(
+                heading="Environment",
+                code=json.dumps(self.env, sort_keys=True, indent=4),
+            )
+            message.blocks.append(block)
+        return message
 
 
-class AsyncioProcessError(MobuSlackException):
-    """Running an Asyncio subprocess failed."""
+class ComparisonError(MobuSlackException):
+    """Comparing two strings failed."""
 
-    # Since we did all the processing of the subprocess output and rc to
-    # log a debug message, we just pass the message up rather than trying
-    # to deal with the already-resolved process again.
-    def __init__(self, msg: str, user: str) -> None:
-        super().__init__(msg, user)
+    def __init__(
+        self,
+        user: str | None = None,
+        *,
+        expected: str,
+        received: str,
+    ) -> None:
+        super().__init__("Comparison failed", user)
+        self.expected = expected
+        self.received = received
+
+    def __str__(self) -> str:
+        return (
+            f"Comparison failed: expected '{self.expected}', but"
+            f" received '{self.received}'"
+        )
+
+    def to_slack(self) -> SlackMessage:
+        """Format this exception as a Slack notification.
+
+        Returns
+        -------
+        SlackMessage
+            Formatted message.
+        """
+        message = super().to_slack()
+        field = SlackTextField(heading="Expected", text=self.expected)
+        message.fields.append(field)
+        field = SlackTextField(heading="Received", text=self.received)
+        message.fields.append(field)
+        return message

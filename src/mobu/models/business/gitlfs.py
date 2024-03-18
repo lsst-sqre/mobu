@@ -13,16 +13,12 @@ class GitLFSBusinessOptions(BusinessOptions):
     """Options for business that runs git LFS operations."""
 
     lfs_read_url: str = Field(
-        "https://git-lfs.lsst.cloud/mobu/git-lfs-test",
+        ...,
         title="LFS read URL for Git-LFS enabled repo",
     )
     lfs_write_url: str = Field(
-        "https://git-lfs-rw.lsst.cloud/mobu/git-lfs-test",
+        ...,
         title="LFS write URL for Git-LFS enabled repo",
-    )
-    skip_lfs: bool = Field(
-        False,
-        title="Skip LFS operations (for testing only)",
     )
 
 
