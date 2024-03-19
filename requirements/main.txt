@@ -50,9 +50,9 @@ astropy==6.0.0 \
     --hash=sha256:fa10e80bd3ff8b053c56e402246d4171c6e9658da37341fe28d99212d809ebe4 \
     --hash=sha256:fcf2da6f59d3c9636872c533ee358293c743800fff953da3d57deb0d2ee0481f
     # via pyvo
-astropy-iers-data==0.2024.3.11.18.33.3 \
-    --hash=sha256:203352353c348da7c3e43f9b81995f92aeb824d44b117d31d9623054761aa154 \
-    --hash=sha256:3c8ea9183c4a5e0ab6a85eef31197bbbc8cd20966e2249cf100cb7a604fc8a9c
+astropy-iers-data==0.2024.3.18.0.29.47 \
+    --hash=sha256:43527f8e52b0309360357d3aef6e888b9f2417fc8b4e66313709802a242e0f81 \
+    --hash=sha256:7ed8cbff91578a2c35eee787355fb24a3a2e891bc3af0551333727c0711cc0d5
     # via astropy
 certifi==2024.2.2 \
     --hash=sha256:0569859f95fc761b18b45ef421b1290a0f65f147e92a1e5eb3e635f9a5e4e66f \
@@ -621,9 +621,9 @@ requests==2.31.0 \
     --hash=sha256:58cd2187c01e70e6e26505bca751777aa9f2ee0b7f4300988b709f44e013003f \
     --hash=sha256:942c5a758f98d790eaed1a29cb6eefc7ffb0d1cf7af05c3d2791656dbd6ad1e1
     # via pyvo
-safir==5.2.1 \
-    --hash=sha256:1b61cc72881ddfb66e1f84b6c34ca7e062f27b5669b9d1d07377ebd117ce3ebf \
-    --hash=sha256:e39e2260e87303de9aaac157b45743ec9f82d2e84065d10b21008fceaa8aa407
+safir==5.2.2 \
+    --hash=sha256:13069fb1413443be3685e337ce54f25fc427a86ff718c1e3ca44daaaf5c03d34 \
+    --hash=sha256:e6ad2553e60d1b74bfdbb47bda83776843bb74c3599760b66391253bb0bd4ddb
     # via -r requirements/main.in
 shortuuid==1.0.13 \
     --hash=sha256:3bb9cf07f606260584b1df46399c0b87dd84773e7b25912b7e391e30797c5e72 \
@@ -663,9 +663,9 @@ urllib3==2.2.1 \
     --hash=sha256:450b20ec296a467077128bff42b73080516e71b56ff59a60a02bef2232c4fa9d \
     --hash=sha256:d0570876c61ab9e520d776c38acbbb5b05a776d3f9ff98a5c8fd5162a444cf19
     # via requests
-uvicorn[standard]==0.28.0 \
-    --hash=sha256:6623abbbe6176204a4226e67607b4d52cc60ff62cda0ff177613645cefa2ece1 \
-    --hash=sha256:cab4473b5d1eaeb5a0f6375ac4bc85007ffc75c3cc1768816d9e5d589857b067
+uvicorn[standard]==0.28.1 \
+    --hash=sha256:08103e79d546b6cf20f67c7e5e434d2cf500a6e29b28773e407250c54fc4fa3c \
+    --hash=sha256:5162f6d652f545be91b1feeaee8180774af143965ca9dc8a47ff1dc6bafa4ad5
     # via -r requirements/main.in
 uvloop==0.19.0 \
     --hash=sha256:0246f4fd1bf2bf702e06b0d45ee91677ee5c31242f39aab4ea6fe0c51aedd0fd \
