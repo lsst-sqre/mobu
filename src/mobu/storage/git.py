@@ -1,5 +1,9 @@
-"""A very simple async replacement for GitPython, which has been
-abandoned and is distinctly not thread- or async-safe.
+"""A very simple async replacement for GitPython, which warns on its
+GitHub page that it has been abandoned (although it's still being
+updated, so maybe it's the notice of abandomnent that's wrong), and is
+in any case not thread- or async-safe because of a git quirk: current
+working directory is a per-process global, and "git add" requires that
+the cwd be inside a worktree.
 """
 
 import asyncio
