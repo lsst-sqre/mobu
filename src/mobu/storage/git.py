@@ -1,7 +1,6 @@
-"""A very simple async replacement for GitPython, which warns on its
-GitHub page that it has been abandoned (although it's still being
-updated, so maybe it's the notice of abandomnent that's wrong), and is
-in any case not thread- or async-safe because of a git quirk: current
+"""A very simple async replacement for GitPython.
+
+GitPython is not thread- or async-safe because of a git quirk: current
 working directory is a per-process global, and "git add" requires that
 the cwd be inside a worktree.
 """
@@ -68,9 +67,6 @@ class Git:
         l_args = [cmd]
         l_args.extend(args)
         cmd_and_args = join(l_args)
-        sub_env = os.environ.copy()
-        if env is not None:
-            sub_env.update(env)
 
         proc = await asyncio.subprocess.create_subprocess_exec(
             cmd,
@@ -79,16 +75,12 @@ class Git:
             stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            env=sub_env,
+            env=env,
         )
         stdout, stderr = await proc.communicate()  # Waits for process exit
 
-        stdout_text = ""
-        stderr_text = ""
-        if proc.stdout is not None:
-            stdout_text = stdout.decode()
-        if proc.stderr is not None:
-            stderr_text = stderr.decode()
+        stdout_text = stdout.decode() if stdout else ""
+        stderr_text = stderr.decode() if stderr else ""
         if proc.returncode != 0:
             raise SubprocessError(
                 f"Subprocess '{cmd_and_args}' failed",
@@ -96,18 +88,23 @@ class Git:
                 stdout=stdout_text,
                 stderr=stderr_text,
                 cwd=cwd,
-                env=sub_env,
+                env=env,
             )
         if self._logger:
-            msg = (
-                f"'{cmd_and_args}' exited with rc={proc.returncode};"
-                f" stdout='{stdout_text}'; stderr='{stderr_text}'"
-                f" working_directory='{cwd!s}'; env='{sub_env}'"
+            self._logger.debug(
+                f"'{cmd_and_args}' exited",
+                returncode=proc.returncode,
+                stdout=stdout_text,
+                stderr=stderr_text,
+                cwd=str(cwd),
+                env=env,
             )
-            self._logger.debug(msg)
 
     async def git(self, *args: str) -> None:
         """Run an arbitrary git command with arbitrary string arguments.
+
+        Constrain the environment of the subprocess: only pass HOME, LANG,
+        PATH, and any GIT_ variables.
 
         If self.repo is set, use that as the working directory.  If
         self._config_location is set, use that as the value of
@@ -117,12 +114,18 @@ class Git:
         making it both function in mobu business and not break developers'
         git setups.
         """
-        env: dict[str, str] | None = None
-        if self._config_location is not None:
-            env = {
-                "GIT_CONFIG_GLOBAL": str(self._config_location),
-                "GIT_CONFIG_SYSTEM": "",
-            }
+        env = {
+            "PATH": os.environ.get("PATH", "/bin:/usr/bin"),
+            "HOME": os.environ.get("HOME", "/"),
+            "LANG": os.environ.get("LANG", "C.UTF-8"),
+        }
+        for var in os.environ:
+            if var.startswith("GIT_"):
+                env[var] = os.environ[var]
+        if self._config_location:
+            env["GIT_CONFIG_GLOBAL"] = str(self._config_location)
+            env["GIT_CONFIG_SYSTEM"] = ""
+
         await self._exec("git", *args, cwd=self.repo, env=env)
 
     async def init(self, *args: str) -> None:

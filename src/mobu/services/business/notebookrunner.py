@@ -89,11 +89,13 @@ class NotebookRunner(NubladoBusiness):
 
     def find_notebooks(self) -> list[Path]:
         with self.timings.start("find_notebooks"):
-            notebooks: list[Path] = []
-            if self._repo_dir is not None:
-                notebooks = [
-                    p for p in self._repo_dir.iterdir() if p.suffix == ".ipynb"
-                ]
+            if self._repo_dir is None:
+                raise NotebookRepositoryError(
+                    "Repository directory must be set", self.user.username
+                )
+            notebooks = [
+                p for p in self._repo_dir.iterdir() if p.suffix == ".ipynb"
+            ]
             if not notebooks:
                 msg = "No notebooks found in {self._repo_dir}"
                 raise NotebookRepositoryError(msg, self.user.username)

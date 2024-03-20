@@ -197,14 +197,15 @@ class GitLFSBusiness(Business):
 
     async def _add_credentials(self, git: Git) -> None:
         credfile = Path(self._working_dir / ".git_credentials")
-        credfile.touch()
-        credfile.chmod(0o700)
+        # Point config to credential file.
         w_url = urlparse(self._lfs_write_url)
         await git.config(
             "--local",
             f"credential.{w_url.scheme}://{w_url.netloc}.helper",
             f"store --file {credfile!s}",
         )
+        # Create credential file
+        credfile.touch(mode=0o700)
         creds = f"{w_url.scheme}://gituser:{self.user.token}@{w_url.netloc}\n"
         credfile.write_text(creds)
 
