@@ -43,6 +43,27 @@ class GitLFSBusiness(Business):
         self._uuid = "this is not a valid UUID"
 
     async def execute(self) -> None:
+        """Run a Git-LFS check.
+
+        This creates a new repository as the origin repo and populates
+        it.  Then it clones that into a second "checkout" repository,
+        adds Git LFS configuration and managed assets, and pushes
+        those changes back to the origin.
+
+        It checks that the origin has a Git LFS stub rather than the
+        managed asset itself.
+
+        Finally it clones all of that into a third "clone" repository,
+        verifies that both the managed asset and a plain old Git file
+        are correct, and starts over.
+
+        At this point, since the origin repository holds a stub and
+        the clone repository holds the Git LFS-managed content, we can
+        conclude that Git LFS is behaving correctly.
+
+        Each time through the loop, the entire set of repositories is
+        created anew.
+        """
         self.logger.info("Running Git-LFS check...")
         with self.timings.start("execute git-lfs check") as sw:
             await self._git_lfs_check()
