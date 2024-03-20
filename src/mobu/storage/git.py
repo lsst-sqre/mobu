@@ -63,6 +63,10 @@ class Git:
         optionally with the working directory set to an arbitrary
         path.  That way, mobu's working directory stays untouched, but
         the subprocess may execute somewhere else.
+
+        The environment will be sent to a Slack message on failure, and logged
+        if debugging is turned on, so it's important not to put any secrets
+        into it.
         """
         l_args = [cmd]
         l_args.extend(args)
