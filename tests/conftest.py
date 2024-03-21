@@ -17,9 +17,15 @@ from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 
 from mobu import main
 from mobu.config import config
+from mobu.services.business.gitlfs import GitLFSBusiness
 
 from .support.constants import TEST_BASE_URL
 from .support.gafaelfawr import make_gafaelfawr_token
+from .support.gitlfs import (
+    no_git_lfs_data,
+    uninstall_git_lfs,
+    verify_uuid_contents,
+)
 from .support.jupyter import (
     MockJupyter,
     MockJupyterWebSocket,
@@ -101,3 +107,26 @@ def slack(respx_mock: respx.Router) -> Iterator[MockSlackWebhook]:
     config.alert_hook = HttpUrl("https://slack.example.com/XXXX")
     yield mock_slack_webhook(str(config.alert_hook), respx_mock)
     config.alert_hook = None
+
+
+@pytest.fixture
+def gitlfs_mock() -> Iterator[None]:
+    with patch.object(
+        GitLFSBusiness,
+        "_install_git_lfs",
+        side_effect=uninstall_git_lfs,
+        autospec=True,
+    ):
+        with patch.object(
+            GitLFSBusiness,
+            "_check_uuid_pointer",
+            side_effect=verify_uuid_contents,
+            autospec=True,
+        ):
+            with patch.object(
+                GitLFSBusiness,
+                "_add_git_lfs_data",
+                side_effect=no_git_lfs_data,
+                autospec=True,
+            ):
+                yield None

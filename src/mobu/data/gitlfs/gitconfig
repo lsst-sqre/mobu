@@ -1,0 +1,10 @@
+[user]
+        email             = gituser@example.com
+        name              = Git User
+
+[receive]
+        denyCurrentBranch = ignore
+
+[lfs]
+        locksverify       = false
+

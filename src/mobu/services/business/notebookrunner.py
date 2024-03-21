@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import json
 import random
+import shutil
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
-from git.repo import Repo
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
@@ -24,6 +24,7 @@ from ...models.business.notebookrunner import (
     NotebookRunnerOptions,
 )
 from ...models.user import AuthenticatedUser
+from ...storage.git import Git
 from ...storage.nublado import JupyterLabSession
 from .nublado import NubladoBusiness
 
@@ -55,9 +56,9 @@ class NotebookRunner(NubladoBusiness):
         super().__init__(options, user, http_client, logger)
         self._notebook: Path | None = None
         self._notebook_paths: list[Path] | None = None
-        self._repo_dir = TemporaryDirectory()
-        self._repo: Repo | None = None
+        self._repo_dir: Path | None = None
         self._running_code: str | None = None
+        self._git = Git(logger=logger)
 
     def annotations(self, cell_id: str | None = None) -> dict[str, str]:
         result = super().annotations()
@@ -68,28 +69,35 @@ class NotebookRunner(NubladoBusiness):
         return result
 
     async def startup(self) -> None:
-        if not self._repo:
-            self.clone_repo()
+        if self._repo_dir is None:
+            self._repo_dir = Path(TemporaryDirectory().name)
+            await self.clone_repo()
         self._notebook_paths = self.find_notebooks()
         self.logger.info("Repository cloned and ready")
         await super().startup()
 
-    def clone_repo(self) -> None:
+    async def shutdown(self) -> None:
+        shutil.rmtree(str(self._repo_dir))
+        self._repo_dir = None
+        await super().shutdown()
+
+    async def clone_repo(self) -> None:
         url = self.options.repo_url
         branch = self.options.repo_branch
-        path = self._repo_dir.name
         with self.timings.start("clone_repo"):
-            self._repo = Repo.clone_from(url, path, branch=branch)
+            await self._git.clone("-b", branch, url, str(self._repo_dir))
 
     def find_notebooks(self) -> list[Path]:
         with self.timings.start("find_notebooks"):
+            if self._repo_dir is None:
+                raise NotebookRepositoryError(
+                    "Repository directory must be set", self.user.username
+                )
             notebooks = [
-                p
-                for p in Path(self._repo_dir.name).iterdir()
-                if p.suffix == ".ipynb"
+                p for p in self._repo_dir.iterdir() if p.suffix == ".ipynb"
             ]
             if not notebooks:
-                msg = "No notebooks found in {self._repo_dir.name}"
+                msg = "No notebooks found in {self._repo_dir}"
                 raise NotebookRepositoryError(msg, self.user.username)
             random.shuffle(notebooks)
         return notebooks
