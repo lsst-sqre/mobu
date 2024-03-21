@@ -8,18 +8,16 @@ from __future__ import annotations
 
 import asyncio
 import json
-import string
 from collections.abc import AsyncIterator, Callable, Coroutine
 from dataclasses import dataclass
 from datetime import timedelta
 from functools import wraps
-from random import SystemRandom
 from types import TracebackType
 from typing import Concatenate, Literal, ParamSpec, Self, TypeVar
 from urllib.parse import urlparse
 from uuid import uuid4
 
-from httpx import AsyncClient, HTTPError
+from httpx import AsyncClient, Cookies, HTTPError
 from httpx_sse import EventSource, aconnect_sse
 from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
@@ -30,6 +28,7 @@ from websockets.exceptions import WebSocketException
 from ..constants import WEBSOCKET_OPEN_TIMEOUT
 from ..exceptions import (
     CodeExecutionError,
+    JupyterProtocolError,
     JupyterTimeoutError,
     JupyterWebError,
     JupyterWebSocketError,
@@ -181,6 +180,7 @@ class JupyterLabSession:
         notebook_name: str | None = None,
         max_websocket_size: int | None,
         http_client: AsyncClient,
+        xsrf: str | None,
         logger: BoundLogger,
     ) -> None:
         self._username = username
@@ -189,6 +189,7 @@ class JupyterLabSession:
         self._notebook_name = notebook_name
         self._max_websocket_size = max_websocket_size
         self._client = http_client
+        self._xsrf = xsrf
         self._logger = logger
 
         self._session_id: str | None = None
@@ -229,8 +230,11 @@ class JupyterLabSession:
             "path": notebook if notebook else uuid4().hex,
             "type": "notebook" if notebook else "console",
         }
+        headers = {}
+        if self._xsrf:
+            headers["X-XSRFToken"] = self._xsrf
         try:
-            r = await self._client.post(url, json=body)
+            r = await self._client.post(url, json=body, headers=headers)
             r.raise_for_status()
         except HTTPError as e:
             raise JupyterWebError.from_exception(e, self._username) from e
@@ -243,10 +247,9 @@ class JupyterLabSession:
         # authentication into the WebSocket call.
         url = self._url_for(f"user/{username}/api/kernels/{kernel}/channels")
         request = self._client.build_request("GET", url)
-        headers = {
-            h: request.headers[h]
-            for h in ("x-xsrftoken", "authorization", "cookie")
-        }
+        headers = {h: request.headers[h] for h in ("authorization", "cookie")}
+        if self._xsrf:
+            headers["X-XSRFToken"] = self._xsrf
 
         # Open the WebSocket connection using those headers.
         self._logger.debug("Opening WebSocket connection")
@@ -287,8 +290,11 @@ class JupyterLabSession:
 
         # Delete the lab session.
         url = self._url_for(f"user/{username}/api/sessions/{session_id}")
+        headers = {}
+        if self._xsrf:
+            headers["X-XSRFToken"] = self._xsrf
         try:
-            r = await self._client.delete(url)
+            r = await self._client.delete(url, headers=headers)
             r.raise_for_status()
         except HTTPError as e:
             # Be careful to not raise an exception if we're already processing
@@ -555,23 +561,14 @@ class NubladoClient:
         # each will get user-specific cookies set by JupyterHub. If we shared
         # connection pools, monkeys would overwrite each other's cookies and
         # get authentication failures from labs.
-        #
-        # Add the XSRF token used by JupyterHub to the headers and cookie.
-        # Ideally we would use whatever path causes these to be set in a
-        # normal browser, but I haven't figured that out.
-        alphabet = string.ascii_uppercase + string.digits
-        xsrf_token = "".join(SystemRandom().choices(alphabet, k=16))
-        headers = {
-            "Authorization": f"Bearer {user.token}",
-            "X-XSRFToken": xsrf_token,
-        }
-        cookies = {"_xsrf": xsrf_token}
+        headers = {"Authorization": f"Bearer {user.token}"}
         self._client = AsyncClient(
             headers=headers,
-            cookies=cookies,
             follow_redirects=True,
             timeout=timeout.total_seconds(),
         )
+        self._hub_xsrf: str | None = None
+        self._lab_xsrf: str | None = None
 
     async def close(self) -> None:
         """Close the underlying HTTP connection pool."""
@@ -584,10 +581,26 @@ class NubladoClient:
         This forces a refresh of the authentication cookies set in the client
         session, which may be required to use API calls that return 401 errors
         instead of redirecting the user to log in.
+
+        The reply will set an ``_xsrf`` cookie that must be lifted into the
+        headers for subsequent requests.
+
+        Raises
+        ------
+        JupyterProtocolError
+            Raised if no ``_xsrf`` cookie was set in the reply from the lab.
         """
         url = self._url_for("hub/home")
         r = await self._client.get(url)
         r.raise_for_status()
+        cookies = Cookies()
+        cookies.extract_cookies(r)
+        xsrf = cookies.get("_xsrf")
+        if xsrf:
+            self._hub_xsrf = xsrf
+        elif not self._hub_xsrf:
+            msg = "No _xsrf cookie set in login reply from JupyterHub"
+            raise JupyterProtocolError(msg)
 
     @_convert_exception
     async def auth_to_lab(self) -> None:
@@ -596,10 +609,26 @@ class NubladoClient:
         Request the top-level lab page, which will force the OpenID Connect
         authentication with JupyterHub and set authentication cookies. This is
         required before making API calls to the lab, such as running code.
+
+        The reply will set an ``_xsrf`` cookie that must be lifted into the
+        headers for subsequent requests.
+
+        Raises
+        ------
+        JupyterProtocolError
+            Raised if no ``_xsrf`` cookie was set in the reply from the lab.
         """
         url = self._url_for(f"user/{self.user.username}/lab")
         r = await self._client.get(url)
         r.raise_for_status()
+        cookies = Cookies()
+        cookies.extract_cookies(r)
+        xsrf = cookies.get("_xsrf")
+        if xsrf:
+            self._lab_xsrf = xsrf
+        elif not self._lab_xsrf:
+            msg = "No _xsrf cookie set in login reply from lab"
+            raise JupyterProtocolError(msg)
 
     @_convert_exception
     async def is_lab_stopped(self, *, log_running: bool = False) -> bool:
@@ -613,6 +642,8 @@ class NubladoClient:
         """
         url = self._url_for(f"hub/api/users/{self.user.username}")
         headers = {"Referer": self._url_for("hub/home")}
+        if self._hub_xsrf:
+            headers["X-XSRFToken"] = self._hub_xsrf
         r = await self._client.get(url, headers=headers)
         r.raise_for_status()
 
@@ -662,6 +693,7 @@ class NubladoClient:
             notebook_name=notebook_name,
             max_websocket_size=max_websocket_size,
             http_client=self._client,
+            xsrf=self._lab_xsrf,
             logger=self._logger,
         )
 
@@ -685,13 +717,16 @@ class NubladoClient:
         # Retrieving the spawn page before POSTing to it appears to trigger
         # some necessary internal state construction (and also more accurately
         # simulates a user interaction). See DM-23864.
-        r = await self._client.get(url)
+        headers = {}
+        if self._hub_xsrf:
+            headers["X-XSRFToken"] = self._hub_xsrf
+        r = await self._client.get(url, headers=headers)
         r.raise_for_status()
 
         # POST the options form to the spawn page. This should redirect to
         # the spawn-pending page, which will return a 200.
         self._logger.info("Spawning lab image", user=self.user.username)
-        r = await self._client.post(url, data=data)
+        r = await self._client.post(url, headers=headers, data=data)
         r.raise_for_status()
 
     @_convert_exception
@@ -702,6 +737,8 @@ class NubladoClient:
             return
         url = self._url_for(f"hub/api/users/{self.user.username}/server")
         headers = {"Referer": self._url_for("hub/home")}
+        if self._hub_xsrf:
+            headers["X-XSRFToken"] = self._hub_xsrf
         r = await self._client.delete(url, headers=headers)
         r.raise_for_status()
 
@@ -723,6 +760,8 @@ class NubladoClient:
         username = self.user.username
         url = self._url_for(f"hub/api/users/{username}/server/progress")
         headers = {"Referer": self._url_for("hub/home")}
+        if self._hub_xsrf:
+            headers["X-XSRFToken"] = self._hub_xsrf
         while True:
             async with aconnect_sse(client, "GET", url, headers=headers) as s:
                 async for message in JupyterSpawnProgress(s, self._logger):

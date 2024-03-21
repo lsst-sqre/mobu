@@ -31,6 +31,7 @@ __all__ = [
     "FlockNotFoundError",
     "GafaelfawrParseError",
     "GafaelfawrWebError",
+    "JupyterProtocolError",
     "JupyterTimeoutError",
     "JupyterWebError",
     "MobuSlackException",
@@ -340,6 +341,10 @@ class CodeExecutionError(MobuSlackException):
             blocks=self.common_blocks(),
             attachments=attachments,
         )
+
+
+class JupyterProtocolError(MobuSlackException):
+    """Some error occurred when talking to JupyterHub or JupyterLab."""
 
 
 class JupyterSpawnError(MobuSlackException):
