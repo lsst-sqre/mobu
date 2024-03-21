@@ -6,6 +6,17 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-7.1.0'></a>
+## 7.1.0 (2024-03-21)
+
+### New features
+
+- Add `GitLFSBusiness` for testing Git LFS by storing and retrieving a Git LFS-managed artifact.
+
+### Bug fixes
+
+- Properly handle the XSRF tokens for JupyterHub and the Jupyter lab by storing separate tokens for the hub and lab after initial login and sending the appropriate XSRF token in the `X-XSRFToken` header to the relevant APIs. This fixes a redirect loop at the Jupyter lab when running 4.1.0 or later.
+
 <a id='changelog-7.0.0'></a>
 ## 7.0.0 (2023-12-15)
 
