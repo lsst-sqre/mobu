@@ -200,15 +200,6 @@ select = ["ALL"]
 known-first-party = ["monkeyflocker", "mobu", "tests"]
 split-on-trailing-comma = false
 
-[tool.ruff.lint.flake8-bugbear]
-extend-immutable-calls = [
-    "fastapi.Form",
-    "fastapi.Header",
-    "fastapi.Depends",
-    "fastapi.Path",
-    "fastapi.Query",
-]
-
 # These are too useful as attributes or functions to allow the conflict with
 # the built-in to rule out their use.
 [tool.ruff.lint.flake8-builtins]

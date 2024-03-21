@@ -7,6 +7,7 @@ including from dependencies.
 """
 
 from dataclasses import dataclass
+from typing import Annotated
 
 from fastapi import Depends, Request
 from safir.dependencies.gafaelfawr import auth_logger_dependency
@@ -55,7 +56,7 @@ class ContextDependency:
     async def __call__(
         self,
         request: Request,
-        logger: BoundLogger = Depends(auth_logger_dependency),
+        logger: Annotated[BoundLogger, Depends(auth_logger_dependency)],
     ) -> RequestContext:
         """Create a per-request context."""
         if not self._process_context:
