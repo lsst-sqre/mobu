@@ -17,6 +17,10 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 - Properly handle the XSRF tokens for JupyterHub and the Jupyter lab by storing separate tokens for the hub and lab after initial login and sending the appropriate XSRF token in the `X-XSRFToken` header to the relevant APIs. This fixes a redirect loop at the Jupyter lab when running 4.1.0 or later.
 
+### Other changes
+
+- mobu now uses [uv](https://github.com/astral-sh/uv) to maintain frozen dependencies and set up a development environment.
+
 <a id='changelog-7.0.0'></a>
 ## 7.0.0 (2023-12-15)
 
