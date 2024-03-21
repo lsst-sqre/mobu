@@ -30,6 +30,7 @@ _ANSI_REGEX = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
 
 __all__ = [
     "CodeExecutionError",
+    "ComparisonError",
     "FlockNotFoundError",
     "GafaelfawrParseError",
     "GafaelfawrWebError",
@@ -41,7 +42,6 @@ __all__ = [
     "MonkeyNotFoundError",
     "TAPClientError",
     "SubprocessError",
-    "ComparisonError",
 ]
 
 
