@@ -11,7 +11,7 @@ import pytest_asyncio
 import respx
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from pydantic import HttpUrl
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 
@@ -75,9 +75,11 @@ async def app(jupyter: MockJupyter) -> AsyncIterator[FastAPI]:
 @pytest_asyncio.fixture
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
-    url = TEST_BASE_URL
-    headers = {"X-Auth-Request-User": "someuser"}
-    async with AsyncClient(app=app, base_url=url, headers=headers) as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),  # type: ignore[arg-type]
+        base_url=TEST_BASE_URL,
+        headers={"X-Auth-Request-User": "someuser"},
+    ) as client:
         yield client
 
 
