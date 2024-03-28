@@ -6,6 +6,13 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-7.1.1'></a>
+## 7.1.1 (2024-03-28)
+
+### Bug fixes
+
+- Correctly extract cookies from the middle of the redirect chain caused by initial authentication to a Nublado lab. This fixes failures seen with labs containing jupyterhub 4.1.3.
+
 <a id='changelog-7.1.0'></a>
 ## 7.1.0 (2024-03-21)
 
