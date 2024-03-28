@@ -223,13 +223,34 @@ class MockJupyter:
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         if state == JupyterState.LAB_RUNNING:
             xsrf = f"_xsrf={self._lab_xsrf}"
-            return Response(200, request=request, headers={"Set-Cookie": xsrf})
+            return Response(
+                302,
+                request=request,
+                headers={
+                    "Location": _url(f"user/{user}/callback"),
+                    "Set-Cookie": xsrf,
+                },
+            )
         else:
             return Response(
                 302,
                 headers={"Location": _url(f"hub/user/{user}/lab")},
                 request=request,
             )
+
+    def lab_callback(self, request: Request) -> Response:
+        """Simulate not setting the ``_xsrf`` cookie on first request.
+
+        This implements a redirect from ``/user/username/lab`` to
+        ``/user/username/callback``, followed by a 200, which is not how
+        the lab does it (it has a much more complex redirect to the hub, back
+        to a callback, and then back to the lab), but it's hopefully good
+        enough to test handling of cookies during redirect chains for
+        capturing the ``_xsrf`` cookie.
+        """
+        user = self.get_user(request.headers["Authorization"])
+        assert str(request.url).endswith(f"/user/{user}/callback")
+        return Response(200, request=request)
 
     def delete_lab(self, request: Request) -> Response:
         user = self.get_user(request.headers["Authorization"])
@@ -416,6 +437,8 @@ def mock_jupyter(respx_mock: respx.Router) -> MockJupyter:
     respx_mock.delete(url__regex=regex).mock(side_effect=mock.delete_lab)
     regex = _url_regex(r"user/[^/]+/lab")
     respx_mock.get(url__regex=regex).mock(side_effect=mock.lab)
+    regex = _url_regex(r"user/[^/]+/callback")
+    respx_mock.get(url__regex=regex).mock(side_effect=mock.lab_callback)
     regex = _url_regex("user/[^/]+/api/sessions")
     respx_mock.post(url__regex=regex).mock(side_effect=mock.create_session)
     regex = _url_regex("user/[^/]+/api/sessions/[^/]+$")
