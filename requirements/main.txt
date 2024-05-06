@@ -3,6 +3,7 @@
 aiojobs==1.2.1 \
     --hash=sha256:59d6e7ad7829e9d0f73bfceeae28153b541be6b0959a08cc5ceb222717c888ff \
     --hash=sha256:88efd8e56295eff69efcc44488e41c38159bcbda2ac7c6884e4140674dace54f
+    # via -r main.in
 annotated-types==0.6.0 \
     --hash=sha256:0641064de18ba7a25dee8f96403ebc39113d0cb953a01429249d5c7564666a43 \
     --hash=sha256:563339e807e53ffd9c267e99fc6d9ea23eb8443c08f112651963e24e22f84a5d
@@ -206,6 +207,7 @@ click==8.1.7 \
     --hash=sha256:ae74fb96c20a0277a1d615f1e4d73c8414f5a98db8b799a7931d1582f3390c28 \
     --hash=sha256:ca9853ad459e787e2192211578cc907e7594e294c7ccc834310722b41b9ca6de
     # via
+    #   -r main.in
     #   safir
     #   uvicorn
 cryptography==42.0.5 \
@@ -247,7 +249,9 @@ cryptography==42.0.5 \
 fastapi==0.110.0 \
     --hash=sha256:266775f0dcc95af9d3ef39bad55cff525329a931d5fd51930aadd4f428bf7ff3 \
     --hash=sha256:87a1f6fb632a218222c5984be540055346a8f5d8a68e8f6fb647b1dc9934de4b
-    # via safir
+    # via
+    #   -r main.in
+    #   safir
 gidgethub==5.3.0 \
     --hash=sha256:4dd92f2252d12756b13f9dd15cde322bfb0d625b6fb5d680da1567ec74b462c0 \
     --hash=sha256:9ece7d37fbceb819b80560e7ed58f936e48a65d37ec5f56db79145156b426a25
@@ -303,10 +307,13 @@ httptools==0.6.1 \
 httpx==0.27.0 \
     --hash=sha256:71d5465162c13681bff01ad59b2cc68dd838ea1f10e51574bac27103f00c91a5 \
     --hash=sha256:a0cb88a46f32dc874e04ee956e4c2764aba2aa228f650b06788ba6bda2962ab5
-    # via safir
+    # via
+    #   -r main.in
+    #   safir
 httpx-sse==0.4.0 \
     --hash=sha256:1e81a3a3070ce322add1d3529ed42eb5f70817f45ed6ec915ab753f961139721 \
     --hash=sha256:f329af6eae57eaa2bdfd962b42524764af68075ea87370a2de920af5341e318f
+    # via -r main.in
 idna==3.6 \
     --hash=sha256:9ecdbbd083b06798ae1e86adcbfe8ab1479cf864e4ee30fe4e46a003d12491ca \
     --hash=sha256:c05567e9c24a6b9faaa835c4821bad0590fbb9d5779e7caa6e1cc4978e7eb24f
@@ -314,9 +321,10 @@ idna==3.6 \
     #   anyio
     #   httpx
     #   requests
-jinja2==3.1.3 \
-    --hash=sha256:7d6d50dd97d52cbc355597bd845fabfbac3f551e1f99619e39a35ce8c370b5fa \
-    --hash=sha256:ac8bd6544d4bb2c9792bf3a159e80bba8fda7f07e81bc3aed565432d5925ba90
+jinja2==3.1.4 \
+    --hash=sha256:4a3aee7acbbe7303aede8e9648d13b8bf88a429282aa6122a993f0ac800cb369 \
+    --hash=sha256:bc5dd2abb727a5319567b7a813e6a2e7318c39f4f487cfe6c89c6f9c7d25197d
+    # via -r main.in
 markupsafe==2.1.5 \
     --hash=sha256:00e046b6dd71aa03a41079792f8473dc494d564611a8f89bbbd7cb93295ebdcf \
     --hash=sha256:075202fa5b72c86ad32dc7d0b56024ebdbcf2048c0ba09f1cde31bfdd57bcfff \
@@ -431,6 +439,7 @@ pydantic==2.6.4 \
     --hash=sha256:b1704e0847db01817624a6b86766967f552dd9dbf3afba4004409f908dcc84e6 \
     --hash=sha256:cc46fce86607580867bdc3361ad462bab9c222ef042d3da86f2fb333e1d916c5
     # via
+    #   -r main.in
     #   fastapi
     #   pydantic-settings
     #   safir
@@ -518,6 +527,7 @@ pydantic-core==2.16.3 \
 pydantic-settings==2.2.1 \
     --hash=sha256:00b9f6a5e95553590434c0fa01ead0b216c3e10bc54ae02e37f359948643c5ed \
     --hash=sha256:0235391d26db4d2190cb9b31051c4b46882d28a51533f97440867f012d4da091
+    # via -r main.in
 pyerfa==2.0.1.1 \
     --hash=sha256:08b5abb90b34e819c1fca69047a76c0d344cb0c8fe4f7c8773f032d8afd623b4 \
     --hash=sha256:0e95cf3d11f76f473bf011980e9ea367ca7e68ca675d8b32499814fb6e387d4c \
@@ -531,10 +541,12 @@ pyerfa==2.0.1.1 \
     --hash=sha256:c50b7cdb005632931b7b56a679cf25361ed6b3aa7c21e491e65cc89cb337e66a \
     --hash=sha256:dbac74ef8d3d3b0f22ef0ad3bbbdb30b2a9e10570b1fa5a98be34c7be36c9a6b
     # via astropy
-pyjwt==2.8.0 \
+pyjwt[crypto]==2.8.0 \
     --hash=sha256:57e28d156e3d5c10088e0c68abb90bfac3df82b40a71bd0daa20c65ccd5c23de \
     --hash=sha256:59127c392cc44c2da5bb3192169a91f429924e17aff6534d70fdc02ab3e04320
-    # via gidgethub
+    # via
+    #   gidgethub
+    #   pyjwt
 python-dotenv==1.0.1 \
     --hash=sha256:e324ee90a023d808f1959c46bcbc04446a10ced277783dc6ee09987c37ec10ca \
     --hash=sha256:f7b63ef50f1b690dddf550d03497b66d609393b40b564ed0d674909a68ebf16a
@@ -544,6 +556,7 @@ python-dotenv==1.0.1 \
 pyvo==1.5.1 \
     --hash=sha256:0720810fe7b766ba53d10e9d9e4bb23bc967c151a6f392e22a6cbfe0d453a632 \
     --hash=sha256:53bdedd06bb37e7d9dca899fe1cc067dc423f3585c6e4799b371f04a5555720e
+    # via -r main.in
 pyyaml==6.0.1 \
     --hash=sha256:04ac92ad1925b2cff1db0cfebffb6ffc43457495c9b3c39d3fcae417d7125dc5 \
     --hash=sha256:062582fca9fabdd2c8b54a3ef1c978d786e0f6b3a1510e0ac93ef59e0ddae2bc \
@@ -597,6 +610,7 @@ pyyaml==6.0.1 \
     --hash=sha256:fd1592b3fdf65fff2ad0004b5e363300ef59ced41c2e6b3a99d4089fa8c5435d \
     --hash=sha256:fd66fc5d0da6d9815ba2cebeb4205f95818ff4b79c3ebe268e75d961704af52f
     # via
+    #   -r main.in
     #   astropy
     #   uvicorn
 requests==2.31.0 \
@@ -606,9 +620,11 @@ requests==2.31.0 \
 safir==5.2.2 \
     --hash=sha256:13069fb1413443be3685e337ce54f25fc427a86ff718c1e3ca44daaaf5c03d34 \
     --hash=sha256:e6ad2553e60d1b74bfdbb47bda83776843bb74c3599760b66391253bb0bd4ddb
+    # via -r main.in
 shortuuid==1.0.13 \
     --hash=sha256:3bb9cf07f606260584b1df46399c0b87dd84773e7b25912b7e391e30797c5e72 \
     --hash=sha256:a482a497300b49b4953e15108a7913244e1bb0d41f9d332f5e9925dba33a3c5a
+    # via -r main.in
 sniffio==1.3.1 \
     --hash=sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2 \
     --hash=sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc
@@ -619,12 +635,15 @@ starlette==0.36.3 \
     --hash=sha256:13d429aa93a61dc40bf503e8c801db1f1bca3dc706b10ef2434a36123568f044 \
     --hash=sha256:90a671733cfb35771d8cc605e0b679d23b992f8dcfad48cc60b38cb29aeb7080
     # via
+    #   -r main.in
     #   fastapi
     #   safir
 structlog==24.1.0 \
     --hash=sha256:3f6efe7d25fab6e86f277713c218044669906537bb717c1807a09d46bca0714d \
     --hash=sha256:41a09886e4d55df25bdcb9b5c9674bccfab723ff43e0a86a1b7b236be8e57b16
-    # via safir
+    # via
+    #   -r main.in
+    #   safir
 typing-extensions==4.10.0 \
     --hash=sha256:69b1a937c3a517342112fb4c6df7e72fc39a38e7891a5730ed4985b5214b5475 \
     --hash=sha256:b0abd7c89e8fb96f98db18d86106ff1d90ab692004eb746cf6eda2682f91b3cb
@@ -640,9 +659,10 @@ urllib3==2.2.1 \
     --hash=sha256:450b20ec296a467077128bff42b73080516e71b56ff59a60a02bef2232c4fa9d \
     --hash=sha256:d0570876c61ab9e520d776c38acbbb5b05a776d3f9ff98a5c8fd5162a444cf19
     # via requests
-uvicorn==0.29.0 \
+uvicorn[standard]==0.29.0 \
     --hash=sha256:2c2aac7ff4f4365c206fd773a39bf4ebd1047c238f8b8268ad996829323473de \
     --hash=sha256:6a69214c0b6a087462412670b3ef21224fa48cae0e452b5883e8e8bdfdd11dd0
+    # via -r main.in
 uvloop==0.19.0 \
     --hash=sha256:0246f4fd1bf2bf702e06b0d45ee91677ee5c31242f39aab4ea6fe0c51aedd0fd \
     --hash=sha256:02506dc23a5d90e04d4f65c7791e65cf44bd91b37f24cfc3ef6cf2aff05dc7ec \
@@ -826,4 +846,6 @@ websockets==12.0 \
     --hash=sha256:f764ba54e33daf20e167915edc443b6f88956f37fb606449b4a5b10ba42235a5 \
     --hash=sha256:fc4e7fa5414512b481a2483775a8e8be7803a35b30ca805afa4998a84f9fd9e8 \
     --hash=sha256:ffefa1374cd508d633646d51a8e9277763a9b78ae71324183693959cf94635a7
-    # via uvicorn
+    # via
+    #   -r main.in
+    #   uvicorn
