@@ -235,7 +235,6 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
                 "loc": ["body"],
                 "msg": "Value error, both users and user_spec provided",
                 "type": "value_error",
-                "url": ANY,
             }
         ]
     }
@@ -261,7 +260,6 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
                     "Value error, one of users or user_spec must be provided"
                 ),
                 "type": "value_error",
-                "url": ANY,
             }
         ]
     }
@@ -290,7 +288,6 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
                 "loc": ["body"],
                 "msg": "Value error, users list must contain 2 elements",
                 "type": "value_error",
-                "url": ANY,
             }
         ]
     }
@@ -315,7 +312,6 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
                 "loc": ["body"],
                 "msg": "Value error, users list must contain 2 elements",
                 "type": "value_error",
-                "url": ANY,
             },
         ]
     }
@@ -339,5 +335,4 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
         "loc": ["body", "business", "TAPQueryRunnerConfig", "type"],
         "msg": ANY,
         "type": "literal_error",
-        "url": ANY,
     }
