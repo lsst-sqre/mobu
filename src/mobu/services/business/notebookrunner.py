@@ -57,6 +57,7 @@ class NotebookRunner(NubladoBusiness):
         self._notebook: Path | None = None
         self._notebook_paths: list[Path] | None = None
         self._repo_dir: Path | None = None
+        self._exclude_paths: set[Path] = set()
         self._running_code: str | None = None
         self._git = Git(logger=logger)
 
@@ -72,6 +73,9 @@ class NotebookRunner(NubladoBusiness):
         if self._repo_dir is None:
             self._repo_dir = Path(TemporaryDirectory().name)
             await self.clone_repo()
+        self._exclude_paths = {
+            (self._repo_dir / path) for path in self.options.exclude_dirs
+        }
         self._notebook_paths = self.find_notebooks()
         self.logger.info("Repository cloned and ready")
         await super().startup()
@@ -87,6 +91,10 @@ class NotebookRunner(NubladoBusiness):
         with self.timings.start("clone_repo"):
             await self._git.clone("-b", branch, url, str(self._repo_dir))
 
+    def is_excluded(self, notebook: Path) -> bool:
+        # A notebook is excluded if any of its parent directories are excluded
+        return bool(set(notebook.parents) & self._exclude_paths)
+
     def find_notebooks(self) -> list[Path]:
         with self.timings.start("find_notebooks"):
             if self._repo_dir is None:
@@ -94,7 +102,9 @@ class NotebookRunner(NubladoBusiness):
                     "Repository directory must be set", self.user.username
                 )
             notebooks = [
-                p for p in self._repo_dir.iterdir() if p.suffix == ".ipynb"
+                n
+                for n in self._repo_dir.glob("**/*.ipynb")
+                if not self.is_excluded(n)
             ]
             if not notebooks:
                 msg = "No notebooks found in {self._repo_dir}"

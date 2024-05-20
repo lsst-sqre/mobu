@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field
@@ -46,6 +47,17 @@ class NotebookRunnerOptions(NubladoBusinessOptions):
         NOTEBOOK_REPO_URL,
         title="Git URL of notebook repository to execute",
         description="Only used by the NotebookRunner",
+    )
+
+    exclude_dirs: set[Path] = Field(
+        set(),
+        title="Any notebooks in these directories will not be run",
+        description=(
+            " These directories are relative to the repo root. Any notebooks"
+            " in child directories of these directories will also be excluded."
+            " Only used by the NotebookRunner."
+        ),
+        examples=["some-dir", "some-dir/some-other-dir"],
     )
 
 
