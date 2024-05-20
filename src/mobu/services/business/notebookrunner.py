@@ -104,7 +104,6 @@ class NotebookRunner(NubladoBusiness):
 
     def next_notebook(self) -> Path:
         if not self._notebook_paths:
-            self.logger.info("Done with this cycle of notebooks")
             self._notebook_paths = self.find_notebooks()
         return self._notebook_paths.pop()
 
@@ -159,6 +158,8 @@ class NotebookRunner(NubladoBusiness):
                     break
 
             self.logger.info(f"Success running notebook {self._notebook.name}")
+            if not self._notebook_paths:
+                self.logger.info("Done with this cycle of notebooks")
             if self.stopping:
                 break
 
