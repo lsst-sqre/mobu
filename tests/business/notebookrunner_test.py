@@ -18,6 +18,18 @@ from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
 
 
+async def setup_git_repo(repo_path: Path) -> None:
+    """Initialize and populate a git repo at `repo_path`."""
+    git = Git(repo=repo_path)
+    await git.init("--initial-branch=main")
+    await git.config("user.email", "gituser@example.com")
+    await git.config("user.name", "Git User")
+    for path in repo_path.iterdir():
+        if not path.name.startswith("."):
+            await git.add(str(path))
+    await git.commit("-m", "Initial commit")
+
+
 @pytest.mark.asyncio
 async def test_run(
     client: AsyncClient, respx_mock: respx.Router, tmp_path: Path
@@ -30,18 +42,9 @@ async def test_run(
     repo_path = tmp_path / "notebooks"
 
     shutil.copytree(str(source_path), str(repo_path))
-    # Remove exception notebook
-    (repo_path / "exception.ipynb").unlink()
 
-    # Set up git client
-    git = Git(repo=repo_path)
-    await git.init("--initial-branch=main")
-    await git.config("user.email", "gituser@example.com")
-    await git.config("user.name", "Git User")
-    for path in repo_path.iterdir():
-        if not path.name.startswith("."):
-            await git.add(str(path))
-    await git.commit("-m", "Initial commit")
+    # Set up git repo
+    await setup_git_repo(repo_path)
 
     # Start a monkey. We have to do this in a try/finally block since the
     # runner will change working directories, which because working
@@ -93,10 +96,209 @@ async def test_run(
     # Get the log and check the cell output.
     r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
     assert r.status_code == 200
+
+    # Root notebook
     assert "This is a test" in r.text
     assert "This is another test" in r.text
     assert "Final test" in r.text
+
+    # Exceptions
     assert "Exception thrown" not in r.text
+
+    # Make sure mobu ran all of the notebooks it thinks it should have
+    assert "Done with this cycle of notebooks" in r.text
+
+
+@pytest.mark.asyncio
+async def test_run_recursive(
+    client: AsyncClient, respx_mock: respx.Router, tmp_path: Path
+) -> None:
+    mock_gafaelfawr(respx_mock)
+    cwd = Path.cwd()
+
+    # Set up a notebook repository.
+    source_path = Path(__file__).parent.parent / "notebooks_recursive"
+    repo_path = tmp_path / "notebooks"
+
+    shutil.copytree(str(source_path), str(repo_path))
+    # Remove exception notebook
+    (repo_path / "exception.ipynb").unlink()
+
+    # Set up git repo
+    await setup_git_repo(repo_path)
+
+    # Start a monkey. We have to do this in a try/finally block since the
+    # runner will change working directories, which because working
+    # directories are process-global may mess up future tests.
+    try:
+        r = await client.put(
+            "/mobu/flocks",
+            json={
+                "name": "test",
+                "count": 1,
+                "user_spec": {"username_prefix": "testuser"},
+                "scopes": ["exec:notebook"],
+                "business": {
+                    "type": "NotebookRunner",
+                    "options": {
+                        "spawn_settle_time": 0,
+                        "execution_idle_time": 0,
+                        "max_executions": 4,
+                        "repo_url": str(repo_path),
+                        "repo_branch": "main",
+                        "working_directory": str(repo_path),
+                    },
+                },
+            },
+        )
+        assert r.status_code == 201
+
+        # Wait until we've finished one loop and check the results.
+        data = await wait_for_business(client, "testuser1")
+        assert data == {
+            "name": "testuser1",
+            "business": {
+                "failure_count": 0,
+                "name": "NotebookRunner",
+                "notebook": ANY,
+                "success_count": 1,
+                "timings": ANY,
+            },
+            "state": "RUNNING",
+            "user": {
+                "scopes": ["exec:notebook"],
+                "token": ANY,
+                "username": "testuser1",
+            },
+        }
+    finally:
+        os.chdir(cwd)
+
+    # Get the log and check the cell output.
+    r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
+    assert r.status_code == 200
+
+    # Root notebook
+    assert "This is a test" in r.text
+    assert "This is another test" in r.text
+    assert "Final test" in r.text
+
+    # some-dir notebook
+    assert "Test some-dir" in r.text
+    assert "Another test some-dir" in r.text
+    assert "Final test some-dir" in r.text
+
+    # some-other-dir notebook
+    assert "Test some-other-dir" in r.text
+    assert "Another test some-other-dir" in r.text
+    assert "Final test some-other-dir" in r.text
+
+    # double-nested-dir notebook
+    assert "Test double-nested-dir" in r.text
+    assert "Another test double-nested-dir" in r.text
+    assert "Final test double-nested-dir" in r.text
+
+    # Exceptions
+    assert "Exception thrown" not in r.text
+
+    # Make sure mobu ran all of the notebooks it thinks it should have
+    assert "Done with this cycle of notebooks" in r.text
+
+
+@pytest.mark.asyncio
+async def test_exclude_dirs(
+    client: AsyncClient, respx_mock: respx.Router, tmp_path: Path
+) -> None:
+    mock_gafaelfawr(respx_mock)
+    cwd = Path.cwd()
+
+    # Set up a notebook repository.
+    source_path = Path(__file__).parent.parent / "notebooks_recursive"
+    repo_path = tmp_path / "notebooks"
+
+    shutil.copytree(str(source_path), str(repo_path))
+    # Remove exception notebook
+    (repo_path / "exception.ipynb").unlink()
+
+    # Set up git repo
+    await setup_git_repo(repo_path)
+
+    # Start a monkey. We have to do this in a try/finally block since the
+    # runner will change working directories, which because working
+    # directories are process-global may mess up future tests.
+    try:
+        r = await client.put(
+            "/mobu/flocks",
+            json={
+                "name": "test",
+                "count": 1,
+                "user_spec": {"username_prefix": "testuser"},
+                "scopes": ["exec:notebook"],
+                "business": {
+                    "type": "NotebookRunner",
+                    "options": {
+                        "spawn_settle_time": 0,
+                        "execution_idle_time": 0,
+                        "max_executions": 2,
+                        "repo_url": str(repo_path),
+                        "repo_branch": "main",
+                        "working_directory": str(repo_path),
+                        "exclude_dirs": [
+                            "some-other-dir/nested-dir",
+                            "some-dir",
+                        ],
+                    },
+                },
+            },
+        )
+        assert r.status_code == 201
+
+        # Wait until we've finished one loop and check the results.
+        data = await wait_for_business(client, "testuser1")
+        assert data == {
+            "name": "testuser1",
+            "business": {
+                "failure_count": 0,
+                "name": "NotebookRunner",
+                "notebook": ANY,
+                "success_count": 1,
+                "timings": ANY,
+            },
+            "state": "RUNNING",
+            "user": {
+                "scopes": ["exec:notebook"],
+                "token": ANY,
+                "username": "testuser1",
+            },
+        }
+    finally:
+        os.chdir(cwd)
+
+    # Get the log and check the cell output.
+    r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
+    assert r.status_code == 200
+
+    # Root notebook
+    assert "This is a test" in r.text
+    assert "This is another test" in r.text
+    assert "Final test" in r.text
+
+    # some-other-dir notebook
+    assert "Test some-other-dir" in r.text
+    assert "Another test some-other-dir" in r.text
+    assert "Final test some-other-dir" in r.text
+
+    # some-dir notebook
+    assert "Test some-dir" not in r.text
+
+    # nested-dir notebook
+    assert "Test double-nested-dir" not in r.text
+
+    # Exceptions
+    assert "Exception thrown" not in r.text
+
+    # Make sure mobu ran all of the notebooks it thinks it should have
+    assert "Done with this cycle of notebooks" in r.text
 
 
 @pytest.mark.asyncio
@@ -109,21 +311,13 @@ async def test_alert(
     mock_gafaelfawr(respx_mock)
 
     # Set up a notebook repository with the exception notebook.
-    source_path = Path(__file__).parent.parent / "notebooks"
+    source_path = Path(__file__).parent.parent / "notebooks_recursive"
     repo_path = tmp_path / "notebooks"
     repo_path.mkdir()
     shutil.copy(str(source_path / "exception.ipynb"), str(repo_path))
 
-    # Set up git client
-    git = Git(repo=repo_path)
-    await git.init("--initial-branch=main")
-    await git.config("--local", "user.email", "gituser@example.com")
-    await git.config("--local", "user.name", "Git User")
-
-    for path in repo_path.iterdir():
-        if not path.name.startswith("."):
-            await git.add(str(path))
-    await git.commit("-m", "Initial commit")
+    # Set up git repo
+    await setup_git_repo(repo_path)
 
     # The bad code run by the exception test.
     bad_code = 'foo = {"bar": "baz"}\nfoo["nothing"]'
