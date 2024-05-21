@@ -6,6 +6,14 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-8.0.0'></a>
+## 8.0.0 (2024-05-21)
+
+### Backwards-incompatible changes
+
+- NotebookRunner business now runs all notebooks in a repo, at tht root and in all subdirs recursively, by default.
+- Add `exclude_dirs` option to NotebookRunner business to list directories in which notebooks will not be run.
+
 <a id='changelog-7.1.1'></a>
 ## 7.1.1 (2024-03-28)
 
