@@ -25,6 +25,7 @@ from .asyncio import schedule_periodic
 from .config import config
 from .dependencies.context import context_dependency
 from .handlers.external import external_router
+from .handlers.github import github_router
 from .handlers.internal import internal_router
 from .status import post_status
 
@@ -69,6 +70,7 @@ app = FastAPI(
 # Attach the routers.
 app.include_router(internal_router)
 app.include_router(external_router, prefix=config.path_prefix)
+app.include_router(github_router, prefix=f"{config.path_prefix}/github")
 
 # Add middleware.
 app.add_middleware(XForwardedMiddleware)

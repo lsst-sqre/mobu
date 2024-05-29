@@ -12,6 +12,7 @@ from typing import Annotated, Any
 from fastapi import Depends, Request
 from safir.dependencies.gafaelfawr import auth_logger_dependency
 from safir.dependencies.http_client import http_client_dependency
+from safir.dependencies.logger import logger_dependency
 from structlog.stdlib import BoundLogger
 
 from ..factory import Factory, ProcessContext
@@ -21,6 +22,7 @@ __all__ = [
     "ContextDependency",
     "RequestContext",
     "context_dependency",
+    "anonymous_context_dependency",
 ]
 
 
@@ -101,3 +103,11 @@ class ContextDependency:
 
 context_dependency = ContextDependency()
 """The dependency that will return the per-request context."""
+
+
+async def anonymous_context_dependency(
+    request: Request,
+    logger: Annotated[BoundLogger, Depends(logger_dependency)],
+) -> RequestContext:
+    """Per-request context for non-gafaelfawr-auth'd requests."""
+    return await context_dependency(request=request, logger=logger)
