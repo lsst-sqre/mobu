@@ -130,6 +130,12 @@ class Flock:
         awaits = [m.stop() for m in self._monkeys.values()]
         await asyncio.gather(*awaits)
 
+    def signal_refresh(self) -> None:
+        """Signal all the monkeys to refresh their busniess."""
+        self._logger.info("Signaling monkeys to refresh")
+        for monkey in self._monkeys.values():
+            monkey.signal_refresh()
+
     def _create_monkey(self, user: AuthenticatedUser) -> Monkey:
         """Create a monkey that will run as a given user."""
         return Monkey(

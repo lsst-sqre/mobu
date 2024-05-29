@@ -79,6 +79,10 @@ class BusinessData(BaseModel):
 
     success_count: int = Field(..., title="Number of successes", examples=[25])
 
+    refreshing: bool = Field(
+        ..., title="If the business is currently in the process of refreshing"
+    )
+
     timings: list[StopwatchData] = Field(..., title="Timings of events")
 
     model_config = ConfigDict(extra="forbid")

@@ -104,6 +104,20 @@ async def get_flock(
     return context.manager.get_flock(flock).dump()
 
 
+@external_router.put(
+    "/flocks/{flock}",
+    responses={404: {"description": "Flock not found", "model": ErrorModel}},
+    status_code=202,
+    summary="Signal a flock to refresh",
+)
+async def refresh_flock(
+    flock: str,
+    context: Annotated[RequestContext, Depends(context_dependency)],
+) -> None:
+    context.logger.info("Signaling flock to refresh", flock=flock)
+    context.manager.refresh_flock(flock)
+
+
 @external_router.delete(
     "/flocks/{flock}",
     responses={404: {"description": "Flock not found", "model": ErrorModel}},

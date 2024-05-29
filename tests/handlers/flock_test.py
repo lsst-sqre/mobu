@@ -22,7 +22,7 @@ async def test_empty(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_start_stop(
+async def test_start_stop_refresh(
     client: AsyncClient, respx_mock: respx.Router
 ) -> None:
     mock_gafaelfawr(respx_mock)
@@ -51,6 +51,7 @@ async def test_start_stop(
                 "business": {
                     "failure_count": 0,
                     "name": "EmptyLoop",
+                    "refreshing": False,
                     "success_count": ANY,
                     "timings": ANY,
                 },
@@ -74,6 +75,11 @@ async def test_start_stop(
     r = await client.get("/mobu/flocks/test")
     assert r.status_code == 200
     assert r.json() == expected
+
+    r = await client.put("/mobu/flocks/test")
+    assert r.status_code == 202
+    # That should've updated the refreshing status
+    expected["monkeys"][0]["business"]["refreshing"] = True
 
     r = await client.get("/mobu/flocks/test/monkeys")
     assert r.status_code == 200
@@ -107,6 +113,8 @@ async def test_start_stop(
     assert r.json() == [summary]
 
     r = await client.get("/mobu/flocks/other")
+    assert r.status_code == 404
+    r = await client.put("/mobu/flocks/other")
     assert r.status_code == 404
     r = await client.delete("/mobu/flocks/other")
     assert r.status_code == 404
@@ -161,6 +169,7 @@ async def test_user_list(
                 "business": {
                     "failure_count": 0,
                     "name": "EmptyLoop",
+                    "refreshing": False,
                     "success_count": ANY,
                     "timings": ANY,
                 },
@@ -178,6 +187,7 @@ async def test_user_list(
                 "business": {
                     "failure_count": 0,
                     "name": "EmptyLoop",
+                    "refreshing": False,
                     "success_count": ANY,
                     "timings": ANY,
                 },

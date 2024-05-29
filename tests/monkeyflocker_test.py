@@ -48,7 +48,7 @@ def monkeyflocker_app(tmp_path: Path) -> Iterator[UvicornProcess]:
     uvicorn.process.terminate()
 
 
-def test_start_report_stop(
+def test_start_report_refresh_stop(
     tmp_path: Path, monkeyflocker_app: UvicornProcess
 ) -> None:
     runner = CliRunner()
@@ -87,6 +87,7 @@ def test_start_report_stop(
                 "business": {
                     "failure_count": 0,
                     "name": "EmptyLoop",
+                    "refreshing": ANY,
                     "success_count": ANY,
                     "timings": ANY,
                 },
@@ -125,6 +126,23 @@ def test_start_report_stop(
     assert "Idling..." in log
 
     shutil.rmtree(str(output_path))
+
+    result = runner.invoke(
+        main,
+        [
+            "refresh",
+            "-e",
+            monkeyflocker_app.url,
+            "-o",
+            str(output_path),
+            "-k",
+            config.gafaelfawr_token,
+            "basic",
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
     result = runner.invoke(
         main,
         [

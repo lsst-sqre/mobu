@@ -31,6 +31,7 @@ async def test_run(
         "business": {
             "failure_count": 0,
             "name": "GitLFSBusiness",
+            "refreshing": False,
             "success_count": 1,
             "timings": ANY,
         },
@@ -70,6 +71,7 @@ async def test_fail(client: AsyncClient, respx_mock: respx.Router) -> None:
         "business": {
             "failure_count": 1,
             "name": "GitLFSBusiness",
+            "refreshing": False,
             "success_count": 0,
             "timings": ANY,
         },

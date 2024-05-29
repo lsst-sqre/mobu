@@ -96,6 +96,14 @@ class MonkeyflockerClient:
         r = await self._client.delete(url)
         r.raise_for_status()
 
+    async def refresh(self, name: str) -> None:
+        """Restart a flock of monkeys."""
+        if not self._client:
+            raise RuntimeError("Must be used as a context manager")
+        url = urljoin(self._base_url, f"/mobu/flocks/{name}")
+        r = await self._client.put(url)
+        r.raise_for_status()
+
     def _initialize_logging(self) -> BoundLogger:
         """Set up the monkeyflocker logger."""
         formatter = logging.Formatter(
