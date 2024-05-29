@@ -15,7 +15,8 @@ from safir.testing.slack import MockSlackWebhook
 from mobu.storage.git import Git
 
 from ..support.gafaelfawr import mock_gafaelfawr
-from ..support.util import wait_for_business
+from ..support.jupyter import MockJupyter
+from ..support.util import wait_for_business, wait_for_log_message
 
 
 async def setup_git_repo(repo_path: Path) -> None:
@@ -205,6 +206,87 @@ async def test_run_recursive(
 
     # Make sure mobu ran all of the notebooks it thinks it should have
     assert "Done with this cycle of notebooks" in r.text
+
+
+@pytest.mark.asyncio
+async def test_refresh(
+    client: AsyncClient,
+    jupyter: MockJupyter,
+    respx_mock: respx.Router,
+    tmp_path: Path,
+) -> None:
+    mock_gafaelfawr(respx_mock)
+    cwd = Path.cwd()
+
+    # Set up a notebook repository.
+    source_path = Path(__file__).parent.parent / "notebooks"
+    repo_path = tmp_path / "notebooks"
+
+    shutil.copytree(str(source_path), str(repo_path))
+
+    # Set up git repo
+    await setup_git_repo(repo_path)
+
+    # Start a monkey. We have to do this in a try/finally block since the
+    # runner will change working directories, which because working
+    # directories are process-global may mess up future tests.
+    try:
+        r = await client.put(
+            "/mobu/flocks",
+            json={
+                "name": "test",
+                "count": 1,
+                "user_spec": {"username_prefix": "testuser"},
+                "scopes": ["exec:notebook"],
+                "business": {
+                    "type": "NotebookRunner",
+                    "options": {
+                        "spawn_settle_time": 0,
+                        "execution_idle_time": 1,
+                        "idle_time": 1,
+                        "max_executions": 1000,
+                        "repo_url": str(repo_path),
+                        "repo_branch": "main",
+                        "working_directory": str(repo_path),
+                    },
+                },
+            },
+        )
+        assert r.status_code == 201
+
+        # We should see a message from the notebook execution in the logs.
+        assert await wait_for_log_message(
+            client, "testuser1", msg="This is a test"
+        )
+
+        # Change the notebook and git commit it
+        notebook = repo_path / "test-notebook.ipynb"
+        contents = notebook.read_text()
+        new_contents = contents.replace("This is a test", "This is a NEW test")
+        notebook.write_text(new_contents)
+
+        git = Git(repo=repo_path)
+        await git.add(str(notebook))
+        await git.commit("-m", "Updating notebook")
+
+        jupyter.expected_session_name = "test-notebook.ipynb"
+        jupyter.expected_session_type = "notebook"
+
+        # Refresh the notebook
+        r = await client.post("/mobu/flocks/test/refresh")
+        assert r.status_code == 202
+
+        # The refresh should have forced a new execution
+        assert await wait_for_log_message(
+            client, "testuser1", msg="Deleting lab"
+        )
+
+        # We should see a message from the updated notebook.
+        assert await wait_for_log_message(
+            client, "testuser1", msg="This is a NEW test"
+        )
+    finally:
+        os.chdir(cwd)
 
 
 @pytest.mark.asyncio

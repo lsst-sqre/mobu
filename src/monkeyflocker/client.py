@@ -100,8 +100,8 @@ class MonkeyflockerClient:
         """Restart a flock of monkeys."""
         if not self._client:
             raise RuntimeError("Must be used as a context manager")
-        url = urljoin(self._base_url, f"/mobu/flocks/{name}")
-        r = await self._client.put(url)
+        url = urljoin(self._base_url, f"/mobu/flocks/{name}/refresh")
+        r = await self._client.post(url)
         r.raise_for_status()
 
     def _initialize_logging(self) -> BoundLogger:

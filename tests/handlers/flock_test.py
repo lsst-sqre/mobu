@@ -76,7 +76,7 @@ async def test_start_stop_refresh(
     assert r.status_code == 200
     assert r.json() == expected
 
-    r = await client.put("/mobu/flocks/test")
+    r = await client.post("/mobu/flocks/test/refresh")
     assert r.status_code == 202
     # That should've updated the refreshing status
     expected["monkeys"][0]["business"]["refreshing"] = True
@@ -114,7 +114,7 @@ async def test_start_stop_refresh(
 
     r = await client.get("/mobu/flocks/other")
     assert r.status_code == 404
-    r = await client.put("/mobu/flocks/other")
+    r = await client.post("/mobu/flocks/other/refresh")
     assert r.status_code == 404
     r = await client.delete("/mobu/flocks/other")
     assert r.status_code == 404
