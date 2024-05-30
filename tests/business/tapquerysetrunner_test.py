@@ -48,6 +48,7 @@ async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
             "business": {
                 "failure_count": 0,
                 "name": "TAPQuerySetRunner",
+                "refreshing": False,
                 "success_count": 1,
                 "timings": ANY,
             },

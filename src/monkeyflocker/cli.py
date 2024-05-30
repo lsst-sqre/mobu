@@ -127,3 +127,37 @@ async def stop(
         if output:
             await client.report(name, output)
         await client.stop(name)
+
+
+@main.command()
+@click.option(
+    "-e",
+    "--base-url",
+    envvar="MONKEYFLOCKER_BASE_URL",
+    default="http://localhost:8000",
+    help="URL of RSP instance to dispatch mobu workers on",
+)
+@click.option(
+    "-k",
+    "--token",
+    required=True,
+    envvar="MONKEYFLOCKER_TOKEN",
+    help="Token to use to drive mobu",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(path_type=Path),
+    envvar="MONKEYFLOCKER_OUTPUT",
+    help="Directory in which to store output",
+)
+@click.argument("name")
+@run_with_asyncio
+async def refresh(
+    base_url: str, token: str, output: Path | None, name: str
+) -> None:
+    """Signal a flock to refresh."""
+    async with MonkeyflockerClient(base_url, token) as client:
+        if output:
+            await client.report(name, output)
+        await client.refresh(name)

@@ -70,20 +70,33 @@ class NotebookRunner(NubladoBusiness):
         return result
 
     async def startup(self) -> None:
+        await self.initialize()
+        await super().startup()
+
+    async def cleanup(self) -> None:
+        shutil.rmtree(str(self._repo_dir))
+        self._repo_dir = None
+
+    async def initialize(self) -> None:
         if self._repo_dir is None:
             self._repo_dir = Path(TemporaryDirectory().name)
             await self.clone_repo()
+
         self._exclude_paths = {
             (self._repo_dir / path) for path in self.options.exclude_dirs
         }
         self._notebook_paths = self.find_notebooks()
         self.logger.info("Repository cloned and ready")
-        await super().startup()
 
     async def shutdown(self) -> None:
-        shutil.rmtree(str(self._repo_dir))
-        self._repo_dir = None
+        await self.cleanup()
         await super().shutdown()
+
+    async def refresh(self) -> None:
+        self.logger.info("Recloning notebooks and forcing new execution")
+        await self.cleanup()
+        await self.initialize()
+        self.refreshing = False
 
     async def clone_repo(self) -> None:
         url = self.options.repo_url
@@ -151,6 +164,10 @@ class NotebookRunner(NubladoBusiness):
 
     async def execute_code(self, session: JupyterLabSession) -> None:
         for count in range(self.options.max_executions):
+            if self.refreshing:
+                await self.refresh()
+                return
+
             self._notebook = self.next_notebook()
 
             iteration = f"{count + 1}/{self.options.max_executions}"

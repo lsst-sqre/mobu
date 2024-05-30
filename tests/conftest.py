@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
-from unittest.mock import patch
+from unittest.mock import DEFAULT, patch
 
 import pytest
 import pytest_asyncio
@@ -19,7 +19,7 @@ from mobu import main
 from mobu.config import config
 from mobu.services.business.gitlfs import GitLFSBusiness
 
-from .support.constants import TEST_BASE_URL
+from .support.constants import TEST_BASE_URL, TEST_GITHUB_WEBHOOK_SECRET
 from .support.gafaelfawr import make_gafaelfawr_token
 from .support.gitlfs import (
     no_git_lfs_data,
@@ -47,6 +47,7 @@ def _configure() -> Iterator[None]:
     """
     config.environment_url = HttpUrl("https://test.example.com")
     config.gafaelfawr_token = make_gafaelfawr_token()
+    config.github_webhook_secret = TEST_GITHUB_WEBHOOK_SECRET
     yield
     config.environment_url = None
     config.gafaelfawr_token = None
@@ -79,6 +80,18 @@ async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
         transport=ASGITransport(app=app),  # type: ignore[arg-type]
         base_url=TEST_BASE_URL,
         headers={"X-Auth-Request-User": "someuser"},
+    ) as client:
+        yield client
+
+
+@pytest_asyncio.fixture
+async def anon_client(app: FastAPI) -> AsyncIterator[AsyncClient]:
+    """Return an anonymous ``httpx.AsyncClient`` configured to talk to the test
+    app.
+    """
+    async with AsyncClient(
+        transport=ASGITransport(app=app),  # type: ignore[arg-type]
+        base_url=TEST_BASE_URL,
     ) as client:
         yield client
 
@@ -132,3 +145,12 @@ def gitlfs_mock() -> Iterator[None]:
                 autospec=True,
             ):
                 yield None
+
+
+@pytest.fixture
+def no_monkey_business() -> Iterator[None]:
+    """Prevent any monkeys from actually doing any business."""
+    with patch.multiple(
+        "mobu.services.flock.Monkey", start=DEFAULT, stop=DEFAULT
+    ):
+        yield None

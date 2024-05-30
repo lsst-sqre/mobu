@@ -7,7 +7,10 @@ from typing import Any
 
 from httpx import AsyncClient
 
-__all__ = ["wait_for_business"]
+__all__ = [
+    "wait_for_business",
+    "wait_for_log_message",
+]
 
 
 async def wait_for_business(
@@ -24,6 +27,19 @@ async def wait_for_business(
         if data["business"]["failure_count"] > 0:
             break
     return data
+
+
+async def wait_for_log_message(
+    client: AsyncClient, username: str, *, flock: str = "test", msg: str
+) -> bool:
+    """Wait until some text appears in a user's log."""
+    for _ in range(1, 10):
+        await asyncio.sleep(0.5)
+        r = await client.get(f"/mobu/flocks/{flock}/monkeys/{username}/log")
+        assert r.status_code == 200
+        if msg in r.text:
+            return True
+    return False
 
 
 async def wait_for_flock_start(client: AsyncClient, flock: str) -> None:

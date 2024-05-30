@@ -5,12 +5,16 @@ from __future__ import annotations
 from datetime import timedelta
 
 __all__ = [
+    "GITHUB_WEBHOOK_WAIT_SECONDS",
     "NOTEBOOK_REPO_URL",
     "NOTEBOOK_REPO_BRANCH",
     "TOKEN_LIFETIME",
     "USERNAME_REGEX",
     "WEBSOCKET_OPEN_TIMEOUT",
 ]
+
+GITHUB_WEBHOOK_WAIT_SECONDS = 1
+"""GithHub needs some time to actually be in the state in a webhook payload."""
 
 NOTEBOOK_REPO_URL = "https://github.com/lsst-sqre/notebook-demo.git"
 """Default notebook repository for NotebookRunner."""

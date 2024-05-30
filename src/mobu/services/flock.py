@@ -12,6 +12,10 @@ from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
 
 from ..exceptions import MonkeyNotFoundError
+from ..models.business.notebookrunner import (
+    NotebookRunnerConfig,
+    NotebookRunnerOptions,
+)
 from ..models.flock import FlockConfig, FlockData, FlockSummary
 from ..models.user import AuthenticatedUser, User, UserSpec
 from ..storage.gafaelfawr import GafaelfawrStorage
@@ -129,6 +133,25 @@ class Flock:
         self._logger.info("Stopping flock")
         awaits = [m.stop() for m in self._monkeys.values()]
         await asyncio.gather(*awaits)
+
+    def signal_refresh(self) -> None:
+        """Signal all the monkeys to refresh their busniess."""
+        self._logger.info("Signaling monkeys to refresh")
+        for monkey in self._monkeys.values():
+            monkey.signal_refresh()
+
+    def uses_repo(self, repo_url: str, repo_branch: str) -> bool:
+        match self._config:
+            case FlockConfig(
+                business=NotebookRunnerConfig(
+                    options=NotebookRunnerOptions(
+                        repo_url=url,
+                        repo_branch=branch,
+                    )
+                )
+            ) if (url, branch) == (repo_url, repo_branch):
+                return True
+        return False
 
     def _create_monkey(self, user: AuthenticatedUser) -> Monkey:
         """Create a monkey that will run as a given user."""

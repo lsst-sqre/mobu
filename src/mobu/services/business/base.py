@@ -97,6 +97,7 @@ class Business(Generic[T], metaclass=ABCMeta):
         self.timings = Timings()
         self.control: Queue[BusinessCommand] = Queue()
         self.stopping = False
+        self.refreshing = False
 
     # Methods that should be overridden by child classes if needed.
 
@@ -204,6 +205,9 @@ class Business(Generic[T], metaclass=ABCMeta):
         await self.control.join()
         self.logger.info("Stopped")
 
+    def signal_refresh(self) -> None:
+        self.refreshing = True
+
     # Utility functions that can be used by child classes.
 
     async def pause(self, interval: timedelta) -> bool:
@@ -299,6 +303,7 @@ class Business(Generic[T], metaclass=ABCMeta):
             name=type(self).__name__,
             failure_count=self.failure_count,
             success_count=self.success_count,
+            refreshing=self.refreshing,
             timings=self.timings.dump(),
         )
 

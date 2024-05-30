@@ -47,6 +47,7 @@ async def test_run(
         "business": {
             "failure_count": 0,
             "name": "NubladoPythonLoop",
+            "refreshing": False,
             "success_count": 1,
             "timings": ANY,
         },

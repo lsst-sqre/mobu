@@ -240,6 +240,10 @@ class Monkey:
             self._job = None
         self._state = MonkeyState.FINISHED
 
+    def signal_refresh(self) -> None:
+        """Tell the business to refresh."""
+        self.business.signal_refresh()
+
     def dump(self) -> MonkeyData:
         """Return information about a running monkey."""
         return MonkeyData(

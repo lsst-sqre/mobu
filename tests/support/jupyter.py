@@ -91,6 +91,8 @@ class MockJupyter:
         self.spawn_timeout = False
         self.redirect_loop = False
         self.lab_form: dict[str, dict[str, str]] = {}
+        self.expected_session_name = "(no notebook)"
+        self.expected_session_type = "console"
         self._delete_at: dict[str, datetime | None] = {}
         self._fail: dict[str, dict[JupyterAction, bool]] = {}
         self._hub_xsrf = os.urandom(8).hex()
@@ -278,8 +280,8 @@ class MockJupyter:
         assert state == JupyterState.LAB_RUNNING
         body = json.loads(request.content.decode())
         assert body["kernel"]["name"] == "LSST"
-        assert body["name"] == "(no notebook)"
-        assert body["type"] == "console"
+        assert body["name"] == self.expected_session_name
+        assert body["type"] == self.expected_session_type
         session = JupyterLabSession(
             session_id=uuid4().hex, kernel_id=uuid4().hex
         )

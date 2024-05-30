@@ -101,3 +101,16 @@ class Factory:
             http_client=self._context.http_client,
             logger=self._logger,
         )
+
+    def set_logger(self, logger: BoundLogger) -> None:
+        """Replace the internal logger.
+
+        Used by the context dependency to update the logger for all
+        newly-created components when it's rebound with additional context.
+
+        Parameters
+        ----------
+        logger
+            New logger.
+        """
+        self._logger = logger

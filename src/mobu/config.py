@@ -65,6 +65,17 @@ class Configuration(BaseSettings):
         examples=["gt-vilSCi1ifK_MyuaQgMD2dQ.d6SIJhowv5Hs3GvujOyUig"],
     )
 
+    github_webhook_secret: str | None = Field(
+        None,
+        title="Github webhook secret",
+        description=(
+            "Any repo that wants mobu to automatically respawn labs when"
+            " notebooks change must use this secret in its webhook"
+            " configuration in GitHub."
+        ),
+        validation_alias="MOBU_GITHUB_WEBHOOK_SECRET",
+    )
+
     name: str = Field(
         "mobu",
         title="Name of application",

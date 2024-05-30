@@ -118,6 +118,15 @@ class FlockManager:
             raise FlockNotFoundError(name)
         return flock
 
+    def list_flocks_for_repo(
+        self, repo_url: str, repo_branch: str
+    ) -> list[str]:
+        return [
+            name
+            for name, flock in self._flocks.items()
+            if flock.uses_repo(repo_url=repo_url, repo_branch=repo_branch)
+        ]
+
     def list_flocks(self) -> list[str]:
         """List all flocks.
 
@@ -156,3 +165,21 @@ class FlockManager:
             raise FlockNotFoundError(name)
         del self._flocks[name]
         await flock.stop()
+
+    def refresh_flock(self, name: str) -> None:
+        """Tell a flock to refresh.
+
+        Parameters
+        ----------
+        name
+            Name of flock to refresh.
+
+        Raises
+        ------
+        FlockNotFoundError
+            Raised if no flock was found with that name.
+        """
+        flock = self._flocks.get(name)
+        if flock is None:
+            raise FlockNotFoundError(name)
+        flock.signal_refresh()
