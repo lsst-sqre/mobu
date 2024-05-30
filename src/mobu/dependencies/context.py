@@ -7,7 +7,7 @@ including from dependencies.
 """
 
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, Request
 from safir.dependencies.gafaelfawr import auth_logger_dependency
@@ -39,6 +39,17 @@ class RequestContext:
 
     factory: Factory
     """Component factory."""
+
+    def rebind_logger(self, **values: Any) -> None:
+        """Add the given values to the logging context.
+
+        Parameters
+        ----------
+        **values
+            Additional values that should be added to the logging context.
+        """
+        self.logger = self.logger.bind(**values)
+        self.factory.set_logger(self.logger)
 
 
 class ContextDependency:
