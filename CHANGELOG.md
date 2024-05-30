@@ -6,6 +6,16 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-8.1.0'></a>
+## 8.1.0 (2024-05-30)
+
+### New features
+
+- `NotebookRunner` flocks can now pick up changes to their notebooks without having to restart the whole mobu process. This refresh can happen via:
+  - GitHub `push` webhook post to `/mobu/github/webhook` with changes to a repo and branch that matches the flock config
+  - `monkeyflocker refresh <flock>`
+  - `POST` to `/mobu/flocks/{flock}/refresh`
+
 <a id='changelog-8.0.0'></a>
 ## 8.0.0 (2024-05-21)
 
