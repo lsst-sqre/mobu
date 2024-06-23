@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from .business.empty import EmptyLoopConfig
-from .business.notebookrunner import NotebookRunnerConfig
-from .business.nubladopythonloop import NubladoPythonLoopConfig
-from .business.tapqueryrunner import TAPQueryRunnerConfig
+from .business.business_config_type import BusinessConfigType
 from .user import User
 
 
@@ -27,12 +24,9 @@ class SolitaryConfig(BaseModel):
         examples=[["exec:notebook", "read:tap"]],
     )
 
-    business: (
-        TAPQueryRunnerConfig
-        | NotebookRunnerConfig
-        | NubladoPythonLoopConfig
-        | EmptyLoopConfig
-    ) = Field(..., title="Business to run")
+    business: BusinessConfigType = Field(
+        ..., title="Business to run", discriminator="type"
+    )
 
 
 class SolitaryResult(BaseModel):
