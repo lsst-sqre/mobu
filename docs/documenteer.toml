@@ -1,0 +1,12 @@
+[project]
+title = "Mobu"
+copyright = "2015-2024 Association of Universities for Research in Astronomy, Inc. (AURA)"
+
+[project.python]
+package = "mobu"
+
+[project.openapi]
+openapi_path = "_static/openapi.json"
+
+[project.openapi.generator]
+function = "mobu.main:create_openapi"

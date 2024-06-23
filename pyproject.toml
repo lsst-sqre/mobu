@@ -26,7 +26,7 @@ dynamic = ["version"]
 monkeyflocker = "monkeyflocker.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/lsst-sqre/mobu"
+Homepage = "https://mobu.lsst.io"
 Source = "https://github.com/lsst-sqre/mobu"
 
 [build-system]
@@ -120,6 +120,9 @@ python_files = ["tests/*.py", "tests/*/*.py"]
 [tool.ruff]
 line-length = 79
 target-version = "py312"
+exclude = [
+    "docs/**",
+]
 
 [tool.ruff.lint]
 ignore = [
