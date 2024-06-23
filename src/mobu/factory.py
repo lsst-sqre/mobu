@@ -37,9 +37,11 @@ class ProcessContext:
 
     def __init__(self, http_client: AsyncClient) -> None:
         self.http_client = http_client
-        logger = structlog.get_logger("mobu")
-        gafaelfawr = GafaelfawrStorage(http_client, logger)
-        self.manager = FlockManager(gafaelfawr, http_client, logger)
+        self.logger = structlog.get_logger("mobu")
+        self.gafaelfawr = GafaelfawrStorage(self.http_client, self.logger)
+        self.manager = FlockManager(
+            self.gafaelfawr, self.http_client, self.logger
+        )
 
     async def aclose(self) -> None:
         """Clean up a process context.
