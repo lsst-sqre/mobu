@@ -24,6 +24,9 @@ from safir.slack.webhook import SlackRouteErrorHandler
 from .asyncio import schedule_periodic
 from .config import config
 from .dependencies.context import context_dependency
+from .dependencies.github import (
+    github_config_dependency,
+)
 from .handlers.external import external_router
 from .handlers.github_refresh_app import (
     api_router as github_refresh_app_router,

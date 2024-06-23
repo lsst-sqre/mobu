@@ -12,6 +12,8 @@ from safir.slack.webhook import SlackRouteErrorHandler
 from ..config import config
 from ..constants import GITHUB_WEBHOOK_WAIT_SECONDS
 from ..dependencies.context import RequestContext, anonymous_context_dependency
+from ..dependencies.github import github_config_dependency
+from ..models.github import GitHubConfig
 
 __all__ = ["api_router"]
 
@@ -31,8 +33,12 @@ gidgethub_router = routing.Router()
 )
 async def post_webhook(
     context: Annotated[RequestContext, Depends(anonymous_context_dependency)],
+    github_config: Annotated[GitHubConfig, Depends(github_config_dependency)],
 ) -> None:
     """Process GitHub webhook events for the mobu refresh GitHub app.
+
+    Rejects webhooks from organizations that are not explicitly allowed via the
+    mobu config. This should be exposed via a Gafaelfawr anonymous ingress.
     """
     if not config.github_refresh_app.enabled:
         raise HTTPException(
@@ -44,6 +50,21 @@ async def post_webhook(
     event = Event.from_http(
         context.request.headers, body, secret=webhook_secret
     )
+
+    owner = event.data.get("organization", {}).get("login")
+    if owner not in github_config.accepted_github_orgs:
+        context.logger.debug(
+            "Ignoring GitHub event for unaccepted org",
+            owner=owner,
+            accepted_orgs=github_config.accepted_github_orgs,
+        )
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Mobu is not configured to accept webhooks from this GitHub"
+                " org."
+            ),
+        )
 
     # Bind the X-GitHub-Delivery header to the logger context; this
     # identifies the webhook request in GitHub's API and UI for
