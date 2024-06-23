@@ -43,6 +43,12 @@ class NotebookRunnerOptions(NubladoBusinessOptions):
         description="Only used by the NotebookRunner",
     )
 
+    repo_ref: str | None = Field(
+        None,
+        title="Git ref of notebook repository to execute",
+        description="Only used by the NotebookRunner",
+    )
+
     repo_url: str = Field(
         NOTEBOOK_REPO_URL,
         title="Git URL of notebook repository to execute",
