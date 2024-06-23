@@ -121,6 +121,23 @@ class NotebookRunner(NubladoBusiness):
                 for n in self._repo_dir.glob("**/*.ipynb")
                 if not self.is_excluded(n)
             ]
+            if self.options.notebooks_to_run:
+                requested = [
+                    self._repo_dir / notebook
+                    for notebook in self.options.notebooks_to_run
+                ]
+                not_found = set(requested) - set(notebooks)
+                if not_found:
+                    msg = (
+                        f"These notebooks do not exist in {self._repo_dir}:"
+                        f" {not_found}"
+                    )
+                    raise NotebookRepositoryError(msg, self.user.username)
+                notebooks = requested
+                self.logger.debug(
+                    "Running with explicit list of notebooks",
+                    notebooks=notebooks,
+                )
             if not notebooks:
                 msg = "No notebooks found in {self._repo_dir}"
                 raise NotebookRepositoryError(msg, self.user.username)
