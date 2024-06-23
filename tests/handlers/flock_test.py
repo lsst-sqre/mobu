@@ -110,7 +110,7 @@ async def test_start_stop_refresh(
 
     r = await client.get("/mobu/summary")
     assert r.status_code == 200
-    assert r.json() == [summary]
+    assert r.json() == {"flocks": [summary], "ci_manager": None}
 
     r = await client.get("/mobu/flocks/other")
     assert r.status_code == 404
