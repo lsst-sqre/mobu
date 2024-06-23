@@ -79,7 +79,7 @@ class NotebookRunner(NubladoBusiness):
 
     async def initialize(self) -> None:
         if self._repo_dir is None:
-            self._repo_dir = Path(TemporaryDirectory().name)
+            self._repo_dir = Path(TemporaryDirectory(delete=False).name)
             await self.clone_repo()
 
         self._exclude_paths = {
@@ -100,9 +100,11 @@ class NotebookRunner(NubladoBusiness):
 
     async def clone_repo(self) -> None:
         url = self.options.repo_url
-        branch = self.options.repo_branch
+        ref = self.options.repo_ref
         with self.timings.start("clone_repo"):
-            await self._git.clone("-b", branch, url, str(self._repo_dir))
+            self._git.repo = self._repo_dir
+            await self._git.clone(url, str(self._repo_dir))
+            await self._git.checkout(ref)
 
     def is_excluded(self, notebook: Path) -> bool:
         # A notebook is excluded if any of its parent directories are excluded

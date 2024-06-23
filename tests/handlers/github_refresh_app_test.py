@@ -111,7 +111,7 @@ async def test_handle_webhook(
                 "type": "NotebookRunner",
                 "options": {
                     "repo_url": "https://github.com/lsst-sqre/some-repo.git",
-                    "repo_branch": "main",
+                    "repo_ref": "main",
                 },
             },
         },
@@ -124,7 +124,7 @@ async def test_handle_webhook(
                 "type": "NotebookRunner",
                 "options": {
                     "repo_url": "https://github.com/lsst-sqre/some-repo.git",
-                    "repo_branch": "some-branch",
+                    "repo_ref": "some-branch",
                 },
             },
         },
@@ -137,7 +137,7 @@ async def test_handle_webhook(
                 "type": "NotebookRunner",
                 "options": {
                     "repo_url": "https://github.com/lsst-sqre/some-other-repo.git",
-                    "repo_branch": "main",
+                    "repo_ref": "main",
                 },
             },
         },

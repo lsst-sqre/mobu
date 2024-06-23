@@ -37,10 +37,11 @@ class NotebookRunnerOptions(NubladoBusinessOptions):
         ge=1,
     )
 
-    repo_branch: str = Field(
+    repo_ref: str = Field(
         NOTEBOOK_REPO_BRANCH,
-        title="Git branch of notebook repository to execute",
+        title="Git ref of notebook repository to execute",
         description="Only used by the NotebookRunner",
+        examples=["main", "03cd564dd2025bf17054d9ebfeeb5c5a266e3484"],
     )
 
     repo_url: str = Field(

@@ -97,7 +97,7 @@ async def handle_push(event: Event, context: RequestContext) -> None:
         return
 
     flocks = context.manager.list_flocks_for_repo(
-        repo_url=url, repo_branch=branch
+        repo_url=url, repo_ref=branch
     )
     if not flocks:
         context.logger.debug(
