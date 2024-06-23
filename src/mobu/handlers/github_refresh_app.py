@@ -40,11 +40,6 @@ async def post_webhook(
     Rejects webhooks from organizations that are not explicitly allowed via the
     mobu config. This should be exposed via a Gafaelfawr anonymous ingress.
     """
-    if not config.github_refresh_app.enabled:
-        raise HTTPException(
-            status_code=404,
-            detail="GitHub refresh app not enabled in this environment",
-        )
     webhook_secret = config.github_refresh_app.webhook_secret
     body = await context.request.body()
     event = Event.from_http(

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
+from importlib import reload
 from pathlib import Path
 from textwrap import dedent
 from unittest.mock import DEFAULT, patch
@@ -63,6 +64,9 @@ def _configure() -> Iterator[None]:
 @pytest.fixture
 def _enable_github_ci_app(tmp_path: Path) -> Iterator[None]:
     """Enable the GitHub CI app functionality.
+
+    We need to reload the main module here because including the router is done
+    conditionally on module import.
     """
     github_config = tmp_path / "github_config.yaml"
     github_config.write_text(
@@ -81,11 +85,13 @@ def _enable_github_ci_app(tmp_path: Path) -> Iterator[None]:
     config.github_ci_app.webhook_secret = TEST_GITHUB_CI_APP_SECRET
     config.github_ci_app.private_key = TEST_GITHUB_CI_APP_PRIVATE_KEY
     config.github_config_path = github_config
+    reload(main)
 
     yield
 
     config.github_ci_app = GitHubCiApp()
     config.github_config_path = None
+    reload(main)
 
 
 @pytest.fixture
