@@ -341,8 +341,8 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
     result = r.json()
     assert result["detail"][0] == {
         "ctx": ANY,
-        "input": "UnknownBusiness",
-        "loc": ["body", "business", "TAPQueryRunnerConfig", "type"],
+        "input": {"type": "UnknownBusiness"},
+        "loc": ["body", "business"],
         "msg": ANY,
-        "type": "literal_error",
+        "type": "union_tag_invalid",
     }
