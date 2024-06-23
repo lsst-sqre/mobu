@@ -5,3 +5,7 @@ It attempts to simulate user interactions with Science Platform services continu
 It can be used for both monitoring and synthetic load testing.
 
 mobu is developed with the [Safir](https://safir.lsst.io/) framework.
+
+See [mobu.lsst.io](https://mobu.lsst.io) for full documentation.
+
+

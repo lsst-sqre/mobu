@@ -10,6 +10,7 @@
 # Testing
 asgi-lifespan
 coverage[toml]
+documenteer[guide]
 mypy
 pre-commit
 pytest

@@ -9,6 +9,7 @@ called.
 
 from __future__ import annotations
 
+import json
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 from datetime import timedelta
@@ -16,6 +17,7 @@ from importlib.metadata import metadata, version
 
 import structlog
 from fastapi import FastAPI
+from fastapi.openapi.utils import get_openapi
 from safir.fastapi import ClientRequestError, client_request_error_handler
 from safir.logging import Profile, configure_logging, configure_uvicorn_logging
 from safir.middleware.x_forwarded import XForwardedMiddleware
@@ -160,3 +162,15 @@ if config.alert_hook:
 
 # Enable the generic exception handler for client errors.
 app.exception_handler(ClientRequestError)(client_request_error_handler)
+
+
+def create_openapi() -> str:
+    """Create the OpenAPI spec for static documentation."""
+    return json.dumps(
+        get_openapi(
+            title=app.title,
+            version=app.version,
+            description=app.description,
+            routes=app.routes,
+        )
+    )

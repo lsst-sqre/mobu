@@ -39,9 +39,9 @@ astropy==6.1.1 \
     --hash=sha256:f6660b8a588c6de0e7796c68f9a1002fad934119af8c348cb9fb5456c3e2be53 \
     --hash=sha256:ffa737cac938c0a97e6839cefb844fbe382c4c972fe0629a0628ec0bd9395b51
     # via pyvo
-astropy-iers-data==0.2024.6.17.0.31.35 \
-    --hash=sha256:a6e0dca0985e15dfc4f3fc508bfb29b2b046b59eb9d028416860afa9c63b17eb \
-    --hash=sha256:f4e0b40563813c4297745dd4ec03d80b2cbd6cb29340c8df0534b296cb27e3cf
+astropy-iers-data==0.2024.6.24.0.31.11 \
+    --hash=sha256:0b3799034b0b76af8f915ef822d38cc90e00e235db0cb688018e4f567a8babb9 \
+    --hash=sha256:ef0197b7b84dea248031e553687ea1dc58d7ac9473043693b2d33b46d81a9a12
     # via astropy
 certifi==2024.6.2 \
     --hash=sha256:3cd43f1c6fa7dedc5899d69d3ad0398fd018ad1a17fba83ddaf78aa46c747516 \
@@ -601,9 +601,9 @@ pydantic-core==2.18.4 \
     --hash=sha256:f85d05aa0918283cf29a30b547b4df2fbb56b45b135f9e35b6807cb28bc47951 \
     --hash=sha256:f9899c94762343f2cc2fc64c13e7cae4c3cc65cdfc87dd810a31654c9b7358cc
     # via pydantic
-pydantic-settings==2.3.3 \
-    --hash=sha256:87fda838b64b5039b970cd47c3e8a1ee460ce136278ff672980af21516f6e6ce \
-    --hash=sha256:e4ed62ad851670975ec11285141db888fd24947f9440bd4380d7d8788d4965de
+pydantic-settings==2.3.4 \
+    --hash=sha256:11ad8bacb68a045f00e4f862c7a718c8a9ec766aa8fd4c32e39a0594b207b53a \
+    --hash=sha256:c5802e3d62b78e82522319bbc9b8f8ffb28ad1c988a99311d04f2a6051fca0a7
     # via -r requirements/main.in
 pyerfa==2.0.1.4 \
     --hash=sha256:39cf838c9a21e40d4e3183bead65b3ce6af763c4a727f87d84909c9be7d3a33c \
