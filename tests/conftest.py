@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
+from pathlib import Path
+from textwrap import dedent
 from unittest.mock import DEFAULT, patch
 
 import pytest
@@ -16,14 +18,17 @@ from pydantic import HttpUrl
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 
 from mobu import main
-from mobu.config import config
+from mobu.config import GitHubCiApp, GitHubRefreshApp, config
 from mobu.services.business.gitlfs import GitLFSBusiness
 
 from .support.constants import (
     TEST_BASE_URL,
+    TEST_GITHUB_CI_APP_PRIVATE_KEY,
+    TEST_GITHUB_CI_APP_SECRET,
     TEST_GITHUB_REFRESH_APP_SECRET,
 )
 from .support.gafaelfawr import make_gafaelfawr_token
+from .support.github import GitHubMocker
 from .support.gitlfs import (
     no_git_lfs_data,
     uninstall_git_lfs,
@@ -56,6 +61,33 @@ def _configure() -> Iterator[None]:
 
 
 @pytest.fixture
+def _enable_github_ci_app(tmp_path: Path) -> Iterator[None]:
+    """Enable the GitHub CI app functionality.
+    """
+    github_config = tmp_path / "github_config.yaml"
+    github_config.write_text(
+        dedent("""
+        users:
+        - username: bot-mobu-unittest-1
+        - username: bot-mobu-unittest-2
+        accepted_github_orgs:
+          - org1
+          - org2
+          - lsst-sqre
+    """)
+    )
+    config.github_ci_app.id = 1
+    config.github_ci_app.enabled = True
+    config.github_ci_app.webhook_secret = TEST_GITHUB_CI_APP_SECRET
+    config.github_ci_app.private_key = TEST_GITHUB_CI_APP_PRIVATE_KEY
+    config.github_config_path = github_config
+
+    yield
+
+    config.github_ci_app = GitHubCiApp()
+    config.github_config_path = None
+
+
 @pytest.fixture
 def _enable_github_refresh_app(tmp_path: Path) -> Iterator[None]:
     """Enable the GitHub Refresh app routes.
@@ -66,6 +98,9 @@ def _enable_github_refresh_app(tmp_path: Path) -> Iterator[None]:
     github_config = tmp_path / "github_config.yaml"
     github_config.write_text(
         dedent("""
+        users:
+        - username: bot-mobu-unittest-1
+        - username: bot-mobu-unittest-2
         accepted_github_orgs:
           - org1
           - org2
@@ -186,3 +221,10 @@ def _no_monkey_business() -> Iterator[None]:
         "mobu.services.flock.Monkey", start=DEFAULT, stop=DEFAULT
     ):
         yield
+
+
+@pytest.fixture
+def github_mocker() -> Iterator[GitHubMocker]:
+    github_mocker = GitHubMocker()
+    with github_mocker.router:
+        yield github_mocker
