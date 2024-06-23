@@ -11,9 +11,63 @@ from safir.logging import LogLevel, Profile
 
 __all__ = [
     "Configuration",
+    "GitHubCiApp",
     "GitHubRefreshApp",
     "config",
 ]
+
+
+class GitHubCiApp(BaseSettings):
+    """Configuration for GitHub CI app functionality."""
+
+    enabled: bool = Field(
+        False,
+        title="Whether to enable the GitHub CI app functionality",
+        validation_alias="MOBU_GITHUB_CI_APP_ENABLED",
+    )
+
+    id: int | None = Field(
+        None,
+        title="Github CI app id",
+        description=(
+            "Found on the GitHub app's settings page (NOT the installation"
+            " configuration page). For example:"
+            " https://github.com/organizations/lsst-sqre/settings/apps/mobu-ci-data-dev-lsst-cloud"
+        ),
+        validation_alias="MOBU_GITHUB_CI_APP_ID",
+        examples=[123456],
+    )
+
+    private_key: str | None = Field(
+        None,
+        title="Github CI app private key",
+        description=(
+            "Generated when the GitHub app was set up. This should NOT be"
+            " base64 enocded, and will contain newlines. You can find this"
+            " in 1Password; check the Phalanx mobu values for more details."
+        ),
+        validation_alias="MOBU_GITHUB_CI_APP_PRIVATE_KEY",
+        examples=[
+            dedent("""
+            -----BEGIN RSA PRIVATE KEY-----
+            abc123MeowMeow456abc123MeowMeow456abc123MeowMeow456abc123MeowMeo
+            abc123MeowMeow456abc123MeowMeow456abc123MeowMeow456abc123MeowMeo
+            abc123MeowMeow456abc123MeowMeow456abc123MeowMeow456abc123MeowMeo
+            etc, etc
+            -----END RSA PRIVATE KEY-----
+        """)
+        ],
+    )
+
+    webhook_secret: str | None = Field(
+        None,
+        title="Github CI app webhook secret",
+        description=(
+            "Generated when the GitHub app was set up. You can find this"
+            " in 1Password; check the Phalanx mobu values for more details."
+        ),
+        validation_alias="MOBU_GITHUB_CI_APP_WEBHOOK_SECRET",
+    )
 
 
 class GitHubRefreshApp(BaseSettings):
@@ -86,7 +140,13 @@ class Configuration(BaseSettings):
         examples=["gt-vilSCi1ifK_MyuaQgMD2dQ.d6SIJhowv5Hs3GvujOyUig"],
     )
 
+    github_ci_app: GitHubCiApp = Field(GitHubCiApp())
+
+    github_config_path: Path | None = Field(
         None,
+        title="Path to YAML file defining settings for GitHub app integration",
+        validation_alias="MOBU_GITHUB_CONFIG_PATH",
+        examples=["/etc/mobu/github_config.yaml"],
     )
 
     github_refresh_app: GitHubRefreshApp = Field(GitHubRefreshApp())
