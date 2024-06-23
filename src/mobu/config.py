@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from textwrap import dedent
 
 from pydantic import Field, HttpUrl
 from pydantic_settings import BaseSettings
@@ -10,8 +11,28 @@ from safir.logging import LogLevel, Profile
 
 __all__ = [
     "Configuration",
+    "GitHubRefreshApp",
     "config",
 ]
+
+
+class GitHubRefreshApp(BaseSettings):
+    """Configuration for GitHub refresh app functionality."""
+
+    enabled: bool = Field(
+        False,
+        validation_alias="MOBU_GITHUB_REFRESH_APP_ENABLED",
+    )
+
+    webhook_secret: str | None = Field(
+        None,
+        title="Github refresh app webhook secret",
+        description=(
+            "Generated when the GitHub app was set up. You can find this"
+            " in 1Password; check the Phalanx mobu values for more details."
+        ),
+        validation_alias="MOBU_GITHUB_REFRESH_APP_WEBHOOK_SECRET",
+    )
 
 
 class Configuration(BaseSettings):
@@ -65,16 +86,10 @@ class Configuration(BaseSettings):
         examples=["gt-vilSCi1ifK_MyuaQgMD2dQ.d6SIJhowv5Hs3GvujOyUig"],
     )
 
-    github_webhook_secret: str | None = Field(
         None,
-        title="Github webhook secret",
-        description=(
-            "Any repo that wants mobu to automatically respawn labs when"
-            " notebooks change must use this secret in its webhook"
-            " configuration in GitHub."
-        ),
-        validation_alias="MOBU_GITHUB_WEBHOOK_SECRET",
     )
+
+    github_refresh_app: GitHubRefreshApp = Field(GitHubRefreshApp())
 
     name: str = Field(
         "mobu",

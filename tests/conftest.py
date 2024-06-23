@@ -19,7 +19,10 @@ from mobu import main
 from mobu.config import config
 from mobu.services.business.gitlfs import GitLFSBusiness
 
-from .support.constants import TEST_BASE_URL, TEST_GITHUB_WEBHOOK_SECRET
+from .support.constants import (
+    TEST_BASE_URL,
+    TEST_GITHUB_REFRESH_APP_SECRET,
+)
 from .support.gafaelfawr import make_gafaelfawr_token
 from .support.gitlfs import (
     no_git_lfs_data,
@@ -47,10 +50,39 @@ def _configure() -> Iterator[None]:
     """
     config.environment_url = HttpUrl("https://test.example.com")
     config.gafaelfawr_token = make_gafaelfawr_token()
-    config.github_webhook_secret = TEST_GITHUB_WEBHOOK_SECRET
     yield
     config.environment_url = None
     config.gafaelfawr_token = None
+
+
+@pytest.fixture
+@pytest.fixture
+def _enable_github_refresh_app(tmp_path: Path) -> Iterator[None]:
+    """Enable the GitHub Refresh app routes.
+
+    We need to reload the main module here because including the router is done
+    conditionally on module import.
+    """
+    github_config = tmp_path / "github_config.yaml"
+    github_config.write_text(
+        dedent("""
+        accepted_github_orgs:
+          - org1
+          - org2
+          - lsst-sqre
+    """)
+    )
+
+    config.github_refresh_app.enabled = True
+    config.github_refresh_app.webhook_secret = TEST_GITHUB_REFRESH_APP_SECRET
+    config.github_config_path = github_config
+    reload(main)
+
+    yield
+
+    config.github_refresh_app = GitHubRefreshApp()
+    config.github_config_path = None
+    reload(main)
 
 
 @pytest_asyncio.fixture
@@ -148,9 +180,9 @@ def gitlfs_mock() -> Iterator[None]:
 
 
 @pytest.fixture
-def no_monkey_business() -> Iterator[None]:
-    """Prevent any monkeys from actually doing any business."""
+def _no_monkey_business() -> Iterator[None]:
+    """Prevent any flock monkeys from actually doing any business."""
     with patch.multiple(
         "mobu.services.flock.Monkey", start=DEFAULT, stop=DEFAULT
     ):
-        yield None
+        yield
