@@ -150,6 +150,10 @@
         "type": "User",
         "site_admin": false
     },
+    "installation": {
+      "id": 1,
+      "node_id": "MDIzOkludGVncmF0aW9uSW5zdGFsbGF0aW9uNTE1MzEyOTg="
+    },
     "created": false,
     "deleted": false,
     "forced": false,

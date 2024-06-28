@@ -40,12 +40,14 @@ def mock_gafaelfawr(
     gid: int | None = None,
     *,
     any_uid: bool = False,
+    scopes: list[str] | None = None,
 ) -> None:
     """Mock out the call to Gafaelfawr to create a user token.
 
     Optionally verifies that the username and UID provided to Gafaelfawr are
     correct.
     """
+    scopes = scopes or ["exec:notebook"]
     admin_token = config.gafaelfawr_token
     assert admin_token
     assert admin_token.startswith("gt-")
@@ -55,7 +57,7 @@ def mock_gafaelfawr(
         expected = {
             "username": username if username else ANY,
             "token_type": "service",
-            "scopes": ["exec:notebook"],
+            "scopes": scopes,
             "expires": ANY,
             "name": "Mobu Test User",
         }

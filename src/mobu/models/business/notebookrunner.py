@@ -43,10 +43,25 @@ class NotebookRunnerOptions(NubladoBusinessOptions):
         description="Only used by the NotebookRunner",
     )
 
+    repo_ref: str | None = Field(
+        None,
+        title="Git ref of notebook repository to execute",
+        description="Only used by the NotebookRunner",
+    )
+
     repo_url: str = Field(
         NOTEBOOK_REPO_URL,
         title="Git URL of notebook repository to execute",
         description="Only used by the NotebookRunner",
+    )
+
+    notebooks_to_run: list[Path] = Field(
+        [],
+        title="Specific notebooks to run",
+        description=(
+            "If this is set, then only these specific notebooks will be"
+            " executed."
+        ),
     )
 
     exclude_dirs: set[Path] = Field(

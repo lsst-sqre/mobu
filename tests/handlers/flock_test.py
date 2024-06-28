@@ -110,7 +110,7 @@ async def test_start_stop_refresh(
 
     r = await client.get("/mobu/summary")
     assert r.status_code == 200
-    assert r.json() == [summary]
+    assert r.json() == {"flocks": [summary], "ci_manager": None}
 
     r = await client.get("/mobu/flocks/other")
     assert r.status_code == 404
@@ -341,8 +341,8 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
     result = r.json()
     assert result["detail"][0] == {
         "ctx": ANY,
-        "input": "UnknownBusiness",
-        "loc": ["body", "business", "TAPQueryRunnerConfig", "type"],
+        "input": {"type": "UnknownBusiness"},
+        "loc": ["body", "business"],
         "msg": ANY,
-        "type": "literal_error",
+        "type": "union_tag_invalid",
     }

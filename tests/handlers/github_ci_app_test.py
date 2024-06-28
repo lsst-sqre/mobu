@@ -1,0 +1,204 @@
+"""Test the github ci app webhook handler."""
+
+import hashlib
+import hmac
+from dataclasses import dataclass
+from pathlib import Path
+from string import Template
+
+import pytest
+import respx
+from httpx import AsyncClient
+from pytest_mock import MockerFixture
+
+from mobu.services.github_ci.ci_manager import CiManager
+
+from ..support.constants import TEST_GITHUB_CI_APP_SECRET
+from ..support.gafaelfawr import mock_gafaelfawr
+
+
+@dataclass
+class GitHubRequest:
+    payload: str
+    headers: dict[str, str]
+
+
+def webhook_request(
+    event: str,
+    action: str,
+    owner: str = "org1",
+    repo: str = "repo1",
+    ref: str = "abc123",
+    *,
+    with_prs: bool = True,
+) -> GitHubRequest:
+    """Build a GitHub webhook request and headers with the right hash."""
+    data_path = Path(__file__).parent.parent / "data" / "github_webhooks"
+    suffix = "_no_prs" if not with_prs else ""
+    template = (data_path / f"{event}_{action}{suffix}.tmpl.json").read_text()
+    payload = Template(template).substitute(
+        owner=owner,
+        repo=repo,
+        ref=ref,
+        installation_id=123,
+    )
+
+    # https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries#python-example
+    hash_object = hmac.new(
+        TEST_GITHUB_CI_APP_SECRET.encode(),
+        msg=payload.encode(),
+        digestmod=hashlib.sha256,
+    )
+    sig = "sha256=" + hash_object.hexdigest()
+
+    headers = {
+        "Accept": "*/*",
+        "Content-Type": "application/json",
+        "User-Agent": "GitHub-Hookshot/c9d6c0a",
+        "X-GitHub-Delivery": "d2d3c948-1d61-11ef-848a-c578f23615c9",
+        "X-GitHub-Event": event,
+        "X-GitHub-Hook-ID": "479971864",
+        "X-GitHub-Hook-Installation-Target-ID": "1",
+        "X-GitHub-Hook-Installation-Target-Type": "integration",
+        "X-Hub-Signature-256": sig,
+    }
+
+    return GitHubRequest(payload=payload, headers=headers)
+
+
+@pytest.mark.asyncio
+async def test_not_enabled(
+    client: AsyncClient,
+    anon_client: AsyncClient,
+    respx_mock: respx.Router,
+) -> None:
+    mock_gafaelfawr(respx_mock)
+    request = webhook_request(
+        event="check_suite",
+        action="requested",
+    )
+    response = await anon_client.post(
+        "/mobu/github/ci/webhook",
+        headers=request.headers,
+        content=request.payload,
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_enable_github_ci_app")
+async def test_unacceptable_org(
+    client: AsyncClient,
+    anon_client: AsyncClient,
+    respx_mock: respx.Router,
+    mocker: MockerFixture,
+) -> None:
+    mock_gafaelfawr(respx_mock)
+    request = webhook_request(
+        event="check_suite",
+        action="requested",
+        owner="nope",
+    )
+
+    mock_func = mocker.patch.object(
+        CiManager,
+        "enqueue",
+    )
+    response = await anon_client.post(
+        "/mobu/github/ci/webhook",
+        headers=request.headers,
+        content=request.payload,
+    )
+
+    assert response.status_code == 403
+    assert not mock_func.called
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_enable_github_ci_app")
+@pytest.mark.parametrize(
+    "gh_request",
+    [
+        webhook_request(
+            event="check_suite",
+            action="requested",
+        ),
+        webhook_request(
+            event="check_suite",
+            action="rerequested",
+        ),
+        webhook_request(
+            event="check_run",
+            action="rerequested",
+        ),
+    ],
+)
+async def test_should_enqueue(
+    client: AsyncClient,
+    anon_client: AsyncClient,
+    respx_mock: respx.Router,
+    mocker: MockerFixture,
+    gh_request: GitHubRequest,
+) -> None:
+    mock_gafaelfawr(respx_mock)
+
+    mock_func = mocker.patch.object(
+        CiManager,
+        "enqueue",
+    )
+
+    response = await anon_client.post(
+        "/mobu/github/ci/webhook",
+        headers=gh_request.headers,
+        content=gh_request.payload,
+    )
+
+    assert response.status_code == 202
+    assert mock_func.called
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_enable_github_ci_app")
+@pytest.mark.parametrize(
+    "gh_request",
+    [
+        webhook_request(
+            event="check_suite",
+            action="requested",
+            with_prs=False,
+        ),
+        webhook_request(
+            event="check_suite",
+            action="rerequested",
+            with_prs=False,
+        ),
+        webhook_request(
+            event="check_run",
+            action="rerequested",
+            with_prs=False,
+        ),
+    ],
+)
+async def test_should_ignore(
+    client: AsyncClient,
+    anon_client: AsyncClient,
+    respx_mock: respx.Router,
+    mocker: MockerFixture,
+    gh_request: GitHubRequest,
+) -> None:
+    mock_gafaelfawr(respx_mock)
+
+    mock_func = mocker.patch.object(
+        CiManager,
+        "enqueue",
+    )
+
+    response = await anon_client.post(
+        "/mobu/github/ci/webhook",
+        headers=gh_request.headers,
+        content=gh_request.payload,
+    )
+
+    assert response.status_code == 202
+    assert not mock_func.called

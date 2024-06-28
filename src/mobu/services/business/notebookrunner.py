@@ -101,14 +101,30 @@ class NotebookRunner(NubladoBusiness):
     async def clone_repo(self) -> None:
         url = self.options.repo_url
         branch = self.options.repo_branch
+        ref = self.options.repo_ref
         with self.timings.start("clone_repo"):
-            await self._git.clone("-b", branch, url, str(self._repo_dir))
+            if ref:
+                await self._git.clone(url, str(self._repo_dir))
+                self._git.repo = self._repo_dir
+                await self._git.checkout(ref)
+            else:
+                await self._git.clone("-b", branch, url, str(self._repo_dir))
 
     def is_excluded(self, notebook: Path) -> bool:
         # A notebook is excluded if any of its parent directories are excluded
         return bool(set(notebook.parents) & self._exclude_paths)
 
     def find_notebooks(self) -> list[Path]:
+        if self.options.notebooks_to_run:
+            notebooks = [
+                self._repo_dir / notebook
+                for notebook in self.options.notebooks_to_run
+            ]
+            self.logger.debug(
+                "Running with explicit list of notebooks", notebooks=notebooks
+            )
+            return notebooks
+
         with self.timings.start("find_notebooks"):
             if self._repo_dir is None:
                 raise NotebookRepositoryError(
