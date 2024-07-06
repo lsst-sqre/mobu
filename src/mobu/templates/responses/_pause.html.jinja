@@ -1,0 +1,11 @@
+{#
+    Elements that reflect "pause" status for a flock.
+    Unpoly can pick them out of this response and update them on
+    whatever page wants to use them.
+#}
+<div up-flashes>
+    <div class="notification">Flock "{{ flock.name }}" {{ state }}!</div>
+</div>
+{% include "fragments/pause/_button.html.jinja" %}
+{% include "fragments/pause/_value.html.jinja" %}
+{% include "fragments/_flock_detail.html.jinja" %}

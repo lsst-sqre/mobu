@@ -1,0 +1,43 @@
+{% extends "_base.html.jinja" %}
+{% import "_macros.html.jinja" as macros %}
+{% block content %}
+    <h1 class="title is-2">Config</h1>
+    <p class="subtitle">General config for this instance of mobu.</p>
+    <dl class="nested">
+        <dt>Environment URL:</dt>
+        <dd>
+            {{ config.environment_url }}
+        </dd>
+        <dt>Logging Profile:</dt>
+        <dd>
+            {{ config.profile }}
+        </dd>
+        <dt>Log Level:</dt>
+        <dd>
+            {{ config.log_level }}
+        </dd>
+        <dt>GitHub Integration:</dt>
+        <dd>
+            <dl>
+                <dt>Refresh App Enabled:</dt>
+                <dd>
+                    {{ config.github_refresh_app.enabled }}
+                </dd>
+                <dt>CI App Enabled:</dt>
+                <dd>
+                    {{ config.github_ci_app.enabled }}
+                </dd>
+                <dt>Accepted GitHub Orgs:</dt>
+                <dd>
+                    <ul>
+                        {% for org in github_config.accepted_github_orgs %}<li>{{ org }}</li>{% endfor %}
+                    </ul>
+                </dd>
+                <dt>CI Users:</dt>
+                <dd>
+                    {% for user in github_config.users %}{{ macros.user(user) }}{% endfor %}
+                </dd>
+            </dl>
+        </dd>
+    </dl>
+{% endblock content %}

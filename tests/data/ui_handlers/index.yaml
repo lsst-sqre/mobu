@@ -1,0 +1,59 @@
+output: |-
+  <!DOCTYPE html>
+  <html>
+      <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Mobu - https://test.example.com/</title>
+          <link rel="stylesheet" href="https://example.com/mobu/ui/static/css/unpoly.css" />
+          <link rel="stylesheet" href="https://example.com/mobu/ui/static/css/bulma.css">
+          <link rel="stylesheet" href="https://example.com/mobu/ui/static/css/bulma-list.css">
+          <link rel="stylesheet" href="https://example.com/mobu/ui/static/css/fontawesome/fontawesome.css" />
+          <link rel="stylesheet" href="https://example.com/mobu/ui/static/css/fontawesome/solid.css" />
+          <link rel="stylesheet" href="https://example.com/mobu/ui/static/css/site.css" />
+          <script src="https://example.com/mobu/ui/static/js/unpoly.js"></script>
+          <link rel="stylesheet" href="https://example.com/mobu/ui/static/css/highlightjs/default.min.css">
+          <script src="https://example.com/mobu/ui/static/js/highlightjs/highlight.min.js"></script>
+          <script src="https://example.com/mobu/ui/static/js/highlightjs/python.min.js"></script>
+      </head>
+      <body>
+          <nav class="navbar" role="navigation" aria-label="main navigation" up-nav>
+              <div class="navbar-brand">
+                  <a class="navbar-item" href="https://example.com/mobu/ui/" up-follow>
+                      <img src=https://example.com/mobu/ui/static/img/monkey.svg width="50", height="160">
+                      <h4 class="subtitle" is-4>Mobu</h4>
+                  </a>
+              </div>
+              <div class="navbar-menu">
+                  <div class="navbar-start">
+                      <a class="navbar-item" href="https://example.com/mobu/ui/config" up-follow>Config</a>
+                      <a class="navbar-item" href="https://example.com/mobu/ui/flocks" up-follow>Flocks</a>
+                      <a class="navbar-item" href="https://example.com/mobu/ui/ci" up-follow>CI</a>
+                      <div class="navbar-item">
+                          <strong>|</strong>
+                      </div>
+                      <div class="navbar-item">
+                          <div class="mr-2">Env:</div>
+                          <a href="https://test.example.com/">https://test.example.com/</a>
+                      </div>
+                      <div class="navbar-item">
+                          <div up-flashes></div>
+                      </div>
+                  </div>
+              </div>
+          </nav>
+          <main>
+              <section class="section">
+                  <div class="container">
+
+      <h1 class="title">Mobu</h1>
+      <p>
+          Use this UI to see config information about mobu and to perform some basic operations, like pausing and restarting flocks.
+      </p>
+
+                  </main>
+              </div>
+          </section>
+      </body>
+      <script src="https://example.com/mobu/ui/static/js/site.js"></script>
+  </html>

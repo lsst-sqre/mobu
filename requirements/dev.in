@@ -10,11 +10,14 @@
 # Testing
 asgi-lifespan
 coverage[toml]
+djlint
 documenteer[guide]
 mypy
 pre-commit
 pytest
 pytest-asyncio
+pytest-freezer
+pytest-golden
 pytest-cov
 pytest-mock
 pytest-sugar

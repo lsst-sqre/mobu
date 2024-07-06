@@ -1,0 +1,15 @@
+{% extends "_base.html.jinja" %}
+{% block content %}
+    <h1 class="title">Flocks</h1>
+    <p class="subtitle">Click on a flock to view details and perform basic operations.</p>
+    <table class="table">
+        {% for flock in flocks %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('ui_flock', flock_name=flock.name) }}" up-follow>{{ flock.name }}</a>
+                </td>
+                <td>{% include "fragments/pause/_button.html.jinja" %}</td>
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock content %}

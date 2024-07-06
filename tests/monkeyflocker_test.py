@@ -74,6 +74,7 @@ def test_start_report_refresh_stop(
 
     expected: dict[str, Any] = {
         "name": "basic",
+        "paused": False,
         "config": {
             "name": "basic",
             "count": 1,
@@ -84,9 +85,11 @@ def test_start_report_refresh_stop(
         "monkeys": [
             {
                 "name": "testuser1",
+                "paused": False,
                 "business": {
                     "failure_count": 0,
                     "name": "EmptyLoop",
+                    "paused": False,
                     "refreshing": ANY,
                     "success_count": ANY,
                     "timings": ANY,

@@ -83,6 +83,8 @@ class BusinessData(BaseModel):
         ..., title="If the business is currently in the process of refreshing"
     )
 
+    paused: bool = Field(..., title="If this business is paused")
+
     timings: list[StopwatchData] = Field(..., title="Timings of events")
 
     model_config = ConfigDict(extra="forbid")

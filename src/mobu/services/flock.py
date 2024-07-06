@@ -58,14 +58,20 @@ class Flock:
         self._logger = logger.bind(flock=self.name)
         self._monkeys: dict[str, Monkey] = {}
         self._start_time: datetime | None = None
+        self._paused = False
 
-    def dump(self) -> FlockData:
+    def dump(self, *, strip_timings: bool = False) -> FlockData:
         """Return information about all running monkeys."""
-        return FlockData(
+        flock = FlockData(
             name=self._config.name,
             config=self._config,
             monkeys=[m.dump() for m in self._monkeys.values()],
+            paused=self._paused,
         )
+        if strip_timings:
+            for monkey in flock.monkeys:
+                monkey.business.timings = []
+        return flock
 
     def get_monkey(self, name: str) -> Monkey:
         """Retrieve a given monkey by name.
@@ -112,6 +118,25 @@ class Flock:
             failure_count=failures,
         )
 
+    def pause(self) -> None:
+        """Pause all of the monkeys in the flock."""
+        self._logger.info("Pausing...")
+        for monkey in self._monkeys.values():
+            monkey.pause()
+        self._paused = True
+        self._logger.info("Paused")
+
+    def unpause(self) -> None:
+        """Unpause all of the monkeys in the flock.
+
+        They'll pick up where they left off.
+        """
+        self._logger.info("Resuming...")
+        for monkey in self._monkeys.values():
+            monkey.unpause()
+        self._paused = False
+        self._logger.info("Resumed")
+
     async def start(self) -> None:
         """Start all the monkeys."""
         self._logger.info("Creating users")
@@ -131,6 +156,7 @@ class Flock:
         avoid waiting for the sum of all timeouts.
         """
         self._logger.info("Stopping flock")
+        self.unpause()
         awaits = [m.stop() for m in self._monkeys.values()]
         await asyncio.gather(*awaits)
 

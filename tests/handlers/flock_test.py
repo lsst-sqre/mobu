@@ -38,6 +38,7 @@ async def test_start_stop_refresh(
     assert r.status_code == 201
     expected: dict[str, Any] = {
         "name": "test",
+        "paused": False,
         "config": {
             "name": "test",
             "count": 1,
@@ -48,9 +49,11 @@ async def test_start_stop_refresh(
         "monkeys": [
             {
                 "name": "testuser1",
+                "paused": False,
                 "business": {
                     "failure_count": 0,
                     "name": "EmptyLoop",
+                    "paused": False,
                     "refreshing": False,
                     "success_count": ANY,
                     "timings": ANY,
@@ -162,13 +165,16 @@ async def test_user_list(
     assert r.status_code == 201
     expected: dict[str, Any] = {
         "name": "test",
+        "paused": False,
         "config": config,
         "monkeys": [
             {
                 "name": "testuser",
+                "paused": False,
                 "business": {
                     "failure_count": 0,
                     "name": "EmptyLoop",
+                    "paused": False,
                     "refreshing": False,
                     "success_count": ANY,
                     "timings": ANY,
@@ -184,9 +190,11 @@ async def test_user_list(
             },
             {
                 "name": "otheruser",
+                "paused": False,
                 "business": {
                     "failure_count": 0,
                     "name": "EmptyLoop",
+                    "paused": False,
                     "refreshing": False,
                     "success_count": ANY,
                     "timings": ANY,

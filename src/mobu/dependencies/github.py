@@ -1,5 +1,6 @@
 """Dependencies GitHub CI app functionality."""
 
+from collections.abc import Callable
 from pathlib import Path
 
 import yaml
@@ -69,23 +70,28 @@ class CiManagerDependency:
         self._ci_manager = None
 
 
-class MaybeCiManagerDependency:
-    """Try to return a CiManager, but don't blow up if it's not there.
+class MaybeDependency[T: Callable, U]:
+    """Try to return a dependency, but don't blow up if it's not there.
 
     Used in external routes that return info about mobu, and may be called on
-    installations that do not have the github ci functionality enabled.
+    installations that do not have particular functionality enabled.
     """
 
-    def __init__(self, dep: CiManagerDependency) -> None:
+    def __init__(self, dep: T) -> None:
         self.dep = dep
 
-    def __call__(self) -> CiManager | None:
+    def __call__(self) -> U | None:
         try:
-            return self.dep.ci_manager
+            return self.dep()
         except RuntimeError:
             return None
 
 
 github_config_dependency = GitHubConfigDependency()
 ci_manager_dependency = CiManagerDependency()
-maybe_ci_manager_dependency = MaybeCiManagerDependency(ci_manager_dependency)
+maybe_ci_manager_dependency = MaybeDependency[CiManagerDependency, CiManager](
+    ci_manager_dependency
+)
+maybe_github_config_dependency = MaybeDependency[
+    GitHubConfigDependency, GitHubConfig
+](github_config_dependency)

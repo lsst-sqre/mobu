@@ -1,0 +1,16 @@
+{% macro user(user) -%}
+    <dl>
+        <dt>Username:</dt>
+        <dd>
+            {{ user.username }}
+        </dd>
+        <dt>uid:</dt>
+        <dd>
+            {{ user.uidnumber }}
+        </dd>
+        <dt>gid:</dt>
+        <dd>
+            {{ user.gidnumber }}
+        </dd>
+    </dl>
+{%- endmacro %}

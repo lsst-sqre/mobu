@@ -45,9 +45,9 @@ class Business(Generic[T], metaclass=ABCMeta):
     which generally does not need to be overridden.  Subclasses should also
     override ``close`` to free any resources allocated in ``__init__``.
 
-    All delays should be done by calling ``pause``, and the caller should
+    All delays should be done by calling ``wait``, and the caller should
     check ``self.stopping`` and exit any loops if it is `True` after calling
-    ``pause``.
+    ``wait``.
 
     Parameters
     ----------
@@ -98,6 +98,33 @@ class Business(Generic[T], metaclass=ABCMeta):
         self.control: Queue[BusinessCommand] = Queue()
         self.stopping = False
         self.refreshing = False
+        self._unpaused_event = asyncio.Event()
+
+        self._unpaused_event.set()
+
+    @property
+    def _paused(self) -> bool:
+        """Whether or not we're currently paused."""
+        return not self._unpaused_event.is_set()
+
+    def pause(self) -> None:
+        """Pause the run loop until self.unpause is called.
+
+        Child classes can wait on this event in a more fine-grained manner if
+        they wish.
+        """
+        self._unpaused_event.clear()
+
+    def unpause(self) -> None:
+        """Resume the run loop."""
+        self._unpaused_event.set()
+
+    async def wait_if_paused(self) -> None:
+        """If we're paused, wait until we're unpaused."""
+        if not self._unpaused_event.is_set():
+            self.logger.info("Waiting to be unpaused...")
+            await self._unpaused_event.wait()
+            self.logger.info("Unpaused!")
 
     # Methods that should be overridden by child classes if needed.
 
@@ -147,6 +174,7 @@ class Business(Generic[T], metaclass=ABCMeta):
             while not self.stopping:
                 self.logger.info("Starting next iteration")
                 try:
+                    await self.wait_if_paused()
                     await self.execute()
                     self.success_count += 1
                 except Exception:
@@ -180,7 +208,7 @@ class Business(Generic[T], metaclass=ABCMeta):
         """Pause at the end of each business loop."""
         self.logger.info("Idling...")
         with self.timings.start("idle"):
-            await self.pause(self.options.idle_time)
+            await self.wait(self.options.idle_time)
 
     async def error_idle(self) -> None:
         """Pause after an error and before attempting to restart.
@@ -192,7 +220,7 @@ class Business(Generic[T], metaclass=ABCMeta):
         error_idle = self.options.error_idle_time
         self.logger.warning(f"Restarting failed monkey after {error_idle}s")
         try:
-            await self.pause(error_idle)
+            await self.wait(error_idle)
         finally:
             if self.stopping:
                 self.control.task_done()
@@ -201,6 +229,7 @@ class Business(Generic[T], metaclass=ABCMeta):
         """Tell the running background task to stop and wait for that."""
         self.stopping = True
         self.logger.info("Stopping...")
+        self.unpause()
         await self.control.put(BusinessCommand.STOP)
         await self.control.join()
         self.logger.info("Stopped")
@@ -210,7 +239,7 @@ class Business(Generic[T], metaclass=ABCMeta):
 
     # Utility functions that can be used by child classes.
 
-    async def pause(self, interval: timedelta) -> bool:
+    async def wait(self, interval: timedelta) -> bool:
         """Pause for up to the given interval, handling commands.
 
         Parameters
@@ -305,6 +334,7 @@ class Business(Generic[T], metaclass=ABCMeta):
             success_count=self.success_count,
             refreshing=self.refreshing,
             timings=self.timings.dump(),
+            paused=self._paused,
         )
 
     async def _pause_no_return(self, interval: timedelta) -> None:

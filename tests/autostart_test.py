@@ -65,9 +65,11 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
     expected_monkeys = [
         {
             "name": f"testuser{i:02d}",
+            "paused": False,
             "business": {
                 "failure_count": 0,
                 "name": "EmptyLoop",
+                "paused": False,
                 "refreshing": False,
                 "success_count": ANY,
                 "timings": ANY,
@@ -85,6 +87,7 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
     ]
     assert r.json() == {
         "name": "basic",
+        "paused": False,
         "config": {
             "name": "basic",
             "count": 10,
@@ -104,6 +107,7 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
     assert r.status_code == 200
     assert r.json() == {
         "name": "python",
+        "paused": False,
         "config": {
             "name": "python",
             "count": 2,
@@ -133,6 +137,7 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
         "monkeys": [
             {
                 "name": "python",
+                "paused": False,
                 "business": {
                     "failure_count": 0,
                     "image": {
@@ -142,6 +147,7 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
                         ),
                     },
                     "name": "NubladoPythonLoop",
+                    "paused": False,
                     "refreshing": False,
                     "success_count": ANY,
                     "timings": ANY,
@@ -157,6 +163,7 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
             },
             {
                 "name": "otherpython",
+                "paused": False,
                 "business": {
                     "failure_count": 0,
                     "image": {
@@ -166,6 +173,7 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
                         ),
                     },
                     "name": "NubladoPythonLoop",
+                    "paused": False,
                     "refreshing": False,
                     "success_count": ANY,
                     "timings": ANY,

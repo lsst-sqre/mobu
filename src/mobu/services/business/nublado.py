@@ -155,7 +155,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             with self.timings.start("pre_login_delay"):
                 max_delay = self.options.jitter.total_seconds()
                 delay = self._random.uniform(0, max_delay)
-                if not await self.pause(timedelta(seconds=delay)):
+                if not await self.wait(timedelta(seconds=delay)):
                     return
         await self.hub_login()
         if not await self._client.is_lab_stopped():
@@ -185,7 +185,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         executed.
         """
         with self.timings.start("execution_idle"):
-            return await self.pause(self.options.execution_idle_time)
+            return await self.wait(self.options.execution_idle_time)
 
     async def shutdown(self) -> None:
         await self.delete_lab()
@@ -195,7 +195,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             self.logger.info("Idling...")
             with self.timings.start("idle"):
                 extra_delay = self._random.uniform(0, self.options.jitter)
-                await self.pause(self.options.idle_time + extra_delay)
+                await self.wait(self.options.idle_time + extra_delay)
         else:
             await super().idle()
 
@@ -212,7 +212,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             # Pause before using the progress API, since otherwise it may not
             # have attached to the spawner and will not return a full stream
             # of events.
-            if not await self.pause(self.options.spawn_settle_time):
+            if not await self.wait(self.options.spawn_settle_time):
                 return False
             timeout -= self.options.spawn_settle_time
 
@@ -312,7 +312,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
                         raise JupyterTimeoutError(msg, self.user.username)
                 msg = f"Waiting for lab deletion ({elapsed_seconds}s elapsed)"
                 self.logger.info(msg)
-                if not await self.pause(timedelta(seconds=2)):
+                if not await self.wait(timedelta(seconds=2)):
                     return
 
         self.logger.info("Lab successfully deleted")

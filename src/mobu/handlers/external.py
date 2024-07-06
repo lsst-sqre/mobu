@@ -121,6 +121,32 @@ async def refresh_flock(
     context.manager.refresh_flock(flock)
 
 
+@external_router.post(
+    "/flocks/{flock}/pause",
+    responses={404: {"description": "Flock not found", "model": ErrorModel}},
+    status_code=202,
+    summary="Signal a flock to pause",
+)
+async def pause_flock(
+    flock: str,
+    context: Annotated[RequestContext, Depends(context_dependency)],
+) -> None:
+    context.manager.pause_flock(flock)
+
+
+@external_router.post(
+    "/flocks/{flock}/unpause",
+    responses={404: {"description": "Flock not found", "model": ErrorModel}},
+    status_code=202,
+    summary="Signal a flock to resume",
+)
+async def unpause_flock(
+    flock: str,
+    context: Annotated[RequestContext, Depends(context_dependency)],
+) -> None:
+    context.manager.unpause_flock(flock)
+
+
 @external_router.delete(
     "/flocks/{flock}",
     responses={404: {"description": "Flock not found", "model": ErrorModel}},
@@ -181,6 +207,8 @@ def get_monkey_log(
     flock: str,
     monkey: str,
     context: Annotated[RequestContext, Depends(context_dependency)],
+    *,
+    as_file: bool = True,
 ) -> StreamingResponse:
     logfile = context.manager.get_flock(flock).get_monkey(monkey).logfile()
 
@@ -198,10 +226,13 @@ def get_monkey_log(
             yield from fh
 
     filename = f"{flock}-{monkey}-{current_datetime()}"
+    headers = {}
+    if as_file:
+        headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return StreamingResponse(
         iterfile(),
         media_type="text/plain",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers=headers,
     )
 
 
@@ -254,6 +285,6 @@ async def get_summary(
     return CombinedSummary.model_validate(
         {
             "flocks": context.manager.summarize_flocks(),
-            "ci_manager": ci_manager.summarize if ci_manager else None,
+            "ci_manager": ci_manager.summarize() if ci_manager else None,
         }
     )

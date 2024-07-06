@@ -1,0 +1,9 @@
+{% extends "_base.html.jinja" %}
+{% block content %}
+    <h2 class="title is-3">Flock - {{ flock.name }}</h2>
+    <p>
+    Note that timings for monkey operations have been stripped for ease of reading config information.
+    If you want to see timings, use the <a href="https://mobu.lsst.io/api.html#operation/get_monkey_mobu_flocks__flock__monkeys__monkey__get">REST API</a>.
+    {% include "fragments/pause/_button.html.jinja" %}
+    {% include "fragments/_flock_detail.html.jinja" %}
+{% endblock content %}

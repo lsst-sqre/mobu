@@ -82,6 +82,7 @@ class Monkey:
             monkey=self._name, user=self._user.username
         )
         self._job: Job | None = None
+        self._paused = False
 
         # Determine the business class from the type of configuration we got,
         # which in turn will be based on Pydantic validation of the value of
@@ -169,6 +170,16 @@ class Monkey:
         self._logfile.flush()
         return self._logfile.name
 
+    def pause(self) -> None:
+        """Tell the business to pause."""
+        self.business.pause()
+        self._paused = True
+
+    def unpause(self) -> None:
+        """Tell the business to resume."""
+        self.business.unpause()
+        self._paused = False
+
     async def run_once(self) -> str | None:
         """Run the monkey business once.
 
@@ -234,6 +245,7 @@ class Monkey:
         """Stop the monkey."""
         if self._state in (MonkeyState.RUNNING, MonkeyState.ERROR):
             self._state = MonkeyState.STOPPING
+            self.unpause()
             await self.business.stop()
         if self._job:
             await self._job.wait()
@@ -251,6 +263,7 @@ class Monkey:
             business=self.business.dump(),
             state=self._state,
             user=self._user,
+            paused=self._paused,
         )
 
     def _build_logger(self, logfile: _TemporaryFileWrapper) -> BoundLogger:

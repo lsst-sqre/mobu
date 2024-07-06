@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Mobu - {{ config.environment_url }}</title>
+        <link rel="stylesheet" href="{{ url_for("static", path="css/unpoly.css") }}" />
+        <link rel="stylesheet" href="{{ url_for("static", path="css/bulma.css") }}">
+        <link rel="stylesheet" href="{{ url_for("static", path="css/bulma-list.css") }}">
+        <link rel="stylesheet" href="{{ url_for("static", path="css/fontawesome/fontawesome.css") }}" />
+        <link rel="stylesheet" href="{{ url_for("static", path="css/fontawesome/solid.css") }}" />
+        <link rel="stylesheet" href="{{ url_for("static", path="css/site.css") }}" />
+        <script src="{{ url_for("static", path="js/unpoly.js") }}"></script>
+        <link rel="stylesheet" href="{{ url_for("static", path="css/highlightjs/default.min.css") }}">
+        <script src="{{ url_for("static", path="js/highlightjs/highlight.min.js") }}"></script>
+        <script src="{{ url_for("static", path="js/highlightjs/python.min.js") }}"></script>
+    </head>
+    <body>
+        <nav class="navbar" role="navigation" aria-label="main navigation" up-nav>
+            <div class="navbar-brand">
+                <a class="navbar-item" href="{{ url_for("ui_index") }}" up-follow>
+                    <img src={{ url_for("static", path="img/monkey.svg") }} width="50", height="160">
+                    <h4 class="subtitle" is-4>Mobu</h4>
+                </a>
+            </div>
+            <div class="navbar-menu">
+                <div class="navbar-start">
+                    <a class="navbar-item" href="{{ url_for("ui_config") }}" up-follow>Config</a>
+                    <a class="navbar-item" href="{{ url_for("ui_flocks") }}" up-follow>Flocks</a>
+                    <a class="navbar-item" href="{{ url_for("ui_ci") }}" up-follow>CI</a>
+                    <div class="navbar-item">
+                        <strong>|</strong>
+                    </div>
+                    <div class="navbar-item">
+                        <div class="mr-2">Env:</div>
+                        <a href="{{ config.environment_url }}">{{ config.environment_url }}</a>
+                    </div>
+                    <div class="navbar-item">
+                        <div up-flashes></div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+        <main>
+            <section class="section">
+                <div class="container">
+                    {% block content %}
+                    {% endblock content %}
+                </main>
+            </div>
+        </section>
+    </body>
+    <script src="{{ url_for("static", path="js/site.js") }}"></script>
+</html>

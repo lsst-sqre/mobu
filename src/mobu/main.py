@@ -15,13 +15,17 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from datetime import timedelta
 from importlib.metadata import metadata, version
 
+import logfire
 import structlog
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
+from fastapi.staticfiles import StaticFiles
 from safir.fastapi import ClientRequestError, client_request_error_handler
 from safir.logging import Profile, configure_logging, configure_uvicorn_logging
 from safir.middleware.x_forwarded import XForwardedMiddleware
 from safir.slack.webhook import SlackRouteErrorHandler
+
+from mobu.constants import STATIC_DIR
 
 from .asyncio import schedule_periodic
 from .config import config
@@ -36,9 +40,13 @@ from .handlers.github_refresh_app import (
     api_router as github_refresh_app_router,
 )
 from .handlers.internal import internal_router
+from .handlers.ui import router as ui_router
 from .status import post_status
 
 __all__ = ["app", "lifespan"]
+
+
+logfire.configure(service_name="mobu")
 
 
 @asynccontextmanager
@@ -123,6 +131,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 configure_logging(
     name="mobu", profile=config.profile, log_level=config.log_level
 )
+
+current_processors = structlog.get_config()["processors"]
+current_processors.insert(-1, logfire.StructlogProcessor())
+
 if config.profile == Profile.production:
     configure_uvicorn_logging(config.log_level)
 
@@ -137,9 +149,21 @@ app = FastAPI(
 )
 """The main FastAPI application for mobu."""
 
+# Static files
+app.mount(
+    f"{config.path_prefix}/ui/static",
+    StaticFiles(directory=STATIC_DIR),
+    name="static",
+)
+
+logfire.instrument_fastapi(app)
+logfire.instrument_httpx()
+
 # Attach the routers.
 app.include_router(internal_router)
 app.include_router(external_router, prefix=config.path_prefix)
+app.include_router(ui_router, prefix=f"{config.path_prefix}/ui")
+
 
 if config.github_ci_app.enabled:
     app.include_router(

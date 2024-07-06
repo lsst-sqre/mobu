@@ -1,0 +1,15 @@
+<div class="pause-button">
+    {% if not flock.paused %}
+        <a href="{{ url_for("ui_pause_flock", flock_name=flock.name) }}"
+           up-method="post"
+           up-target=".pause-button:maybe, .pause-value:maybe">
+            <button class="button is-warning">Pause</button>
+        </a>
+    {% else %}
+        <a href="{{ url_for("ui_unpause_flock", flock_name=flock.name) }}"
+           up-method="post"
+           up-target=".pause-button:maybe, .pause-value:maybe">
+            <button class="button is-success">Unpause</button>
+        </a>
+    {% endif %}
+</div>

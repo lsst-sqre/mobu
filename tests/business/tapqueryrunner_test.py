@@ -41,9 +41,11 @@ async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
         data = await wait_for_business(client, "testuser1")
         assert data == {
             "name": "testuser1",
+            "paused": False,
             "business": {
                 "failure_count": 0,
                 "name": "TAPQueryRunner",
+                "paused": False,
                 "refreshing": False,
                 "success_count": 1,
                 "timings": ANY,

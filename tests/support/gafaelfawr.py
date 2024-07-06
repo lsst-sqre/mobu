@@ -38,6 +38,7 @@ def mock_gafaelfawr(
     username: str | None = None,
     uid: int | None = None,
     gid: int | None = None,
+    fake_token: str | None = None,
     *,
     any_uid: bool = False,
     scopes: list[str] | None = None,
@@ -71,7 +72,10 @@ def mock_gafaelfawr(
         body = json.loads(request.content)
         assert body == expected
         assert datetime.fromisoformat(body["expires"]) > current_datetime()
-        response = {"token": make_gafaelfawr_token(body["username"])}
+        if not fake_token:
+            response = {"token": make_gafaelfawr_token(body["username"])}
+        else:
+            response = {"token": fake_token}
         return Response(200, json=response)
 
     base_url = str(config.environment_url).rstrip("/")

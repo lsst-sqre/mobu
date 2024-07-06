@@ -37,6 +37,12 @@ NOTEBOOK_REPO_URL = "https://github.com/lsst-sqre/notebook-demo.git"
 NOTEBOOK_REPO_BRANCH = "prod"
 """Default repository branch for NotebookRunner."""
 
+STATIC_DIR = (Path(__file__).parents[0] / "static").resolve()
+"""Absolute path a directory containing static files"""
+
+TEMPLATE_DIR = (Path(__file__).parents[0] / "templates").resolve()
+"""Absolute path a directory containing static files"""
+
 TOKEN_LIFETIME = timedelta(days=365)
 """Token lifetime for mobu's service tokens.
 

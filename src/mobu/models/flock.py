@@ -68,6 +68,8 @@ class FlockData(BaseModel):
 
     monkeys: list[MonkeyData] = Field(..., title="Monkeys of the flock")
 
+    paused: bool = Field(..., title="If the flock is paused.")
+
 
 class FlockSummary(BaseModel):
     """Summary statistics about a running flock."""

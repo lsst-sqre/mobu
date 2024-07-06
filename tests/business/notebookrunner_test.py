@@ -77,9 +77,11 @@ async def test_run(
         data = await wait_for_business(client, "testuser1")
         assert data == {
             "name": "testuser1",
+            "paused": False,
             "business": {
                 "failure_count": 0,
                 "name": "NotebookRunner",
+                "paused": False,
                 "notebook": "test-notebook.ipynb",
                 "refreshing": False,
                 "success_count": 1,
@@ -159,9 +161,11 @@ async def test_run_recursive(
         data = await wait_for_business(client, "testuser1")
         assert data == {
             "name": "testuser1",
+            "paused": False,
             "business": {
                 "failure_count": 0,
                 "name": "NotebookRunner",
+                "paused": False,
                 "notebook": ANY,
                 "refreshing": False,
                 "success_count": 1,
@@ -341,9 +345,11 @@ async def test_exclude_dirs(
         data = await wait_for_business(client, "testuser1")
         assert data == {
             "name": "testuser1",
+            "paused": False,
             "business": {
                 "failure_count": 0,
                 "name": "NotebookRunner",
+                "paused": False,
                 "notebook": ANY,
                 "refreshing": False,
                 "success_count": 1,
@@ -434,6 +440,7 @@ async def test_alert(
     data = await wait_for_business(client, "testuser1")
     assert data == {
         "name": "testuser1",
+        "paused": False,
         "business": {
             "failure_count": 1,
             "image": {
@@ -443,6 +450,7 @@ async def test_alert(
                 ),
             },
             "name": "NotebookRunner",
+            "paused": False,
             "notebook": "exception.ipynb",
             "refreshing": False,
             "running_code": bad_code,

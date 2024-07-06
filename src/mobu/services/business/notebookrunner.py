@@ -179,7 +179,13 @@ class NotebookRunner(NubladoBusiness):
             yield session
 
     async def execute_code(self, session: JupyterLabSession) -> None:
+        """
+        Execute ``max_exeutions`` number of notebooks.
+
+        Refresh, pause, and stop as requested.
+        """
         for count in range(self.options.max_executions):
+            await self.wait_if_paused()
             if self.refreshing:
                 await self.refresh()
                 return

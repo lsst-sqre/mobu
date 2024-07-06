@@ -1,0 +1,64 @@
+output: |2-
+
+  <div up-flashes>
+      <div class="notification">Flock "test" unpaused!</div>
+  </div>
+  <div class="pause-button">
+
+          <a href="https://example.com/mobu/ui/flock/test/pause"
+             up-method="post"
+             up-target=".pause-button:maybe, .pause-value:maybe">
+              <button class="button is-warning">Pause</button>
+          </a>
+
+  </div>
+  <div class="pause-value">False</div>
+  <pre class="flock-detail" up-hungry><code class="language-python">FlockData(
+      name=&#39;test&#39;,
+      config=FlockConfig(
+          name=&#39;test&#39;,
+          count=1,
+          users=None,
+          user_spec=UserSpec(
+              username_prefix=&#39;testuser&#39;,
+              uid_start=None,
+              gid_start=None,
+          ),
+          scopes=[
+              &#39;exec:notebook&#39;,
+          ],
+          business=EmptyLoopConfig(
+              type=&#39;EmptyLoop&#39;,
+              options=BusinessOptions(
+                  error_idle_time=datetime.timedelta(seconds=60),
+                  idle_time=datetime.timedelta(seconds=60),
+              ),
+              restart=False,
+          ),
+      ),
+      monkeys=[
+          MonkeyData(
+              name=&#39;testuser1&#39;,
+              state=&lt;MonkeyState.RUNNING: &#39;RUNNING&#39;&gt;,
+              paused=False,
+              user=AuthenticatedUser(
+                  username=&#39;testuser1&#39;,
+                  uidnumber=None,
+                  gidnumber=None,
+                  scopes=[
+                      &#39;exec:notebook&#39;,
+                  ],
+                  token=&#39;blah&#39;,
+              ),
+              business=BusinessData(
+                  name=&#39;EmptyLoop&#39;,
+                  failure_count=0,
+                  success_count=1,
+                  refreshing=False,
+                  paused=False,
+                  timings=[],
+              ),
+          ),
+      ],
+      paused=False,
+  )</code></pre>

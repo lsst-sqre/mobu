@@ -183,3 +183,39 @@ class FlockManager:
         if flock is None:
             raise FlockNotFoundError(name)
         flock.signal_refresh()
+
+    def pause_flock(self, name: str) -> None:
+        """Tell a flock to pause.
+
+        Parameters
+        ----------
+        name
+            Name of flock to pause.
+
+        Raises
+        ------
+        FlockNotFoundError
+            Raised if no flock was found with that name.
+        """
+        flock = self._flocks.get(name)
+        if flock is None:
+            raise FlockNotFoundError(name)
+        flock.pause()
+
+    def unpause_flock(self, name: str) -> None:
+        """Tell a flock to unpause.
+
+        Parameters
+        ----------
+        name
+            Name of flock to pause.
+
+        Raises
+        ------
+        FlockNotFoundError
+            Raised if no flock was found with that name.
+        """
+        flock = self._flocks.get(name)
+        if flock is None:
+            raise FlockNotFoundError(name)
+        flock.unpause()

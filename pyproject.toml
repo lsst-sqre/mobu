@@ -75,6 +75,10 @@ exclude_lines = [
     "if TYPE_CHECKING:"
 ]
 
+# [tool.djlint]
+# profile = jinja
+# files = ["src/templates/"]
+
 [tool.mypy]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
@@ -96,6 +100,9 @@ warn_untyped_fields = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
+
+# For pytest-golden
+enable_assertion_pass_hook=true
 filterwarnings = [
     # Bug in aiojobs
     "ignore:with timeout\\(\\) is deprecated:DeprecationWarning"

@@ -28,9 +28,11 @@ async def test_run(
     data = await wait_for_business(client, "testuser1")
     assert data == {
         "name": "testuser1",
+        "paused": False,
         "business": {
             "failure_count": 0,
             "name": "GitLFSBusiness",
+            "paused": False,
             "refreshing": False,
             "success_count": 1,
             "timings": ANY,
@@ -68,9 +70,11 @@ async def test_fail(client: AsyncClient, respx_mock: respx.Router) -> None:
     data = await wait_for_business(client, "testuser1")
     assert data == {
         "name": "testuser1",
+        "paused": False,
         "business": {
             "failure_count": 1,
             "name": "GitLFSBusiness",
+            "paused": False,
             "refreshing": False,
             "success_count": 0,
             "timings": ANY,

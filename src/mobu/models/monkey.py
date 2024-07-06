@@ -30,6 +30,15 @@ class MonkeyData(BaseModel):
         ..., title="State of monkey", examples=[MonkeyState.RUNNING]
     )
 
+    paused: bool = Field(
+        ...,
+        title="Whether this monkey's business is paused",
+        description=(
+            "'paused' is not a state because all of the pause logic is in the"
+            " business. The monkey is still technically in the 'RUNNING'"
+            " state."
+        ),
+    )
     user: AuthenticatedUser = Field(
         ..., title="User as which the monkey is running"
     )
