@@ -26,7 +26,7 @@ dynamic = ["version"]
 monkeyflocker = "monkeyflocker.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/lsst-sqre/mobu"
+Homepage = "https://mobu.lsst.io"
 Source = "https://github.com/lsst-sqre/mobu"
 
 [build-system]
@@ -120,6 +120,9 @@ python_files = ["tests/*.py", "tests/*/*.py"]
 [tool.ruff]
 line-length = 79
 target-version = "py312"
+exclude = [
+    "docs/**",
+]
 
 [tool.ruff.lint]
 ignore = [
@@ -161,6 +164,7 @@ ignore = [
     "TID252",  # if we're going to use relative imports, use them always
     "TRY003",  # good general advice but lint is way too aggressive
     "TRY301",  # sometimes raising exceptions inside try is the best flow
+    "UP040",   # Python 3.12 supports `type` alias kw, but mypy doesn't yet
 
     # The following settings should be disabled when using ruff format
     # per https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules

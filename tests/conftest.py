@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
+from importlib import reload
+from pathlib import Path
+from textwrap import dedent
 from unittest.mock import DEFAULT, patch
 
 import pytest
@@ -16,11 +19,17 @@ from pydantic import HttpUrl
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 
 from mobu import main
-from mobu.config import config
+from mobu.config import GitHubCiApp, GitHubRefreshApp, config
 from mobu.services.business.gitlfs import GitLFSBusiness
 
-from .support.constants import TEST_BASE_URL, TEST_GITHUB_WEBHOOK_SECRET
+from .support.constants import (
+    TEST_BASE_URL,
+    TEST_GITHUB_CI_APP_PRIVATE_KEY,
+    TEST_GITHUB_CI_APP_SECRET,
+    TEST_GITHUB_REFRESH_APP_SECRET,
+)
 from .support.gafaelfawr import make_gafaelfawr_token
+from .support.github import GitHubMocker
 from .support.gitlfs import (
     no_git_lfs_data,
     uninstall_git_lfs,
@@ -47,10 +56,74 @@ def _configure() -> Iterator[None]:
     """
     config.environment_url = HttpUrl("https://test.example.com")
     config.gafaelfawr_token = make_gafaelfawr_token()
-    config.github_webhook_secret = TEST_GITHUB_WEBHOOK_SECRET
     yield
     config.environment_url = None
     config.gafaelfawr_token = None
+
+
+@pytest.fixture
+def _enable_github_ci_app(tmp_path: Path) -> Iterator[None]:
+    """Enable the GitHub CI app functionality.
+
+    We need to reload the main module here because including the router is done
+    conditionally on module import.
+    """
+    github_config = tmp_path / "github_config.yaml"
+    github_config.write_text(
+        dedent("""
+        users:
+        - username: bot-mobu-unittest-1
+        - username: bot-mobu-unittest-2
+        accepted_github_orgs:
+          - org1
+          - org2
+          - lsst-sqre
+    """)
+    )
+    config.github_ci_app.id = 1
+    config.github_ci_app.enabled = True
+    config.github_ci_app.webhook_secret = TEST_GITHUB_CI_APP_SECRET
+    config.github_ci_app.private_key = TEST_GITHUB_CI_APP_PRIVATE_KEY
+    config.github_config_path = github_config
+    reload(main)
+
+    yield
+
+    config.github_ci_app = GitHubCiApp()
+    config.github_config_path = None
+    reload(main)
+
+
+@pytest.fixture
+def _enable_github_refresh_app(tmp_path: Path) -> Iterator[None]:
+    """Enable the GitHub Refresh app routes.
+
+    We need to reload the main module here because including the router is done
+    conditionally on module import.
+    """
+    github_config = tmp_path / "github_config.yaml"
+    github_config.write_text(
+        dedent("""
+        users:
+        - username: bot-mobu-unittest-1
+        - username: bot-mobu-unittest-2
+        accepted_github_orgs:
+          - org1
+          - org2
+          - lsst-sqre
+    """)
+    )
+
+    config.github_refresh_app.enabled = True
+    config.github_refresh_app.webhook_secret = TEST_GITHUB_REFRESH_APP_SECRET
+    config.github_config_path = github_config
+    reload(main)
+
+    yield
+
+    config.github_refresh_app = GitHubRefreshApp()
+    config.github_config_path = None
+    reload(main)
 
 
 @pytest_asyncio.fixture
@@ -148,9 +221,16 @@ def gitlfs_mock() -> Iterator[None]:
 
 
 @pytest.fixture
-def no_monkey_business() -> Iterator[None]:
-    """Prevent any monkeys from actually doing any business."""
+def _no_monkey_business() -> Iterator[None]:
+    """Prevent any flock monkeys from actually doing any business."""
     with patch.multiple(
         "mobu.services.flock.Monkey", start=DEFAULT, stop=DEFAULT
     ):
-        yield None
+        yield
+
+
+@pytest.fixture
+def github_mocker() -> Iterator[GitHubMocker]:
+    github_mocker = GitHubMocker()
+    with github_mocker.router:
+        yield github_mocker

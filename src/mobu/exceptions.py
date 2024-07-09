@@ -34,6 +34,7 @@ __all__ = [
     "FlockNotFoundError",
     "GafaelfawrParseError",
     "GafaelfawrWebError",
+    "GitHubFileNotFoundError",
     "JupyterProtocolError",
     "JupyterTimeoutError",
     "JupyterWebError",
@@ -345,6 +346,12 @@ class CodeExecutionError(MobuSlackException):
             blocks=self.common_blocks(),
             attachments=attachments,
         )
+
+
+class GitHubFileNotFoundError(Exception):
+    """Tried to retrieve contents for a non-existent file in a GitHub
+    repo.
+    """
 
 
 class JupyterProtocolError(MobuSlackException):

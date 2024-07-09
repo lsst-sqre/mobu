@@ -1,4 +1,4 @@
-"""Test the github webhook handler."""
+"""Test the github refresh webhook handler."""
 
 import hashlib
 import hmac
@@ -9,8 +9,9 @@ from string import Template
 import pytest
 import respx
 from httpx import AsyncClient
+from pytest_mock import MockerFixture
 
-from ..support.constants import TEST_GITHUB_WEBHOOK_SECRET
+from ..support.constants import TEST_GITHUB_REFRESH_APP_SECRET
 from ..support.gafaelfawr import mock_gafaelfawr
 
 
@@ -22,13 +23,13 @@ class GithubRequest:
 
 def webhook_request(org: str, repo: str, ref: str) -> GithubRequest:
     """Build a Github webhook request and headers with the right hash."""
-    data_path = Path(__file__).parent.parent / "data"
-    template = (data_path / "github_webhook.tmpl.json").read_text()
+    data_path = Path(__file__).parent.parent / "data" / "github_webhooks"
+    template = (data_path / "push.tmpl.json").read_text()
     payload = Template(template).substitute(org=org, repo=repo, ref=ref)
 
     # https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries#python-example
     hash_object = hmac.new(
-        TEST_GITHUB_WEBHOOK_SECRET.encode(),
+        TEST_GITHUB_REFRESH_APP_SECRET.encode(),
         msg=payload.encode(),
         digestmod=hashlib.sha256,
     )
@@ -41,8 +42,8 @@ def webhook_request(org: str, repo: str, ref: str) -> GithubRequest:
         "X-GitHub-Delivery": "d2d3c948-1d61-11ef-848a-c578f23615c9",
         "X-GitHub-Event": "push",
         "X-GitHub-Hook-ID": "479971864",
-        "X-GitHub-Hook-Installation-Target-ID": "804427678",
-        "X-GitHub-Hook-Installation-Target-Type": "repository",
+        "X-GitHub-Hook-Installation-Target-ID": "1",
+        "X-GitHub-Hook-Installation-Target-Type": "integration",
         "X-Hub-Signature-256": sig,
     }
 
@@ -50,8 +51,52 @@ def webhook_request(org: str, repo: str, ref: str) -> GithubRequest:
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("_no_monkey_business")
+async def test_not_enabled(
+    anon_client: AsyncClient,
+    respx_mock: respx.Router,
+) -> None:
+    mock_gafaelfawr(respx_mock)
+    request = webhook_request(
+        org="lsst-sqre",
+        repo="some-repo",
+        ref="refs/heads/main",
+    )
+    response = await anon_client.post(
+        "/mobu/github/refresh/webhook",
+        headers=request.headers,
+        content=request.payload,
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_enable_github_refresh_app")
+async def test_unacceptable_org(
+    anon_client: AsyncClient,
+    respx_mock: respx.Router,
+    mocker: MockerFixture,
+) -> None:
+    mock_gafaelfawr(respx_mock)
+    request = webhook_request(
+        org="nope",
+        repo="some-repo",
+        ref="refs/heads/main",
+    )
+
+    response = await anon_client.post(
+        "/mobu/github/refresh/webhook",
+        headers=request.headers,
+        content=request.payload,
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_no_monkey_business", "_enable_github_refresh_app")
 async def test_handle_webhook(
-    no_monkey_business: None,
     client: AsyncClient,
     anon_client: AsyncClient,
     respx_mock: respx.Router,
@@ -66,7 +111,7 @@ async def test_handle_webhook(
                 "type": "NotebookRunner",
                 "options": {
                     "repo_url": "https://github.com/lsst-sqre/some-repo.git",
-                    "repo_branch": "main",
+                    "repo_ref": "main",
                 },
             },
         },
@@ -79,7 +124,7 @@ async def test_handle_webhook(
                 "type": "NotebookRunner",
                 "options": {
                     "repo_url": "https://github.com/lsst-sqre/some-repo.git",
-                    "repo_branch": "some-branch",
+                    "repo_ref": "some-branch",
                 },
             },
         },
@@ -92,7 +137,7 @@ async def test_handle_webhook(
                 "type": "NotebookRunner",
                 "options": {
                     "repo_url": "https://github.com/lsst-sqre/some-other-repo.git",
-                    "repo_branch": "main",
+                    "repo_ref": "main",
                 },
             },
         },
@@ -118,11 +163,13 @@ async def test_handle_webhook(
         repo="some-repo",
         ref="refs/heads/main",
     )
-    await anon_client.post(
-        "/mobu/github/webhook",
+    response = await anon_client.post(
+        "/mobu/github/refresh/webhook",
         headers=request.headers,
         content=request.payload,
     )
+
+    assert response.status_code == 202
 
     # Only the business for the correct branch and repo should be refreshing
     r = await client.get(

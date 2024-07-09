@@ -10,11 +10,13 @@
 # Testing
 asgi-lifespan
 coverage[toml]
+documenteer[guide]
 mypy
 pre-commit
 pytest
 pytest-asyncio
 pytest-cov
+pytest-mock
 pytest-sugar
 respx
 ruff

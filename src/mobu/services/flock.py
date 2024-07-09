@@ -140,16 +140,16 @@ class Flock:
         for monkey in self._monkeys.values():
             monkey.signal_refresh()
 
-    def uses_repo(self, repo_url: str, repo_branch: str) -> bool:
+    def uses_repo(self, repo_url: str, repo_ref: str) -> bool:
         match self._config:
             case FlockConfig(
                 business=NotebookRunnerConfig(
                     options=NotebookRunnerOptions(
                         repo_url=url,
-                        repo_branch=branch,
+                        repo_ref=branch,
                     )
                 )
-            ) if (url, branch) == (repo_url, repo_branch):
+            ) if (url, branch) == (repo_url, repo_ref):
                 return True
         return False
 

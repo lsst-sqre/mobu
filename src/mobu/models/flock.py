@@ -5,12 +5,7 @@ from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from .business.empty import EmptyLoopConfig
-from .business.gitlfs import GitLFSConfig
-from .business.notebookrunner import NotebookRunnerConfig
-from .business.nubladopythonloop import NubladoPythonLoopConfig
-from .business.tapqueryrunner import TAPQueryRunnerConfig
-from .business.tapquerysetrunner import TAPQuerySetRunnerConfig
+from .business.business_config_type import BusinessConfigType
 from .monkey import MonkeyData
 from .user import User, UserSpec
 
@@ -49,14 +44,9 @@ class FlockConfig(BaseModel):
         examples=[["exec:notebook", "read:tap"]],
     )
 
-    business: (
-        TAPQueryRunnerConfig
-        | TAPQuerySetRunnerConfig
-        | NotebookRunnerConfig
-        | NubladoPythonLoopConfig
-        | GitLFSConfig
-        | EmptyLoopConfig
-    ) = Field(..., title="Business to run")
+    business: BusinessConfigType = Field(
+        ..., title="Business to run", discriminator="type"
+    )
 
     @model_validator(mode="after")
     def _validate(self) -> Self:

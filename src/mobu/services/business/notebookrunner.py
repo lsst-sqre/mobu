@@ -79,7 +79,7 @@ class NotebookRunner(NubladoBusiness):
 
     async def initialize(self) -> None:
         if self._repo_dir is None:
-            self._repo_dir = Path(TemporaryDirectory().name)
+            self._repo_dir = Path(TemporaryDirectory(delete=False).name)
             await self.clone_repo()
 
         self._exclude_paths = {
@@ -100,9 +100,11 @@ class NotebookRunner(NubladoBusiness):
 
     async def clone_repo(self) -> None:
         url = self.options.repo_url
-        branch = self.options.repo_branch
+        ref = self.options.repo_ref
         with self.timings.start("clone_repo"):
-            await self._git.clone("-b", branch, url, str(self._repo_dir))
+            self._git.repo = self._repo_dir
+            await self._git.clone(url, str(self._repo_dir))
+            await self._git.checkout(ref)
 
     def is_excluded(self, notebook: Path) -> bool:
         # A notebook is excluded if any of its parent directories are excluded
@@ -119,6 +121,23 @@ class NotebookRunner(NubladoBusiness):
                 for n in self._repo_dir.glob("**/*.ipynb")
                 if not self.is_excluded(n)
             ]
+            if self.options.notebooks_to_run:
+                requested = [
+                    self._repo_dir / notebook
+                    for notebook in self.options.notebooks_to_run
+                ]
+                not_found = set(requested) - set(notebooks)
+                if not_found:
+                    msg = (
+                        f"These notebooks do not exist in {self._repo_dir}:"
+                        f" {not_found}"
+                    )
+                    raise NotebookRepositoryError(msg, self.user.username)
+                notebooks = requested
+                self.logger.debug(
+                    "Running with explicit list of notebooks",
+                    notebooks=notebooks,
+                )
             if not notebooks:
                 msg = "No notebooks found in {self._repo_dir}"
                 raise NotebookRepositoryError(msg, self.user.username)

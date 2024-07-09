@@ -118,13 +118,11 @@ class FlockManager:
             raise FlockNotFoundError(name)
         return flock
 
-    def list_flocks_for_repo(
-        self, repo_url: str, repo_branch: str
-    ) -> list[str]:
+    def list_flocks_for_repo(self, repo_url: str, repo_ref: str) -> list[str]:
         return [
             name
             for name, flock in self._flocks.items()
-            if flock.uses_repo(repo_url=repo_url, repo_branch=repo_branch)
+            if flock.uses_repo(repo_url=repo_url, repo_ref=repo_ref)
         ]
 
     def list_flocks(self) -> list[str]:

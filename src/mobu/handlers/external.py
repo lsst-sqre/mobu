@@ -14,10 +14,13 @@ from safir.slack.webhook import SlackRouteErrorHandler
 
 from ..config import config
 from ..dependencies.context import RequestContext, context_dependency
+from ..dependencies.github import maybe_ci_manager_dependency
 from ..models.flock import FlockConfig, FlockData, FlockSummary
 from ..models.index import Index
 from ..models.monkey import MonkeyData
 from ..models.solitary import SolitaryConfig, SolitaryResult
+from ..models.summary import CombinedSummary
+from ..services.github_ci.ci_manager import CiManager
 
 external_router = APIRouter(route_class=SlackRouteErrorHandler)
 """FastAPI router for all external handlers."""
@@ -239,10 +242,16 @@ async def put_run(
 @external_router.get(
     "/summary",
     response_class=FormattedJSONResponse,
-    response_model=list[FlockSummary],
-    summary="Summary of statistics for all flocks",
+    response_model=CombinedSummary,
+    summary="Summary of all app state",
 )
 async def get_summary(
     context: Annotated[RequestContext, Depends(context_dependency)],
-) -> list[FlockSummary]:
-    return context.manager.summarize_flocks()
+    ci_manager: Annotated[
+        CiManager | None, Depends(maybe_ci_manager_dependency)
+    ],
+) -> CombinedSummary:
+    return CombinedSummary(
+        flocks=context.manager.summarize_flocks(),
+        ci_manager=ci_manager.summarize() if ci_manager else None,
+    )
