@@ -30,7 +30,7 @@ async def test_start_stop_refresh(
     config = {
         "name": "test",
         "count": 1,
-        "user_spec": {"username_prefix": "testuser"},
+        "user_spec": {"username_prefix": "bot-mobu-testuser"},
         "scopes": ["exec:notebook"],
         "business": {"type": "EmptyLoop"},
     }
@@ -41,13 +41,13 @@ async def test_start_stop_refresh(
         "config": {
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser"},
             "scopes": ["exec:notebook"],
             "business": {"type": "EmptyLoop"},
         },
         "monkeys": [
             {
-                "name": "testuser1",
+                "name": "bot-mobu-testuser1",
                 "business": {
                     "failure_count": 0,
                     "name": "EmptyLoop",
@@ -59,14 +59,14 @@ async def test_start_stop_refresh(
                 "user": {
                     "scopes": ["exec:notebook"],
                     "token": ANY,
-                    "username": "testuser1",
+                    "username": "bot-mobu-testuser1",
                 },
             },
         ],
     }
     assert r.json() == expected
     assert r.headers["Location"] == f"{TEST_BASE_URL}/mobu/flocks/test"
-    await wait_for_business(client, "testuser1")
+    await wait_for_business(client, "bot-mobu-testuser1")
 
     r = await client.get("/mobu/flocks")
     assert r.status_code == 200
@@ -83,17 +83,17 @@ async def test_start_stop_refresh(
 
     r = await client.get("/mobu/flocks/test/monkeys")
     assert r.status_code == 200
-    assert r.json() == ["testuser1"]
+    assert r.json() == ["bot-mobu-testuser1"]
 
-    r = await client.get("/mobu/flocks/test/monkeys/testuser1")
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1")
     assert r.status_code == 200
     assert r.json() == expected["monkeys"][0]
 
-    r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1/log")
     assert r.status_code == 200
     assert "text/plain" in r.headers["Content-Type"]
     assert "filename" in r.headers["Content-Disposition"]
-    assert "test-testuser1-" in r.headers["Content-Disposition"]
+    assert "test-bot-mobu-testuser1-" in r.headers["Content-Disposition"]
     assert "Idling..." in r.text
 
     r = await client.get("/mobu/flocks/test/summary")
@@ -120,9 +120,9 @@ async def test_start_stop_refresh(
     assert r.status_code == 404
     r = await client.get("/mobu/flocks/other/monkeys")
     assert r.status_code == 404
-    r = await client.get("/mobu/flocks/test/monkeys/testuser2")
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser2")
     assert r.status_code == 404
-    r = await client.get("/mobu/flocks/test/monkeys/testuser2/log")
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser2/log")
     assert r.status_code == 404
 
     r = await client.delete("/mobu/flocks/test")
@@ -132,9 +132,9 @@ async def test_start_stop_refresh(
     assert r.status_code == 404
     r = await client.get("/mobu/flocks/test/monkeys")
     assert r.status_code == 404
-    r = await client.get("/mobu/flocks/test/monkeys/testuser1")
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1")
     assert r.status_code == 404
-    r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1/log")
     assert r.status_code == 404
 
     r = await client.get("/mobu/flocks")
@@ -152,8 +152,12 @@ async def test_user_list(
         "name": "test",
         "count": 2,
         "users": [
-            {"username": "testuser", "uidnumber": 1000, "gidnumber": 1056},
-            {"username": "otheruser", "uidnumber": 60000},
+            {
+                "username": "bot-mobu-testuser",
+                "uidnumber": 1000,
+                "gidnumber": 1056,
+            },
+            {"username": "bot-mobu-otheruser", "uidnumber": 60000},
         ],
         "scopes": ["exec:notebook"],
         "business": {"type": "EmptyLoop"},
@@ -165,7 +169,7 @@ async def test_user_list(
         "config": config,
         "monkeys": [
             {
-                "name": "testuser",
+                "name": "bot-mobu-testuser",
                 "business": {
                     "failure_count": 0,
                     "name": "EmptyLoop",
@@ -179,11 +183,11 @@ async def test_user_list(
                     "token": ANY,
                     "uidnumber": 1000,
                     "gidnumber": 1056,
-                    "username": "testuser",
+                    "username": "bot-mobu-testuser",
                 },
             },
             {
-                "name": "otheruser",
+                "name": "bot-mobu-otheruser",
                 "business": {
                     "failure_count": 0,
                     "name": "EmptyLoop",
@@ -197,7 +201,7 @@ async def test_user_list(
                     "token": ANY,
                     "uidnumber": 60000,
                     "gidnumber": 60000,
-                    "username": "otheruser",
+                    "username": "bot-mobu-otheruser",
                 },
             },
         ],
@@ -205,11 +209,11 @@ async def test_user_list(
     assert r.json() == expected
     assert r.headers["Location"] == f"{TEST_BASE_URL}/mobu/flocks/test"
 
-    r = await client.get("/mobu/flocks/test/monkeys/testuser")
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser")
     assert r.status_code == 200
     assert r.json() == expected["monkeys"][0]
 
-    r = await client.get("/mobu/flocks/test/monkeys/otheruser")
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-otheruser")
     assert r.status_code == 200
     assert r.json() == expected["monkeys"][1]
 
@@ -228,10 +232,13 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
             "name": "test",
             "count": 2,
             "users": [
-                {"username": "testuser", "uidnumber": 1000},
-                {"username": "otheruser", "uidnumber": 60000},
+                {"username": "bot-mobu-testuser", "uidnumber": 1000},
+                {"username": "bot-mobu-otheruser", "uidnumber": 60000},
             ],
-            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "user_spec": {
+                "username_prefix": "bot-mobu-testuser",
+                "uid_start": 1000,
+            },
             "scopes": [],
             "business": {"type": "EmptyLoop"},
         },
@@ -281,9 +288,9 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
             "name": "test",
             "count": 2,
             "users": [
-                {"username": "testuser", "uidnumber": 1000},
-                {"username": "otheruser", "uidnumber": 60000},
-                {"username": "thirduser", "uidnumber": 70000},
+                {"username": "bot-mobu-testuser", "uidnumber": 1000},
+                {"username": "bot-mobu-otheruser", "uidnumber": 60000},
+                {"username": "bot-mobu-thirduser", "uidnumber": 70000},
             ],
             "scopes": [],
             "business": {"type": "EmptyLoop"},
@@ -308,7 +315,7 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
         json={
             "name": "test",
             "count": 2,
-            "users": [{"username": "testuser", "uidnumber": 1000}],
+            "users": [{"username": "bot-mobu-testuser", "uidnumber": 1000}],
             "scopes": [],
             "business": {"type": "EmptyLoop"},
         },
@@ -332,7 +339,10 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
         json={
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "user_spec": {
+                "username_prefix": "bot-mobu-testuser",
+                "uid_start": 1000,
+            },
             "scopes": ["exec:notebook"],
             "business": {"type": "UnknownBusiness"},
         },

@@ -105,7 +105,7 @@ async def test_handle_webhook(
         {
             "name": "test-notebook",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser-notebook"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser-notebook"},
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NotebookRunner",
@@ -118,7 +118,9 @@ async def test_handle_webhook(
         {
             "name": "test-notebook-branch",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser-notebook-branch"},
+            "user_spec": {
+                "username_prefix": "bot-mobu-testuser-notebook-branch"
+            },
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NotebookRunner",
@@ -131,7 +133,9 @@ async def test_handle_webhook(
         {
             "name": "test-other-notebook",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser-other-notebook"},
+            "user_spec": {
+                "username_prefix": "bot-mobu-testuser-other-notebook"
+            },
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NotebookRunner",
@@ -144,7 +148,7 @@ async def test_handle_webhook(
         {
             "name": "test-non-notebook",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser-non-notebook"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser-non-notebook"},
             "scopes": ["exec:notebook"],
             "business": {"type": "EmptyLoop"},
         },
@@ -173,22 +177,22 @@ async def test_handle_webhook(
 
     # Only the business for the correct branch and repo should be refreshing
     r = await client.get(
-        "/mobu/flocks/test-notebook/monkeys/testuser-notebook1"
+        "/mobu/flocks/test-notebook/monkeys/bot-mobu-testuser-notebook1"
     )
     assert r.json()["business"]["refreshing"] is True
 
     # The other businesses should not be refreshing
     r = await client.get(
-        "/mobu/flocks/test-notebook-branch/monkeys/testuser-notebook-branch1"
+        "/mobu/flocks/test-notebook-branch/monkeys/bot-mobu-testuser-notebook-branch1"
     )
     assert r.json()["business"]["refreshing"] is False
 
     r = await client.get(
-        "/mobu/flocks/test-other-notebook/monkeys/testuser-other-notebook1"
+        "/mobu/flocks/test-other-notebook/monkeys/bot-mobu-testuser-other-notebook1"
     )
     assert r.json()["business"]["refreshing"] is False
 
     r = await client.get(
-        "/mobu/flocks/test-non-notebook/monkeys/testuser-non-notebook1"
+        "/mobu/flocks/test-non-notebook/monkeys/bot-mobu-testuser-non-notebook1"
     )
     assert r.json()["business"]["refreshing"] is False

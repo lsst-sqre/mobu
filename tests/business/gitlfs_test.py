@@ -25,9 +25,9 @@ async def test_run(
     # Wait until we've finished at least one loop,
     # then check the results.
 
-    data = await wait_for_business(client, "testuser1")
+    data = await wait_for_business(client, "bot-mobu-testuser1")
     assert data == {
-        "name": "testuser1",
+        "name": "bot-mobu-testuser1",
         "business": {
             "failure_count": 0,
             "name": "GitLFSBusiness",
@@ -39,12 +39,12 @@ async def test_run(
         "user": {
             "scopes": ["exec:notebook"],
             "token": ANY,
-            "username": "testuser1",
+            "username": "bot-mobu-testuser1",
         },
     }
 
     # Get the log and check that we logged the query.
-    r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1/log")
     assert r.status_code == 200
     assert "Running Git-LFS check..." in r.text
     assert "Git-LFS check finished after " in r.text
@@ -65,9 +65,9 @@ async def test_fail(client: AsyncClient, respx_mock: respx.Router) -> None:
     # We expect it to have failed in the git push, because we don't really
     # have a Git LFS server for it to talk to.
 
-    data = await wait_for_business(client, "testuser1")
+    data = await wait_for_business(client, "bot-mobu-testuser1")
     assert data == {
-        "name": "testuser1",
+        "name": "bot-mobu-testuser1",
         "business": {
             "failure_count": 1,
             "name": "GitLFSBusiness",
@@ -79,12 +79,12 @@ async def test_fail(client: AsyncClient, respx_mock: respx.Router) -> None:
         "user": {
             "scopes": ["exec:notebook"],
             "token": ANY,
-            "username": "testuser1",
+            "username": "bot-mobu-testuser1",
         },
     }
 
     # Get the log and check that we logged the query.
-    r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1/log")
     assert r.status_code == 200
     assert "Running Git-LFS check..." in r.text
     assert ("mobu.exceptions.SubprocessError") in r.text

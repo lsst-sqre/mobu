@@ -27,7 +27,7 @@ async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
             json={
                 "name": "test",
                 "count": 1,
-                "user_spec": {"username_prefix": "testuser"},
+                "user_spec": {"username_prefix": "bot-mobu-testuser"},
                 "scopes": ["exec:notebook"],
                 "business": {
                     "type": "TAPQueryRunner",
@@ -38,9 +38,9 @@ async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
         assert r.status_code == 201
 
         # Wait until we've finished at least one loop and check the results.
-        data = await wait_for_business(client, "testuser1")
+        data = await wait_for_business(client, "bot-mobu-testuser1")
         assert data == {
-            "name": "testuser1",
+            "name": "bot-mobu-testuser1",
             "business": {
                 "failure_count": 0,
                 "name": "TAPQueryRunner",
@@ -52,12 +52,14 @@ async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
             "user": {
                 "scopes": ["exec:notebook"],
                 "token": ANY,
-                "username": "testuser1",
+                "username": "bot-mobu-testuser1",
             },
         }
 
         # Get the log and check that we logged the query.
-        r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
+        r = await client.get(
+            "/mobu/flocks/test/monkeys/bot-mobu-testuser1/log"
+        )
         assert r.status_code == 200
         assert "Running (sync): " in r.text
         found = False

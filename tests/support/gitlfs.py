@@ -11,7 +11,7 @@ flock_message = {
     "name": "test",
     "count": 1,
     "debug": "true",
-    "user_spec": {"username_prefix": "testuser"},
+    "user_spec": {"username_prefix": "bot-mobu-testuser"},
     "scopes": ["exec:notebook"],  # IRL it would need write:git-lfs
     "business": {
         "type": "GitLFS",

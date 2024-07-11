@@ -34,7 +34,7 @@ async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
             json={
                 "name": "test",
                 "count": 1,
-                "user_spec": {"username_prefix": "testuser"},
+                "user_spec": {"username_prefix": "bot-mobu-testuser"},
                 "scopes": ["exec:notebook"],
                 "business": {"type": "TAPQuerySetRunner"},
             },
@@ -42,9 +42,9 @@ async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
         assert r.status_code == 201
 
         # Wait until we've finished at least one loop and check the results.
-        data = await wait_for_business(client, "testuser1")
+        data = await wait_for_business(client, "bot-mobu-testuser1")
         assert data == {
-            "name": "testuser1",
+            "name": "bot-mobu-testuser1",
             "business": {
                 "failure_count": 0,
                 "name": "TAPQuerySetRunner",
@@ -56,12 +56,14 @@ async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
             "user": {
                 "scopes": ["exec:notebook"],
                 "token": ANY,
-                "username": "testuser1",
+                "username": "bot-mobu-testuser1",
             },
         }
 
         # Get the log and check that we logged the query.
-        r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
+        r = await client.get(
+            "/mobu/flocks/test/monkeys/bot-mobu-testuser1/log"
+        )
         assert r.status_code == 200
         assert "Running (sync): " in r.text
         assert "Query finished after " in r.text
@@ -85,7 +87,7 @@ async def test_setup_error(
         json={
             "name": "test",
             "count": 1,
-            "users": [{"username": "tapuser"}],
+            "users": [{"username": "bot-mobu-tapuser"}],
             "scopes": ["exec:notebook"],
             "business": {"type": "TAPQuerySetRunner"},
         },
@@ -93,7 +95,7 @@ async def test_setup_error(
     assert r.status_code == 201
 
     # Wait until we've finished at least one loop and check the results.
-    data = await wait_for_business(client, "tapuser")
+    data = await wait_for_business(client, "bot-mobu-tapuser")
     assert data["business"]["failure_count"] == 1
 
     assert slack.messages == [
@@ -122,12 +124,12 @@ async def test_setup_error(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/tapuser",
+                            "text": "*Monkey*\ntest/bot-mobu-tapuser",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\ntapuser",
+                            "text": "*User*\nbot-mobu-tapuser",
                             "verbatim": True,
                         },
                         {
@@ -157,7 +159,7 @@ async def test_alert(
             json={
                 "name": "test",
                 "count": 1,
-                "user_spec": {"username_prefix": "testuser"},
+                "user_spec": {"username_prefix": "bot-mobu-testuser"},
                 "scopes": ["exec:notebook"],
                 "business": {"type": "TAPQuerySetRunner"},
             },
@@ -165,7 +167,7 @@ async def test_alert(
         assert r.status_code == 201
 
         # Wait until we've finished at least one loop and check the results.
-        data = await wait_for_business(client, "testuser1")
+        data = await wait_for_business(client, "bot-mobu-testuser1")
         assert data["business"]["failure_count"] == 1
 
     assert slack.messages == [
@@ -191,12 +193,12 @@ async def test_alert(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/testuser1",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\ntestuser1",
+                            "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
@@ -249,7 +251,7 @@ async def test_random_object() -> None:
             objects = [str(o) for o in yaml.safe_load(f)["object_ids"]]
 
         user = AuthenticatedUser(
-            username="user", scopes=["read:tap"], token="blah blah"
+            username="bot-mobu-user", scopes=["read:tap"], token="blah blah"
         )
         logger = structlog.get_logger(__file__)
         options = TAPQuerySetRunnerOptions(query_set=query_set)

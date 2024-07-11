@@ -56,7 +56,7 @@ async def test_run(
             json={
                 "name": "test",
                 "count": 1,
-                "user_spec": {"username_prefix": "testuser"},
+                "user_spec": {"username_prefix": "bot-mobu-testuser"},
                 "scopes": ["exec:notebook"],
                 "business": {
                     "type": "NotebookRunner",
@@ -74,9 +74,9 @@ async def test_run(
         assert r.status_code == 201
 
         # Wait until we've finished one loop and check the results.
-        data = await wait_for_business(client, "testuser1")
+        data = await wait_for_business(client, "bot-mobu-testuser1")
         assert data == {
-            "name": "testuser1",
+            "name": "bot-mobu-testuser1",
             "business": {
                 "failure_count": 0,
                 "name": "NotebookRunner",
@@ -89,14 +89,14 @@ async def test_run(
             "user": {
                 "scopes": ["exec:notebook"],
                 "token": ANY,
-                "username": "testuser1",
+                "username": "bot-mobu-testuser1",
             },
         }
     finally:
         os.chdir(cwd)
 
     # Get the log and check the cell output.
-    r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1/log")
     assert r.status_code == 200
 
     # Root notebook
@@ -138,7 +138,7 @@ async def test_run_recursive(
             json={
                 "name": "test",
                 "count": 1,
-                "user_spec": {"username_prefix": "testuser"},
+                "user_spec": {"username_prefix": "bot-mobu-testuser"},
                 "scopes": ["exec:notebook"],
                 "business": {
                     "type": "NotebookRunner",
@@ -156,9 +156,9 @@ async def test_run_recursive(
         assert r.status_code == 201
 
         # Wait until we've finished one loop and check the results.
-        data = await wait_for_business(client, "testuser1")
+        data = await wait_for_business(client, "bot-mobu-testuser1")
         assert data == {
-            "name": "testuser1",
+            "name": "bot-mobu-testuser1",
             "business": {
                 "failure_count": 0,
                 "name": "NotebookRunner",
@@ -171,14 +171,14 @@ async def test_run_recursive(
             "user": {
                 "scopes": ["exec:notebook"],
                 "token": ANY,
-                "username": "testuser1",
+                "username": "bot-mobu-testuser1",
             },
         }
     finally:
         os.chdir(cwd)
 
     # Get the log and check the cell output.
-    r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1/log")
     assert r.status_code == 200
 
     # Root notebook
@@ -236,7 +236,7 @@ async def test_refresh(
             json={
                 "name": "test",
                 "count": 1,
-                "user_spec": {"username_prefix": "testuser"},
+                "user_spec": {"username_prefix": "bot-mobu-testuser"},
                 "scopes": ["exec:notebook"],
                 "business": {
                     "type": "NotebookRunner",
@@ -256,7 +256,7 @@ async def test_refresh(
 
         # We should see a message from the notebook execution in the logs.
         assert await wait_for_log_message(
-            client, "testuser1", msg="This is a test"
+            client, "bot-mobu-testuser1", msg="This is a test"
         )
 
         # Change the notebook and git commit it
@@ -278,12 +278,12 @@ async def test_refresh(
 
         # The refresh should have forced a new execution
         assert await wait_for_log_message(
-            client, "testuser1", msg="Deleting lab"
+            client, "bot-mobu-testuser1", msg="Deleting lab"
         )
 
         # We should see a message from the updated notebook.
         assert await wait_for_log_message(
-            client, "testuser1", msg="This is a NEW test"
+            client, "bot-mobu-testuser1", msg="This is a NEW test"
         )
     finally:
         os.chdir(cwd)
@@ -316,7 +316,7 @@ async def test_exclude_dirs(
             json={
                 "name": "test",
                 "count": 1,
-                "user_spec": {"username_prefix": "testuser"},
+                "user_spec": {"username_prefix": "bot-mobu-testuser"},
                 "scopes": ["exec:notebook"],
                 "business": {
                     "type": "NotebookRunner",
@@ -338,9 +338,9 @@ async def test_exclude_dirs(
         assert r.status_code == 201
 
         # Wait until we've finished one loop and check the results.
-        data = await wait_for_business(client, "testuser1")
+        data = await wait_for_business(client, "bot-mobu-testuser1")
         assert data == {
-            "name": "testuser1",
+            "name": "bot-mobu-testuser1",
             "business": {
                 "failure_count": 0,
                 "name": "NotebookRunner",
@@ -353,14 +353,14 @@ async def test_exclude_dirs(
             "user": {
                 "scopes": ["exec:notebook"],
                 "token": ANY,
-                "username": "testuser1",
+                "username": "bot-mobu-testuser1",
             },
         }
     finally:
         os.chdir(cwd)
 
     # Get the log and check the cell output.
-    r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1/log")
     assert r.status_code == 200
 
     # Root notebook
@@ -413,7 +413,7 @@ async def test_alert(
         json={
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser"},
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NotebookRunner",
@@ -431,9 +431,9 @@ async def test_alert(
     assert r.status_code == 201
 
     # Wait until we've finished one loop and check the results.
-    data = await wait_for_business(client, "testuser1")
+    data = await wait_for_business(client, "bot-mobu-testuser1")
     assert data == {
-        "name": "testuser1",
+        "name": "bot-mobu-testuser1",
         "business": {
             "failure_count": 1,
             "image": {
@@ -453,7 +453,7 @@ async def test_alert(
         "user": {
             "scopes": ["exec:notebook"],
             "token": ANY,
-            "username": "testuser1",
+            "username": "bot-mobu-testuser1",
         },
     }
 
@@ -481,12 +481,12 @@ async def test_alert(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/testuser1",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\ntestuser1",
+                            "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {

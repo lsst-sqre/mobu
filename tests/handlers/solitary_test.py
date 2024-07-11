@@ -19,7 +19,7 @@ async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
     r = await client.post(
         "/mobu/run",
         json={
-            "user": {"username": "solitary"},
+            "user": {"username": "bot-mobu-solitary"},
             "scopes": ["exec:notebook"],
             "business": {"type": "EmptyLoop"},
         },
@@ -40,7 +40,7 @@ async def test_error(
     r = await client.post(
         "/mobu/run",
         json={
-            "user": {"username": "solitary"},
+            "user": {"username": "bot-mobu-solitary"},
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -54,6 +54,8 @@ async def test_error(
     assert r.status_code == 200
     result = r.json()
     assert result == {"success": False, "error": ANY, "log": ANY}
-    assert "solitary: running code 'raise Exception" in result["error"]
+    assert (
+        "bot-mobu-solitary: running code 'raise Exception" in result["error"]
+    )
     assert "Exception: some error\n" in result["error"]
     assert "Exception: some error" in result["log"]

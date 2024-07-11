@@ -48,7 +48,10 @@ def create_ci_manager(respx_mock: respx.Router) -> CiManager:
         scopes=scopes,
         github_app_id=123,
         github_private_key=TEST_GITHUB_CI_APP_PRIVATE_KEY,
-        users=[User(username="user1"), User(username="user2")],
+        users=[
+            User(username="bot-mobu-user1"),
+            User(username="bot-mobu-user2"),
+        ],
     )
 
 
@@ -92,12 +95,16 @@ async def test_stops_on_empty_queue(
     expected_summary = CiManagerSummary(
         workers=[
             CiWorkerSummary(
-                user=User(username="user1", uidnumber=None, gidnumber=None),
+                user=User(
+                    username="bot-mobu-user1", uidnumber=None, gidnumber=None
+                ),
                 num_processed=0,
                 current_job=None,
             ),
             CiWorkerSummary(
-                user=User(username="user2", uidnumber=None, gidnumber=None),
+                user=User(
+                    username="bot-mobu-user2", uidnumber=None, gidnumber=None
+                ),
                 num_processed=0,
                 current_job=None,
             ),
@@ -316,7 +323,9 @@ async def test_shutdown(
     expected_summary1 = CiManagerSummary(
         workers=[
             CiWorkerSummary(
-                user=User(username="user1", uidnumber=None, gidnumber=None),
+                user=User(
+                    username="bot-mobu-user1", uidnumber=None, gidnumber=None
+                ),
                 num_processed=1,
                 current_job=CiJobSummary(
                     commit_url=HttpUrl(
@@ -326,7 +335,9 @@ async def test_shutdown(
                 ),
             ),
             CiWorkerSummary(
-                user=User(username="user2", uidnumber=None, gidnumber=None),
+                user=User(
+                    username="bot-mobu-user2", uidnumber=None, gidnumber=None
+                ),
                 num_processed=1,
                 current_job=CiJobSummary(
                     commit_url=HttpUrl(
@@ -342,7 +353,9 @@ async def test_shutdown(
     expected_summary2 = CiManagerSummary(
         workers=[
             CiWorkerSummary(
-                user=User(username="user1", uidnumber=None, gidnumber=None),
+                user=User(
+                    username="bot-mobu-user1", uidnumber=None, gidnumber=None
+                ),
                 num_processed=1,
                 current_job=CiJobSummary(
                     commit_url=HttpUrl(
@@ -352,7 +365,9 @@ async def test_shutdown(
                 ),
             ),
             CiWorkerSummary(
-                user=User(username="user2", uidnumber=None, gidnumber=None),
+                user=User(
+                    username="bot-mobu-user2", uidnumber=None, gidnumber=None
+                ),
                 num_processed=1,
                 current_job=CiJobSummary(
                     commit_url=HttpUrl(
