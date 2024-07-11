@@ -9,14 +9,14 @@ from gidgethub.sansio import Event
 from safir.github.webhooks import GitHubCheckRunEventModel
 from safir.slack.webhook import SlackRouteErrorHandler
 
-from ..config import config
 from ..constants import GITHUB_WEBHOOK_WAIT_SECONDS
 from ..dependencies.context import RequestContext, anonymous_context_dependency
 from ..dependencies.github import (
     ci_manager_dependency,
-    github_config_dependency,
+    github_ci_app_config_dependency,
 )
-from ..models.github import GitHubCheckSuiteEventModel, GitHubConfig
+from ..github_config import GitHubCiAppConfig
+from ..models.github import GitHubCheckSuiteEventModel
 from ..services.github_ci.ci_manager import CiManager
 
 __all__ = ["api_router"]
@@ -37,7 +37,9 @@ gidgethub_router = routing.Router()
 )
 async def post_webhook(
     context: Annotated[RequestContext, Depends(anonymous_context_dependency)],
-    github_config: Annotated[GitHubConfig, Depends(github_config_dependency)],
+    ci_app_config: Annotated[
+        GitHubCiAppConfig, Depends(github_ci_app_config_dependency)
+    ],
     ci_manager: Annotated[CiManager, Depends(ci_manager_dependency)],
 ) -> None:
     """Process GitHub webhook events for the mobu CI GitHubApp.
@@ -45,18 +47,18 @@ async def post_webhook(
     Rejects webhooks from organizations that are not explicitly allowed via the
     mobu config. This should be exposed via a Gafaelfawr anonymous ingress.
     """
-    webhook_secret = config.github_ci_app.webhook_secret
+    webhook_secret = ci_app_config.webhook_secret
     body = await context.request.body()
     event = Event.from_http(
         context.request.headers, body, secret=webhook_secret
     )
 
     owner = event.data.get("organization", {}).get("login")
-    if owner not in github_config.accepted_github_orgs:
+    if owner not in ci_app_config.accepted_github_orgs:
         context.logger.debug(
             "Ignoring GitHub event for unaccepted org",
             owner=owner,
-            accepted_orgs=github_config.accepted_github_orgs,
+            accepted_orgs=ci_app_config.accepted_github_orgs,
         )
         raise HTTPException(
             status_code=403,
