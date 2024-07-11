@@ -20,7 +20,7 @@ AUTOSTART_CONFIG = """
 - name: basic
   count: 10
   user_spec:
-    username_prefix: testuser
+    username_prefix: bot-mobu-testuser
     uid_start: 1000
     gid_start: 2000
   scopes: ["exec:notebook"]
@@ -29,9 +29,9 @@ AUTOSTART_CONFIG = """
 - name: python
   count: 2
   users:
-    - username: python
+    - username: bot-mobu-python
       uidnumber: 60000
-    - username: otherpython
+    - username: bot-mobu-otherpython
       uidnumber: 70000
   scopes: ["exec:notebook"]
   restart: true
@@ -64,7 +64,7 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
     assert r.status_code == 200
     expected_monkeys = [
         {
-            "name": f"testuser{i:02d}",
+            "name": f"bot-mobu-testuser{i:02d}",
             "business": {
                 "failure_count": 0,
                 "name": "EmptyLoop",
@@ -78,7 +78,7 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
                 "token": ANY,
                 "uidnumber": 1000 + i - 1,
                 "gidnumber": 2000 + i - 1,
-                "username": f"testuser{i:02d}",
+                "username": f"bot-mobu-testuser{i:02d}",
             },
         }
         for i in range(1, 11)
@@ -89,7 +89,7 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
             "name": "basic",
             "count": 10,
             "user_spec": {
-                "username_prefix": "testuser",
+                "username_prefix": "bot-mobu-testuser",
                 "uid_start": 1000,
                 "gid_start": 2000,
             },
@@ -109,11 +109,11 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
             "count": 2,
             "users": [
                 {
-                    "username": "python",
+                    "username": "bot-mobu-python",
                     "uidnumber": 60000,
                 },
                 {
-                    "username": "otherpython",
+                    "username": "bot-mobu-otherpython",
                     "uidnumber": 70000,
                 },
             ],
@@ -132,7 +132,7 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
         },
         "monkeys": [
             {
-                "name": "python",
+                "name": "bot-mobu-python",
                 "business": {
                     "failure_count": 0,
                     "image": {
@@ -150,13 +150,13 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
                 "user": {
                     "scopes": ["exec:notebook"],
                     "token": ANY,
-                    "username": "python",
+                    "username": "bot-mobu-python",
                     "uidnumber": 60000,
                     "gidnumber": 60000,
                 },
             },
             {
-                "name": "otherpython",
+                "name": "bot-mobu-otherpython",
                 "business": {
                     "failure_count": 0,
                     "image": {
@@ -174,7 +174,7 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
                 "user": {
                     "scopes": ["exec:notebook"],
                     "token": ANY,
-                    "username": "otherpython",
+                    "username": "bot-mobu-otherpython",
                     "uidnumber": 70000,
                     "gidnumber": 70000,
                 },

@@ -18,6 +18,7 @@ from mobu.models.user import User
 from mobu.services.business.base import Business
 from mobu.services.github_ci.ci_manager import CiManager
 from mobu.storage.gafaelfawr import GafaelfawrStorage
+from tests.support.constants import TEST_GITHUB_CI_APP_PRIVATE_KEY
 
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.github import GitHubMocker, MockJob
@@ -25,14 +26,16 @@ from ..support.github import GitHubMocker, MockJob
 
 def create_ci_manager(respx_mock: respx.Router) -> CiManager:
     """Create a CiManger with appropriately mocked dependencies."""
+    scopes = [
+        "exec_notebook",
+        "exec_portal",
+        "read_image",
+        "read_tap",
+    ]
+
     mock_gafaelfawr(
         respx_mock,
-        scopes=[
-            "exec:notebook",
-            "exec:portal",
-            "read:image",
-            "read:tap",
-        ],
+        scopes=[str(scope) for scope in scopes],
     )
     http_client = AsyncClient()
     logger = structlog.get_logger()
@@ -42,7 +45,13 @@ def create_ci_manager(respx_mock: respx.Router) -> CiManager:
         http_client=http_client,
         gafaelfawr_storage=gafaelfawr,
         logger=logger,
-        users=[User(username="user1"), User(username="user2")],
+        scopes=scopes,
+        github_app_id=123,
+        github_private_key=TEST_GITHUB_CI_APP_PRIVATE_KEY,
+        users=[
+            User(username="bot-mobu-user1"),
+            User(username="bot-mobu-user2"),
+        ],
     )
 
 
@@ -86,12 +95,16 @@ async def test_stops_on_empty_queue(
     expected_summary = CiManagerSummary(
         workers=[
             CiWorkerSummary(
-                user=User(username="user1", uidnumber=None, gidnumber=None),
+                user=User(
+                    username="bot-mobu-user1", uidnumber=None, gidnumber=None
+                ),
                 num_processed=0,
                 current_job=None,
             ),
             CiWorkerSummary(
-                user=User(username="user2", uidnumber=None, gidnumber=None),
+                user=User(
+                    username="bot-mobu-user2", uidnumber=None, gidnumber=None
+                ),
                 num_processed=0,
                 current_job=None,
             ),
@@ -310,7 +323,9 @@ async def test_shutdown(
     expected_summary1 = CiManagerSummary(
         workers=[
             CiWorkerSummary(
-                user=User(username="user1", uidnumber=None, gidnumber=None),
+                user=User(
+                    username="bot-mobu-user1", uidnumber=None, gidnumber=None
+                ),
                 num_processed=1,
                 current_job=CiJobSummary(
                     commit_url=HttpUrl(
@@ -320,7 +335,9 @@ async def test_shutdown(
                 ),
             ),
             CiWorkerSummary(
-                user=User(username="user2", uidnumber=None, gidnumber=None),
+                user=User(
+                    username="bot-mobu-user2", uidnumber=None, gidnumber=None
+                ),
                 num_processed=1,
                 current_job=CiJobSummary(
                     commit_url=HttpUrl(
@@ -336,7 +353,9 @@ async def test_shutdown(
     expected_summary2 = CiManagerSummary(
         workers=[
             CiWorkerSummary(
-                user=User(username="user1", uidnumber=None, gidnumber=None),
+                user=User(
+                    username="bot-mobu-user1", uidnumber=None, gidnumber=None
+                ),
                 num_processed=1,
                 current_job=CiJobSummary(
                     commit_url=HttpUrl(
@@ -346,7 +365,9 @@ async def test_shutdown(
                 ),
             ),
             CiWorkerSummary(
-                user=User(username="user2", uidnumber=None, gidnumber=None),
+                user=User(
+                    username="bot-mobu-user2", uidnumber=None, gidnumber=None
+                ),
                 num_processed=1,
                 current_job=CiJobSummary(
                     commit_url=HttpUrl(

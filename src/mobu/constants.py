@@ -6,7 +6,6 @@ from datetime import timedelta
 from pathlib import Path
 
 __all__ = [
-    "GITHUB_CI_SCOPES",
     "GITHUB_REPO_CONFIG_PATH",
     "GITHUB_WEBHOOK_WAIT_SECONDS",
     "NOTEBOOK_REPO_BRANCH",
@@ -16,14 +15,6 @@ __all__ = [
     "WEBSOCKET_OPEN_TIMEOUT",
 ]
 
-
-GITHUB_CI_SCOPES = [
-    "exec:notebook",
-    "exec:portal",
-    "read:image",
-    "read:tap",
-]
-"""All NotebookRunner business run via GitHub CI get these scopes."""
 
 GITHUB_REPO_CONFIG_PATH = Path("mobu.yaml")
 """The path to a config file with repo-specific configuration."""

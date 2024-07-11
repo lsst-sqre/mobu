@@ -70,11 +70,15 @@ class CiManager:
 
     def __init__(
         self,
+        github_app_id: int,
+        github_private_key: str,
+        scopes: list[str],
         users: list[User],
         http_client: AsyncClient,
         gafaelfawr_storage: GafaelfawrStorage,
         logger: BoundLogger,
     ) -> None:
+        self._scopes = scopes
         self._users = users
         self._gafaelfawr = gafaelfawr_storage
         self._http_client = http_client
@@ -87,15 +91,9 @@ class CiManager:
         # Used for deterministic testing
         self.lifecycle = CiManagerLifecycle()
 
-        if not config.github_ci_app.id:
-            raise RuntimeError("MOBU_GITHUB_CI_APP_ID was not set")
-        if not config.github_ci_app.webhook_secret:
-            raise RuntimeError("MOBU_GITHUB_CI_APP_WEBHOOK_SECRET was not set")
-        if not config.github_ci_app.private_key:
-            raise RuntimeError("MOBU_GITHUB_CI_APP_PRIVATE_KEY was not set")
         self._factory = GitHubAppClientFactory(
-            id=config.github_ci_app.id,
-            key=config.github_ci_app.private_key,
+            id=github_app_id,
+            key=github_private_key,
             name="lsst-sqre/mobu CI app",
             http_client=http_client,
         )
@@ -106,6 +104,7 @@ class CiManager:
         self.workers = [
             Worker(
                 user=user,
+                scopes=self._scopes,
                 queue=self._queue,
                 logger=self._logger,
             )
@@ -272,6 +271,8 @@ class Worker:
 
     Parameters
     ----------
+    scopes
+        A list of Gafaelfawr scopes granted to the job's user
     user
         The user to do the work as.
     queue
@@ -282,10 +283,13 @@ class Worker:
 
     def __init__(
         self,
+        *,
+        scopes: list[str],
         user: User,
         queue: Queue[QueueItem],
         logger: BoundLogger,
     ) -> None:
+        self._scopes = scopes
         self._user = user
         self._queue = queue
         self._logger = logger.bind(ci_worker=user.username)
@@ -312,7 +316,7 @@ class Worker:
                 f"Processing job: {job}, with user: {self._user}"
             )
 
-            await job.run(user=self._user)
+            await job.run(user=self._user, scopes=self._scopes)
 
             lifecycle.processed.set()
             self.current_job = None

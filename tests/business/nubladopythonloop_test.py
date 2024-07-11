@@ -23,14 +23,19 @@ from ..support.util import wait_for_business
 async def test_run(
     client: AsyncClient, jupyter: MockJupyter, respx_mock: respx.Router
 ) -> None:
-    mock_gafaelfawr(respx_mock, username="testuser1", uid=1000, gid=1000)
+    mock_gafaelfawr(
+        respx_mock, username="bot-mobu-testuser1", uid=1000, gid=1000
+    )
 
     r = await client.put(
         "/mobu/flocks",
         json={
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser", "uid_start": 1000},
+            "user_spec": {
+                "username_prefix": "bot-mobu-testuser",
+                "uid_start": 1000,
+            },
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -41,9 +46,9 @@ async def test_run(
     assert r.status_code == 201
 
     # Wait until we've finished one loop.  Make sure nothing fails.
-    data = await wait_for_business(client, "testuser1")
+    data = await wait_for_business(client, "bot-mobu-testuser1")
     assert data == {
-        "name": "testuser1",
+        "name": "bot-mobu-testuser1",
         "business": {
             "failure_count": 0,
             "name": "NubladoPythonLoop",
@@ -57,14 +62,14 @@ async def test_run(
             "token": ANY,
             "uidnumber": 1000,
             "gidnumber": 1000,
-            "username": "testuser1",
+            "username": "bot-mobu-testuser1",
         },
     }
 
     # Check that the lab is shut down properly between iterations.
-    assert jupyter.state["testuser1"] == JupyterState.LOGGED_IN
+    assert jupyter.state["bot-mobu-testuser1"] == JupyterState.LOGGED_IN
 
-    r = await client.get("/mobu/flocks/test/monkeys/testuser1/log")
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1/log")
     assert r.status_code == 200
     assert "Starting up" in r.text
     assert ": Server requested" in r.text
@@ -87,7 +92,7 @@ async def test_reuse_lab(
         json={
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser"},
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -103,11 +108,11 @@ async def test_reuse_lab(
     assert r.status_code == 201
 
     # Wait until we've finished one loop.
-    data = await wait_for_business(client, "testuser1")
+    data = await wait_for_business(client, "bot-mobu-testuser1")
     assert data["business"]["failure_count"] == 0
 
     # Check that the lab is still running between iterations.
-    assert jupyter.state["testuser1"] == JupyterState.LAB_RUNNING
+    assert jupyter.state["bot-mobu-testuser1"] == JupyterState.LAB_RUNNING
 
 
 @pytest.mark.asyncio
@@ -121,7 +126,7 @@ async def test_server_shutdown(
         json={
             "name": "test",
             "count": 20,
-            "user_spec": {"username_prefix": "testuser"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser"},
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -149,7 +154,7 @@ async def test_delayed_delete(
         json={
             "name": "test",
             "count": 5,
-            "user_spec": {"username_prefix": "testuser"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser"},
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -175,14 +180,14 @@ async def test_hub_failed(
     respx_mock: respx.Router,
 ) -> None:
     mock_gafaelfawr(respx_mock)
-    jupyter.fail("testuser2", JupyterAction.SPAWN)
+    jupyter.fail("bot-mobu-testuser2", JupyterAction.SPAWN)
 
     r = await client.put(
         "/mobu/flocks",
         json={
             "name": "test",
             "count": 2,
-            "user_spec": {"username_prefix": "testuser"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser"},
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -193,7 +198,7 @@ async def test_hub_failed(
     assert r.status_code == 201
 
     # Wait until we've finished one loop.
-    data = await wait_for_business(client, "testuser2")
+    data = await wait_for_business(client, "bot-mobu-testuser2")
     assert data["business"]["success_count"] == 0
     assert data["business"]["failure_count"] > 0
 
@@ -223,12 +228,12 @@ async def test_hub_failed(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/testuser2",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser2",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\ntestuser2",
+                            "text": "*User*\nbot-mobu-testuser2",
                             "verbatim": True,
                         },
                         {
@@ -267,7 +272,7 @@ async def test_redirect_loop(
         json={
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser"},
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -278,7 +283,7 @@ async def test_redirect_loop(
     assert r.status_code == 201
 
     # Wait until we've finished one loop.
-    data = await wait_for_business(client, "testuser1")
+    data = await wait_for_business(client, "bot-mobu-testuser1")
     assert data["business"]["success_count"] == 0
     assert data["business"]["failure_count"] > 0
 
@@ -286,7 +291,7 @@ async def test_redirect_loop(
     assert config.environment_url
     url = urljoin(
         str(config.environment_url),
-        "/nb/hub/api/users/testuser1/server/progress",
+        "/nb/hub/api/users/bot-mobu-testuser1/server/progress",
     )
     assert slack.messages == [
         {
@@ -314,12 +319,12 @@ async def test_redirect_loop(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/testuser1",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\ntestuser1",
+                            "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
@@ -358,7 +363,7 @@ async def test_spawn_timeout(
         json={
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser"},
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -370,7 +375,7 @@ async def test_spawn_timeout(
 
     # Wait for one loop to finish.  We should finish with an error fairly
     # quickly (one second) and post a timeout alert to Slack.
-    data = await wait_for_business(client, "testuser1")
+    data = await wait_for_business(client, "bot-mobu-testuser1")
     assert data["business"]["success_count"] == 0
     assert data["business"]["failure_count"] > 0
     assert slack.messages == [
@@ -396,12 +401,12 @@ async def test_spawn_timeout(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/testuser1",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\ntestuser1",
+                            "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
@@ -425,14 +430,14 @@ async def test_spawn_failed(
     respx_mock: respx.Router,
 ) -> None:
     mock_gafaelfawr(respx_mock)
-    jupyter.fail("testuser1", JupyterAction.PROGRESS)
+    jupyter.fail("bot-mobu-testuser1", JupyterAction.PROGRESS)
 
     r = await client.put(
         "/mobu/flocks",
         json={
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser"},
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -444,7 +449,7 @@ async def test_spawn_failed(
 
     # Wait for one loop to finish.  We should finish with an error fairly
     # quickly (one second) and post a timeout alert to Slack.
-    data = await wait_for_business(client, "testuser1")
+    data = await wait_for_business(client, "bot-mobu-testuser1")
     assert data["business"]["success_count"] == 0
     assert data["business"]["failure_count"] > 0
     assert slack.messages == [
@@ -470,12 +475,12 @@ async def test_spawn_failed(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/testuser1",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\ntestuser1",
+                            "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
@@ -520,7 +525,7 @@ async def test_delete_timeout(
         json={
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser"},
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -537,7 +542,7 @@ async def test_delete_timeout(
 
     # Wait for one loop to finish.  We should finish with an error fairly
     # quickly (one second) and post a delete timeout alert to Slack.
-    data = await wait_for_business(client, "testuser1")
+    data = await wait_for_business(client, "bot-mobu-testuser1")
     assert data["business"]["success_count"] == 0
     assert data["business"]["failure_count"] > 0
     assert slack.messages == [
@@ -563,12 +568,12 @@ async def test_delete_timeout(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/testuser1",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\ntestuser1",
+                            "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
@@ -600,7 +605,7 @@ async def test_code_exception(
         json={
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser"},
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -615,7 +620,7 @@ async def test_code_exception(
     assert r.status_code == 201
 
     # Wait until we've finished one loop.
-    data = await wait_for_business(client, "testuser1")
+    data = await wait_for_business(client, "bot-mobu-testuser1")
     assert data["business"]["failure_count"] == 1
 
     # Check that an appropriate error was posted.
@@ -642,12 +647,12 @@ async def test_code_exception(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/testuser1",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\ntestuser1",
+                            "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
@@ -716,7 +721,7 @@ async def test_long_error(
         json={
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser"},
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -738,11 +743,11 @@ async def test_long_error(
     assert r.status_code == 201
 
     # Wait until we've finished one loop.
-    data = await wait_for_business(client, "testuser1")
+    data = await wait_for_business(client, "bot-mobu-testuser1")
     assert data["business"]["failure_count"] == 1
 
     # Check the lab form.
-    assert jupyter.lab_form["testuser1"] == {
+    assert jupyter.lab_form["bot-mobu-testuser1"] == {
         "image_list": (
             "registry.hub.docker.com/lsstsqre/sciplat-lab:d_2021_08_30"
         ),
@@ -778,12 +783,12 @@ async def test_long_error(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/testuser1",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\ntestuser1",
+                            "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
@@ -848,7 +853,7 @@ async def test_lab_controller(
         json={
             "name": "test",
             "count": 1,
-            "users": [{"username": "testuser"}],
+            "users": [{"username": "bot-mobu-testuser"}],
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -866,7 +871,7 @@ async def test_lab_controller(
     )
     assert r.status_code == 201
     await asyncio.sleep(0)
-    assert jupyter.lab_form["testuser"] == {
+    assert jupyter.lab_form["bot-mobu-testuser"] == {
         "image_list": (
             "registry.hub.docker.com/lsstsqre/sciplat-lab:d_2021_08_30"
         ),
@@ -881,7 +886,7 @@ async def test_lab_controller(
         json={
             "name": "test",
             "count": 1,
-            "users": [{"username": "testuser"}],
+            "users": [{"username": "bot-mobu-testuser"}],
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -897,7 +902,7 @@ async def test_lab_controller(
     )
     assert r.status_code == 201
     await asyncio.sleep(0)
-    assert jupyter.lab_form["testuser"] == {
+    assert jupyter.lab_form["bot-mobu-testuser"] == {
         "enable_debug": "true",
         "image_class": "latest-daily",
         "size": "Medium",
@@ -911,7 +916,7 @@ async def test_lab_controller(
         json={
             "name": "test",
             "count": 1,
-            "users": [{"username": "testuser"}],
+            "users": [{"username": "bot-mobu-testuser"}],
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -927,7 +932,7 @@ async def test_lab_controller(
     )
     assert r.status_code == 201
     await asyncio.sleep(0)
-    assert jupyter.lab_form["testuser"] == {
+    assert jupyter.lab_form["bot-mobu-testuser"] == {
         "image_tag": "w_2077_44",
         "size": "Small",
     }
@@ -947,7 +952,7 @@ async def test_ansi_error(
         json={
             "name": "test",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser"},
             "scopes": ["exec:notebook"],
             "business": {
                 "type": "NubladoPythonLoop",
@@ -971,7 +976,7 @@ async def test_ansi_error(
     assert r.status_code == 201
 
     # Wait until we've finished one loop.
-    data = await wait_for_business(client, "testuser1")
+    data = await wait_for_business(client, "bot-mobu-testuser1")
     assert data["business"]["failure_count"] == 1
 
     # Check that an appropriate error was posted.
@@ -998,12 +1003,12 @@ async def test_ansi_error(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/testuser1",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\ntestuser1",
+                            "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {

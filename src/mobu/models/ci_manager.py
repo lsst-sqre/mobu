@@ -35,8 +35,8 @@ class CiWorkerSummary(BaseModel):
         title="User",
         description="User that the worker works as",
         examples=[
-            User(username="someuser", uidnumber=None, gidnumber=None),
-            User(username="someuser", uidnumber=123, gidnumber=456),
+            User(username="bot-mobu-someuser", uidnumber=None, gidnumber=None),
+            User(username="bot-mobu-someuser", uidnumber=123, gidnumber=456),
         ],
     )
 
@@ -75,7 +75,9 @@ class CiManagerSummary(BaseModel):
             [
                 CiWorkerSummary(
                     user=User(
-                        username="someuser", uidnumber=123, gidnumber=456
+                        username="bot-mobu-someuser",
+                        uidnumber=123,
+                        gidnumber=456,
                     ),
                     num_processed=123,
                     current_job=CiJobSummary(

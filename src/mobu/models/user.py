@@ -14,7 +14,13 @@ __all__ = [
 class User(BaseModel):
     """Configuration for the user whose credentials the monkey will use."""
 
-    username: str = Field(..., title="Username", examples=["testuser"])
+    username: str = Field(
+        ...,
+        title="Username",
+        description="Must start with 'bot-mobu'",
+        pattern=r"^bot-mobu",
+        examples=["bot-mobu-testuser"],
+    )
 
     uidnumber: int | None = Field(
         None,
@@ -46,7 +52,7 @@ class UserSpec(BaseModel):
         ...,
         title="Prefix for usernames",
         description="Each user will be formed by appending a number to this",
-        examples=["lsptestuser"],
+        examples=["bot-mobu-lsptestuser"],
     )
 
     uid_start: int | None = Field(

@@ -23,7 +23,7 @@ FLOCK_CONFIG = """
 name: basic
 count: 1
 user_spec:
-  username_prefix: testuser
+  username_prefix: bot-mobu-testuser
 scopes: ["exec:notebook"]
 business:
   type: EmptyLoop
@@ -77,13 +77,13 @@ def test_start_report_refresh_stop(
         "config": {
             "name": "basic",
             "count": 1,
-            "user_spec": {"username_prefix": "testuser"},
+            "user_spec": {"username_prefix": "bot-mobu-testuser"},
             "scopes": ["exec:notebook"],
             "business": {"type": "EmptyLoop"},
         },
         "monkeys": [
             {
-                "name": "testuser1",
+                "name": "bot-mobu-testuser1",
                 "business": {
                     "failure_count": 0,
                     "name": "EmptyLoop",
@@ -95,7 +95,7 @@ def test_start_report_refresh_stop(
                 "user": {
                     "scopes": ["exec:notebook"],
                     "token": ANY,
-                    "username": "testuser1",
+                    "username": "bot-mobu-testuser1",
                 },
             },
         ],
@@ -120,9 +120,9 @@ def test_start_report_refresh_stop(
     )
     assert result.exit_code == 0
 
-    with (output_path / "testuser1_stats.json").open("r") as f:
+    with (output_path / "bot-mobu-testuser1_stats.json").open("r") as f:
         assert expected["monkeys"][0] == json.load(f)
-    log = (output_path / "testuser1_log.txt").read_text()
+    log = (output_path / "bot-mobu-testuser1_log.txt").read_text()
     assert "Idling..." in log
 
     shutil.rmtree(str(output_path))
@@ -159,9 +159,9 @@ def test_start_report_refresh_stop(
     )
     assert result.exit_code == 0
 
-    with (output_path / "testuser1_stats.json").open("r") as f:
+    with (output_path / "bot-mobu-testuser1_stats.json").open("r") as f:
         assert expected["monkeys"][0] == json.load(f)
-    log = (output_path / "testuser1_log.txt").read_text()
+    log = (output_path / "bot-mobu-testuser1_log.txt").read_text()
     assert "Idling..." in log
 
     r = httpx.get(f"{monkeyflocker_app.url}/mobu/flocks/basic")

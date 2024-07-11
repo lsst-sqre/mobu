@@ -165,6 +165,7 @@ ignore = [
     "TRY003",  # good general advice but lint is way too aggressive
     "TRY301",  # sometimes raising exceptions inside try is the best flow
     "UP040",   # Python 3.12 supports `type` alias kw, but mypy doesn't yet
+    "S113",    # httpx enforces timeouts everywhere, 5s by default
 
     # The following settings should be disabled when using ruff format
     # per https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
