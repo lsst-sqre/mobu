@@ -19,7 +19,7 @@ from pydantic import HttpUrl
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 
 from mobu import main
-from mobu.config import GitHubCiApp, GitHubRefreshApp, config
+from mobu.config import config
 from mobu.services.business.gitlfs import GitLFSBusiness
 
 from .support.constants import (
@@ -62,67 +62,78 @@ def _configure() -> Iterator[None]:
 
 
 @pytest.fixture
-def _enable_github_ci_app(tmp_path: Path) -> Iterator[None]:
+def _enable_github_ci_app(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[None]:
     """Enable the GitHub CI app functionality.
 
     We need to reload the main module here because including the router is done
     conditionally on module import.
     """
-    github_config = tmp_path / "github_config.yaml"
+    github_config = tmp_path / "github_ci_app_config.yaml"
     github_config.write_text(
         dedent("""
-        users:
-        - username: bot-mobu-unittest-1
-        - username: bot-mobu-unittest-2
-        accepted_github_orgs:
-          - org1
-          - org2
-          - lsst-sqre
+          users:
+            - username: bot-mobu-unittest-1
+            - username: bot-mobu-unittest-2
+          accepted_github_orgs:
+            - org1
+            - org2
+            - lsst-sqre
+          scopes:
+            - "exec:notebook"
+            - "exec:portal"
+            - "read:image"
+            - "read:tap"
     """)
     )
-    config.github_ci_app.id = 1
-    config.github_ci_app.enabled = True
-    config.github_ci_app.webhook_secret = TEST_GITHUB_CI_APP_SECRET
-    config.github_ci_app.private_key = TEST_GITHUB_CI_APP_PRIVATE_KEY
-    config.github_config_path = github_config
+    monkeypatch.setenv("MOBU_GITHUB_CI_APP_ID", "1")
+    monkeypatch.setenv(
+        "MOBU_GITHUB_CI_APP_WEBHOOK_SECRET", TEST_GITHUB_CI_APP_SECRET
+    )
+    monkeypatch.setenv(
+        "MOBU_GITHUB_CI_APP_PRIVATE_KEY", TEST_GITHUB_CI_APP_PRIVATE_KEY
+    )
+    monkeypatch.setattr(config, "github_ci_app_config_path", github_config)
+
     reload(main)
 
     yield
 
-    config.github_ci_app = GitHubCiApp()
-    config.github_config_path = None
     reload(main)
 
 
 @pytest.fixture
-def _enable_github_refresh_app(tmp_path: Path) -> Iterator[None]:
-    """Enable the GitHub Refresh app routes.
+def _enable_github_refresh_app(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[None]:
+    """Enable the GitHub refresh app functionality.
 
     We need to reload the main module here because including the router is done
     conditionally on module import.
     """
-    github_config = tmp_path / "github_config.yaml"
+    github_config = tmp_path / "github_ci_app_refresh.yaml"
     github_config.write_text(
         dedent("""
-        users:
-        - username: bot-mobu-unittest-1
-        - username: bot-mobu-unittest-2
-        accepted_github_orgs:
-          - org1
-          - org2
-          - lsst-sqre
+          accepted_github_orgs:
+            - org1
+            - org2
+            - lsst-sqre
     """)
     )
+    monkeypatch.setenv("MOBU_GITHUB_REFRESH_APP_ID", "1")
+    monkeypatch.setenv(
+        "MOBU_GITHUB_REFRESH_APP_WEBHOOK_SECRET",
+        TEST_GITHUB_REFRESH_APP_SECRET,
+    )
+    monkeypatch.setattr(
+        config, "github_refresh_app_config_path", github_config
+    )
 
-    config.github_refresh_app.enabled = True
-    config.github_refresh_app.webhook_secret = TEST_GITHUB_REFRESH_APP_SECRET
-    config.github_config_path = github_config
     reload(main)
 
     yield
 
-    config.github_refresh_app = GitHubRefreshApp()
-    config.github_config_path = None
     reload(main)
 
 
