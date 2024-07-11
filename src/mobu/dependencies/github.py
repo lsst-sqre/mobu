@@ -4,25 +4,40 @@ from pathlib import Path
 
 import yaml
 
-from ..models.github import GitHubConfig
+from ..github_config import GitHubCiAppConfig, GitHubRefreshAppConfig
 from ..models.user import User
 from ..services.github_ci.ci_manager import CiManager
 from .context import ContextDependency
 
-__all__ = ["GitHubConfigDependency", "CiManagerDependency"]
 
-
-class GitHubConfigDependency:
-    """Holds the config for GitHub app integration, loaded from a file."""
+class GitHubCiAppConfigDependency:
+    """Config for GitHub CI app integration, loaded from a file."""
 
     def __init__(self) -> None:
-        self.config: GitHubConfig
+        self.config: GitHubCiAppConfig
 
-    def __call__(self) -> GitHubConfig:
+    def __call__(self) -> GitHubCiAppConfig:
         return self.config
 
     def initialize(self, path: Path) -> None:
-        self.config = GitHubConfig.model_validate(
+        self.config = GitHubCiAppConfig.model_validate(
+            yaml.safe_load(path.read_text())
+        )
+
+
+class GitHubRefreshAppConfigDependency:
+    """Config for GitHub refresh app integration, loaded from a
+    file.
+    """
+
+    def __init__(self) -> None:
+        self.config: GitHubRefreshAppConfig
+
+    def __call__(self) -> GitHubRefreshAppConfig:
+        return self.config
+
+    def initialize(self, path: Path) -> None:
+        self.config = GitHubRefreshAppConfig.model_validate(
             yaml.safe_load(path.read_text())
         )
 
@@ -79,6 +94,7 @@ class MaybeCiManagerDependency:
             return None
 
 
-github_config_dependency = GitHubConfigDependency()
+github_refresh_app_config_dependency = GitHubRefreshAppConfigDependency()
+github_ci_app_config_dependency = GitHubCiAppConfigDependency()
 ci_manager_dependency = CiManagerDependency()
 maybe_ci_manager_dependency = MaybeCiManagerDependency(ci_manager_dependency)
