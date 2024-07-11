@@ -18,6 +18,7 @@ from mobu.models.user import User
 from mobu.services.business.base import Business
 from mobu.services.github_ci.ci_manager import CiManager
 from mobu.storage.gafaelfawr import GafaelfawrStorage
+from tests.support.constants import TEST_GITHUB_CI_APP_PRIVATE_KEY
 
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.github import GitHubMocker, MockJob
@@ -42,6 +43,8 @@ def create_ci_manager(respx_mock: respx.Router) -> CiManager:
         http_client=http_client,
         gafaelfawr_storage=gafaelfawr,
         logger=logger,
+        github_app_id=123,
+        github_private_key=TEST_GITHUB_CI_APP_PRIVATE_KEY,
         users=[User(username="user1"), User(username="user2")],
     )
 

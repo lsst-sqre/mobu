@@ -70,6 +70,8 @@ class CiManager:
 
     def __init__(
         self,
+        github_app_id: int,
+        github_private_key: str,
         users: list[User],
         http_client: AsyncClient,
         gafaelfawr_storage: GafaelfawrStorage,
@@ -87,15 +89,9 @@ class CiManager:
         # Used for deterministic testing
         self.lifecycle = CiManagerLifecycle()
 
-        if not config.github_ci_app.id:
-            raise RuntimeError("MOBU_GITHUB_CI_APP_ID was not set")
-        if not config.github_ci_app.webhook_secret:
-            raise RuntimeError("MOBU_GITHUB_CI_APP_WEBHOOK_SECRET was not set")
-        if not config.github_ci_app.private_key:
-            raise RuntimeError("MOBU_GITHUB_CI_APP_PRIVATE_KEY was not set")
         self._factory = GitHubAppClientFactory(
-            id=config.github_ci_app.id,
-            key=config.github_ci_app.private_key,
+            id=github_app_id,
+            key=github_private_key,
             name="lsst-sqre/mobu CI app",
             http_client=http_client,
         )

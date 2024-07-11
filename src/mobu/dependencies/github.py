@@ -63,10 +63,16 @@ class CiManagerDependency:
         return self.ci_manager
 
     def initialize(
-        self, base_context: ContextDependency, users: list[User]
+        self,
+        base_context: ContextDependency,
+        users: list[User],
+        github_app_id: int,
+        github_private_key: str,
     ) -> None:
         self._ci_manager = CiManager(
             users=users,
+            github_app_id=github_app_id,
+            github_private_key=github_private_key,
             http_client=base_context.process_context.http_client,
             gafaelfawr_storage=base_context.process_context.gafaelfawr,
             logger=base_context.process_context.logger,
