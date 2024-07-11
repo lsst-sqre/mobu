@@ -36,7 +36,13 @@ class CiManagerDependency:
     """
 
     def __init__(self) -> None:
-        self.ci_manager: CiManager
+        self._ci_manager: CiManager | None = None
+
+    @property
+    def ci_manager(self) -> CiManager:
+        if self._ci_manager is None:
+            raise RuntimeError("CiManager has not been initialized yet")
+        return self._ci_manager
 
     def __call__(self) -> CiManager:
         return self.ci_manager
@@ -44,7 +50,7 @@ class CiManagerDependency:
     def initialize(
         self, base_context: ContextDependency, users: list[User]
     ) -> None:
-        self.ci_manager = CiManager(
+        self._ci_manager = CiManager(
             users=users,
             http_client=base_context.process_context.http_client,
             gafaelfawr_storage=base_context.process_context.gafaelfawr,
@@ -52,7 +58,8 @@ class CiManagerDependency:
         )
 
     async def aclose(self) -> None:
-        await self.ci_manager.aclose()
+        if self._ci_manager is not None:
+            await self._ci_manager.aclose()
 
 
 class MaybeCiManagerDependency:
@@ -68,7 +75,7 @@ class MaybeCiManagerDependency:
     def __call__(self) -> CiManager | None:
         try:
             return self.dep.ci_manager
-        except AttributeError:
+        except RuntimeError:
             return None
 
 
