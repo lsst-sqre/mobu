@@ -26,14 +26,16 @@ from ..support.github import GitHubMocker, MockJob
 
 def create_ci_manager(respx_mock: respx.Router) -> CiManager:
     """Create a CiManger with appropriately mocked dependencies."""
+    scopes = [
+        "exec_notebook",
+        "exec_portal",
+        "read_image",
+        "read_tap",
+    ]
+
     mock_gafaelfawr(
         respx_mock,
-        scopes=[
-            "exec:notebook",
-            "exec:portal",
-            "read:image",
-            "read:tap",
-        ],
+        scopes=[str(scope) for scope in scopes],
     )
     http_client = AsyncClient()
     logger = structlog.get_logger()
@@ -43,6 +45,7 @@ def create_ci_manager(respx_mock: respx.Router) -> CiManager:
         http_client=http_client,
         gafaelfawr_storage=gafaelfawr,
         logger=logger,
+        scopes=scopes,
         github_app_id=123,
         github_private_key=TEST_GITHUB_CI_APP_PRIVATE_KEY,
         users=[User(username="user1"), User(username="user2")],

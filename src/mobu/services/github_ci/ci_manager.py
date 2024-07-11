@@ -72,11 +72,13 @@ class CiManager:
         self,
         github_app_id: int,
         github_private_key: str,
+        scopes: list[str],
         users: list[User],
         http_client: AsyncClient,
         gafaelfawr_storage: GafaelfawrStorage,
         logger: BoundLogger,
     ) -> None:
+        self._scopes = scopes
         self._users = users
         self._gafaelfawr = gafaelfawr_storage
         self._http_client = http_client
@@ -102,6 +104,7 @@ class CiManager:
         self.workers = [
             Worker(
                 user=user,
+                scopes=self._scopes,
                 queue=self._queue,
                 logger=self._logger,
             )
@@ -268,6 +271,8 @@ class Worker:
 
     Parameters
     ----------
+    scopes
+        A list of Gafaelfawr scopes granted to the job's user
     user
         The user to do the work as.
     queue
@@ -278,10 +283,13 @@ class Worker:
 
     def __init__(
         self,
+        *,
+        scopes: list[str],
         user: User,
         queue: Queue[QueueItem],
         logger: BoundLogger,
     ) -> None:
+        self._scopes = scopes
         self._user = user
         self._queue = queue
         self._logger = logger.bind(ci_worker=user.username)
@@ -308,7 +316,7 @@ class Worker:
                 f"Processing job: {job}, with user: {self._user}"
             )
 
-            await job.run(user=self._user)
+            await job.run(user=self._user, scopes=self._scopes)
 
             lifecycle.processed.set()
             self.current_job = None

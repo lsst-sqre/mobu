@@ -7,7 +7,7 @@ import yaml
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
-from mobu.constants import GITHUB_CI_SCOPES, GITHUB_REPO_CONFIG_PATH
+from mobu.constants import GITHUB_REPO_CONFIG_PATH
 from mobu.exceptions import GitHubFileNotFoundError
 from mobu.models.business.notebookrunner import (
     NotebookRunnerConfig,
@@ -56,7 +56,7 @@ class CiNotebookJob:
         self._logger = logger.bind(ci_job_type="NotebookJob")
         self._notebooks: list[Path] = []
 
-    async def run(self, user: User) -> None:
+    async def run(self, user: User, scopes: list[str]) -> None:
         """Run all relevant changed notebooks and report back to GitHub.
 
         Run only changed notebooks that aren't excluded in the mobu config
@@ -107,7 +107,7 @@ class CiNotebookJob:
         await self.check_run.start(summary=summary)
         solitary_config = SolitaryConfig(
             user=user,
-            scopes=GITHUB_CI_SCOPES,
+            scopes=[str(scope) for scope in scopes],
             business=NotebookRunnerConfig(
                 type="NotebookRunner",
                 options=NotebookRunnerOptions(

@@ -1,6 +1,5 @@
 """Config for GitHub application integrations."""
 
-from enum import StrEnum
 from textwrap import dedent
 
 from pydantic import Field
@@ -8,15 +7,6 @@ from pydantic.alias_generators import to_camel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .models.user import User
-
-
-class GafaelfawrScope(StrEnum):
-    """Available Gafaelfawr scopes."""
-
-    exec_notebook = "exec:notebook"
-    exec_portal = "exec:portal"
-    read_image = "read:image"
-    read_tap = "read:tap"
 
 
 class GitHubCiAppConfig(BaseSettings):
@@ -83,7 +73,7 @@ class GitHubCiAppConfig(BaseSettings):
         ),
     )
 
-    scopes: list[GafaelfawrScope] = Field(
+    scopes: list[str] = Field(
         ...,
         title="Gafaelfawr Scopes",
         description=(
