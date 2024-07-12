@@ -719,9 +719,9 @@ rich==13.7.1 \
     --hash=sha256:4edbae314f59eb482f54e9e30bf00d33350aaa94f4bfcd4e9e3110e64d0d7222 \
     --hash=sha256:9be308cb1fe2f1f57d67ce99e95af38a1e2bc71ad9813b0e247cf7ffbcc3a432
     # via typer
-safir==6.0.0 \
-    --hash=sha256:35d39c0048d7c801232ccd6e96b0543eb87742bab3b20f4191666e983d3457d1 \
-    --hash=sha256:bd7e132c1e36cb6ab2cb84b55187388d57d844ee275dd9f9dd57688b08b6c98b
+safir==6.1.0 \
+    --hash=sha256:54acf6078d94813f4dddeb8459ad92cfe304c7d1414d4ce57ec1afce0c0a302a \
+    --hash=sha256:f0a15a08cd6c9570530440e34f6142d242e9f1f896ddce72708638e00fc2dcb7
     # via -r requirements/main.in
 shellingham==1.5.4 \
     --hash=sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686 \
