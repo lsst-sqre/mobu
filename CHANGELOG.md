@@ -6,6 +6,13 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-10.1.0'></a>
+## 10.1.0 (2024-07-12)
+
+### Other changes
+
+- Use new safir with upstreamed GitHub model changes
+
 <a id='changelog-10.0.0'></a>
 ## 10.0.0 (2024-07-11)
 
