@@ -6,7 +6,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from gidgethub import routing
 from gidgethub.sansio import Event
-from safir.github.webhooks import GitHubCheckRunEventModel
+from safir.github.webhooks import (
+    GitHubCheckRunEventModel,
+    GitHubCheckSuiteEventModel,
+)
 from safir.slack.webhook import SlackRouteErrorHandler
 
 from ..constants import GITHUB_WEBHOOK_WAIT_SECONDS
@@ -16,7 +19,6 @@ from ..dependencies.github import (
     github_ci_app_config_dependency,
 )
 from ..github_config import GitHubCiAppConfig
-from ..models.github import GitHubCheckSuiteEventModel
 from ..services.github_ci.ci_manager import CiManager
 
 __all__ = ["api_router"]
