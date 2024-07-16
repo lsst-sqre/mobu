@@ -16,9 +16,8 @@ Create a new GitHub app
 #. Store this in the ``SQuaRE`` vault in the ``LSST IT`` 1Password account in an ``Server`` item named :samp:`mobu ({env URL})` in a ``password`` field called ``github-refresh-app-webhook-secret``.
 #. Get this into the Phalanx secret store for that env under the key: ``github-refresh-app-webhook-secret`` (`this process <https://phalanx.lsst.io/admin/add-new-secret.html>`__ is different for different envs).
 #. Enter this secret in the :guilabel:`Webhook secret (optional)` box in the GitHub App config.
-#. Select :menuselection:`Read and Write` in the dropdown of the :guilabel:`Checks` access category in the :guilabel:`Repository Permissions` section.
 #. Select :menuselection:`Read-only` in the dropdown of the :guilabel:`Contents` access category in the :guilabel:`Repository Permissions` section.
-#. Check the :guilabel:`Check suite` and :guilabel:`Check run` checkboxes in the :guilabel:`Subscribe to events` section.
+#. Check the :guilabel:`Push` checkbox in the :guilabel:`Subscribe to events` section.
 #. Select the :guilabel:`Any account` radio button in the :guilabel:`Where can this GitHub App be installed?` section.
 #. Click the :guilabel:`Create GitHub App` button.
 
