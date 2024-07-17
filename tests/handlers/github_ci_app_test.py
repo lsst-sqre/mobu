@@ -3,7 +3,6 @@
 import hashlib
 import hmac
 from dataclasses import dataclass
-from pathlib import Path
 from string import Template
 
 import pytest
@@ -13,7 +12,7 @@ from pytest_mock import MockerFixture
 
 from mobu.services.github_ci.ci_manager import CiManager
 
-from ..support.constants import TEST_GITHUB_CI_APP_SECRET
+from ..support.constants import TEST_DATA_DIR, TEST_GITHUB_CI_APP_SECRET
 from ..support.gafaelfawr import mock_gafaelfawr
 
 
@@ -33,7 +32,7 @@ def webhook_request(
     with_prs: bool = True,
 ) -> GitHubRequest:
     """Build a GitHub webhook request and headers with the right hash."""
-    data_path = Path(__file__).parent.parent / "data" / "github_webhooks"
+    data_path = TEST_DATA_DIR / "github_webhooks"
     suffix = "_no_prs" if not with_prs else ""
     template = (data_path / f"{event}_{action}{suffix}.tmpl.json").read_text()
     payload = Template(template).substitute(

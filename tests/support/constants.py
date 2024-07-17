@@ -1,7 +1,12 @@
 """Constants used in text fixtures and setup."""
 
+from pathlib import Path
+
 TEST_BASE_URL = "https://example.com"
 """Base URL used for the test `httpx.AsyncClient`."""
+
+TEST_DATA_DIR = Path(__file__).parent.parent / "data"
+"""Directory that contains test data."""
 
 TEST_GITHUB_REFRESH_APP_SECRET = "some-webhook-secret"
 """Webhook secret used for hashing test github refresh app webhook payloads."""
