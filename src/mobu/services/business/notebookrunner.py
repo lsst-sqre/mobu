@@ -18,8 +18,10 @@ from typing import Any
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
+from ...config import config
 from ...exceptions import NotebookRepositoryError
 from ...models.business.notebookrunner import (
+    NotebookMetadata,
     NotebookRunnerData,
     NotebookRunnerOptions,
 )
@@ -110,6 +112,25 @@ class NotebookRunner(NubladoBusiness):
         # A notebook is excluded if any of its parent directories are excluded
         return bool(set(notebook.parents) & self._exclude_paths)
 
+    def missing_services(self, notebook: Path) -> bool:
+        """Return True if a notebook declares required services and they are
+        available.
+        """
+        metadata = self.read_notebook_metadata(notebook)
+        missing_services = (
+            metadata.required_services - config.available_services
+        )
+        if missing_services:
+            msg = "Environment does not provide required services for notebook"
+            self.logger.info(
+                msg,
+                notebook=notebook,
+                required_services=metadata.required_services,
+                missing_services=missing_services,
+            )
+            return True
+        return False
+
     def find_notebooks(self) -> list[Path]:
         with self.timings.start("find_notebooks"):
             if self._repo_dir is None:
@@ -119,8 +140,10 @@ class NotebookRunner(NubladoBusiness):
             notebooks = [
                 n
                 for n in self._repo_dir.glob("**/*.ipynb")
-                if not self.is_excluded(n)
+                if not (self.is_excluded(n) or self.missing_services(n))
             ]
+
+            # Filter for explicit notebooks
             if self.options.notebooks_to_run:
                 requested = [
                     self._repo_dir / notebook
@@ -138,6 +161,7 @@ class NotebookRunner(NubladoBusiness):
                     "Running with explicit list of notebooks",
                     notebooks=notebooks,
                 )
+
             if not notebooks:
                 msg = "No notebooks found in {self._repo_dir}"
                 raise NotebookRepositoryError(msg, self.user.username)
@@ -149,11 +173,26 @@ class NotebookRunner(NubladoBusiness):
             self._notebook_paths = self.find_notebooks()
         return self._notebook_paths.pop()
 
+    def read_notebook_metadata(self, notebook: Path) -> NotebookMetadata:
+        """Extract mobu-specific metadata from a notebook."""
+        with self.timings.start(
+            "read_notebook_metadata", {"notebook": notebook.name}
+        ):
+            try:
+                notebook_text = notebook.read_text()
+                notebook_json = json.loads(notebook_text)
+                metadata = notebook_json["metadata"].get("mobu", {})
+                return NotebookMetadata.model_validate(metadata)
+            except Exception as e:
+                msg = f"Invalid notebook metadata {notebook.name}: {e!s}"
+                raise NotebookRepositoryError(msg, self.user.username) from e
+
     def read_notebook(self, notebook: Path) -> list[dict[str, Any]]:
         with self.timings.start("read_notebook", {"notebook": notebook.name}):
             try:
                 notebook_text = notebook.read_text()
-                cells = json.loads(notebook_text)["cells"]
+                notebook_json = json.loads(notebook_text)
+                cells = notebook_json["cells"]
             except Exception as e:
                 msg = f"Invalid notebook {notebook.name}: {e!s}"
                 raise NotebookRepositoryError(msg, self.user.username) from e
