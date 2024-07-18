@@ -13,6 +13,7 @@ from .nublado import NubladoBusinessData, NubladoBusinessOptions
 
 __all__ = [
     "CiNotebookRunnerOptions",
+    "NotebookFilterResults",
     "NotebookRunnerConfig",
     "NotebookRunnerData",
     "NotebookRunnerOptions",
@@ -120,4 +121,49 @@ class NotebookMetadata(BaseModel):
             " provide all services."
         ),
         examples=[{"tap", "ssotap", "butler"}],
+    )
+
+
+class NotebookFilterResults(BaseModel):
+    """Valid notebooks and categories for invalid notebooks."""
+
+    all: set[Path] = Field(
+        default=set(),
+        title="All notebooks",
+        description="All notebooks in the repository",
+    )
+
+    runnable: set[Path] = Field(
+        default=set(),
+        title="Runnable notebooks",
+        description=(
+            "These are the notebooks to run after all filtering has been done"
+        ),
+    )
+
+    excluded_by_dir: set[Path] = Field(
+        default=set(),
+        title="Excluded by directory",
+        description=(
+            "These notebooks won't be run because they are in a directory that"
+            "is excliticly excluded"
+        ),
+    )
+
+    excluded_by_service: set[Path] = Field(
+        default=set(),
+        title="Excluded by service availability",
+        description=(
+            "These notebooks won't be run because the depend on services which"
+            " are not available in this environment"
+        ),
+    )
+
+    excluded_by_requested: set[Path] = Field(
+        default=set(),
+        title="Excluded by explicit list",
+        description=(
+            "These notebooks won't be run because a list of explicitly"
+            " requested notebooks was provided, and they weren't in it."
+        ),
     )

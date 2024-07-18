@@ -26,6 +26,7 @@ from ...config import config
 from ...exceptions import NotebookRepositoryError
 from ...models.business.notebookrunner import (
     CiNotebookRunnerOptions,
+    NotebookFilterResults,
     NotebookMetadata,
     NotebookRunnerData,
     NotebookRunnerOptions,
@@ -91,8 +92,18 @@ class NotebookRunner(NubladoBusiness):
     async def cleanup(self) -> None:
         shutil.rmtree(str(self._repo_dir))
         self._repo_dir = None
+        self._notebook_filter_results = None
 
     async def initialize(self) -> None:
+        """Prepare to run the business.
+
+        * Check out the repository
+        * Parse the in-repo config
+        * Filter the notebooks
+
+        Directories to exclude can be specified either in the flock config or
+        in a config file in the repo. The repo config file takes precedence.
+        """
         if self._repo_dir is None:
             self._repo_dir = Path(TemporaryDirectory(delete=False).name)
             await self.clone_repo()
@@ -114,6 +125,7 @@ class NotebookRunner(NubladoBusiness):
         }
 
         self._exclude_paths = repo_exclude_paths or config_exclude_paths
+        self._notebooks = self.find_notebooks()
         self.logger.info("Repository cloned and ready")
 
     async def shutdown(self) -> None:
@@ -157,46 +169,68 @@ class NotebookRunner(NubladoBusiness):
             return True
         return False
 
-    def find_notebooks(self) -> list[Path]:
+    def find_notebooks(self) -> NotebookFilterResults:
         with self.timings.start("find_notebooks"):
             if self._repo_dir is None:
                 raise NotebookRepositoryError(
                     "Repository directory must be set", self.user.username
                 )
-            notebooks = [
-                n
-                for n in self._repo_dir.glob("**/*.ipynb")
-                if not (self.is_excluded(n) or self.missing_services(n))
-            ]
 
-            # Filter for explicit notebooks
+            all_notebooks = set(self._repo_dir.glob("**/*.ipynb"))
+            if not all_notebooks:
+                msg = "No notebooks found in {self._repo_dir}"
+                raise NotebookRepositoryError(msg, self.user.username)
+
+            filter_results = NotebookFilterResults(all=all_notebooks)
+            filter_results.excluded_by_dir = {
+                n for n in filter_results.all if self.is_excluded(n)
+            }
+            filter_results.excluded_by_service = {
+                n for n in filter_results.all if self.missing_services(n)
+            }
+
             if self._notebooks_to_run:
                 requested = {
                     self._repo_dir / notebook
                     for notebook in self._notebooks_to_run
                 }
-                not_found = requested - set(notebooks)
+                not_found = requested - filter_results.all
                 if not_found:
                     msg = (
-                        f"These notebooks do not exist in {self._repo_dir}:"
-                        f" {not_found}"
+                        "Requested notebooks do not exist in"
+                        " {self._repo_dir}: {not_found}"
                     )
                     raise NotebookRepositoryError(msg, self.user.username)
-                notebooks = requested
-                self.logger.debug(
-                    "Running with explicit list of notebooks",
-                    notebooks=notebooks,
+                filter_results.excluded_by_requested = (
+                    filter_results.all - requested
                 )
 
-            if not notebooks:
-                msg = "No notebooks found in {self._repo_dir}"
-                raise NotebookRepositoryError(msg, self.user.username)
-            random.shuffle(notebooks)
-        return notebooks
+            filter_results.runnable = (
+                filter_results.all
+                - filter_results.excluded_by_service
+                - filter_results.excluded_by_dir
+                - filter_results.excluded_by_requested
+            )
+            if bool(filter_results.runnable):
+                self.logger.info(
+                    "Found notebooks to run",
+                    filter_results=filter_results.model_dump(),
+                )
+            else:
+                self.logger.warning(
+                    "No notebooks to run after filtering!",
+                    filter_results=filter_results.model_dump(),
+                )
+
+        return filter_results
 
     def next_notebook(self) -> Path:
+        if not self._notebooks:
+            self._notebooks = self.find_notebooks()
         if not self._notebook_paths:
-            self._notebook_paths = self.find_notebooks()
+            self._notebook_paths = random.sample(
+                list(self._notebooks.runnable), k=len(self._notebooks.runnable)
+            )
         return self._notebook_paths.pop()
 
     def read_notebook_metadata(self, notebook: Path) -> NotebookMetadata:
