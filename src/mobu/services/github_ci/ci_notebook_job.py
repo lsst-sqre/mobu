@@ -6,8 +6,8 @@ from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from mobu.models.business.notebookrunner import (
+    ListNotebookRunnerOptions,
     NotebookRunnerConfig,
-    NotebookRunnerOptions,
 )
 from mobu.models.solitary import SolitaryConfig
 from mobu.models.user import User
@@ -80,8 +80,7 @@ class CiNotebookJob:
             scopes=[str(scope) for scope in scopes],
             business=NotebookRunnerConfig(
                 type="NotebookRunner",
-                options=NotebookRunnerOptions(
-                    max_executions=len(self._notebooks),
+                options=ListNotebookRunnerOptions(
                     repo_ref=self._github.ref,
                     repo_url=f"https://github.com/{self._github.repo_owner}/{self._github.repo_name}.git",
                     notebooks_to_run=self._notebooks,

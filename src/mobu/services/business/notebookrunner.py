@@ -23,6 +23,7 @@ from ...config import config
 from ...constants import GITHUB_REPO_CONFIG_PATH
 from ...exceptions import NotebookRepositoryError, RepositoryConfigError
 from ...models.business.notebookrunner import (
+    ListNotebookRunnerOptions,
     NotebookMetadata,
     NotebookRunnerData,
     NotebookRunnerOptions,
@@ -53,7 +54,7 @@ class NotebookRunner(NubladoBusiness):
 
     def __init__(
         self,
-        options: NotebookRunnerOptions,
+        options: NotebookRunnerOptions | ListNotebookRunnerOptions,
         user: AuthenticatedUser,
         http_client: AsyncClient,
         logger: BoundLogger,
@@ -65,6 +66,14 @@ class NotebookRunner(NubladoBusiness):
         self._exclude_paths: set[Path] = set()
         self._running_code: str | None = None
         self._git = Git(logger=logger)
+        self._max_executions: int | None = None
+        self._notebooks_to_run: list[Path] | None = None
+
+        match options:
+            case NotebookRunnerOptions(max_executions=max_executions):
+                self._max_executions = max_executions
+            case ListNotebookRunnerOptions(notebooks_to_run=notebooks_to_run):
+                self._notebooks_to_run = notebooks_to_run
 
     def annotations(self, cell_id: str | None = None) -> dict[str, str]:
         result = super().annotations()
@@ -162,12 +171,12 @@ class NotebookRunner(NubladoBusiness):
             ]
 
             # Filter for explicit notebooks
-            if self.options.notebooks_to_run:
-                requested = [
+            if self._notebooks_to_run:
+                requested = {
                     self._repo_dir / notebook
-                    for notebook in self.options.notebooks_to_run
-                ]
-                not_found = set(requested) - set(notebooks)
+                    for notebook in self._notebooks_to_run
+                }
+                not_found = requested - set(notebooks)
                 if not_found:
                     msg = (
                         f"These notebooks do not exist in {self._repo_dir}:"
@@ -238,14 +247,19 @@ class NotebookRunner(NubladoBusiness):
             yield session
 
     async def execute_code(self, session: JupyterLabSession) -> None:
-        for count in range(self.options.max_executions):
+        """Run a set number of notebooks (flocks), or all available (CI)."""
+        if self._max_executions:
+            num_executions = self._max_executions
+        else:
+            num_executions = len(self._notebooks.runnable)
+        for count in range(num_executions):
             if self.refreshing:
                 await self.refresh()
                 return
 
             self._notebook = self.next_notebook()
 
-            iteration = f"{count + 1}/{self.options.max_executions}"
+            iteration = f"{count + 1}/{num_executions}"
             msg = f"Notebook {self._notebook.name} iteration {iteration}"
             self.logger.info(msg)
 
