@@ -1,13 +1,10 @@
 """Functions and constants for mocking out GitHub API behavior."""
 
 import asyncio
-from base64 import b64encode
 from collections.abc import Callable
-from textwrap import dedent
 
 import respx
 
-from mobu.constants import GITHUB_REPO_CONFIG_PATH
 from mobu.services.business.base import Business
 from mobu.services.github_ci.ci_manager import CiManager
 
@@ -74,55 +71,6 @@ class GitHubMocker:
             }
         )
 
-    def job_invalid_config(self, id: str) -> MockJob:
-        """Causes an invalid in-repo config file."""
-        job = MockJob(id=id)
-        self.jobs.append(job)
-
-        self._mock_get_repo_config_content(job, valid=False)
-
-        # Create a check run with a `queued` status
-        self.router.post(
-            path=f"{job.path_prefix}/check-runs",
-        ).respond(json={"id": "1"})
-
-        # The check fails due to an invalid config
-        self.router.patch(
-            path=f"{job.path_prefix}/check-runs/1",
-            json__conclusion="failure",
-        )
-
-        return job
-
-    def job_missing_config(self, id: str, *, should_fail: bool) -> MockJob:
-        """Causes an missing in-repo config file."""
-        job = MockJob(id=id, should_fail=should_fail)
-        self.jobs.append(job)
-
-        self._mock_get_changed_files(job)
-
-        # Missing config file in the repo should be fine
-        self._mock_get_repo_config_content(job, missing=True)
-
-        # Create a check run with a `queued` status
-        self.router.post(
-            path=f"{job.path_prefix}/check-runs",
-        ).respond(json={"id": "1"})
-
-        # Eventually mark the check run 'in progress'
-        self.router.patch(
-            path=f"{job.path_prefix}/check-runs/1", json__status="in_progress"
-        )
-
-        # Mark the check run failed or succeeded
-        conclusion = "failure" if job.should_fail else "success"
-        self.router.patch(
-            path=f"{job.path_prefix}/check-runs/1",
-            json__conclusion=conclusion,
-        )
-
-        return job
-
     def job_no_changed_files(self, id: str) -> MockJob:
         """Causes an GitHub API response indicating no notebooks have
         changed.
@@ -131,7 +79,6 @@ class GitHubMocker:
         self.jobs.append(job)
 
         self._mock_get_changed_files(job, has_changed_files=False)
-        self._mock_get_repo_config_content(job)
 
         # Create a check run with a `queued` status
         self.router.post(
@@ -158,7 +105,6 @@ class GitHubMocker:
         self.jobs.append(job)
 
         self._mock_get_changed_files(job)
-        self._mock_get_repo_config_content(job)
 
         # Create a check run with a `queued` status
         self.router.post(
@@ -189,7 +135,6 @@ class GitHubMocker:
         self.jobs.append(job)
 
         self._mock_get_changed_files(job)
-        self._mock_get_repo_config_content(job)
 
         # Create a check run with a `queued` status
         self.router.post(
@@ -288,29 +233,3 @@ class GitHubMocker:
         self.router.get(path=f"{job.path_prefix}/commits/{job.ref}").respond(
             json={"files": changes}
         )
-
-    def _mock_get_repo_config_content(
-        self, job: MockJob, *, valid: bool = True, missing: bool = False
-    ) -> None:
-        """Mock different responses from the contents API."""
-        if valid:
-            content = dedent("""
-                exclude_dirs:
-                  - exclude_me
-            """)
-        else:
-            content = dedent("""
-                nope:
-                  - exclude_me
-            """)
-
-        route = self.router.get(
-            path=f"{job.path_prefix}/contents/{GITHUB_REPO_CONFIG_PATH}",
-            params={"ref": job.ref},
-        )
-        if missing:
-            route.respond(404)
-        else:
-            route.respond(
-                json={"content": b64encode(content.encode()).decode()}
-            )

@@ -15,16 +15,19 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
+import yaml
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from ...config import config
+from ...constants import GITHUB_REPO_CONFIG_PATH
 from ...exceptions import NotebookRepositoryError
 from ...models.business.notebookrunner import (
     NotebookMetadata,
     NotebookRunnerData,
     NotebookRunnerOptions,
 )
+from ...models.repo import RepoConfig
 from ...models.user import AuthenticatedUser
 from ...storage.git import Git
 from ...storage.nublado import JupyterLabSession
@@ -84,10 +87,15 @@ class NotebookRunner(NubladoBusiness):
             self._repo_dir = Path(TemporaryDirectory(delete=False).name)
             await self.clone_repo()
 
-        self._exclude_paths = {
-            (self._repo_dir / path) for path in self.options.exclude_dirs
-        }
-        self._notebook_paths = self.find_notebooks()
+        repo_config_path = self._repo_dir / GITHUB_REPO_CONFIG_PATH
+        if repo_config_path.exists():
+            repo_config = RepoConfig.model_validate(
+                yaml.safe_load(repo_config_path.read_text())
+            )
+        else:
+            repo_config = RepoConfig()
+        exclude_dirs = repo_config.exclude_dirs or self.options.exclude_dirs
+        self._exclude_paths = {self._repo_dir / path for path in exclude_dirs}
         self.logger.info("Repository cloned and ready")
 
     async def shutdown(self) -> None:
