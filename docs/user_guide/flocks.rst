@@ -105,8 +105,12 @@ The repository URL and branch are configured in ``options``.
 ``options.max_executions: 1`` tells mobu to shut down and respawn the pod after each notebook.
 This exercises pod spawning more frequently, but does not test the lab's ability to run a long series of notebooks.
 One may wish to run multiple flocks in a given environment with different configurations for ``max_executions``.
+
+.. _autostart_exclude_dirs:
+
 ``options.exclude_dirs`` tells mobu to not excecute any notebooks in those directories or any descendant directories.
 Those directories are relative to the repo root.
+If ``exclude_dirs`` is set in the :ref:`in-repo config <in_repo_exclude_dirs>`, it will override ``exclude_dirs`` specified in the autostart config here.
 
 These notebooks need more scopes, so those scopes are specified.
 
