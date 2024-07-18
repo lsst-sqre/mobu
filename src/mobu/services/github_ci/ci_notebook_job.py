@@ -1,14 +1,10 @@
 """GitHub CI checks for notebook repos."""
 
 from pathlib import Path
-from typing import Any
 
-import yaml
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
-from mobu.constants import GITHUB_REPO_CONFIG_PATH
-from mobu.exceptions import GitHubFileNotFoundError
 from mobu.models.business.notebookrunner import (
     NotebookRunnerConfig,
     NotebookRunnerOptions,
@@ -18,7 +14,6 @@ from mobu.models.user import User
 from mobu.services.solitary import Solitary
 
 from ...models.ci_manager import CiJobSummary
-from ...models.repo import RepoConfig
 from ...storage.gafaelfawr import GafaelfawrStorage
 from ...storage.github import CheckRun, GitHubStorage
 
@@ -63,35 +58,10 @@ class CiNotebookJob:
         file in the repo.  If there is no mobu config file, then don't exclude
         any changed notebooks.
         """
-        # Get mobu config from repo, if it exists
-        exclude_dirs: set[Path] = set()
-        try:
-            raw_config = await self._github.get_file_content(
-                path=GITHUB_REPO_CONFIG_PATH
-            )
-            parsed_config: dict[str, Any] = yaml.safe_load(raw_config)
-            repo_config = RepoConfig.model_validate(parsed_config)
-            exclude_dirs = repo_config.exclude_dirs
-        except GitHubFileNotFoundError:
-            self._logger.debug("Mobu config file not found in repo")
-        except Exception as exc:
-            await self.check_run.fail(
-                error=(
-                    "Error retreiving and parsing config file "
-                    f"{GITHUB_REPO_CONFIG_PATH}: {exc!s}"
-                ),
-            )
-            return
-
         # Get changed notebook files
         files = await self._github.get_changed_files()
 
-        self._notebooks = [
-            file
-            for file in files
-            if file.suffix == ".ipynb"
-            and not self._is_excluded(file, exclude_dirs)
-        ]
+        self._notebooks = [file for file in files if file.suffix == ".ipynb"]
 
         # Don't do anything if there are no notebooks to run
         if not bool(self._notebooks):
@@ -130,10 +100,6 @@ class CiNotebookJob:
             await self.check_run.succeed()
         else:
             await self.check_run.fail(error=result.error or "Unknown Error")
-
-    def _is_excluded(self, notebook: Path, exclude_dirs: set[Path]) -> bool:
-        """Exclude a notebook if any of its parent directories are excluded."""
-        return bool(set(notebook.parents) & exclude_dirs)
 
     def summarize(self) -> CiJobSummary:
         """Information about this job."""

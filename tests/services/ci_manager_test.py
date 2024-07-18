@@ -140,48 +140,6 @@ async def test_no_changed_files(
 @pytest.mark.usefixtures(
     "_enable_github_ci_app",
 )
-async def test_invalid_config(
-    respx_mock: respx.Router,
-    github_mocker: GitHubMocker,
-    mocker: MockerFixture,
-) -> None:
-    jobs = [
-        github_mocker.job_invalid_config(id="ref1"),
-    ]
-
-    await setup_and_run_jobs(
-        jobs=jobs,
-        github_mocker=github_mocker,
-        mocker=mocker,
-        respx_mock=respx_mock,
-    )
-
-
-@pytest.mark.asyncio
-@pytest.mark.usefixtures(
-    "_enable_github_ci_app",
-)
-async def test_missing_config(
-    respx_mock: respx.Router,
-    github_mocker: GitHubMocker,
-    mocker: MockerFixture,
-) -> None:
-    jobs = [
-        github_mocker.job_missing_config(id="ref1", should_fail=False),
-    ]
-
-    await setup_and_run_jobs(
-        jobs=jobs,
-        github_mocker=github_mocker,
-        mocker=mocker,
-        respx_mock=respx_mock,
-    )
-
-
-@pytest.mark.asyncio
-@pytest.mark.usefixtures(
-    "_enable_github_ci_app",
-)
 async def test_runs_jobs(
     respx_mock: respx.Router,
     github_mocker: GitHubMocker,
