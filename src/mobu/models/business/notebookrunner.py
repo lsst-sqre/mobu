@@ -12,14 +12,43 @@ from .base import BusinessConfig
 from .nublado import NubladoBusinessData, NubladoBusinessOptions
 
 __all__ = [
+    "CiNotebookRunnerOptions",
     "NotebookRunnerConfig",
     "NotebookRunnerData",
     "NotebookRunnerOptions",
 ]
 
 
-class NotebookRunnerOptions(NubladoBusinessOptions):
-    """Options for NotebookRunner monkey business."""
+class BaseNotebookRunnerOptions(NubladoBusinessOptions):
+    """Options for all types NotebookRunner monkey business."""
+
+    repo_ref: str = Field(
+        NOTEBOOK_REPO_BRANCH,
+        title="Git ref of notebook repository to execute",
+        description="Only used by the NotebookRunner",
+        examples=["main", "03cd564dd2025bf17054d9ebfeeb5c5a266e3484"],
+    )
+
+    repo_url: str = Field(
+        NOTEBOOK_REPO_URL,
+        title="Git URL of notebook repository to execute",
+        description="Only used by the NotebookRunner",
+    )
+
+    exclude_dirs: set[Path] = Field(
+        set(),
+        title="Any notebooks in these directories will not be run",
+        description=(
+            " These directories are relative to the repo root. Any notebooks"
+            " in child directories of these directories will also be excluded."
+            " Only used by the NotebookRunner."
+        ),
+        examples=["some-dir", "some-dir/some-other-dir"],
+    )
+
+
+class NotebookRunnerOptions(BaseNotebookRunnerOptions):
+    """Options for non-CI runners."""
 
     max_executions: int = Field(
         25,
@@ -37,37 +66,14 @@ class NotebookRunnerOptions(NubladoBusinessOptions):
         ge=1,
     )
 
-    repo_ref: str = Field(
-        NOTEBOOK_REPO_BRANCH,
-        title="Git ref of notebook repository to execute",
-        description="Only used by the NotebookRunner",
-        examples=["main", "03cd564dd2025bf17054d9ebfeeb5c5a266e3484"],
-    )
 
-    repo_url: str = Field(
-        NOTEBOOK_REPO_URL,
-        title="Git URL of notebook repository to execute",
-        description="Only used by the NotebookRunner",
-    )
+class CiNotebookRunnerOptions(BaseNotebookRunnerOptions):
+    """Options for runs triggered from a GitHub CI check."""
 
     notebooks_to_run: list[Path] = Field(
         [],
         title="Specific notebooks to run",
-        description=(
-            "If this is set, then only these specific notebooks will be"
-            " executed."
-        ),
-    )
-
-    exclude_dirs: set[Path] = Field(
-        set(),
-        title="Any notebooks in these directories will not be run",
-        description=(
-            " These directories are relative to the repo root. Any notebooks"
-            " in child directories of these directories will also be excluded."
-            " Only used by the NotebookRunner."
-        ),
-        examples=["some-dir", "some-dir/some-other-dir"],
+        description=("Only these specific notebooks will be" " executed."),
     )
 
 
@@ -78,7 +84,7 @@ class NotebookRunnerConfig(BusinessConfig):
         ..., title="Type of business to run"
     )
 
-    options: NotebookRunnerOptions = Field(
+    options: NotebookRunnerOptions | CiNotebookRunnerOptions = Field(
         default_factory=NotebookRunnerOptions,
         title="Options for the monkey business",
     )
