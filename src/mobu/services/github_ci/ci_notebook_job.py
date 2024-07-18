@@ -73,6 +73,11 @@ class CiNotebookJob:
         # Run notebooks using a Solitary runner
         summary = "Running these notebooks via Mobu:\n" + "\n".join(
             [f"* {notebook}" for notebook in self._notebooks]
+            + [
+                "Note that not all of these may run. Some may be exluded based"
+                " on config in the repo:"
+                " https://mobu.lsst.io/user_guide/in_repo_config.html"
+            ]
         )
         await self.check_run.start(summary=summary)
         solitary_config = SolitaryConfig(
