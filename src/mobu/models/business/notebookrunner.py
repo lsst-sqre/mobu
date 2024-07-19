@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from ...constants import NOTEBOOK_REPO_BRANCH, NOTEBOOK_REPO_URL
 from .base import BusinessConfig
@@ -99,4 +99,19 @@ class NotebookRunnerData(NubladoBusinessData):
         title="Currently running code",
         description="Will not be present if no code is being executed",
         examples=['import json\nprint(json.dumps({"foo": "bar"})\n'],
+    )
+
+
+class NotebookMetadata(BaseModel):
+    """Notebook metadata that we care about."""
+
+    required_services: set[str] = Field(
+        set(),
+        title="Required services",
+        description=(
+            "The names of services that the platform is required to provide in"
+            " order for the notebook to run correctly. Not all environments"
+            " provide all services."
+        ),
+        examples=[{"tap", "ssotap", "butler"}],
     )

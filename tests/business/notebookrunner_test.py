@@ -210,6 +210,85 @@ async def test_run_recursive(
 
 
 @pytest.mark.asyncio
+async def test_run_required_services(
+    client: AsyncClient, respx_mock: respx.Router, tmp_path: Path
+) -> None:
+    mock_gafaelfawr(respx_mock)
+    cwd = Path.cwd()
+
+    # Set up a notebook repository.
+    source_path = TEST_DATA_DIR / "notebooks_services"
+    repo_path = tmp_path / "notebooks"
+
+    shutil.copytree(str(source_path), str(repo_path))
+
+    # Set up git repo
+    await setup_git_repo(repo_path)
+
+    # Start a monkey. We have to do this in a try/finally block since the
+    # runner will change working directories, which because working
+    # directories are process-global may mess up future tests.
+    try:
+        r = await client.put(
+            "/mobu/flocks",
+            json={
+                "name": "test",
+                "count": 1,
+                "user_spec": {"username_prefix": "bot-mobu-testuser"},
+                "scopes": ["exec:notebook"],
+                "business": {
+                    "type": "NotebookRunner",
+                    "options": {
+                        "spawn_settle_time": 0,
+                        "execution_idle_time": 0,
+                        "max_executions": 1,
+                        "repo_url": str(repo_path),
+                        "repo_ref": "main",
+                        "working_directory": str(repo_path),
+                    },
+                },
+            },
+        )
+        assert r.status_code == 201
+
+        # Wait until we've finished one loop and check the results.
+        data = await wait_for_business(client, "bot-mobu-testuser1")
+        assert data == {
+            "name": "bot-mobu-testuser1",
+            "business": {
+                "failure_count": 0,
+                "name": "NotebookRunner",
+                "notebook": "test-notebook-has-services.ipynb",
+                "refreshing": False,
+                "success_count": 1,
+                "timings": ANY,
+            },
+            "state": "RUNNING",
+            "user": {
+                "scopes": ["exec:notebook"],
+                "token": ANY,
+                "username": "bot-mobu-testuser1",
+            },
+        }
+    finally:
+        os.chdir(cwd)
+
+    # Get the log and check the cell output.
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1/log")
+    assert r.status_code == 200
+
+    # Notebook with all services available
+    assert "Required services are available" in r.text
+    assert "Final test" in r.text
+
+    # Notebook with missing services
+    assert "Required services are NOT available" not in r.text
+
+    # Make sure mobu ran all of the notebooks it thinks it should have
+    assert "Done with this cycle of notebooks" in r.text
+
+
+@pytest.mark.asyncio
 async def test_refresh(
     client: AsyncClient,
     jupyter: MockJupyter,

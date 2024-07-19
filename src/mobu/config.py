@@ -87,6 +87,19 @@ class Configuration(BaseSettings):
         examples=["gt-vilSCi1ifK_MyuaQgMD2dQ.d6SIJhowv5Hs3GvujOyUig"],
     )
 
+    available_services: set[str] = Field(
+        set(),
+        title="Available platform services",
+        description=(
+            "Names of services available in the current environment. For now,"
+            " this list is manually maintained in the mobu config in Phalanx."
+            " When we have a service discovery mechanism in place, it should"
+            " be used here."
+        ),
+        validation_alias="MOBU_AVAILABLE_SERVICES",
+        examples=[{"tap", "ssotap", "butler"}],
+    )
+
     name: str = Field(
         "mobu",
         title="Name of application",
