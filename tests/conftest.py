@@ -56,9 +56,11 @@ def _configure() -> Iterator[None]:
     """
     config.environment_url = HttpUrl("https://test.example.com")
     config.gafaelfawr_token = make_gafaelfawr_token()
+    config.available_services = {"some_service", "some_other_service"}
     yield
     config.environment_url = None
     config.gafaelfawr_token = None
+    config.available_services = set()
 
 
 @pytest.fixture
