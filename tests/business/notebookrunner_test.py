@@ -14,6 +14,7 @@ from safir.testing.slack import MockSlackWebhook
 
 from mobu.storage.git import Git
 
+from ..support.constants import TEST_DATA_DIR
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.jupyter import MockJupyter
 from ..support.util import wait_for_business, wait_for_log_message
@@ -39,7 +40,7 @@ async def test_run(
     cwd = Path.cwd()
 
     # Set up a notebook repository.
-    source_path = Path(__file__).parent.parent / "notebooks"
+    source_path = TEST_DATA_DIR / "notebooks"
     repo_path = tmp_path / "notebooks"
 
     shutil.copytree(str(source_path), str(repo_path))
@@ -119,7 +120,7 @@ async def test_run_recursive(
     cwd = Path.cwd()
 
     # Set up a notebook repository.
-    source_path = Path(__file__).parent.parent / "notebooks_recursive"
+    source_path = TEST_DATA_DIR / "notebooks_recursive"
     repo_path = tmp_path / "notebooks"
 
     shutil.copytree(str(source_path), str(repo_path))
@@ -219,7 +220,7 @@ async def test_refresh(
     cwd = Path.cwd()
 
     # Set up a notebook repository.
-    source_path = Path(__file__).parent.parent / "notebooks"
+    source_path = TEST_DATA_DIR / "notebooks"
     repo_path = tmp_path / "notebooks"
 
     shutil.copytree(str(source_path), str(repo_path))
@@ -297,7 +298,7 @@ async def test_exclude_dirs(
     cwd = Path.cwd()
 
     # Set up a notebook repository.
-    source_path = Path(__file__).parent.parent / "notebooks_recursive"
+    source_path = TEST_DATA_DIR / "notebooks_recursive"
     repo_path = tmp_path / "notebooks"
 
     shutil.copytree(str(source_path), str(repo_path))
@@ -396,7 +397,7 @@ async def test_alert(
     mock_gafaelfawr(respx_mock)
 
     # Set up a notebook repository with the exception notebook.
-    source_path = Path(__file__).parent.parent / "notebooks_recursive"
+    source_path = TEST_DATA_DIR / "notebooks_recursive"
     repo_path = tmp_path / "notebooks"
     repo_path.mkdir()
     shutil.copy(str(source_path / "exception.ipynb"), str(repo_path))
