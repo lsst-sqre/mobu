@@ -94,7 +94,8 @@ class NotebookRunner(NubladoBusiness):
             )
         else:
             repo_config = RepoConfig()
-        exclude_dirs = repo_config.exclude_dirs or self.options.exclude_dirs
+
+        exclude_dirs = repo_config.exclude_dirs
         self._exclude_paths = {self._repo_dir / path for path in exclude_dirs}
         self.logger.info("Repository cloned and ready")
 

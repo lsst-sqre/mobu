@@ -2,4 +2,4 @@
 
 ### Backwards-incompatible changes
 
-- `exclude_dirs` from an in-repo `mobu.yaml` config file will overrided `exclude_dirs` in the Phalanx autostart config.
+- Remove `exclude_dirs` option from `NotebookRunner` options, which means it can no longer be set in the autostart config. `exclude_dirs` must be set in an in-repo `mobu.yaml` config file.

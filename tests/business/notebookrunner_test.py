@@ -370,107 +370,9 @@ async def test_refresh(
 
 
 @pytest.mark.asyncio
-async def test_config_exclude_dirs(
+async def test_exclude_dirs(
     client: AsyncClient, respx_mock: respx.Router, tmp_path: Path
 ) -> None:
-    mock_gafaelfawr(respx_mock)
-    cwd = Path.cwd()
-
-    # Set up a notebook repository.
-    source_path = TEST_DATA_DIR / "notebooks_recursive"
-    repo_path = tmp_path / "notebooks"
-
-    shutil.copytree(str(source_path), str(repo_path))
-    # Remove exception notebook
-    (repo_path / "exception.ipynb").unlink()
-
-    # Set up git repo
-    await setup_git_repo(repo_path)
-
-    # Start a monkey. We have to do this in a try/finally block since the
-    # runner will change working directories, which because working
-    # directories are process-global may mess up future tests.
-    try:
-        r = await client.put(
-            "/mobu/flocks",
-            json={
-                "name": "test",
-                "count": 1,
-                "user_spec": {"username_prefix": "bot-mobu-testuser"},
-                "scopes": ["exec:notebook"],
-                "business": {
-                    "type": "NotebookRunner",
-                    "options": {
-                        "spawn_settle_time": 0,
-                        "execution_idle_time": 0,
-                        "max_executions": 2,
-                        "repo_url": str(repo_path),
-                        "repo_ref": "main",
-                        "working_directory": str(repo_path),
-                        "exclude_dirs": [
-                            "some-other-dir/nested-dir",
-                            "some-dir",
-                        ],
-                    },
-                },
-            },
-        )
-        assert r.status_code == 201
-
-        # Wait until we've finished one loop and check the results.
-        data = await wait_for_business(client, "bot-mobu-testuser1")
-        assert data == {
-            "name": "bot-mobu-testuser1",
-            "business": {
-                "failure_count": 0,
-                "name": "NotebookRunner",
-                "notebook": ANY,
-                "refreshing": False,
-                "success_count": 1,
-                "timings": ANY,
-            },
-            "state": "RUNNING",
-            "user": {
-                "scopes": ["exec:notebook"],
-                "token": ANY,
-                "username": "bot-mobu-testuser1",
-            },
-        }
-    finally:
-        os.chdir(cwd)
-
-    # Get the log and check the cell output.
-    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1/log")
-    assert r.status_code == 200
-
-    # Root notebook
-    assert "This is a test" in r.text
-    assert "This is another test" in r.text
-    assert "Final test" in r.text
-
-    # some-other-dir notebook
-    assert "Test some-other-dir" in r.text
-    assert "Another test some-other-dir" in r.text
-    assert "Final test some-other-dir" in r.text
-
-    # some-dir notebook
-    assert "Test some-dir" not in r.text
-
-    # nested-dir notebook
-    assert "Test double-nested-dir" not in r.text
-
-    # Exceptions
-    assert "Exception thrown" not in r.text
-
-    # Make sure mobu ran all of the notebooks it thinks it should have
-    assert "Done with this cycle of notebooks" in r.text
-
-
-@pytest.mark.asyncio
-async def test_repo_exclude_dirs(
-    client: AsyncClient, respx_mock: respx.Router, tmp_path: Path
-) -> None:
-    """exclude_dirs from in-repo config file should override flock config."""
     mock_gafaelfawr(respx_mock)
     cwd = Path.cwd()
 
@@ -508,10 +410,6 @@ async def test_repo_exclude_dirs(
                         "repo_url": str(repo_path),
                         "repo_ref": "main",
                         "working_directory": str(repo_path),
-                        "exclude_dirs": [
-                            "some-other-dir/nested-dir",
-                            "some-dir",
-                        ],
                     },
                 },
             },
@@ -611,10 +509,6 @@ async def test_invalid_repo_config(
                         "repo_url": str(repo_path),
                         "repo_ref": "main",
                         "working_directory": str(repo_path),
-                        "exclude_dirs": [
-                            "some-other-dir/nested-dir",
-                            "some-dir",
-                        ],
                     },
                 },
             },
