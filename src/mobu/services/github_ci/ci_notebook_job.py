@@ -6,8 +6,8 @@ from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from mobu.models.business.notebookrunner import (
+    ListNotebookRunnerOptions,
     NotebookRunnerConfig,
-    NotebookRunnerOptions,
 )
 from mobu.models.solitary import SolitaryConfig
 from mobu.models.user import User
@@ -73,6 +73,11 @@ class CiNotebookJob:
         # Run notebooks using a Solitary runner
         summary = "Running these notebooks via Mobu:\n" + "\n".join(
             [f"* {notebook}" for notebook in self._notebooks]
+            + [
+                "Note that not all of these may run. Some may be exluded based"
+                " on config in the repo:"
+                " https://mobu.lsst.io/user_guide/in_repo_config.html"
+            ]
         )
         await self.check_run.start(summary=summary)
         solitary_config = SolitaryConfig(
@@ -80,8 +85,7 @@ class CiNotebookJob:
             scopes=[str(scope) for scope in scopes],
             business=NotebookRunnerConfig(
                 type="NotebookRunner",
-                options=NotebookRunnerOptions(
-                    max_executions=len(self._notebooks),
+                options=ListNotebookRunnerOptions(
                     repo_ref=self._github.ref,
                     repo_url=f"https://github.com/{self._github.repo_owner}/{self._github.repo_name}.git",
                     notebooks_to_run=self._notebooks,
