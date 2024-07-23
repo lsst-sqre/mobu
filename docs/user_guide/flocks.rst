@@ -93,7 +93,6 @@ Here is a more complex example that runs a set of notebooks as a test:
          options:
            repo_url: "https://github.com/lsst-sqre/system-test.git"
            repo_ref: "prod"
-           exclude_dirs: ["some/experiment/dir", "another/dir"]
            max_executions: 1
          restart: true
 
@@ -105,8 +104,6 @@ The repository URL and branch are configured in ``options``.
 ``options.max_executions: 1`` tells mobu to shut down and respawn the pod after each notebook.
 This exercises pod spawning more frequently, but does not test the lab's ability to run a long series of notebooks.
 One may wish to run multiple flocks in a given environment with different configurations for ``max_executions``.
-``options.exclude_dirs`` tells mobu to not excecute any notebooks in those directories or any descendant directories.
-Those directories are relative to the repo root.
 
 These notebooks need more scopes, so those scopes are specified.
 

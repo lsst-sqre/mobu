@@ -59,17 +59,6 @@ class NotebookRunnerOptions(NubladoBusinessOptions):
         ),
     )
 
-    exclude_dirs: set[Path] = Field(
-        set(),
-        title="Any notebooks in these directories will not be run",
-        description=(
-            " These directories are relative to the repo root. Any notebooks"
-            " in child directories of these directories will also be excluded."
-            " Only used by the NotebookRunner."
-        ),
-        examples=["some-dir", "some-dir/some-other-dir"],
-    )
-
 
 class NotebookRunnerConfig(BusinessConfig):
     """Configuration specialization for NotebookRunner."""
