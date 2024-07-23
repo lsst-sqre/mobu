@@ -484,7 +484,9 @@ async def test_invalid_repo_config(
     (repo_path / "exception.ipynb").unlink()
 
     # Add a bad config file
-    (repo_path / "mobu.yaml").write_text("nope")
+    (repo_path / "mobu.yaml").write_text(
+        'exclude_dirs: "blah"\nsome_other_key: "whatever"'
+    )
 
     # Set up git repo
     await setup_git_repo(repo_path)
@@ -544,7 +546,7 @@ async def test_invalid_repo_config(
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": ANY,
+                        "text": "Error parsing config file: mobu.yaml",
                         "verbatim": True,
                     },
                 },
@@ -553,12 +555,12 @@ async def test_invalid_repo_config(
                     "fields": [
                         {
                             "type": "mrkdwn",
-                            "text": "*Exception type*\nValidationError",
+                            "text": ANY,
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": ANY,
+                            "text": "*Exception type*\nRepositoryConfigError",
                             "verbatim": True,
                         },
                         {
@@ -573,12 +575,46 @@ async def test_invalid_repo_config(
                         },
                     ],
                 },
-                {"type": "divider"},
-            ]
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": ANY,
+                        "verbatim": True,
+                    },
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "*Git Ref*\nmain",
+                        "verbatim": True,
+                    },
+                },
+            ],
+            "attachments": [
+                {
+                    "blocks": [
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": ANY,
+                                "verbatim": True,
+                            },
+                        }
+                    ]
+                }
+            ],
         }
     ]
-    error = slack.messages[0]["blocks"][0]["text"]["text"]
-    assert "1 validation error" in error
+
+    repo = slack.messages[0]["blocks"][2]["text"]["text"]
+    assert "test_invalid_repo_config0/notebooks" in repo
+
+    error = slack.messages[0]["attachments"][0]["blocks"][0]["text"]["text"]
+    assert "ValidationError:" in error
+    assert "2 validation errors for RepoConfig" in error
 
 
 @pytest.mark.asyncio

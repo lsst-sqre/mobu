@@ -21,7 +21,7 @@ from structlog.stdlib import BoundLogger
 
 from ...config import config
 from ...constants import GITHUB_REPO_CONFIG_PATH
-from ...exceptions import NotebookRepositoryError
+from ...exceptions import NotebookRepositoryError, RepositoryConfigError
 from ...models.business.notebookrunner import (
     NotebookMetadata,
     NotebookRunnerData,
@@ -89,9 +89,18 @@ class NotebookRunner(NubladoBusiness):
 
         repo_config_path = self._repo_dir / GITHUB_REPO_CONFIG_PATH
         if repo_config_path.exists():
-            repo_config = RepoConfig.model_validate(
-                yaml.safe_load(repo_config_path.read_text())
-            )
+            try:
+                repo_config = RepoConfig.model_validate(
+                    yaml.safe_load(repo_config_path.read_text())
+                )
+            except Exception as err:
+                raise RepositoryConfigError(
+                    err=err,
+                    user=self.user.username,
+                    config_file=GITHUB_REPO_CONFIG_PATH,
+                    repo_url=self.options.repo_url,
+                    repo_ref=self.options.repo_ref,
+                ) from err
         else:
             repo_config = RepoConfig()
 
