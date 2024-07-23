@@ -196,7 +196,7 @@ class NotebookRunner(NubladoBusiness):
                 if not_found:
                     msg = (
                         "Requested notebooks do not exist in"
-                        " {self._repo_dir}: {not_found}"
+                        f" {self._repo_dir}: {not_found}"
                     )
                     raise NotebookRepositoryError(msg, self.user.username)
                 filter_results.excluded_by_requested = (
