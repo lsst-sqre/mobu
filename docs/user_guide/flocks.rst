@@ -104,7 +104,6 @@ The repository URL and branch are configured in ``options``.
 ``options.max_executions: 1`` tells mobu to shut down and respawn the pod after each notebook.
 This exercises pod spawning more frequently, but does not test the lab's ability to run a long series of notebooks.
 One may wish to run multiple flocks in a given environment with different configurations for ``max_executions``.
-
 These notebooks need more scopes, so those scopes are specified.
 
 Here is a different example that runs multiple monkeys in a flock:
