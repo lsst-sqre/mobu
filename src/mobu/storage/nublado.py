@@ -556,15 +556,15 @@ class NubladoClient:
         self._base_url = base_url
         self._logger = logger.bind(user=user.username)
 
-        # Construct a connection pool to use for requets to JupyterHub. We
+        # Construct a connection pool to use for requests to JupyterHub. We
         # have to create a separate connection pool for every monkey, since
         # each will get user-specific cookies set by JupyterHub. If we shared
         # connection pools, monkeys would overwrite each other's cookies and
         # get authentication failures from labs.
         headers = {"Authorization": f"Bearer {user.token}"}
         self._client = AsyncClient(
-            headers=headers,
             follow_redirects=True,
+            headers=headers,
             timeout=timeout.total_seconds(),
         )
         self._hub_xsrf: str | None = None
@@ -591,10 +591,19 @@ class NubladoClient:
             Raised if no ``_xsrf`` cookie was set in the reply from the lab.
         """
         url = self._url_for("hub/home")
-        r = await self._client.get(url)
+        r = await self._client.get(url, follow_redirects=False)
+        # As with auth_to_lab, manually extract from cookies at each
+        # redirection, because httpx doesn't do that if following redirects
+        # automatically.
+        while r.is_redirect:
+            xsrf = self._extract_xsrf(r)
+            if xsrf and xsrf != self._lab_xsrf:
+                self._hub_xsrf = xsrf
+            next_url = urljoin(url, r.headers["Location"])
+            r = await self._client.get(next_url, follow_redirects=False)
         r.raise_for_status()
         xsrf = self._extract_xsrf(r)
-        if xsrf:
+        if xsrf and xsrf != self._lab_xsrf:
             self._hub_xsrf = xsrf
         elif not self._hub_xsrf:
             msg = "No _xsrf cookie set in login reply from JupyterHub"
