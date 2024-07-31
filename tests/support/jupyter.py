@@ -249,6 +249,12 @@ class MockJupyter:
         to a callback, and then back to the lab), but it's hopefully good
         enough to test handling of cookies during redirect chains for
         capturing the ``_xsrf`` cookie.
+
+        Well...it's not realistic enough, in that the test cases passed but
+        in practice the ``_xsrf`` cookie would expire.  I think that that is
+        fixed now (similar strategy of following redirects manually and
+        grabbing the cookie at each intermediate step), but I don't
+        understand how to test it.
         """
         user = self.get_user(request.headers["Authorization"])
         assert str(request.url).endswith(f"/user/{user}/callback")
