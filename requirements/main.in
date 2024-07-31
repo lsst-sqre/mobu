@@ -22,10 +22,12 @@ pydantic-settings
 pyvo
 pyyaml
 safir>=6.1.0
-# -e /home/danfuchs/src/safir
 shortuuid
 structlog
 websockets
+
+# Not a dependency on Mac, but is on Linux
+greenlet
 
 # Uncomment this, change the branch, comment out safir above, and run make
 # update-deps-no-hashes to test against an unreleased version of Safir.
