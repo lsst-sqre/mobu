@@ -599,12 +599,24 @@ class NubladoClient:
             xsrf = self._extract_xsrf(r)
             if xsrf and xsrf != self._lab_xsrf:
                 self._hub_xsrf = xsrf
+                self._logger.debug(
+                    "Set _hub_xsrf",
+                    url=r.url,
+                    status_code=r.status_code,
+                    set_cookie_header=r.headers.get("set-cookie", None),
+                )
             next_url = urljoin(url, r.headers["Location"])
             r = await self._client.get(next_url, follow_redirects=False)
         r.raise_for_status()
         xsrf = self._extract_xsrf(r)
         if xsrf and xsrf != self._lab_xsrf:
             self._hub_xsrf = xsrf
+            self._logger.debug(
+                "Set _hub_xsrf",
+                url=r.url,
+                status_code=r.status_code,
+                set_cookie_header=r.headers.get("set-cookie", None),
+            )
         elif not self._hub_xsrf:
             msg = "No _xsrf cookie set in login reply from JupyterHub"
             raise JupyterProtocolError(msg)
@@ -637,6 +649,12 @@ class NubladoClient:
             xsrf = self._extract_xsrf(r)
             if xsrf and xsrf != self._hub_xsrf:
                 self._lab_xsrf = xsrf
+                self._logger.debug(
+                    "Set _lab_xsrf",
+                    url=r.url,
+                    status_code=r.status_code,
+                    set_cookie_header=r.headers.get("set-cookie", None),
+                )
             next_url = urljoin(url, r.headers["Location"])
             r = await self._client.get(
                 next_url, headers=headers, follow_redirects=False
@@ -645,6 +663,12 @@ class NubladoClient:
         xsrf = self._extract_xsrf(r)
         if xsrf and xsrf != self._hub_xsrf:
             self._lab_xsrf = xsrf
+            self._logger.debug(
+                "Set _lab_xsrf",
+                url=r.url,
+                status_code=r.status_code,
+                set_cookie_header=r.headers.get("set-cookie", None),
+            )
         if not self._lab_xsrf:
             msg = "No _xsrf cookie set in login reply from lab"
             raise JupyterProtocolError(msg)
@@ -811,7 +835,16 @@ class NubladoClient:
         """
         cookies = Cookies()
         cookies.extract_cookies(response)
-        return cookies.get("_xsrf")
+        xsrf = cookies.get("_xsrf")
+        if xsrf is not None:
+            self._logger.debug(
+                "Extracted _xsrf cookie",
+                url=response.url,
+                status_code=response.status_code,
+                method=response.request.method,
+                set_cookie_header=response.headers.get("set-cookie", None),
+            )
+        return xsrf
 
     def _url_for(self, partial: str) -> str:
         """Construct a JupyterHub or Jupyter lab URL from a partial URL.
