@@ -25,3 +25,6 @@ types-requests
 
 # Documentation
 scriv[toml]
+
+# Not a dependency on Mac, but is on Linux
+greenlet
