@@ -255,6 +255,10 @@ class MockJupyter:
         fixed now (similar strategy of following redirects manually and
         grabbing the cookie at each intermediate step), but I don't
         understand how to test it.
+
+        The actual chain is ``/user/username/lab`` to
+        ``/hub/api/oauth2/authorize`` to ``/user/username/oauth_callback``
+        and it here that the cookie is actually set.
         """
         user = self.get_user(request.headers["Authorization"])
         assert str(request.url).endswith(f"/user/{user}/callback")
