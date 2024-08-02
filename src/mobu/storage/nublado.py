@@ -597,27 +597,31 @@ class NubladoClient:
         # redirection, because httpx doesn't do that if following redirects
         # automatically.
         while r.is_redirect:
+            self._logger.debug(
+                "Following hub redirect looking for _xsrf cookies",
+                method=r.request.method,
+                url=r.url.copy_with(query=None, fragment=None),
+                status_code=r.status_code,
+            )
             xsrf = self._extract_xsrf(r)
-            if xsrf and xsrf != self._lab_xsrf:
-                if xsrf != self._hub_xsrf:
-                    self._hub_xsrf = xsrf
-                    self._logger.debug(
-                        "Set _hub_xsrf",
-                        url=r.url.copy_with(query=None, fragment=None),
-                        status_code=r.status_code,
-                    )
-            next_url = urljoin(url, r.headers["Location"])
-            r = await self._client.get(next_url, follow_redirects=False)
-        r.raise_for_status()
-        xsrf = self._extract_xsrf(r)
-        if xsrf and xsrf != self._lab_xsrf:
-            if xsrf != self._hub_xsrf:
+            if xsrf and xsrf != self._hub_xsrf:
                 self._hub_xsrf = xsrf
                 self._logger.debug(
                     "Set _hub_xsrf",
                     url=r.url.copy_with(query=None, fragment=None),
                     status_code=r.status_code,
                 )
+            next_url = urljoin(url, r.headers["Location"])
+            r = await self._client.get(next_url, follow_redirects=False)
+        r.raise_for_status()
+        xsrf = self._extract_xsrf(r)
+        if xsrf and xsrf != self._hub_xsrf:
+            self._hub_xsrf = xsrf
+            self._logger.debug(
+                "Set _hub_xsrf",
+                url=r.url.copy_with(query=None, fragment=None),
+                status_code=r.status_code,
+            )
         elif not self._hub_xsrf:
             msg = "No _xsrf cookie set in login reply from JupyterHub"
             raise JupyterProtocolError(msg)
@@ -647,29 +651,33 @@ class NubladoClient:
             url, headers=headers, follow_redirects=False
         )
         while r.is_redirect:
-            xsrf = self._extract_xsrf(r)
-            if xsrf and xsrf != self._hub_xsrf:
-                if xsrf != self._lab_xsrf:
-                    self._lab_xsrf = xsrf
-                    self._logger.debug(
-                        "Set _lab_xsrf",
-                        url=r.url.copy_with(query=None, fragment=None),
-                        status_code=r.status_code,
-                    )
-            next_url = urljoin(url, r.headers["Location"])
-            r = await self._client.get(
-                next_url, headers=headers, follow_redirects=False
+            self._logger.debug(
+                "Following lab redirect looking for _xsrf cookies",
+                method=r.request.method,
+                url=r.url.copy_with(query=None, fragment=None),
+                status_code=r.status_code,
             )
-        r.raise_for_status()
-        xsrf = self._extract_xsrf(r)
-        if xsrf and xsrf != self._hub_xsrf:
-            if xsrf != self._lab_xsrf:
+            xsrf = self._extract_xsrf(r)
+            if xsrf and xsrf != self._lab_xsrf:
                 self._lab_xsrf = xsrf
                 self._logger.debug(
                     "Set _lab_xsrf",
                     url=r.url.copy_with(query=None, fragment=None),
                     status_code=r.status_code,
                 )
+            next_url = urljoin(url, r.headers["Location"])
+            r = await self._client.get(
+                next_url, headers=headers, follow_redirects=False
+            )
+        r.raise_for_status()
+        xsrf = self._extract_xsrf(r)
+        if xsrf and xsrf != self._lab_xsrf:
+            self._lab_xsrf = xsrf
+            self._logger.debug(
+                "Set _lab_xsrf",
+                url=r.url.copy_with(query=None, fragment=None),
+                status_code=r.status_code,
+            )
         if not self._lab_xsrf:
             msg = "No _xsrf cookie set in login reply from lab"
             raise JupyterProtocolError(msg)
