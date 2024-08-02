@@ -23,6 +23,7 @@ from ...models.business.nublado import (
     RunningImage,
 )
 from ...models.user import AuthenticatedUser
+from ...observability.metrics import metrics_dependency as md
 from ...storage.nublado import JupyterLabSession, NubladoClient
 from .base import Business
 
@@ -202,11 +203,13 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
 
     async def hub_login(self) -> None:
         self.logger.info("Logging in to hub")
-        with self.timings.start("hub_login"):
+        with md.metrics.nublado_login_timer():
             await self._client.auth_to_hub()
 
     async def spawn_lab(self) -> bool:
-        with self.timings.start("spawn_lab", self.annotations()) as sw:
+        with md.metrics.nublado_spawn_lab_timer().time(
+            self.annotations()
+        ) as sw:
             timeout = self.options.spawn_timeout
             await self._client.spawn_lab(self.options.image)
 
@@ -248,7 +251,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
 
     async def lab_login(self) -> None:
         self.logger.info("Logging in to lab")
-        with self.timings.start("lab_login", self.annotations()):
+        with md.metrics.nublado_lab_login_timer().time(self.annotations()):
             await self._client.auth_to_lab()
 
     @asynccontextmanager
@@ -256,17 +259,27 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         self, notebook: str | None = None
     ) -> AsyncIterator[JupyterLabSession]:
         self.logger.info("Creating lab session")
-        opts = {"max_websocket_size": self.options.max_websocket_message_size}
-        stopwatch = self.timings.start("create_session", self.annotations())
-        async with self._client.open_lab_session(notebook, **opts) as session:
-            stopwatch.stop()
+        create_session_timer = (
+            md.metrics.nublado_create_session_timer().add_attributes(
+                self.annotations()
+            )
+        )
+        delete_session_timer = (
+            md.metrics.nublado_delete_session_timer().add_attributes(
+                self.annotations()
+            )
+        )
+        async with self._client.open_lab_session(
+            notebook,
+            create_session_timer=create_session_timer,
+            delete_session_timer=delete_session_timer,
+            max_websocket_size=self.options.max_websocket_message_size,
+        ) as session:
             with self.timings.start("execute_setup", self.annotations()):
                 await self.setup_session(session)
             yield session
             await self.lab_login()
             self.logger.info("Deleting lab session")
-            stopwatch = self.timings.start("delete_sesion", self.annotations())
-        stopwatch.stop()
         self._node = None
 
     async def setup_session(self, session: JupyterLabSession) -> None:

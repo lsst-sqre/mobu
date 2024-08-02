@@ -12,10 +12,14 @@ import requests
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
+from mobu.observability.tracing import Spans
+
 from ...config import config
 from ...exceptions import CodeExecutionError, TAPClientError
 from ...models.business.tap import TAPBusinessData, TAPBusinessOptions
 from ...models.user import AuthenticatedUser
+from ...observability.metrics import metrics_dependency as md
+from ...safir.observability import observer_dependency as od
 from .base import Business
 
 T = TypeVar("T", bound="TAPBusinessOptions")
@@ -56,7 +60,7 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
         self._pool = ThreadPoolExecutor(max_workers=1)
 
     async def startup(self) -> None:
-        with self.timings.start("make_client"):
+        with md.metrics.tap_make_client_timer():
             self._client = self._make_client(self.user.token)
 
     @abstractmethod
@@ -71,26 +75,32 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
 
     async def execute(self) -> None:
         query = self.get_next_query()
-        with self.timings.start("execute_query", {"query": query}) as sw:
-            self._running_query = query
+        with od.observer.tracer.start_as_current_span(
+            Spans.tap_query,
+            attributes={"query": query, "sync": self.options.sync},
+        ):
+            with md.metrics.tap_query_timer() as timer:
+                self._running_query = query
 
-            try:
-                if self.options.sync:
-                    await self.run_sync_query(query)
-                else:
-                    await self.run_async_query(query)
-            except Exception as e:
-                raise CodeExecutionError(
-                    user=self.user.username,
-                    code=query,
-                    code_type="TAP query",
-                    error=f"{type(e).__name__}: {e!s}",
-                ) from e
+                try:
+                    if self.options.sync:
+                        await self.run_sync_query(query)
+                    else:
+                        await self.run_async_query(query)
+                    md.metrics.service_success.add(1, {"service": "tap"})
+                except Exception as e:
+                    md.metrics.service_failure.add(1, {"service": "tap"})
+                    raise CodeExecutionError(
+                        user=self.user.username,
+                        code=query,
+                        code_type="TAP query",
+                        error=f"{type(e).__name__}: {e!s}",
+                    ) from e
 
-            self._running_query = None
-            elapsed = sw.elapsed.total_seconds()
+                self._running_query = None
+                elapsed = timer.elapsed.total_seconds()
 
-        self.logger.info(f"Query finished after {elapsed} seconds")
+            self.logger.info(f"Query finished after {elapsed} seconds")
 
     async def run_async_query(self, query: str) -> None:
         """Run the query asynchronously.

@@ -98,6 +98,12 @@ class Business(Generic[T], metaclass=ABCMeta):
         self.control: Queue[BusinessCommand] = Queue()
         self.stopping = False
         self.refreshing = False
+        self.healthy = True
+
+        # Businesses with different ways to determine health than a single
+        # successful ``execute`` method should set this to false and
+        # call ``self.mark_healthy`` themselves.
+        self.generic_mark_healthy = True
 
     # Methods that should be overridden by child classes if needed.
 
@@ -148,9 +154,16 @@ class Business(Generic[T], metaclass=ABCMeta):
                 self.logger.info("Starting next iteration")
                 try:
                     await self.execute()
+                    if self.generic_mark_healthy:
+                        self.mark_healthy()
                     self.success_count += 1
                 except Exception:
                     self.failure_count += 1
+
+                    # If an exception occurs, we're definitely unhealthy. But
+                    # it's up to the business to decide when it's healthy
+                    # again, and to reset the ``healthy`` flag.
+                    self.mark_unhealthy()
                     raise
                 await self.idle()
 
@@ -161,6 +174,22 @@ class Business(Generic[T], metaclass=ABCMeta):
             # Tell the control channel we've processed the stop command.
             if self.stopping:
                 self.control.task_done()
+
+    def mark_healthy(self) -> None:
+        """Mark this business as healthy."""
+        self.healthy = True
+
+    def mark_unhealthy(self) -> None:
+        """Mark this business as unhealthy."""
+        self.healthy = False
+
+    # def record_heartbeat(self) -> None:
+    #     """Record a heartbeat metric."""
+    #     self.healthy = False
+    #     md.metrics.business_heartbeat.add(
+    #         1,
+    #         {"business_type": type(self).__name__, "user": self.user.username},
+    #     )
 
     async def run_once(self) -> None:
         """Execute the core business logic, only once.

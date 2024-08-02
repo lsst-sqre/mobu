@@ -37,6 +37,8 @@ from .handlers.github_refresh_app import (
     api_router as github_refresh_app_router,
 )
 from .handlers.internal import internal_router
+from .observability.metrics import metrics_dependency
+from .safir.observability import observer_dependency
 from .status import post_status
 
 __all__ = ["app", "lifespan"]
@@ -51,6 +53,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         raise RuntimeError("MOBU_GAFAELFAWR_TOKEN was not set")
 
     await context_dependency.initialize()
+    observer = observer_dependency()
+    metrics_dependency.initialize(observer=observer)
     await context_dependency.process_context.manager.autostart()
 
     status_interval = timedelta(days=1)
@@ -88,6 +92,8 @@ configure_logging(
 )
 if config.profile == Profile.production:
     configure_uvicorn_logging(config.log_level)
+observer_dependency.initialize(name="mobu")
+
 
 app = FastAPI(
     title="mobu",
