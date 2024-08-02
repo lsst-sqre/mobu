@@ -4,6 +4,7 @@ from datetime import timedelta
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
+from safir.logging import LogLevel
 
 from ..timings import StopwatchData
 
@@ -35,10 +36,15 @@ class BusinessOptions(BaseModel):
         timedelta(minutes=1),
         title="How long to wait between business executions",
         description=(
-            "AFter each loop executing monkey business, the monkey will"
+            "After each loop executing monkey business, the monkey will"
             " pause for this long"
         ),
         examples=[60],
+    )
+
+    log_level: LogLevel = Field(
+        LogLevel.INFO,
+        title="Log level for this monkey business",
     )
 
     model_config = ConfigDict(extra="forbid")

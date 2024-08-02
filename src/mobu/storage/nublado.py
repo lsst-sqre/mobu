@@ -599,25 +599,25 @@ class NubladoClient:
         while r.is_redirect:
             xsrf = self._extract_xsrf(r)
             if xsrf and xsrf != self._lab_xsrf:
-                self._hub_xsrf = xsrf
-                self._logger.debug(
-                    "Set _hub_xsrf",
-                    url=r.url,
-                    status_code=r.status_code,
-                    set_cookie_header=r.headers.get("set-cookie", None),
-                )
+                if xsrf != self._hub_xsrf:
+                    self._hub_xsrf = xsrf
+                    self._logger.debug(
+                        "Set _hub_xsrf",
+                        url=r.url.copy_with(query=None, fragment=None),
+                        status_code=r.status_code,
+                    )
             next_url = urljoin(url, r.headers["Location"])
             r = await self._client.get(next_url, follow_redirects=False)
         r.raise_for_status()
         xsrf = self._extract_xsrf(r)
         if xsrf and xsrf != self._lab_xsrf:
-            self._hub_xsrf = xsrf
-            self._logger.debug(
-                "Set _hub_xsrf",
-                url=r.url,
-                status_code=r.status_code,
-                set_cookie_header=r.headers.get("set-cookie", None),
-            )
+            if xsrf != self._hub_xsrf:
+                self._hub_xsrf = xsrf
+                self._logger.debug(
+                    "Set _hub_xsrf",
+                    url=r.url.copy_with(query=None, fragment=None),
+                    status_code=r.status_code,
+                )
         elif not self._hub_xsrf:
             msg = "No _xsrf cookie set in login reply from JupyterHub"
             raise JupyterProtocolError(msg)
@@ -649,13 +649,13 @@ class NubladoClient:
         while r.is_redirect:
             xsrf = self._extract_xsrf(r)
             if xsrf and xsrf != self._hub_xsrf:
-                self._lab_xsrf = xsrf
-                self._logger.debug(
-                    "Set _lab_xsrf",
-                    url=r.url,
-                    status_code=r.status_code,
-                    set_cookie_header=r.headers.get("set-cookie", None),
-                )
+                if xsrf != self._lab_xsrf:
+                    self._lab_xsrf = xsrf
+                    self._logger.debug(
+                        "Set _lab_xsrf",
+                        url=r.url.copy_with(query=None, fragment=None),
+                        status_code=r.status_code,
+                    )
             next_url = urljoin(url, r.headers["Location"])
             r = await self._client.get(
                 next_url, headers=headers, follow_redirects=False
@@ -663,13 +663,13 @@ class NubladoClient:
         r.raise_for_status()
         xsrf = self._extract_xsrf(r)
         if xsrf and xsrf != self._hub_xsrf:
-            self._lab_xsrf = xsrf
-            self._logger.debug(
-                "Set _lab_xsrf",
-                url=r.url,
-                status_code=r.status_code,
-                set_cookie_header=r.headers.get("set-cookie", None),
-            )
+            if xsrf != self._lab_xsrf:
+                self._lab_xsrf = xsrf
+                self._logger.debug(
+                    "Set _lab_xsrf",
+                    url=r.url.copy_with(query=None, fragment=None),
+                    status_code=r.status_code,
+                )
         if not self._lab_xsrf:
             msg = "No _xsrf cookie set in login reply from lab"
             raise JupyterProtocolError(msg)
@@ -715,7 +715,7 @@ class NubladoClient:
 
         Parameters
         ----------
-        nobebook_name
+        notebook_name
             Name of the notebook we will be running, which is passed to the
             session and might influence logging on the lab side. If set, the
             session type will be set to ``notebook``. If not set, the session
@@ -840,10 +840,11 @@ class NubladoClient:
         if xsrf is not None:
             self._logger.debug(
                 "Extracted _xsrf cookie",
-                url=response.url,
-                status_code=response.status_code,
                 method=response.request.method,
-                set_cookie_header=response.headers.get("set-cookie", None),
+                url=response.url.copy_with(query=None, fragment=None),
+                status_code=response.status_code,
+                # Logging the set-cookie header can be useful here but it
+                # leaks secrets.  Don't put that code in a release build.
             )
         return xsrf
 

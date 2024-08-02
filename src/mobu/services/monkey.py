@@ -72,6 +72,7 @@ class Monkey:
         self._name = name
         self._flock = flock
         self._restart = business_config.restart
+        self._log_level = business_config.options.log_level
         self._http_client = http_client
         self._user = user
 
@@ -276,7 +277,7 @@ class Monkey:
         file_handler.setFormatter(formatter)
         logger = logging.getLogger(self._name)
         logger.handlers = []
-        logger.setLevel(logging.INFO)
+        logger.setLevel(self._log_level.value)
         logger.addHandler(file_handler)
         logger.propagate = False
         if config.profile == Profile.development:
