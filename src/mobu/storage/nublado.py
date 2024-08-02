@@ -569,6 +569,7 @@ class NubladoClient:
         )
         self._hub_xsrf: str | None = None
         self._lab_xsrf: str | None = None
+        self._logger.debug("Created new NubladoClient")
 
     async def close(self) -> None:
         """Close the underlying HTTP connection pool."""
