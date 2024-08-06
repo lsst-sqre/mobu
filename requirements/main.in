@@ -22,7 +22,6 @@ pydantic-settings
 pyvo
 pyyaml
 safir>=6.1.0
-# -e /home/danfuchs/src/safir
 shortuuid
 structlog
 websockets

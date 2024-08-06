@@ -188,6 +188,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             return await self.pause(self.options.execution_idle_time)
 
     async def shutdown(self) -> None:
+        await self.hub_login()
         await self.delete_lab()
 
     async def idle(self) -> None:

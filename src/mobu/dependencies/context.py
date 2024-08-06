@@ -34,7 +34,7 @@ class RequestContext:
     """Incoming request."""
 
     logger: BoundLogger
-    """Request loger, rebound with discovered context."""
+    """Request logger, rebound with discovered context."""
 
     manager: FlockManager
     """Global singleton flock manager."""
