@@ -6,6 +6,23 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-11.0.0'></a>
+## 11.0.0 (2024-08-06)
+
+### Backwards-incompatible changes
+
+- Remove `exclude_dirs` option from `NotebookRunner` options, which means it can no longer be set in the autostart config. `exclude_dirs` must be set in an in-repo `mobu.yaml` config file.
+
+### New features
+
+- `NotebookRunner` business will skip notebooks in environments that do not have the services required for them to run. Required services ban be declared by adding [metadata](https://ipython.readthedocs.io/en/3.x/notebook/nbformat.html#metadata) to a notebook.
+
+- Allow specification of log level for individual flocks
+
+### Bug fixes
+
+- Follow redirections by hand for hub logins as well as lab ones to get XSRF
+
 <a id='changelog-10.1.0'></a>
 ## 10.1.0 (2024-07-12)
 
