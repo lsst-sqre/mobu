@@ -224,12 +224,18 @@ class MockJupyter:
             return Response(500, request=request)
         state = self.state.get(user, JupyterState.LOGGED_OUT)
         if state == JupyterState.LAB_RUNNING:
+            # In real life, there's another redirect to
+            # /hub/api/oauth2/authorize, which doesn't set a cookie,
+            # and then redirects to /user/username/oauth_callback.
+            #
+            # We're skipping that one since it doesn't change the
+            # client state at all.
             xsrf = f"_xsrf={self._lab_xsrf}"
             return Response(
                 302,
                 request=request,
                 headers={
-                    "Location": _url(f"user/{user}/callback"),
+                    "Location": _url(f"user/{user}/oauth_callback"),
                     "Set-Cookie": xsrf,
                 },
             )
@@ -243,25 +249,14 @@ class MockJupyter:
     def lab_callback(self, request: Request) -> Response:
         """Simulate not setting the ``_xsrf`` cookie on first request.
 
-        This implements a redirect from ``/user/username/lab`` to
-        ``/user/username/callback``, followed by a 200, which is not how
-        the lab does it (it has a much more complex redirect to the hub, back
-        to a callback, and then back to the lab), but it's hopefully good
-        enough to test handling of cookies during redirect chains for
-        capturing the ``_xsrf`` cookie.
-
-        Well...it's not realistic enough, in that the test cases passed but
-        in practice the ``_xsrf`` cookie would expire.  I think that that is
-        fixed now (similar strategy of following redirects manually and
-        grabbing the cookie at each intermediate step), but I don't
-        understand how to test it.
-
-        The actual chain is ``/user/username/lab`` to
-        ``/hub/api/oauth2/authorize`` to ``/user/username/oauth_callback``
-        and it here that the cookie is actually set.
+        This happens at the end of a chain from ``/user/username/lab`` to
+        ``/hub/api/oauth2/authorize``, which then issues a redirect to
+        ``/user/username/oauth_callback``.  It is in the final redirect
+        that the ``_xsrf`` cookie is actually set, and then it returns
+        a 200.
         """
         user = self.get_user(request.headers["Authorization"])
-        assert str(request.url).endswith(f"/user/{user}/callback")
+        assert str(request.url).endswith(f"/user/{user}/oauth_callback")
         return Response(200, request=request)
 
     def delete_lab(self, request: Request) -> Response:
@@ -449,7 +444,7 @@ def mock_jupyter(respx_mock: respx.Router) -> MockJupyter:
     respx_mock.delete(url__regex=regex).mock(side_effect=mock.delete_lab)
     regex = _url_regex(r"user/[^/]+/lab")
     respx_mock.get(url__regex=regex).mock(side_effect=mock.lab)
-    regex = _url_regex(r"user/[^/]+/callback")
+    regex = _url_regex(r"user/[^/]+/oauth_callback")
     respx_mock.get(url__regex=regex).mock(side_effect=mock.lab_callback)
     regex = _url_regex("user/[^/]+/api/sessions")
     respx_mock.post(url__regex=regex).mock(side_effect=mock.create_session)
