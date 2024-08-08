@@ -13,7 +13,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import Any, override
 
 import yaml
 from httpx import AsyncClient
@@ -31,6 +31,8 @@ from ...models.business.notebookrunner import (
 )
 from ...models.repo import RepoConfig
 from ...models.user import AuthenticatedUser
+from ...observability.tracing import Spans
+from ...safir.observability import observer_dependency as od
 from ...storage.git import Git
 from ...storage.nublado import JupyterLabSession
 from .nublado import NubladoBusiness
@@ -69,6 +71,9 @@ class NotebookRunner(NubladoBusiness):
         self._git = Git(logger=logger)
         self._max_executions: int | None = None
         self._notebooks_to_run: list[Path] | None = None
+        self._notebook_failed = False
+
+        self.generic_mark_healthy = False
 
         match options:
             case NotebookRunnerOptions(max_executions=max_executions):
@@ -139,7 +144,9 @@ class NotebookRunner(NubladoBusiness):
     async def clone_repo(self) -> None:
         url = self.options.repo_url
         ref = self.options.repo_ref
-        with self.timings.start("clone_repo"):
+        with od.observer.tracer.start_as_current_span(
+            Spans.notebook_clone, attributes={"repo_dir": str(self._repo_dir)}
+        ):
             self._git.repo = self._repo_dir
             await self._git.clone(url, str(self._repo_dir))
             await self._git.checkout(ref)
@@ -168,7 +175,7 @@ class NotebookRunner(NubladoBusiness):
         return False
 
     def find_notebooks(self) -> NotebookFilterResults:
-        with self.timings.start("find_notebooks"):
+        with od.observer.tracer.start_as_current_span(Spans.notebook_find):
             if self._repo_dir is None:
                 raise NotebookRepositoryError(
                     "Repository directory must be set", self.user.username
@@ -220,6 +227,8 @@ class NotebookRunner(NubladoBusiness):
                     filter_results=filter_results.model_dump(),
                 )
 
+        # We're starting over, so no notebooks have failed (yet)
+        self._notebook_failed = False
         return filter_results
 
     def next_notebook(self) -> Path:
@@ -232,8 +241,8 @@ class NotebookRunner(NubladoBusiness):
 
     def read_notebook_metadata(self, notebook: Path) -> NotebookMetadata:
         """Extract mobu-specific metadata from a notebook."""
-        with self.timings.start(
-            "read_notebook_metadata", {"notebook": notebook.name}
+        with od.observer.tracer.start_as_current_span(
+            Spans.notebook_read_metadata
         ):
             try:
                 notebook_text = notebook.read_text()
@@ -245,7 +254,7 @@ class NotebookRunner(NubladoBusiness):
                 raise NotebookRepositoryError(msg, self.user.username) from e
 
     def read_notebook(self, notebook: Path) -> list[dict[str, Any]]:
-        with self.timings.start("read_notebook", {"notebook": notebook.name}):
+        with od.observer.tracer.start_as_current_span(Spans.notebook_read):
             try:
                 notebook_text = notebook.read_text()
                 cells = json.loads(notebook_text)["cells"]
@@ -293,19 +302,37 @@ class NotebookRunner(NubladoBusiness):
             msg = f"Notebook {self._notebook.name} iteration {iteration}"
             self.logger.info(msg)
 
-            for cell in self.read_notebook(self._notebook):
-                code = "".join(cell["source"])
-                if "id" in cell:
-                    cell_id = f'`{cell["id"]}` (#{cell["_index"]})'
-                else:
-                    cell_id = f'#{cell["_index"]}'
-                await self.execute_cell(session, code, cell_id)
-                if not await self.execution_idle():
-                    break
+            with od.observer.tracer.start_as_current_span(
+                Spans.notebook_execute,
+                attributes={
+                    "notebook": self._notebook.name,
+                    "user": self.user.username,
+                    "repo_url": self.options.repo_url,
+                    "repo_ref": self.options.repo_ref,
+                },
+            ):
+                try:
+                    for cell in self.read_notebook(self._notebook):
+                        code = "".join(cell["source"])
+                        if "id" in cell:
+                            cell_id = f'`{cell["id"]}` (#{cell["_index"]})'
+                        else:
+                            cell_id = f'#{cell["_index"]}'
+                        await self.execute_cell(session, code, cell_id)
+                        if not await self.execution_idle():
+                            break
+                except Exception:
+                    self._notebook_failed = True
+                    self.mark_unhealthy()
+                    raise
 
             self.logger.info(f"Success running notebook {self._notebook.name}")
+
+            # If we ran all notebooks without error, then we're healthy
             if not self._notebook_paths:
                 self.logger.info("Done with this cycle of notebooks")
+                if not self._notebook_failed:
+                    self.mark_healthy()
             if self.stopping:
                 break
 
@@ -315,12 +342,20 @@ class NotebookRunner(NubladoBusiness):
         if not self._notebook:
             raise RuntimeError("Executing a cell without a notebook")
         self.logger.info(f"Executing cell {cell_id}:\n{code}\n")
-        with self.timings.start("execute_cell", self.annotations(cell_id)):
+        with od.observer.tracer.start_as_current_span(
+            Spans.notebook_cell,
+            attributes={
+                "notebook": self._notebook.name,
+                "cell_id": cell_id,
+                "code": code,
+            },
+        ):
             self._running_code = code
             reply = await session.run_python(code)
             self._running_code = None
         self.logger.info(f"Result:\n{reply}\n")
 
+    @override
     def dump(self) -> NotebookRunnerData:
         return NotebookRunnerData(
             notebook=self._notebook.name if self._notebook else None,

@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncIterator, Callable, Coroutine
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
 from datetime import timedelta
 from functools import wraps
@@ -35,6 +36,7 @@ from ..exceptions import (
 )
 from ..models.business.nublado import NubladoImage
 from ..models.user import AuthenticatedUser
+from ..safir.observability import Timer
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -151,6 +153,10 @@ class JupyterLabSession:
         HTTP client to talk to the Jupyter lab.
     logger
         Logger to use.
+    create_session_timer
+        A timer to report a metric for how long it takes to create a session.
+    delete_session_timer
+        A timer to report a metric for how long it takes to delete a session.
     """
 
     _IGNORED_MESSAGE_TYPES = (
@@ -182,6 +188,8 @@ class JupyterLabSession:
         http_client: AsyncClient,
         xsrf: str | None,
         logger: BoundLogger,
+        create_session_timer: Timer | None = None,
+        delete_session_timer: Timer | None = None,
     ) -> None:
         self._username = username
         self._base_url = base_url
@@ -191,6 +199,8 @@ class JupyterLabSession:
         self._client = http_client
         self._xsrf = xsrf
         self._logger = logger
+        self._create_session_timer = create_session_timer
+        self._delete_session_timer = delete_session_timer
 
         self._session_id: str | None = None
         self._socket: WebSocketClientProtocol | None = None
@@ -221,54 +231,64 @@ class JupyterLabSession:
         # and raised background exceptions. This approach allows more explicit
         # control of when the context manager is shut down and ensures it
         # happens immediately when the context exits.
-        username = self._username
-        notebook = self._notebook_name
-        url = self._url_for(f"user/{username}/api/sessions")
-        body = {
-            "kernel": {"name": self._kernel_name},
-            "name": notebook or "(no notebook)",
-            "path": notebook if notebook else uuid4().hex,
-            "type": "notebook" if notebook else "console",
-        }
-        headers = {}
-        if self._xsrf:
-            headers["X-XSRFToken"] = self._xsrf
-        try:
-            r = await self._client.post(url, json=body, headers=headers)
-            r.raise_for_status()
-        except HTTPError as e:
-            raise JupyterWebError.from_exception(e, self._username) from e
-        response = r.json()
-        self._session_id = response["id"]
-        kernel = response["kernel"]["id"]
+        cm: AbstractContextManager
+        if self._create_session_timer:
+            cm = self._create_session_timer
+        else:
+            cm = nullcontext()
+        with cm:
+            username = self._username
+            notebook = self._notebook_name
+            url = self._url_for(f"user/{username}/api/sessions")
+            body = {
+                "kernel": {"name": self._kernel_name},
+                "name": notebook or "(no notebook)",
+                "path": notebook if notebook else uuid4().hex,
+                "type": "notebook" if notebook else "console",
+            }
+            headers = {}
+            if self._xsrf:
+                headers["X-XSRFToken"] = self._xsrf
+            try:
+                r = await self._client.post(url, json=body, headers=headers)
+                r.raise_for_status()
+            except HTTPError as e:
+                raise JupyterWebError.from_exception(e, self._username) from e
+            response = r.json()
+            self._session_id = response["id"]
+            kernel = response["kernel"]["id"]
 
-        # Build a request for the same URL using httpx so that it will
-        # generate request headers, and copy select headers required for
-        # authentication into the WebSocket call.
-        url = self._url_for(f"user/{username}/api/kernels/{kernel}/channels")
-        request = self._client.build_request("GET", url)
-        headers = {h: request.headers[h] for h in ("authorization", "cookie")}
-        if self._xsrf:
-            headers["X-XSRFToken"] = self._xsrf
+            # Build a request for the same URL using httpx so that it will
+            # generate request headers, and copy select headers required for
+            # authentication into the WebSocket call.
+            url = self._url_for(
+                f"user/{username}/api/kernels/{kernel}/channels"
+            )
+            request = self._client.build_request("GET", url)
+            headers = {
+                h: request.headers[h] for h in ("authorization", "cookie")
+            }
+            if self._xsrf:
+                headers["X-XSRFToken"] = self._xsrf
 
-        # Open the WebSocket connection using those headers.
-        self._logger.debug("Opening WebSocket connection")
-        start = current_datetime(microseconds=True)
-        try:
-            self._socket = await websocket_connect(
-                self._url_for_websocket(url),
-                extra_headers=headers,
-                open_timeout=WEBSOCKET_OPEN_TIMEOUT,
-                max_size=self._max_websocket_size,
-            ).__aenter__()
-        except WebSocketException as e:
-            user = self._username
-            raise JupyterWebSocketError.from_exception(e, user) from e
-        except TimeoutError as e:
-            msg = "Timed out attempting to open WebSocket to lab session"
-            user = self._username
-            raise JupyterTimeoutError(msg, user, started_at=start) from e
-        return self
+            # Open the WebSocket connection using those headers.
+            self._logger.debug("Opening WebSocket connection")
+            start = current_datetime(microseconds=True)
+            try:
+                self._socket = await websocket_connect(
+                    self._url_for_websocket(url),
+                    extra_headers=headers,
+                    open_timeout=WEBSOCKET_OPEN_TIMEOUT,
+                    max_size=self._max_websocket_size,
+                ).__aenter__()
+            except WebSocketException as e:
+                user = self._username
+                raise JupyterWebSocketError.from_exception(e, user) from e
+            except TimeoutError as e:
+                msg = "Timed out attempting to open WebSocket to lab session"
+                user = self._username
+                raise JupyterTimeoutError(msg, user, started_at=start) from e
+            return self
 
     async def __aexit__(
         self,
@@ -277,36 +297,46 @@ class JupyterLabSession:
         exc_tb: TracebackType | None,
     ) -> Literal[False]:
         """Shut down the open WebSocket and delete the session."""
-        username = self._username
-        session_id = self._session_id
+        cm: AbstractContextManager
+        if self._create_session_timer:
+            cm = self._create_session_timer
+        else:
+            cm = nullcontext()
+        with cm:
+            username = self._username
+            session_id = self._session_id
 
-        # Close the WebSocket.
-        if self._socket:
+            # Close the WebSocket.
+            if self._socket:
+                try:
+                    await self._socket.close()
+                except WebSocketException as e:
+                    raise JupyterWebSocketError.from_exception(
+                        e, username
+                    ) from e
+                self._socket = None
+
+            # Delete the lab session.
+            url = self._url_for(f"user/{username}/api/sessions/{session_id}")
+            headers = {}
+            if self._xsrf:
+                headers["X-XSRFToken"] = self._xsrf
             try:
-                await self._socket.close()
-            except WebSocketException as e:
-                raise JupyterWebSocketError.from_exception(e, username) from e
-            self._socket = None
+                r = await self._client.delete(url, headers=headers)
+                r.raise_for_status()
+            except HTTPError as e:
+                # Be careful to not raise an exception if we're already
+                # processing an exception, since the exception from inside the
+                # context manager is almost certainly more interesting than the
+                # exception from closing the lab session.
+                if exc_type:
+                    self._logger.exception("Failed to close session")
+                else:
+                    raise JupyterWebError.from_exception(
+                        e, self._username
+                    ) from e
 
-        # Delete the lab session.
-        url = self._url_for(f"user/{username}/api/sessions/{session_id}")
-        headers = {}
-        if self._xsrf:
-            headers["X-XSRFToken"] = self._xsrf
-        try:
-            r = await self._client.delete(url, headers=headers)
-            r.raise_for_status()
-        except HTTPError as e:
-            # Be careful to not raise an exception if we're already processing
-            # an exception, since the exception from inside the context
-            # manager is almost certainly more interesting than the exception
-            # from closing the lab session.
-            if exc_type:
-                self._logger.exception("Failed to close session")
-            else:
-                raise JupyterWebError.from_exception(e, self._username) from e
-
-        return False
+            return False
 
     async def run_python(self, code: str) -> str:
         """Run a block of Python code in a Jupyter lab kernel.
@@ -714,6 +744,8 @@ class NubladoClient:
         *,
         max_websocket_size: int | None = None,
         kernel_name: str = "LSST",
+        create_session_timer: Timer | None = None,
+        delete_session_timer: Timer | None = None,
     ) -> JupyterLabSession:
         """Open a Jupyter lab session.
 
@@ -732,6 +764,12 @@ class NubladoClient:
             Maximum size of a WebSocket message, or `None` for no limit.
         kernel_name
             Name of the kernel to use for the session.
+        create_session_timer
+            A timer to report a metric for how long it takes to create a
+            session.
+        delete_session_timer
+            A timer to report a metric for how long it takes to delete a
+            session.
 
         Returns
         -------
@@ -747,6 +785,8 @@ class NubladoClient:
             http_client=self._client,
             xsrf=self._lab_xsrf,
             logger=self._logger,
+            create_session_timer=create_session_timer,
+            delete_session_timer=delete_session_timer,
         )
 
     @_convert_exception

@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterable
 
 import yaml
 from aiojobs import Scheduler
 from httpx import AsyncClient
+from opentelemetry.metrics import CallbackOptions, Observation
 from structlog.stdlib import BoundLogger
 
 from ..config import config
 from ..exceptions import FlockNotFoundError
 from ..models.flock import FlockConfig, FlockSummary
+from ..observability.metrics import metrics_dependency as md
 from ..storage.gafaelfawr import GafaelfawrStorage
 from .flock import Flock
 
@@ -68,6 +71,7 @@ class FlockManager:
         ]
         for flock_config in flock_configs:
             await self.start_flock(flock_config)
+        md.metrics.start_health_gauge(self.observe_health)
 
     async def start_flock(self, flock_config: FlockConfig) -> Flock:
         """Create and start a new flock of monkeys.
@@ -181,3 +185,19 @@ class FlockManager:
         if flock is None:
             raise FlockNotFoundError(name)
         flock.signal_refresh()
+
+    def observe_health(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
+        for flock_name in self.list_flocks():
+            flock = self.get_flock(flock_name)
+            for monkey_name in flock.list_monkeys():
+                monkey = flock.get_monkey(monkey_name)
+                attributes = {
+                    "flock": flock_name,
+                    "monkey": monkey_name,
+                    "business_type": type(monkey.business).__name__,
+                }
+
+                measurement = 1 if monkey.business.healthy else 0
+                yield Observation(measurement, attributes)

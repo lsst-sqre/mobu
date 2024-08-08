@@ -17,6 +17,10 @@ gidgethub
 httpx
 httpx-sse
 jinja2
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-exporter-otlp-proto-http
 pydantic>2
 pydantic-settings
 pyvo
