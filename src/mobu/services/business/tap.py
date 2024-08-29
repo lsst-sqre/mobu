@@ -10,9 +10,12 @@ from typing import Generic, TypeVar
 import pyvo
 import requests
 from httpx import AsyncClient
+from pydantic import BaseModel
 from structlog.stdlib import BoundLogger
 
 from ...config import config
+from ...events import TapQueryValues
+from ...events import events_dependency as ed
 from ...exceptions import CodeExecutionError, TAPClientError
 from ...models.business.tap import TAPBusinessData, TAPBusinessOptions
 from ...models.user import AuthenticatedUser
@@ -21,6 +24,10 @@ from .base import Business
 T = TypeVar("T", bound="TAPBusinessOptions")
 
 __all__ = ["TAPBusiness"]
+
+
+class SomeOtherAttributes(BaseModel):
+    whatevs: int
 
 
 class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
@@ -90,6 +97,10 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
             self._running_query = None
             elapsed = sw.elapsed.total_seconds()
 
+        await ed.events.tap_query(
+            SomeOtherAttributes(type="async"),
+            TapQueryValues(duration_ms=elapsed),
+        )
         self.logger.info(f"Query finished after {elapsed} seconds")
 
     async def run_async_query(self, query: str) -> None:
