@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import ssl
-from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 
 from aiokafka.admin.client import AIOKafkaAdminClient, NewTopic
 from faststream.kafka import KafkaBroker
 from faststream.kafka.publisher.asyncapi import AsyncAPIDefaultPublisher
 from faststream.security import SASLScram512
-from pydantic import BaseModel
 
-from .models import EventModel
+from .models import EventModel, Payload
 
 # class Timer[A]:
 #     def __init__(self, name: str, metrics: Metrics) -> None:
@@ -36,19 +34,21 @@ from .models import EventModel
 #         return timedelta(seconds=(time.perf_counter() - self._start))
 
 
-class Event:
+class Event[P: Payload]:
     """A publisher for one specific type of event."""
 
-    def __init__(self, name: str, event_manager: EventManager) -> None:
-        self._name = name
-        self._event_manager: EventManager = event_manager
-
-    async def publish(
-        self, *, attributes: BaseModel, values: BaseModel
+    def __init__(
+        self,
+        name: str,
+        event_manager: EventManager,
+        publisher: AsyncAPIDefaultPublisher,
     ) -> None:
-        await self._event_manager.publish(
-            self._name, attributes=attributes, values=values
-        )
+        self._name = name
+        self._event_manager = event_manager
+        self._publisher = publisher
+
+    async def publish(self, *, payload: P) -> None:
+        await self._event_manager.publish(self._name, payload, self._publisher)
 
 
 class EventManager:
@@ -59,9 +59,10 @@ class EventManager:
         self._broker: KafkaBroker
         self._admin_client: AIOKafkaAdminClient
         self._publishers: dict[str, AsyncAPIDefaultPublisher] = {}
+        self._topics: set[str] = set()
         self._topic_prefix: str
 
-    def initialize(
+    async def initialize(
         self,
         service: str,
         base_topic_prefix: str,
@@ -88,49 +89,52 @@ class EventManager:
             ],
             client_id="dfuchs-test-metrics-admin",
             security_protocol="SASL_SSL",
+            sasl_mechanism="SCRAM-SHA-512",
             sasl_plain_username=sasl_username,
             sasl_plain_password=sasl_password,
             ssl_context=ssl_context,
         )
 
-    async def create_event[A, V](
-        self, name: str, model: type[EventModel[A, V]]
-    ) -> Callable[[A, V], Awaitable[None]]:
-        await self._register_event(name, model)
+        await self._broker.start()
+        await self._admin_client.start()
 
-        async def publish(attributes: A, values: V) -> None:
-            event = model(
-                name=name,
-                service=self._service,
-                timestamp=datetime.now(UTC),
-                attributes=attributes,
-                values=values,
+    def create_event[P: Payload](
+        self, name: str, payload_class: type[P]
+    ) -> Event[P]:
+        payload_class.validate_field_types()
+
+        if name in self._topics:
+            raise RuntimeError(
+                f"{name}: you have already created an event with this name."
+                " Events must have unique names."
             )
-            publisher = self._publishers[name]
-            await publisher.publish(event)
+        self._topics.add(name)
+        publisher = self._broker.publisher(
+            f"{self._topic_prefix}.{name}", schema=EventModel[P]
+        )
 
-        return publish
+        return Event[P](name, self, publisher)
 
     async def publish(
-        self, name: str, attributes: BaseModel, values: BaseModel
+        self, name: str, payload: Payload, publisher: AsyncAPIDefaultPublisher
     ) -> None:
         event = EventModel(
             name=name,
             service=self._service,
             timestamp=datetime.now(UTC),
-            attributes=attributes,
-            values=values,
+            payload=payload,
         )
-        publisher = self._publishers[name]
         await publisher.publish(event)
 
-    async def _register_event[A, V](
-        self, name: str, model: type[EventModel[A, V]]
-    ) -> None:
-        topic = NewTopic(
-            name=f"{self._topic_prefix}.{name}",
-            num_partitions=1,
-            replication_factor=3,
-        )
-        await self._admin_client.create_topics([topic])
-        self._publishers[name] = self._broker.publisher(name, schema=model)
+    async def create_topics(self) -> None:
+        for name in self._topics:
+            topic = NewTopic(
+                name=f"{self._topic_prefix}.{name}",
+                num_partitions=1,
+                replication_factor=3,
+            )
+            await self._admin_client.create_topics([topic])
+
+    async def aclose(self) -> None:
+        await self._broker.close()
+        await self._admin_client.close()

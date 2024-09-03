@@ -1,9 +1,28 @@
 """A base model for FROGMAP events."""
 
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field, PlainSerializer
+
+Value = PlainSerializer(func=lambda x: {"type": "field", "value": x})
+
+Attribute = PlainSerializer(func=lambda x: {"type": "tag", "value": x})
 
 
-class EventModel[A, V](BaseModel):
+class Payload(BaseModel):
+    """Event payload with runtime correctness validation."""
+
+    @classmethod
+    def validate_field_types(cls) -> None:
+        for field_name, field_type in cls.__annotations__.items():
+            if not getattr(field_type, "__metadata__", None) or bool(
+                {Attribute, Value} & set(field_type.__metadata__)
+            ):
+                raise TypeError(
+                    f"{field_name}: All fields of this model must be annotated"
+                    " with either Value or Attribute. See TODO."
+                )
+
+
+class EventModel[P: Payload](BaseModel):
     """Base model for all events emitted by this service.
 
     Contains the minimum required fields.
@@ -31,16 +50,10 @@ class EventModel[A, V](BaseModel):
         ),
     )
 
-    attributes: A | None = Field(
-        None,
+    payload: P = Field(
+        ...,
         description=(
-            "An object containing non-aggregateable attributes about an event."
-        ),
-    )
-
-    values: V | None = Field(
-        None,
-        description=(
-            "An object containing aggregateable attributes about an event."
+            "A model containing attributes (which can be filtered on) and"
+            " values (which can be aggregated)"
         ),
     )

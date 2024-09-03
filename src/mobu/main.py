@@ -23,6 +23,8 @@ from safir.logging import Profile, configure_logging, configure_uvicorn_logging
 from safir.middleware.x_forwarded import XForwardedMiddleware
 from safir.slack.webhook import SlackRouteErrorHandler
 
+from mobu.safir.events.event_manager import EventManager
+
 from .asyncio import schedule_periodic
 from .config import config
 from .dependencies.context import context_dependency
@@ -31,6 +33,7 @@ from .dependencies.github import (
     github_ci_app_config_dependency,
     github_refresh_app_config_dependency,
 )
+from .events import events_dependency
 from .handlers.external import external_router
 from .handlers.github_ci_app import api_router as github_ci_app_router
 from .handlers.github_refresh_app import (
@@ -49,6 +52,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         raise RuntimeError("MOBU_ENVIRONMENT_URL was not set")
     if not config.gafaelfawr_token:
         raise RuntimeError("MOBU_GAFAELFAWR_TOKEN was not set")
+
+    if (
+        config.events.kafka.sasl_username is None
+        or config.events.kafka.sasl_password is None
+    ):
+        raise RuntimeError(
+            "Must set MOBU_EVENTS__KAFKA__SASL_PASSWORD and"
+            " MOBU_EVENTS__KAFKA__SASL_USERNAME"
+        )
+    event_manager = EventManager()
+    await event_manager.initialize(
+        service=config.events.service,
+        base_topic_prefix=config.events.base_topic_prefix,
+        bootstrap_servers=config.events.kafka.bootstrap_servers,
+        sasl_username=config.events.kafka.sasl_username,
+        sasl_password=config.events.kafka.sasl_password.get_secret_value(),
+    )
+    await events_dependency.initialize(event_manager)
 
     await context_dependency.initialize()
     await context_dependency.process_context.manager.autostart()
@@ -80,6 +101,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     await ci_manager_dependency.aclose()
     await context_dependency.aclose()
+    await event_manager.aclose()
     app.state.periodic_status.cancel()
 
 

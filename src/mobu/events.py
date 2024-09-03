@@ -1,34 +1,16 @@
-"""
-Events and metrics to ship to FROGMAP.
-"""
+"""Events and metrics to ship to FROGMAP."""
 
-from collections.abc import Awaitable, Callable
 from typing import Literal
 
-from pydantic import BaseModel
-
-from mobu.safir.events.models import EventModel
-
 from .safir.events.event_manager import EventManager
+from .safir.events.models import Payload
 
 
-class TapQueryValues(BaseModel):
-    """Aggregateable values for a tap query event."""
+class TapQueryPayload(Payload):
+    """Values and attributes for a tap query event."""
 
+    type: Literal["async", "sync"]
     duration_ms: float
-
-
-class TapQueryAttributes(BaseModel):
-    """Filterable values for a tap query event."""
-
-    type: Literal["sync", "async"]
-
-
-class TapQueryEvent(EventModel):
-    """A Tap Query Event."""
-
-    attributes: TapQueryAttributes
-    values: TapQueryValues
 
 
 class Events:
@@ -36,13 +18,9 @@ class Events:
 
     def __init__(self, manager: EventManager) -> None:
         self._manager = manager
-        self.tap_query: Callable[
-            [TapQueryAttributes, TapQueryValues], Awaitable[None]
-        ]
 
-    async def initialize(self) -> None:
-        self.tap_query = await self._manager.create_event(
-            "tap_query", model=TapQueryEvent
+        self.tap_query = self._manager.create_event(
+            "tap_query", TapQueryPayload
         )
 
 
@@ -54,7 +32,7 @@ class EventsDependency:
 
     async def initialize(self, manager: EventManager) -> None:
         self._events = Events(manager)
-        await self._events.initialize()
+        await manager.create_topics()
 
     @property
     def events(self) -> Events:
