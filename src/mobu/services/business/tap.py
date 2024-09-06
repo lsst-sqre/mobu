@@ -13,6 +13,8 @@ from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from ...config import config
+from ...events import TapQueryPayload
+from ...events import events_dependency as ed
 from ...exceptions import CodeExecutionError, TAPClientError
 from ...models.business.tap import TAPBusinessData, TAPBusinessOptions
 from ...models.user import AuthenticatedUser
@@ -89,6 +91,13 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
 
             self._running_query = None
             elapsed = sw.elapsed.total_seconds()
+
+            await ed.events.tap_query.publish(
+                payload=TapQueryPayload(
+                    type="sync",
+                    duration_ms=elapsed,
+                )
+            )
 
         self.logger.info(f"Query finished after {elapsed} seconds")
 

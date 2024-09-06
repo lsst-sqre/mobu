@@ -12,16 +12,20 @@ uvicorn[standard]
 
 # Other dependencies.
 aiojobs
+aiokafka
+faststream[kafka]
 click!=8.1.4,!=8.1.5  # see https://github.com/pallets/click/issues/2558
+dataclasses-avroschema
 gidgethub
 httpx
 httpx-sse
 jinja2
 pydantic>2
 pydantic-settings
+python-schema-registry-client
 pyvo
 pyyaml
-safir>=6.1.0
+-e /home/danfuchs/src/safir/safir
 shortuuid
 structlog
 websockets
