@@ -13,10 +13,14 @@ from unittest.mock import DEFAULT, patch
 import pytest
 import pytest_asyncio
 import respx
+import safir.logging
+import structlog
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from pydantic import HttpUrl
+from rubin.nublado.client import NubladoClient
+from rubin.nublado.client.models import User
 from rubin.nublado.client.testing import (
     MockJupyter,
     MockJupyterWebSocket,
@@ -24,6 +28,7 @@ from rubin.nublado.client.testing import (
     mock_jupyter_websocket,
 )
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
+from structlog.stdlib import BoundLogger
 
 from mobu import main
 from mobu.config import config
@@ -47,6 +52,22 @@ from .support.gitlfs import (
 @pytest.fixture(autouse=True)
 def environment_url() -> str:
     return "https://test.example.com"
+
+
+@pytest.fixture
+def configured_logger() -> BoundLogger:
+    safir.logging.configure_logging(
+        name="nublado-client",
+        profile=safir.logging.Profile.development,
+        log_level=safir.logging.LogLevel.DEBUG,
+    )
+    return structlog.get_logger("nublado-client")
+
+
+@pytest.fixture
+def test_user() -> User:
+    uname = "someuser"
+    return User(username=uname, token=make_gafaelfawr_token(uname))
 
 
 @pytest.fixture(autouse=True)
@@ -171,14 +192,28 @@ async def app(jupyter: MockJupyter) -> AsyncIterator[FastAPI]:
         yield main.app
 
 
+@pytest.fixture
+def configured_nublado_client(
+    environment_url: str,
+    test_user: User,
+    test_filesystem: Path,
+    configured_logger: BoundLogger,
+    jupyter: MockJupyter,
+) -> NubladoClient:
+    client = NubladoClient(
+        user=test_user, base_url=environment_url, logger=configured_logger
+    )
+    client._client.headers["X-Auth-Request-User"] = test_user.username
+    client._client.headers["X-Auth-Request-Token"] = test_user.token
+    return client
+
+
 @pytest_asyncio.fixture
-async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
+async def client(
+    app: FastAPI, configured_nublado_client: NubladoClient
+) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url=TEST_BASE_URL,
-        headers={"X-Auth-Request-User": "someuser"},
-    ) as client:
+    async with configured_nublado_client._client as client:
         yield client
 
 

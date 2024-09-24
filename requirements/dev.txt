@@ -54,7 +54,7 @@ coverage==7.6.1
     # via
     #   -r requirements/dev.in
     #   pytest-cov
-debugpy==1.8.5
+debugpy==1.8.6
     # via ipykernel
 decorator==5.1.1
     # via ipython

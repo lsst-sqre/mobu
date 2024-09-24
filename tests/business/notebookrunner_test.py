@@ -10,13 +10,13 @@ from unittest.mock import ANY
 import pytest
 import respx
 from httpx import AsyncClient
+from rubin.nublado.client.testing import MockJupyter
 from safir.testing.slack import MockSlackWebhook
 
 from mobu.storage.git import Git
 
 from ..support.constants import TEST_DATA_DIR
 from ..support.gafaelfawr import mock_gafaelfawr
-from ..support.jupyter import MockJupyter
 from ..support.util import wait_for_business, wait_for_log_message
 
 

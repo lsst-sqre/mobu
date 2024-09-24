@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 
 import respx
 from fastapi import FastAPI, Request, Response
+from rubin.nublado.client.testing import mock_jupyter
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from mobu.main import app
 
 from .gafaelfawr import mock_gafaelfawr
-from .jupyter import mock_jupyter
 
 
 class AddAuthHeaderMiddleware(BaseHTTPMiddleware):
@@ -35,10 +36,12 @@ class AddAuthHeaderMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-def create_app() -> FastAPI:
+def create_app(environment_url: str, test_filesystem: Path) -> FastAPI:
     """Configure the FastAPI app for monkeyflocker testing."""
     respx.start()
     mock_gafaelfawr(respx.mock)
-    mock_jupyter(respx.mock)
+    mock_jupyter(
+        respx.mock, base_url=environment_url, user_dir=test_filesystem
+    )
     app.add_middleware(AddAuthHeaderMiddleware)
     return app

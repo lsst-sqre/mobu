@@ -10,12 +10,16 @@ from urllib.parse import urljoin
 import pytest
 import respx
 from httpx import AsyncClient
+from rubin.nublado.client.testing import (
+    JupyterAction,
+    JupyterState,
+    MockJupyter,
+)
 from safir.testing.slack import MockSlackWebhook
 
 from mobu.config import config
 
 from ..support.gafaelfawr import mock_gafaelfawr
-from ..support.jupyter import JupyterAction, JupyterState, MockJupyter
 from ..support.util import wait_for_business
 
 
