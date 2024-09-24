@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from importlib import reload
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from textwrap import dedent
 from unittest.mock import DEFAULT, patch
 
@@ -16,6 +17,12 @@ from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from pydantic import HttpUrl
+from rubin.nublado.client.testing import (
+    MockJupyter,
+    MockJupyterWebSocket,
+    mock_jupyter,
+    mock_jupyter_websocket,
+)
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 
 from mobu import main
@@ -35,16 +42,15 @@ from .support.gitlfs import (
     uninstall_git_lfs,
     verify_uuid_contents,
 )
-from .support.jupyter import (
-    MockJupyter,
-    MockJupyterWebSocket,
-    mock_jupyter,
-    mock_jupyter_websocket,
-)
 
 
 @pytest.fixture(autouse=True)
-def _configure() -> Iterator[None]:
+def environment_url() -> str:
+    return "https://test.example.com"
+
+
+@pytest.fixture(autouse=True)
+def _configure(environment_url: str) -> Iterator[None]:
     """Set minimal configuration settings.
 
     Add an environment URL for testing purposes and create a Gafaelfawr admin
@@ -54,13 +60,19 @@ def _configure() -> Iterator[None]:
     minimal test configuration and a unique admin token that is replaced after
     the test runs.
     """
-    config.environment_url = HttpUrl("https://test.example.com")
+    config.environment_url = HttpUrl(environment_url)
     config.gafaelfawr_token = make_gafaelfawr_token()
     config.available_services = {"some_service", "some_other_service"}
     yield
     config.environment_url = None
     config.gafaelfawr_token = None
     config.available_services = set()
+
+
+@pytest.fixture
+def test_filesystem() -> Iterator[Path]:
+    with TemporaryDirectory() as td:
+        yield Path(td)
 
 
 @pytest.fixture
@@ -183,9 +195,15 @@ async def anon_client(app: FastAPI) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture
-def jupyter(respx_mock: respx.Router) -> Iterator[MockJupyter]:
+def jupyter(
+    respx_mock: respx.Router,
+    environment_url: str,
+    test_filesystem: Path,
+) -> Iterator[MockJupyter]:
     """Mock out JupyterHub and Jupyter labs."""
-    jupyter_mock = mock_jupyter(respx_mock)
+    jupyter_mock = mock_jupyter(
+        respx_mock, base_url=environment_url, user_dir=test_filesystem
+    )
 
     # respx has no mechanism to mock aconnect_ws, so we have to do it
     # ourselves.
@@ -198,7 +216,7 @@ def jupyter(respx_mock: respx.Router) -> Iterator[MockJupyter]:
     ) -> AsyncIterator[MockJupyterWebSocket]:
         yield mock_jupyter_websocket(url, extra_headers, jupyter_mock)
 
-    with patch("mobu.storage.nublado.websocket_connect") as mock:
+    with patch("rubin.nublado.client.nubladoclient.websocket_connect") as mock:
         mock.side_effect = mock_connect
         yield jupyter_mock
 

@@ -11,19 +11,22 @@ from random import SystemRandom
 from typing import Generic, TypeVar
 
 from httpx import AsyncClient
+from rubin.nublado.client import JupyterLabSession, NubladoClient
+from rubin.nublado.client.exceptions import (
+    JupyterSpawnError,
+    JupyterTimeoutError,
+)
 from safir.datetime import current_datetime, format_datetime_for_logging
 from safir.slack.blockkit import SlackException
 from structlog.stdlib import BoundLogger
 
 from ...config import config
-from ...exceptions import JupyterSpawnError, JupyterTimeoutError
 from ...models.business.nublado import (
     NubladoBusinessData,
     NubladoBusinessOptions,
     RunningImage,
 )
 from ...models.user import AuthenticatedUser
-from ...storage.nublado import JupyterLabSession, NubladoClient
 from .base import Business
 
 T = TypeVar("T", bound="NubladoBusinessOptions")
@@ -108,7 +111,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             raise RuntimeError("environment_url not set")
         environment_url = str(config.environment_url).rstrip("/")
         self._client = NubladoClient(
-            user=user,
+            user=user.to_client_user(),
             base_url=environment_url + options.url_prefix,
             logger=logger,
             timeout=options.jupyter_timeout,

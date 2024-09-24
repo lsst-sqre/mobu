@@ -10,10 +10,11 @@ from typing import Generic, TypeVar
 import pyvo
 import requests
 from httpx import AsyncClient
+from rubin.nublado.client.exceptions import CodeExecutionError
 from structlog.stdlib import BoundLogger
 
 from ...config import config
-from ...exceptions import CodeExecutionError, TAPClientError
+from ...exceptions import TAPClientError
 from ...models.business.tap import TAPBusinessData, TAPBusinessOptions
 from ...models.user import AuthenticatedUser
 from .base import Business

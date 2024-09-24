@@ -17,6 +17,7 @@ from typing import Any
 
 import yaml
 from httpx import AsyncClient
+from rubin.nublado.client import JupyterLabSession
 from structlog.stdlib import BoundLogger
 
 from ...config import config
@@ -32,7 +33,6 @@ from ...models.business.notebookrunner import (
 from ...models.repo import RepoConfig
 from ...models.user import AuthenticatedUser
 from ...storage.git import Git
-from ...storage.nublado import JupyterLabSession
 from .nublado import NubladoBusiness
 
 __all__ = ["NotebookRunner"]
