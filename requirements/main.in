@@ -21,7 +21,8 @@ pydantic>2
 pydantic-settings
 pyvo
 pyyaml
-rubin.nublado.client
+# rubin.nublado.client
+rubin-nublado-client@git+https://github.com/lsst-sqre/nublado@tickets/DM-46480#subdirectory=client
 safir>=6.1.0
 shortuuid
 structlog
