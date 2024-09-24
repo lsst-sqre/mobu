@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
+from rubin.nublado.client.models import User as ClientUser
 
 __all__ = [
     "AuthenticatedUser",
@@ -94,3 +95,6 @@ class AuthenticatedUser(User):
         title="Authentication token for user",
         examples=["gt-1PhgAeB-9Fsa-N1NhuTu_w.oRvMvAQp1bWfx8KCJKNohg"],
     )
+
+    def to_client_user(self) -> ClientUser:
+        return ClientUser(username=self.username, token=self.token)

@@ -18,9 +18,16 @@ httpx
 httpx-sse
 jinja2
 pydantic>2
-pydantic-settings
+pydantic-settings==2.5.2
+# 2.6 dies horribly with:
+# pydantic_core._pydantic_core.ValidationError: 1 validation error for GitHubRefreshAppConfig
+# MOBU_GITHUB_REFRESH_APP_WEBHOOK_SECRET
+#   Field required [type=missing, input_value={'accepted_github_orgs': ...', 'org2', 'lsst-sqre']}, input_type=dict]
+#     For further information visit https://errors.pydantic.dev/2.9/v/missing
 pyvo
 pyyaml
+rubin-nublado-client@git+https://github.com/lsst-sqre/nublado@tickets/DM-46480#subdirectory=client
+#rubin.nublado.client
 safir>=6.1.0
 shortuuid
 structlog
