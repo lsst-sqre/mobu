@@ -21,6 +21,7 @@ pydantic>2
 pydantic-settings
 pyvo
 pyyaml
+rubin.nublado.client
 safir>=6.1.0
 shortuuid
 structlog
