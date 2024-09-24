@@ -116,7 +116,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             logger=logger,
             timeout=options.jupyter_timeout,
         )
-
+        print(f"***U: {self._client.user.username} T: {self._client.user.token}***")
         self._image: RunningImage | None = None
         self._node: str | None = None
         self._random = SystemRandom()

@@ -51,7 +51,13 @@ from .support.gitlfs import (
 
 @pytest.fixture(autouse=True)
 def environment_url() -> str:
-    return "https://test.example.com"
+    return TEST_BASE_URL
+
+
+@pytest.fixture
+def test_user() -> User:
+    uname = "someuser"
+    return User(username=uname, token=make_gafaelfawr_token(uname))
 
 
 @pytest.fixture
@@ -62,12 +68,6 @@ def configured_logger() -> BoundLogger:
         log_level=safir.logging.LogLevel.DEBUG,
     )
     return structlog.get_logger("nublado-client")
-
-
-@pytest.fixture
-def test_user() -> User:
-    uname = "someuser"
-    return User(username=uname, token=make_gafaelfawr_token(uname))
 
 
 @pytest.fixture(autouse=True)
@@ -194,26 +194,38 @@ async def app(jupyter: MockJupyter) -> AsyncIterator[FastAPI]:
 
 @pytest.fixture
 def configured_nublado_client(
+    app: FastAPI,
     environment_url: str,
+    configured_logger: BoundLogger,
     test_user: User,
     test_filesystem: Path,
-    configured_logger: BoundLogger,
     jupyter: MockJupyter,
 ) -> NubladoClient:
-    client = NubladoClient(
-        user=test_user, base_url=environment_url, logger=configured_logger
+    n_client = NubladoClient(
+        user=test_user, logger=configured_logger, base_url=environment_url
     )
-    client._client.headers["X-Auth-Request-User"] = test_user.username
-    client._client.headers["X-Auth-Request-Token"] = test_user.token
-    return client
+    # For the test client, we also have to add the two headers that would
+    # be added by a GafaelfawrIngress in real life.
+    n_client._client.headers["X-Auth-Request-User"] = test_user.username
+    n_client._client.headers["X-Auth-Request-Token"] = test_user.token
+    return n_client
 
 
 @pytest_asyncio.fixture
 async def client(
-    app: FastAPI, configured_nublado_client: NubladoClient
+    app: FastAPI,
+    test_user: User,
+    jupyter: MockJupyter,        
 ) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
-    async with configured_nublado_client._client as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url=TEST_BASE_URL,
+        headers={
+            "X-Auth-Request-User": test_user.username,
+            "X-Auth-Request-Token": test_user.token,
+        },
+    ) as client:
         yield client
 
 
