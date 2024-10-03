@@ -4,13 +4,11 @@ from __future__ import annotations
 
 from unittest.mock import ANY
 
-from pathlib import Path
-
 import pytest
 import respx
 from httpx import AsyncClient
-from safir.testing.slack import MockSlackWebhook
 from rubin.nublado.client.testing import MockJupyter
+from safir.testing.slack import MockSlackWebhook
 
 from ..support.gafaelfawr import mock_gafaelfawr
 
@@ -36,11 +34,12 @@ async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
 
 @pytest.mark.asyncio
 async def test_error(
-        client: AsyncClient, slack: MockSlackWebhook, respx_mock: respx.Router,
-        jupyter: MockJupyter
+    client: AsyncClient,
+    slack: MockSlackWebhook,
+    respx_mock: respx.Router,
+    jupyter: MockJupyter,
 ) -> None:
     mock_gafaelfawr(respx_mock)
-    print(f"***{jupyter._base_url} {jupyter._user_dir}***")
 
     r = await client.post(
         "/mobu/run",

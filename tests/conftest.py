@@ -33,6 +33,7 @@ from structlog.stdlib import BoundLogger
 from mobu import main
 from mobu.config import config
 from mobu.services.business.gitlfs import GitLFSBusiness
+from mobu.services.business.nublado import _GET_NODE
 
 from .support.constants import (
     TEST_BASE_URL,
@@ -215,7 +216,7 @@ def configured_nublado_client(
 async def client(
     app: FastAPI,
     test_user: User,
-    jupyter: MockJupyter,        
+    jupyter: MockJupyter,
 ) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
     async with AsyncClient(
@@ -265,6 +266,8 @@ def jupyter(
 
     with patch("rubin.nublado.client.nubladoclient.websocket_connect") as mock:
         mock.side_effect = mock_connect
+        # Register some code we call over and over and over...
+        jupyter_mock.register_python_result(_GET_NODE, "Node1")
         yield jupyter_mock
 
 

@@ -9,9 +9,9 @@ anyio==4.6.0
     #   httpx
     #   starlette
     #   watchfiles
-astropy==6.1.3
+astropy==6.1.4
     # via pyvo
-astropy-iers-data==0.2024.9.23.0.31.43
+astropy-iers-data==0.2024.9.30.0.32.59
     # via astropy
 certifi==2024.8.30
     # via
@@ -45,7 +45,7 @@ h11==0.14.0
     # via
     #   httpcore
     #   uvicorn
-httpcore==1.0.5
+httpcore==1.0.6
     # via httpx
 httptools==0.6.1
     # via uvicorn
@@ -108,7 +108,7 @@ pyyaml==6.0.2
     #   uvicorn
 requests==2.32.3
     # via pyvo
-rubin-nublado-client @ git+https://github.com/lsst-sqre/nublado@269c55f2e21950db87849527e48815c9ef32ca43#subdirectory=client
+rubin-nublado-client @ git+https://github.com/lsst-sqre/nublado@8cddcc4d6c1eaf78f162a5d3adf0e43c488366d9#subdirectory=client
     # via -r requirements/main.in
 safir==6.4.0
     # via
@@ -144,7 +144,7 @@ uritemplate==4.1.1
     # via gidgethub
 urllib3==2.2.3
     # via requests
-uvicorn==0.30.6
+uvicorn==0.31.0
     # via -r requirements/main.in
 uvloop==0.20.0
     # via uvicorn

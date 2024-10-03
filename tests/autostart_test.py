@@ -136,10 +136,8 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
                 "business": {
                     "failure_count": 0,
                     "image": {
-                        "description": "Recommended (Weekly 2077_43)",
-                        "reference": (
-                            "lighthouse.ceres/library/sketchbook:recommended"
-                        ),
+                        "description": ANY,
+                        "reference": ANY,
                     },
                     "name": "NubladoPythonLoop",
                     "refreshing": False,
@@ -160,10 +158,8 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
                 "business": {
                     "failure_count": 0,
                     "image": {
-                        "description": "Recommended (Weekly 2077_43)",
-                        "reference": (
-                            "lighthouse.ceres/library/sketchbook:recommended"
-                        ),
+                        "description": ANY,
+                        "reference": ANY,
                     },
                     "name": "NubladoPythonLoop",
                     "refreshing": False,

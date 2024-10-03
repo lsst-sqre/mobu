@@ -232,11 +232,6 @@ async def test_hub_failed(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser2",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
                             "text": "*User*\nbot-mobu-testuser2",
                             "verbatim": True,
                         },

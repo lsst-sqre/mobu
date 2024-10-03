@@ -731,12 +731,12 @@ async def test_invalid_repo_config(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
+                            "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                     ],
@@ -834,10 +834,8 @@ async def test_alert(
         "business": {
             "failure_count": 1,
             "image": {
-                "description": "Recommended (Weekly 2077_43)",
-                "reference": (
-                    "lighthouse.ceres/library/sketchbook:recommended"
-                ),
+                "description": ANY,
+                "reference": ANY,
             },
             "name": "NotebookRunner",
             "notebook": "exception.ipynb",

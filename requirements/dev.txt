@@ -90,7 +90,7 @@ h11==0.14.0
     # via
     #   -c requirements/main.txt
     #   httpcore
-httpcore==1.0.5
+httpcore==1.0.6
     # via
     #   -c requirements/main.txt
     #   httpx
@@ -117,7 +117,7 @@ iniconfig==2.0.0
     # via pytest
 ipykernel==6.29.5
     # via myst-nb
-ipython==8.27.0
+ipython==8.28.0
     # via
     #   ipykernel
     #   myst-nb
@@ -214,7 +214,7 @@ pluggy==1.5.0
     # via pytest
 pre-commit==3.8.0
     # via -r requirements/dev.in
-prompt-toolkit==3.0.47
+prompt-toolkit==3.0.48
     # via ipython
 psutil==6.0.0
     # via ipykernel
@@ -294,7 +294,7 @@ rpds-py==0.20.0
     # via
     #   jsonschema
     #   referencing
-ruff==0.6.7
+ruff==0.6.8
     # via -r requirements/dev.in
 scriv==1.5.1
     # via -r requirements/dev.in
@@ -421,7 +421,7 @@ urllib3==2.2.3
     #   requests
     #   sphinx-prompt
     #   types-requests
-virtualenv==20.26.5
+virtualenv==20.26.6
     # via pre-commit
 wcwidth==0.2.13
     # via prompt-toolkit
