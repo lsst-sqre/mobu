@@ -12,15 +12,12 @@ from typing import Generic, TypeVar
 
 from httpx import AsyncClient
 from rubin.nublado.client import JupyterLabSession, NubladoClient
-from rubin.nublado.client.exceptions import (
-    JupyterSpawnError,
-    JupyterTimeoutError,
-)
 from safir.datetime import current_datetime, format_datetime_for_logging
 from safir.slack.blockkit import SlackException
 from structlog.stdlib import BoundLogger
 
 from ...config import config
+from ...exceptions import JupyterSpawnError, JupyterTimeoutError
 from ...models.business.nublado import (
     NubladoBusinessData,
     NubladoBusinessOptions,

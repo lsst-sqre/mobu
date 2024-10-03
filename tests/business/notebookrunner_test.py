@@ -731,12 +731,12 @@ async def test_invalid_repo_config(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
+                            "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                     ],
