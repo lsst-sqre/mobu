@@ -294,7 +294,7 @@ rpds-py==0.20.0
     # via
     #   jsonschema
     #   referencing
-ruff==0.6.8
+ruff==0.6.9
     # via -r requirements/dev.in
 scriv==1.5.1
     # via -r requirements/dev.in
