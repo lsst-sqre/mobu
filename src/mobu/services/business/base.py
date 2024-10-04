@@ -185,7 +185,7 @@ class Business(Generic[T], metaclass=ABCMeta):
     async def error_idle(self) -> None:
         """Pause after an error and before attempting to restart.
 
-        Thia is called directly by `~mobu.services.monkey.Monkey` rather than
+        This is called directly by `~mobu.services.monkey.Monkey` rather than
         by the business. It happens outside of `run` and therefore must handle
         acknowledging a shutdown request.
         """

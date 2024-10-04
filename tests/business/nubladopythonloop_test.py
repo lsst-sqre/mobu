@@ -232,6 +232,11 @@ async def test_hub_failed(
                         },
                         {
                             "type": "mrkdwn",
+                            "test": "*Monkey*\ntest/bot-mobu-testuser2",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
                             "text": "*User*\nbot-mobu-testuser2",
                             "verbatim": True,
                         },
@@ -292,6 +297,7 @@ async def test_redirect_loop(
         str(config.environment_url),
         "/nb/hub/api/users/bot-mobu-testuser1/server/progress",
     )
+
     assert slack.messages == [
         {
             "blocks": [

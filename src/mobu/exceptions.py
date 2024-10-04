@@ -35,6 +35,8 @@ from rubin.nublado.client.exceptions import (
 from safir.fastapi import ClientRequestError
 from safir.models import ErrorLocation
 from safir.slack.blockkit import (
+    SlackBaseBlock,
+    SlackBaseField,
     SlackCodeBlock,
     SlackMessage,
     SlackTextBlock,
@@ -54,6 +56,7 @@ __all__ = [
     "JupyterProtocolError",
     "JupyterTimeoutError",
     "JupyterWebError",
+    "MobuMixin",
     "MobuSlackException",
     "MobuSlackWebException",
     "MonkeyNotFoundError",
@@ -99,6 +102,14 @@ class MobuMixin:
         """Initialize mobu-specific fields."""
         self.event: str | None = event
         self.monkey: str | None = monkey
+
+    def mobu_fields(self) -> list[SlackBaseField]:
+        fields: list[SlackBaseField] = []
+        if self.event:
+            fields.append(SlackTextField(heading="Event", text=self.event))
+        if self.monkey:
+            fields.append(SlackTextField(heading="Monkey", text=self.monkey))
+        return fields
 
 
 class GafaelfawrParseError(NubladoClientSlackException):
@@ -220,9 +231,11 @@ class MobuSlackException(NubladoClientSlackException, MobuMixin):
         *,
         started_at: datetime.datetime | None = None,
         failed_at: datetime.datetime | None = None,
+        monkey: str | None = None,
+        event: str | None = None,
     ) -> None:
         super().__init__(msg, user, failed_at=failed_at, started_at=started_at)
-        self.mobu_init()
+        self.mobu_init(monkey=monkey, event=event)
 
     @classmethod
     def from_slack_exception(cls, exc: NubladoClientSlackException) -> Self:
@@ -232,6 +245,18 @@ class MobuSlackException(NubladoClientSlackException, MobuMixin):
             started_at=exc.started_at,
             failed_at=exc.failed_at,
         )
+
+    def common_fields(self) -> list[SlackBaseField]:
+        """Return common fields to put in any alert.
+
+        Returns
+        -------
+        list of SlackBaseField
+            Common fields to add to the Slack message.
+        """
+        fields = super().common_fields()
+        fields.extend(self.mobu_fields())
+        return fields
 
 
 class MobuSlackWebException(
@@ -244,6 +269,13 @@ class MobuSlackWebException(
     is intended to be subclassed. Subclasses may want to override the
     `to_slack` method.
     """
+
+    def common_blocks(self) -> list[SlackBaseBlock]:
+        blocks = MobuSlackException.common_blocks(self)
+        if self.url:
+            text = f"{self.method} {self.url}" if self.method else self.url
+            blocks.append(SlackTextBlock(heading="URL", text=text))
+        return blocks
 
 
 class NotebookRepositoryError(MobuSlackException):
@@ -296,6 +328,8 @@ class CodeExecutionError(ClientCodeExecutionError, MobuMixin):
         code_type: str = "code",
         error: str | None = None,
         status: str | None = None,
+        monkey: str | None = None,
+        event: str | None = None,
     ) -> None:
         super().__init__(
             user=user,
@@ -304,7 +338,19 @@ class CodeExecutionError(ClientCodeExecutionError, MobuMixin):
             error=error,
             status=status,
         )
-        self.mobu_init()
+        self.mobu_init(monkey=monkey, event=event)
+
+    def common_fields(self) -> list[SlackBaseField]:
+        """Return common fields to put in any alert.
+
+        Returns
+        -------
+        list of SlackBaseField
+            Common fields to add to the Slack message.
+        """
+        fields = super().common_fields()
+        fields.extend(self.mobu_fields())
+        return fields
 
 
 class GitHubFileNotFoundError(Exception):
@@ -323,18 +369,56 @@ class JupyterProtocolError(ClientJupyterProtocolError, MobuMixin):
         *,
         started_at: datetime.datetime | None = None,
         failed_at: datetime.datetime | None = None,
+        monkey: str | None = None,
+        event: str | None = None,
     ) -> None:
         super().__init__(
             msg=msg, user=user, started_at=started_at, failed_at=failed_at
         )
-        self.mobu_init()
+        self.mobu_init(monkey=monkey, event=event)
+
+    @classmethod
+    def from_client_exception(
+        cls,
+        exc: ClientJupyterProtocolError,
+        event: str | None = None,
+        monkey: str | None = None,
+    ) -> Self:
+        new = cls(
+            msg=exc.message,
+            user=exc.user,
+            started_at=exc.started_at,
+            failed_at=exc.failed_at,
+            monkey=monkey,
+            event=event,
+        )
+        if exc.annotations is not None:
+            new.annotations.update(exc.annotations)
+        return new
+
+    def common_fields(self) -> list[SlackBaseField]:
+        """Return common fields to put in any alert.
+
+        Returns
+        -------
+        list of SlackBaseField
+            Common fields to add to the Slack message.
+        """
+        fields = super().common_fields()
+        fields.extend(self.mobu_fields())
+        return fields
 
 
 class JupyterSpawnError(ClientJupyterSpawnError, MobuMixin):
     """The Jupyter Lab pod failed to spawn."""
 
     def __init__(
-        self, log: str, user: str, message: str | None = None
+        self,
+        log: str,
+        user: str,
+        message: str | None = None,
+        monkey: str | None = None,
+        event: str | None = None,
     ) -> None:
         if message:
             message = f"Spawning lab failed: {message}"
@@ -342,13 +426,34 @@ class JupyterSpawnError(ClientJupyterSpawnError, MobuMixin):
             message = "Spawning lab failed"
         super().__init__(message, user)
         self.log = log
-        self.mobu_init()
+        self.mobu_init(monkey=monkey, event=event)
 
     @classmethod
-    def from_spawn_exception(cls, exc: ClientJupyterSpawnError) -> Self:
+    def from_client_exception(
+        cls,
+        exc: ClientJupyterSpawnError,
+        monkey: str | None = None,
+        event: str | None = None,
+    ) -> Self:
         return cls(
-            log=exc.log, user=exc.user or "<user unknown>", message=exc.message
+            log=exc.log,
+            user=exc.user or "<user unknown>",
+            message=exc.message,
+            monkey=monkey,
+            event=event,
         )
+
+    def common_fields(self) -> list[SlackBaseField]:
+        """Return common fields to put in any alert.
+
+        Returns
+        -------
+        list of SlackBaseField
+            Common fields to add to the Slack message.
+        """
+        fields = super().common_fields()
+        fields.extend(self.mobu_fields())
+        return fields
 
 
 class JupyterTimeoutError(ClientJupyterTimeoutError, MobuMixin):
@@ -361,10 +466,12 @@ class JupyterTimeoutError(ClientJupyterTimeoutError, MobuMixin):
         log: str | None = None,
         *,
         started_at: datetime.datetime | None = None,
+        monkey: str | None = None,
+        event: str | None = None,
     ) -> None:
         super().__init__(msg, user, started_at=started_at)
         self.log = log
-        self.mobu_init()
+        self.mobu_init(monkey=monkey, event=event)
 
 
 class JupyterWebError(ClientJupyterWebError, MobuMixin):
@@ -377,9 +484,50 @@ class JupyterWebError(ClientJupyterWebError, MobuMixin):
         *,
         started_at: datetime.datetime | None = None,
         failed_at: datetime.datetime | None = None,
+        monkey: str | None = None,
+        event: str | None = None,
     ) -> None:
         super().__init__(message=msg, user=user, failed_at=failed_at)
-        self.mobu_init()
+        self.started_at = started_at
+        self.mobu_init(monkey=monkey, event=event)
+
+    @classmethod
+    def from_client_exception(
+        cls,
+        exc: ClientJupyterWebError,
+        event: str | None = None,
+        monkey: str | None = None,
+    ) -> Self:
+        new = cls(
+            msg=exc.message,
+            user=exc.user,
+            started_at=exc.started_at,
+            failed_at=exc.failed_at,
+            monkey=monkey,
+            event=event,
+        )
+        if exc.annotations is not None:
+            new.annotations.update(exc.annotations)
+        new.event = event
+        if exc.method is not None:
+            new.method = exc.method
+        if exc.url is not None:
+            new.url = exc.url
+        if exc.body is not None:
+            new.body = exc.body
+        return new
+
+    def common_fields(self) -> list[SlackBaseField]:
+        """Return common fields to put in any alert.
+
+        Returns
+        -------
+        list of SlackBaseField
+            Common fields to add to the Slack message.
+        """
+        fields = super().common_fields()
+        fields.extend(self.mobu_fields())
+        return fields
 
 
 class JupyterWebSocketError(ClientJupyterWebSocketError, MobuMixin):
@@ -394,6 +542,8 @@ class JupyterWebSocketError(ClientJupyterWebSocketError, MobuMixin):
         reason: str | None = None,
         status: int | None = None,
         body: bytes | None = None,
+        monkey: str | None = None,
+        event: str | None = None,
     ) -> None:
         super().__init__(
             msg=msg,
@@ -403,7 +553,7 @@ class JupyterWebSocketError(ClientJupyterWebSocketError, MobuMixin):
             status=status,
             body=body,
         )
-        self.mobu_init()
+        self.mobu_init(monkey=monkey, event=event)
 
     def to_slack(self) -> SlackMessage:
         """Format this exception as a Slack notification.
@@ -432,6 +582,18 @@ class JupyterWebSocketError(ClientJupyterWebSocketError, MobuMixin):
             message.blocks.append(block)
 
         return message
+
+    def common_fields(self) -> list[SlackBaseField]:
+        """Return common fields to put in any alert.
+
+        Returns
+        -------
+        list of SlackBaseField
+            Common fields to add to the Slack message.
+        """
+        fields = super().common_fields()
+        fields.extend(self.mobu_fields())
+        return fields
 
 
 class TAPClientError(MobuSlackException):

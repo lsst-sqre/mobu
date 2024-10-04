@@ -12,12 +12,23 @@ from typing import Generic, TypeVar
 
 from httpx import AsyncClient
 from rubin.nublado.client import JupyterLabSession, NubladoClient
+from rubin.nublado.client.exceptions import (
+    JupyterProtocolError as ClientJupyterProtocolError,
+)
+from rubin.nublado.client.exceptions import (
+    JupyterWebError as ClientJupyterWebError,
+)
 from safir.datetime import current_datetime, format_datetime_for_logging
 from safir.slack.blockkit import SlackException
 from structlog.stdlib import BoundLogger
 
 from ...config import config
-from ...exceptions import JupyterSpawnError, JupyterTimeoutError
+from ...exceptions import (
+    JupyterProtocolError,
+    JupyterSpawnError,
+    JupyterTimeoutError,
+    JupyterWebError,
+)
 from ...models.business.nublado import (
     NubladoBusinessData,
     NubladoBusinessOptions,
@@ -200,14 +211,30 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             await super().idle()
 
     async def hub_login(self) -> None:
+        ev = "hub_login"
         self.logger.info("Logging in to hub")
-        with self.timings.start("hub_login"):
-            await self._client.auth_to_hub()
+        with self.timings.start(ev):
+            try:
+                await self._client.auth_to_hub()
+            except ClientJupyterProtocolError as exc:
+                raise JupyterProtocolError.from_client_exception(
+                    exc, event=ev
+                ) from exc
+            except ClientJupyterWebError as exc:
+                raise JupyterWebError.from_client_exception(
+                    exc, event=ev
+                ) from exc
 
     async def spawn_lab(self) -> bool:
-        with self.timings.start("spawn_lab", self.annotations()) as sw:
+        ev = "spawn_lab"
+        with self.timings.start(ev, self.annotations()) as sw:
             timeout = self.options.spawn_timeout
-            await self._client.spawn_lab(self.options.image)
+            try:
+                await self._client.spawn_lab(self.options.image)
+            except ClientJupyterWebError as exc:
+                raise JupyterWebError.from_client_exception(
+                    exc, event=ev
+                ) from exc
 
             # Pause before using the progress API, since otherwise it may not
             # have attached to the spawner and will not return a full stream
@@ -247,8 +274,14 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
 
     async def lab_login(self) -> None:
         self.logger.info("Logging in to lab")
-        with self.timings.start("lab_login", self.annotations()):
-            await self._client.auth_to_lab()
+        ev = "lab_login"
+        with self.timings.start(ev, self.annotations()):
+            try:
+                await self._client.auth_to_lab()
+            except ClientJupyterProtocolError as exc:
+                raise JupyterProtocolError.from_client_exception(
+                    exc, event=ev
+                ) from exc
 
     @asynccontextmanager
     async def open_session(
@@ -293,9 +326,15 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             await session.run_python(code)
 
     async def delete_lab(self) -> None:
+        ev = "delete_lab"
         self.logger.info("Deleting lab")
-        with self.timings.start("delete_lab", self.annotations()):
-            await self._client.stop_lab()
+        with self.timings.start(ev, self.annotations()):
+            try:
+                await self._client.stop_lab()
+            except ClientJupyterWebError as exc:
+                raise JupyterWebError.from_client_exception(
+                    exc, event=ev
+                ) from exc
             if self.stopping:
                 return
 
