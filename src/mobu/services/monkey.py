@@ -16,7 +16,7 @@ from safir.slack.webhook import SlackWebhookClient
 from structlog.stdlib import BoundLogger
 
 from ..config import config
-from ..exceptions import MobuSlackException
+from ..exceptions import MobuMixin
 from ..models.business.base import BusinessConfig
 from ..models.business.empty import EmptyLoopConfig
 from ..models.business.gitlfs import GitLFSConfig
@@ -137,7 +137,11 @@ class Monkey:
         if not self._slack:
             self._logger.info("Alert hook isn't set, so not sending to Slack")
             return
-
+        monkey = f"{self._flock}/{self._name}" if self._flock else self._name
+        if isinstance(exc, MobuMixin):
+            # Add the monkey info if it is not already set.
+            if not exc.monkey:
+                exc.monkey = monkey
         if isinstance(exc, SlackException):
             # Avoid post_exception here since it adds the application name,
             # but mobu (unusually) uses a dedicated web hook and therefore
@@ -148,10 +152,6 @@ class Monkey:
             date = format_datetime_for_logging(now)
             name = type(exc).__name__
             error = f"{name}: {exc!s}"
-            if self._flock:
-                monkey = f"{self._flock}/{self._name}"
-            else:
-                monkey = self._name
             message = SlackMessage(
                 message=f"Unexpected exception {error}",
                 fields=[
@@ -210,13 +210,16 @@ class Monkey:
                 run = False
             except Exception as e:
                 msg = "Exception thrown while doing monkey business"
-                if isinstance(e, MobuSlackException):
-                    if self._flock:
-                        e.monkey = f"{self._flock}/{self._name}"
-                    else:
-                        e.monkey = self._name
-                self._logger.exception(msg)
+                if self._flock:
+                    monkey = f"{self._flock}/{self._name}"
+                else:
+                    monkey = self._name
+                if isinstance(e, MobuMixin):
+                    e.monkey = monkey
+
                 await self.alert(e)
+                self._logger.exception(msg)
+
                 run = self._restart and self._state == MonkeyState.RUNNING
                 if run:
                     self._state = MonkeyState.ERROR

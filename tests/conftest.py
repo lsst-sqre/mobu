@@ -6,21 +6,34 @@ from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from importlib import reload
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from textwrap import dedent
 from unittest.mock import DEFAULT, patch
 
 import pytest
 import pytest_asyncio
 import respx
+import safir.logging
+import structlog
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from pydantic import HttpUrl
+from rubin.nublado.client import NubladoClient
+from rubin.nublado.client.models import User
+from rubin.nublado.client.testing import (
+    MockJupyter,
+    MockJupyterWebSocket,
+    mock_jupyter,
+    mock_jupyter_websocket,
+)
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
+from structlog.stdlib import BoundLogger
 
 from mobu import main
 from mobu.config import config
 from mobu.services.business.gitlfs import GitLFSBusiness
+from mobu.services.business.nublado import _GET_IMAGE, _GET_NODE
 
 from .support.constants import (
     TEST_BASE_URL,
@@ -35,16 +48,31 @@ from .support.gitlfs import (
     uninstall_git_lfs,
     verify_uuid_contents,
 )
-from .support.jupyter import (
-    MockJupyter,
-    MockJupyterWebSocket,
-    mock_jupyter,
-    mock_jupyter_websocket,
-)
 
 
 @pytest.fixture(autouse=True)
-def _configure() -> Iterator[None]:
+def environment_url() -> str:
+    return TEST_BASE_URL
+
+
+@pytest.fixture
+def test_user() -> User:
+    uname = "someuser"
+    return User(username=uname, token=make_gafaelfawr_token(uname))
+
+
+@pytest.fixture
+def configured_logger() -> BoundLogger:
+    safir.logging.configure_logging(
+        name="nublado-client",
+        profile=safir.logging.Profile.development,
+        log_level=safir.logging.LogLevel.DEBUG,
+    )
+    return structlog.get_logger("nublado-client")
+
+
+@pytest.fixture(autouse=True)
+def _configure(environment_url: str) -> Iterator[None]:
     """Set minimal configuration settings.
 
     Add an environment URL for testing purposes and create a Gafaelfawr admin
@@ -54,13 +82,19 @@ def _configure() -> Iterator[None]:
     minimal test configuration and a unique admin token that is replaced after
     the test runs.
     """
-    config.environment_url = HttpUrl("https://test.example.com")
+    config.environment_url = HttpUrl(environment_url)
     config.gafaelfawr_token = make_gafaelfawr_token()
     config.available_services = {"some_service", "some_other_service"}
     yield
     config.environment_url = None
     config.gafaelfawr_token = None
     config.available_services = set()
+
+
+@pytest.fixture
+def test_filesystem() -> Iterator[Path]:
+    with TemporaryDirectory() as td:
+        yield Path(td)
 
 
 @pytest.fixture
@@ -159,13 +193,39 @@ async def app(jupyter: MockJupyter) -> AsyncIterator[FastAPI]:
         yield main.app
 
 
+@pytest.fixture
+def configured_nublado_client(
+    app: FastAPI,
+    environment_url: str,
+    configured_logger: BoundLogger,
+    test_user: User,
+    test_filesystem: Path,
+    jupyter: MockJupyter,
+) -> NubladoClient:
+    n_client = NubladoClient(
+        user=test_user, logger=configured_logger, base_url=environment_url
+    )
+    # For the test client, we also have to add the two headers that would
+    # be added by a GafaelfawrIngress in real life.
+    n_client._client.headers["X-Auth-Request-User"] = test_user.username
+    n_client._client.headers["X-Auth-Request-Token"] = test_user.token
+    return n_client
+
+
 @pytest_asyncio.fixture
-async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
+async def client(
+    app: FastAPI,
+    test_user: User,
+    jupyter: MockJupyter,
+) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url=TEST_BASE_URL,
-        headers={"X-Auth-Request-User": "someuser"},
+        headers={
+            "X-Auth-Request-User": test_user.username,
+            "X-Auth-Request-Token": test_user.token,
+        },
     ) as client:
         yield client
 
@@ -183,9 +243,15 @@ async def anon_client(app: FastAPI) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture
-def jupyter(respx_mock: respx.Router) -> Iterator[MockJupyter]:
+def jupyter(
+    respx_mock: respx.Router,
+    environment_url: str,
+    test_filesystem: Path,
+) -> Iterator[MockJupyter]:
     """Mock out JupyterHub and Jupyter labs."""
-    jupyter_mock = mock_jupyter(respx_mock)
+    jupyter_mock = mock_jupyter(
+        respx_mock, base_url=environment_url, user_dir=test_filesystem
+    )
 
     # respx has no mechanism to mock aconnect_ws, so we have to do it
     # ourselves.
@@ -198,8 +264,17 @@ def jupyter(respx_mock: respx.Router) -> Iterator[MockJupyter]:
     ) -> AsyncIterator[MockJupyterWebSocket]:
         yield mock_jupyter_websocket(url, extra_headers, jupyter_mock)
 
-    with patch("mobu.storage.nublado.websocket_connect") as mock:
+    with patch("rubin.nublado.client.nubladoclient.websocket_connect") as mock:
         mock.side_effect = mock_connect
+        # Register some code we call over and over and over...
+        jupyter_mock.register_python_result(_GET_NODE, "Node1")
+        jupyter_mock.register_python_result(
+            _GET_IMAGE,
+            (
+                "lighthouse.ceres/library/sketchbook:recommended\n"
+                "Recommended (Weekly 2077_43)\n"
+            ),
+        )
         yield jupyter_mock
 
 
