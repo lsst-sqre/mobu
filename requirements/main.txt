@@ -108,7 +108,7 @@ pyyaml==6.0.2
     #   uvicorn
 requests==2.32.3
     # via pyvo
-rubin-nublado-client @ git+https://github.com/lsst-sqre/nublado@5b90668c62d41df1201ee6319dbc3e412ceea9b9#subdirectory=client
+rubin-nublado-client @ git+https://github.com/lsst-sqre/nublado@ada68c7641c942f233e04700c6b2acb256099e1f#subdirectory=client
     # via -r requirements/main.in
 safir==6.4.0
     # via
