@@ -84,6 +84,8 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
                     user=self.user.username,
                     code=query,
                     code_type="TAP query",
+                    event="execute_query",
+                    started_at=sw.start_time,
                     error=f"{type(e).__name__}: {e!s}",
                 ) from e
 

@@ -49,7 +49,7 @@ async def test_post_status(
         await post_status()
 
     expected = """\
-Currently running 3 flocks against https://test.example.com:
+Currently running 3 flocks against https://example.com:
 • *notebook*: 5 monkeys started 2021-08-20 with 3 failures (99.39% success)
 • *tap*: 1 monkey started 2021-08-20 with 1 failure (99.99% success)
 • *login*: 2 monkeys (not started) with 0 failures (100.00% success)

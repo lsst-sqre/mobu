@@ -7,11 +7,11 @@ over again.
 from __future__ import annotations
 
 from httpx import AsyncClient
+from rubin.nublado.client import JupyterLabSession
 from structlog.stdlib import BoundLogger
 
 from ...models.business.nubladopythonloop import NubladoPythonLoopOptions
 from ...models.user import AuthenticatedUser
-from ...storage.nublado import JupyterLabSession
 from .nublado import NubladoBusiness
 
 __all__ = ["NubladoPythonLoop"]

@@ -17,6 +17,8 @@ from typing import Any
 
 import yaml
 from httpx import AsyncClient
+from rubin.nublado.client import JupyterLabSession
+from rubin.nublado.client.models import CodeContext
 from structlog.stdlib import BoundLogger
 
 from ...config import config
@@ -32,7 +34,6 @@ from ...models.business.notebookrunner import (
 from ...models.repo import RepoConfig
 from ...models.user import AuthenticatedUser
 from ...storage.git import Git
-from ...storage.nublado import JupyterLabSession
 from .nublado import NubladoBusiness
 
 __all__ = ["NotebookRunner"]
@@ -299,7 +300,14 @@ class NotebookRunner(NubladoBusiness):
                     cell_id = f'`{cell["id"]}` (#{cell["_index"]})'
                 else:
                     cell_id = f'#{cell["_index"]}'
-                await self.execute_cell(session, code, cell_id)
+                ctx = CodeContext(
+                    notebook=self._notebook.name,
+                    path=str(self._notebook),
+                    cell=cell["id"],
+                    cell_number=f"#{cell['_index']}",
+                    cell_source=code,
+                )
+                await self.execute_cell(session, code, cell_id, ctx)
                 if not await self.execution_idle():
                     break
 
@@ -310,14 +318,18 @@ class NotebookRunner(NubladoBusiness):
                 break
 
     async def execute_cell(
-        self, session: JupyterLabSession, code: str, cell_id: str
+        self,
+        session: JupyterLabSession,
+        code: str,
+        cell_id: str,
+        context: CodeContext | None = None,
     ) -> None:
         if not self._notebook:
             raise RuntimeError("Executing a cell without a notebook")
         self.logger.info(f"Executing cell {cell_id}:\n{code}\n")
         with self.timings.start("execute_cell", self.annotations(cell_id)):
             self._running_code = code
-            reply = await session.run_python(code)
+            reply = await session.run_python(code, context=context)
             self._running_code = None
         self.logger.info(f"Result:\n{reply}\n")
 

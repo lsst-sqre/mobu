@@ -124,17 +124,17 @@ async def test_setup_error(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-tapuser",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
                             "text": "*User*\nbot-mobu-tapuser",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
                             "text": "*Event*\nmake_client",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/bot-mobu-tapuser",
                             "verbatim": True,
                         },
                     ],
@@ -193,17 +193,17 @@ async def test_alert(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
                             "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
                             "text": "*Event*\nexecute_query",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                     ],
