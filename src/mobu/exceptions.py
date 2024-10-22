@@ -557,6 +557,7 @@ class JupyterSpawnError(ClientJupyterSpawnError, MobuMixin):
         event: str | None = None,
         annotations: dict[str, str] | None = None,
         started_at: datetime.datetime | None = None,
+        failed_at: datetime.datetime | None = None,
     ) -> Self:
         """
         Add Mobu-specific fields to exception from NubladoClient layer.
@@ -590,7 +591,7 @@ class JupyterSpawnError(ClientJupyterSpawnError, MobuMixin):
             monkey=monkey,
             event=event,
             started_at=started_at or exc.started_at,
-            failed_at=exc.failed_at,
+            failed_at=failed_at or exc.failed_at,
         )
         if exc.annotations is not None:
             new_exc.annotations.update(exc.annotations)
@@ -603,12 +604,12 @@ class JupyterSpawnError(ClientJupyterSpawnError, MobuMixin):
         log: str,
         exc: Exception,
         user: str,
+        started_at: datetime.datetime | None = None,
+        failed_at: datetime.datetime | None = None,
         *,
         monkey: str | None = None,
         event: str | None = None,
         annotations: dict[str, str] | None = None,
-        started_at: datetime.datetime | None = None,
-        failed_at: datetime.datetime | None = None,
     ) -> Self:
         """Convert from an arbitrary exception to a spawn error.
 

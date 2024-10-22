@@ -125,6 +125,9 @@ extend = "ruff-shared.toml"
 "src/mobu/services/business/tap.py" = [
     "ASYNC110", # TAP code could be rewritten to poll state differently
 ]
+"src/mobu/services/monkey.py" = [
+    "SIM115", # We do want a NamedTemporaryFile not in a context manager
+]
 "tests/data/**/*.ipynb" = [
     "T201",     # test notebooks are allowed to use print
 ]
