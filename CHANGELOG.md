@@ -6,6 +6,13 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-12.0.0'></a>
+## 12.0.0 (2024-10-28)
+
+### Other changes
+
+- Replace internal client with rubin-nublado-client from `nublado` repo.
+
 <a id='changelog-11.0.0'></a>
 ## 11.0.0 (2024-08-06)
 
