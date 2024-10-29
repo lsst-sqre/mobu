@@ -1,6 +1,6 @@
 """The mobu service."""
 
-__all__ = ["__version__", "metadata"]
+__all__ = ["__version__", "metadata", "main"]
 
 from importlib.metadata import PackageNotFoundError, version
 

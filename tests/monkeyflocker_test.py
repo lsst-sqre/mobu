@@ -31,7 +31,9 @@ business:
 
 
 @pytest.fixture
-def monkeyflocker_app(tmp_path: Path) -> Iterator[UvicornProcess]:
+def monkeyflocker_app(
+    tmp_path: Path, test_filesystem: Path, environment_url: str
+) -> Iterator[UvicornProcess]:
     """Run the application as a separate process for monkeyflocker access."""
     assert config.environment_url
     config.gafaelfawr_token = make_gafaelfawr_token()

@@ -10,13 +10,13 @@ from unittest.mock import ANY
 import pytest
 import respx
 from httpx import AsyncClient
+from rubin.nublado.client.testing import MockJupyter
 from safir.testing.slack import MockSlackWebhook
 
 from mobu.storage.git import Git
 
 from ..support.constants import TEST_DATA_DIR
 from ..support.gafaelfawr import mock_gafaelfawr
-from ..support.jupyter import MockJupyter
 from ..support.util import wait_for_business, wait_for_log_message
 
 
@@ -731,12 +731,12 @@ async def test_invalid_repo_config(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
+                            "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                     ],
@@ -834,10 +834,8 @@ async def test_alert(
         "business": {
             "failure_count": 1,
             "image": {
-                "description": "Recommended (Weekly 2077_43)",
-                "reference": (
-                    "lighthouse.ceres/library/sketchbook:recommended"
-                ),
+                "description": ANY,
+                "reference": ANY,
             },
             "name": "NotebookRunner",
             "notebook": "exception.ipynb",
@@ -862,7 +860,10 @@ async def test_alert(
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": "Error while running `exception.ipynb`",
+                        "text": (
+                            "Error while running `exception.ipynb`"
+                            " cell `ed399c0a`"
+                        ),
                         "verbatim": True,
                     },
                 },
@@ -878,22 +879,22 @@ async def test_alert(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
                             "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Event*\nexecute_cell",
+                            "text": "*Image*\nRecommended (Weekly 2077_43)",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Image*\nRecommended (Weekly 2077_43)",
+                            "text": "*Event*\nexecute_code",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                     ],
@@ -902,7 +903,7 @@ async def test_alert(
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": "*Node*\nsome-node",
+                        "text": "*Node*\nNode1",
                         "verbatim": True,
                     },
                 },

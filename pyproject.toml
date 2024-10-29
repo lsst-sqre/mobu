@@ -95,6 +95,7 @@ warn_required_dynamic_aliases = true
 warn_untyped_fields = true
 
 [tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "strict"
 filterwarnings = [
     # Bug in aiojobs
@@ -123,6 +124,9 @@ extend = "ruff-shared.toml"
 [tool.ruff.lint.extend-per-file-ignores]
 "src/mobu/services/business/tap.py" = [
     "ASYNC110", # TAP code could be rewritten to poll state differently
+]
+"src/mobu/services/monkey.py" = [
+    "SIM115", # We do want a NamedTemporaryFile not in a context manager
 ]
 "tests/data/**/*.ipynb" = [
     "T201",     # test notebooks are allowed to use print

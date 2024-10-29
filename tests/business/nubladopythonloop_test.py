@@ -10,12 +10,16 @@ from urllib.parse import urljoin
 import pytest
 import respx
 from httpx import AsyncClient
+from rubin.nublado.client.testing import (
+    JupyterAction,
+    JupyterState,
+    MockJupyter,
+)
 from safir.testing.slack import MockSlackWebhook
 
 from mobu.config import config
 
 from ..support.gafaelfawr import mock_gafaelfawr
-from ..support.jupyter import JupyterAction, JupyterState, MockJupyter
 from ..support.util import wait_for_business
 
 
@@ -228,17 +232,17 @@ async def test_hub_failed(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser2",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
                             "text": "*User*\nbot-mobu-testuser2",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
                             "text": "*Event*\nspawn_lab",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser2",
                             "verbatim": True,
                         },
                     ],
@@ -293,6 +297,7 @@ async def test_redirect_loop(
         str(config.environment_url),
         "/nb/hub/api/users/bot-mobu-testuser1/server/progress",
     )
+
     assert slack.messages == [
         {
             "blocks": [
@@ -319,17 +324,17 @@ async def test_redirect_loop(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
                             "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
                             "text": "*Event*\nspawn_lab",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                     ],
@@ -401,17 +406,17 @@ async def test_spawn_timeout(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
                             "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
                             "text": "*Event*\nspawn_lab",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                     ],
@@ -475,17 +480,17 @@ async def test_spawn_failed(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
                             "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
                             "text": "*Event*\nspawn_lab",
+                            "verbatim": True,
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                     ],
@@ -568,11 +573,6 @@ async def test_delete_timeout(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
                             "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
@@ -583,7 +583,7 @@ async def test_delete_timeout(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Image*\nRecommended (Weekly 2077_43)",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                     ],
@@ -647,12 +647,12 @@ async def test_code_exception(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
+                            "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
+                            "text": "*Image*\nRecommended (Weekly 2077_43)",
                             "verbatim": True,
                         },
                         {
@@ -662,7 +662,7 @@ async def test_code_exception(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Image*\nRecommended (Weekly 2077_43)",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                     ],
@@ -671,7 +671,7 @@ async def test_code_exception(
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": "*Node*\nsome-node",
+                        "text": "*Node*\nNode1",
                         "verbatim": True,
                     },
                 },
@@ -727,13 +727,6 @@ async def test_long_error(
                 "type": "NubladoPythonLoop",
                 "options": {
                     "code": "long_error_for_test()",
-                    "image": {
-                        "image_class": "by-reference",
-                        "reference": (
-                            "registry.hub.docker.com/lsstsqre/sciplat-lab"
-                            ":d_2021_08_30"
-                        ),
-                    },
                     "spawn_settle_time": 0,
                     "max_executions": 1,
                 },
@@ -748,9 +741,7 @@ async def test_long_error(
 
     # Check the lab form.
     assert jupyter.lab_form["bot-mobu-testuser1"] == {
-        "image_list": (
-            "registry.hub.docker.com/lsstsqre/sciplat-lab:d_2021_08_30"
-        ),
+        "image_class": "recommended",
         "size": "Large",
     }
 
@@ -783,12 +774,12 @@ async def test_long_error(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
+                            "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
+                            "text": "*Image*\nRecommended (Weekly 2077_43)",
                             "verbatim": True,
                         },
                         {
@@ -798,7 +789,7 @@ async def test_long_error(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Image*\nRecommended (Weekly 2077_43)",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                     ],
@@ -807,7 +798,7 @@ async def test_long_error(
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": "*Node*\nsome-node",
+                        "text": "*Node*\nNode1",
                         "verbatim": True,
                     },
                 },
@@ -1003,12 +994,12 @@ async def test_ansi_error(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
+                            "text": "*User*\nbot-mobu-testuser1",
                             "verbatim": True,
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
+                            "text": "*Image*\nRecommended (Weekly 2077_43)",
                             "verbatim": True,
                         },
                         {
@@ -1018,7 +1009,7 @@ async def test_ansi_error(
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*Image*\nRecommended (Weekly 2077_43)",
+                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
                             "verbatim": True,
                         },
                     ],
@@ -1027,7 +1018,7 @@ async def test_ansi_error(
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": "*Node*\nsome-node",
+                        "text": "*Node*\nNode1",
                         "verbatim": True,
                     },
                 },
