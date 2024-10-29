@@ -296,14 +296,11 @@ class NotebookRunner(NubladoBusiness):
 
             for cell in self.read_notebook(self._notebook):
                 code = "".join(cell["source"])
-                if "id" in cell:
-                    cell_id = f'`{cell["id"]}` (#{cell["_index"]})'
-                else:
-                    cell_id = f'#{cell["_index"]}'
+                cell_id = cell.get("id") or cell["_index"]
                 ctx = CodeContext(
                     notebook=self._notebook.name,
                     path=str(self._notebook),
-                    cell=cell["id"],
+                    cell=cell_id,
                     cell_number=f"#{cell['_index']}",
                     cell_source=code,
                 )
