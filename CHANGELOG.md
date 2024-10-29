@@ -6,6 +6,13 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-12.0.1'></a>
+## 12.0.1 (2024-10-29)
+
+### Bug fixes
+
+- cell["id"] is not always set: be more cautious
+
 <a id='changelog-12.0.0'></a>
 ## 12.0.0 (2024-10-28)
 
