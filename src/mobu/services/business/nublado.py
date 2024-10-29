@@ -10,17 +10,9 @@ from datetime import datetime, timedelta
 from random import SystemRandom
 from typing import Generic, TypeVar
 
+import rubin.nublado.client.exceptions as ne
 from httpx import AsyncClient
 from rubin.nublado.client import JupyterLabSession, NubladoClient
-from rubin.nublado.client.exceptions import (
-    CodeExecutionError as ClientCodeExecutionError,
-)
-from rubin.nublado.client.exceptions import (
-    JupyterProtocolError as ClientJupyterProtocolError,
-)
-from rubin.nublado.client.exceptions import (
-    JupyterWebError as ClientJupyterWebError,
-)
 from safir.datetime import current_datetime, format_datetime_for_logging
 from safir.slack.blockkit import SlackException
 from structlog.stdlib import BoundLogger
@@ -32,7 +24,6 @@ from ...exceptions import (
     JupyterSpawnError,
     JupyterTimeoutError,
     JupyterWebError,
-    MobuMixin,
 )
 from ...models.business.nublado import (
     NubladoBusinessData,
@@ -188,20 +179,14 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         try:
             await self._execute()
         except Exception as exc:
-            monkey = None
-            event = "execute_code"  # Fallback
-            if isinstance(exc, MobuMixin):
-                if exc.monkey:
-                    monkey = exc.monkey
-                if exc.event:
-                    event = exc.event
-            if isinstance(exc, ClientCodeExecutionError):
+            monkey = getattr(exc, "monkey", None)
+            event = getattr(exc, "event", "execute_code")
+            if isinstance(exc, ne.CodeExecutionError):
                 raise CodeExecutionError.from_client_exception(
                     exc,
                     monkey=monkey,
                     event=event,
                     annotations=self.annotations(),
-                    started_at=exc.started_at,
                 ) from exc
             raise
 
@@ -245,14 +230,14 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         with self.timings.start("hub_login", self.annotations()) as sw:
             try:
                 await self._client.auth_to_hub()
-            except ClientJupyterProtocolError as exc:
+            except ne.JupyterProtocolError as exc:
                 raise JupyterProtocolError.from_client_exception(
                     exc,
                     event=sw.event,
                     annotations=sw.annotations,
                     started_at=sw.start_time,
                 ) from exc
-            except ClientJupyterWebError as exc:
+            except ne.JupyterWebError as exc:
                 raise JupyterWebError.from_client_exception(
                     exc,
                     event=sw.event,
@@ -265,7 +250,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             timeout = self.options.spawn_timeout
             try:
                 await self._client.spawn_lab(self.options.image)
-            except ClientJupyterWebError as exc:
+            except ne.JupyterWebError as exc:
                 raise JupyterWebError.from_client_exception(
                     exc,
                     event=sw.event,
@@ -296,7 +281,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
                     event=sw.event,
                     started_at=sw.start_time,
                 ) from None
-            except ClientJupyterWebError as exc:
+            except ne.JupyterWebError as exc:
                 raise JupyterWebError.from_client_exception(
                     exc,
                     event=sw.event,
@@ -344,7 +329,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         with self.timings.start("lab_login", self.annotations()) as sw:
             try:
                 await self._client.auth_to_lab()
-            except ClientJupyterProtocolError as exc:
+            except ne.JupyterProtocolError as exc:
                 raise JupyterProtocolError.from_client_exception(
                     exc,
                     event=sw.event,
@@ -401,7 +386,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         with self.timings.start("delete_lab", self.annotations()) as sw:
             try:
                 await self._client.stop_lab()
-            except ClientJupyterWebError as exc:
+            except ne.JupyterWebError as exc:
                 raise JupyterWebError.from_client_exception(
                     exc,
                     event=sw.event,

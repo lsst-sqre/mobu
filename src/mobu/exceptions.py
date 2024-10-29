@@ -70,11 +70,6 @@ def _remove_ansi_escapes(string: str) -> str:
 class MobuMixin:
     """Mixin class to add `event` and `monkey` fields to Exception."""
 
-    def __init__(
-        self, event: str | None = None, monkey: str | None = None
-    ) -> None:
-        self.mobu_init()
-
     def mobu_init(
         self, event: str | None = None, monkey: str | None = None
     ) -> None:
@@ -221,13 +216,52 @@ class MobuSlackException(ne.NubladoClientSlackException, MobuMixin):
         self.mobu_init(monkey=monkey, event=event)
 
     @classmethod
-    def from_slack_exception(cls, exc: ne.NubladoClientSlackException) -> Self:
-        return cls(
+    def from_client_exception(
+        cls,
+        exc: ne.NubladoClientSlackException,
+        *,
+        started_at: datetime.datetime | None = None,
+        failed_at: datetime.datetime | None = None,
+        monkey: str | None = None,
+        event: str | None = None,
+        annotations: dict[str, str] | None = None,
+    ) -> Self:
+        """
+        Add Mobu-specific fields to exception from NubladoClient layer.
+
+        Parameters
+        ----------
+        exc
+            Original exception
+        started_at
+            Timestamp for beginning of operation that caused the exception,
+            if known.
+        failed_at
+            Timestamp for failure of operation that caused the exception,
+            if known (defaults to the current time).
+        monkey
+            Monkey spawning the lab, if known.
+        event
+            Event (from mobu's perspective) spawning the lab, if known.
+        annotations
+            Additional annotations
+
+        Returns
+        -------
+        MobuSlackException
+            Converted exception.
+        """
+        new_exc = cls(
             msg=exc.message,
             user=exc.user,
-            started_at=exc.started_at,
-            failed_at=exc.failed_at,
+            started_at=started_at or exc.started_at,
+            failed_at=failed_at or exc.failed_at,
+            event=event,
+            monkey=monkey,
         )
+        new_exc.annotations.update(exc.annotations or {})
+        new_exc.annotations.update(annotations or {})
+        return new_exc
 
     @override
     def common_fields(self) -> list[SlackBaseField]:
@@ -267,7 +301,7 @@ class MobuSlackException(ne.NubladoClientSlackException, MobuMixin):
 class MobuSlackWebException(
     ne.NubladoClientSlackWebException, MobuSlackException
 ):
-    """Represents an exception that can be reported to Slack.
+    """Represents a web exception that can be reported to Slack.
 
     Similar to `MobuSlackException`, this adds some additional fields to
     `~rubin.nublado.client.SlackWebException` but is otherwise equivalent. It
