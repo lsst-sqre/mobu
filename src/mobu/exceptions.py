@@ -498,7 +498,7 @@ class JupyterProtocolError(ne.JupyterProtocolError, MobuMixin):
             msg=exc.message,
             user=exc.user,
             started_at=started_at or exc.started_at,
-            failed_at=exc.failed_at or exc.failed_at,
+            failed_at=failed_at or exc.failed_at,
             monkey=monkey,
             event=event,
         )
