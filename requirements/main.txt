@@ -1004,9 +1004,9 @@ rpds-py==0.20.1 \
     # via
     #   jsonschema
     #   referencing
-rubin-nublado-client==8.0.1 \
-    --hash=sha256:8ba4a48d78ed905851223d4c0caa03a5a6daf52e4ec3fe008f7f1bfe0875c0c2 \
-    --hash=sha256:fe69641800ac3fc33575290ee3f9840eb891e3438175a792d14097974c9f55bb
+rubin-nublado-client==8.0.2 \
+    --hash=sha256:1b3c68891899beb6f9eb7a183f68d11849723061144f33d04f7f8e9a3f22f3de \
+    --hash=sha256:ef2e27d7ec44a0db4ad55e1ddc5968604e19cf614b13adcab21d73a5a6affa75
     # via -r requirements/main.in
 safir==6.5.1 \
     --hash=sha256:8c4b85f07e2343848f598bbcba832fec6725219c4234e2a05e97e5623347d6bf \
