@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
-from importlib import reload
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from textwrap import dedent
@@ -101,11 +100,7 @@ def test_filesystem() -> Iterator[Path]:
 def _enable_github_ci_app(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[None]:
-    """Enable the GitHub CI app functionality.
-
-    We need to reload the main module here because including the router is done
-    conditionally on module import.
-    """
+    """Enable the GitHub CI app functionality."""
     github_config = tmp_path / "github_ci_app_config.yaml"
     github_config.write_text(
         dedent("""
@@ -132,22 +127,12 @@ def _enable_github_ci_app(
     )
     monkeypatch.setattr(config, "github_ci_app_config_path", github_config)
 
-    reload(main)
-
-    yield
-
-    reload(main)
-
 
 @pytest.fixture
 def _enable_github_refresh_app(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[None]:
-    """Enable the GitHub refresh app functionality.
-
-    We need to reload the main module here because including the router is done
-    conditionally on module import.
-    """
+    """Enable the GitHub refresh app functionality."""
     github_config = tmp_path / "github_ci_app_refresh.yaml"
     github_config.write_text(
         dedent("""
@@ -166,12 +151,6 @@ def _enable_github_refresh_app(
         config, "github_refresh_app_config_path", github_config
     )
 
-    reload(main)
-
-    yield
-
-    reload(main)
-
 
 @pytest_asyncio.fixture
 async def app(jupyter: MockJupyter) -> AsyncIterator[FastAPI]:
@@ -189,8 +168,9 @@ async def app(jupyter: MockJupyter) -> AsyncIterator[FastAPI]:
     A tests in :file:`business/jupyterloginloop_test.py` depends on the exact
     shutdown timeout.
     """
-    async with LifespanManager(main.app, shutdown_timeout=10):
-        yield main.app
+    app = main.create_app()
+    async with LifespanManager(app, shutdown_timeout=10):
+        yield app
 
 
 @pytest.fixture

@@ -39,7 +39,7 @@ from .handlers.github_refresh_app import (
 from .handlers.internal import internal_router
 from .status import post_status
 
-__all__ = ["app", "lifespan"]
+__all__ = ["create_app", "lifespan"]
 
 
 @asynccontextmanager
@@ -89,47 +89,54 @@ configure_logging(
 if config.profile == Profile.production:
     configure_uvicorn_logging(config.log_level)
 
-app = FastAPI(
-    title="mobu",
-    description=metadata("mobu")["Summary"],
-    version=version("mobu"),
-    openapi_url=f"{config.path_prefix}/openapi.json",
-    docs_url=f"{config.path_prefix}/docs",
-    redoc_url=f"{config.path_prefix}/redoc",
-    lifespan=lifespan,
-)
-"""The main FastAPI application for mobu."""
 
-# Attach the routers.
-app.include_router(internal_router)
-app.include_router(external_router, prefix=config.path_prefix)
-
-if config.github_ci_app_config_path:
-    app.include_router(
-        github_ci_app_router, prefix=f"{config.path_prefix}/github/ci"
+def create_app() -> FastAPI:
+    """Create the main FastAPI application for mobu."""
+    app = FastAPI(
+        title="mobu",
+        description=metadata("mobu")["Summary"],
+        version=version("mobu"),
+        openapi_url=f"{config.path_prefix}/openapi.json",
+        docs_url=f"{config.path_prefix}/docs",
+        redoc_url=f"{config.path_prefix}/redoc",
+        lifespan=lifespan,
     )
 
-if config.github_refresh_app_config_path:
-    app.include_router(
-        github_refresh_app_router,
-        prefix=f"{config.path_prefix}/github/refresh",
-    )
+    # Attach the routers.
+    app.include_router(internal_router)
+    app.include_router(external_router, prefix=config.path_prefix)
 
-# Add middleware.
-app.add_middleware(XForwardedMiddleware)
+    if config.github_ci_app_config_path:
+        app.include_router(
+            github_ci_app_router, prefix=f"{config.path_prefix}/github/ci"
+        )
 
-# Enable Slack alerting for uncaught exceptions.
-if config.alert_hook:
-    logger = structlog.get_logger("mobu")
-    SlackRouteErrorHandler.initialize(str(config.alert_hook), "mobu", logger)
-    logger.debug("Initialized Slack webhook")
+    if config.github_refresh_app_config_path:
+        app.include_router(
+            github_refresh_app_router,
+            prefix=f"{config.path_prefix}/github/refresh",
+        )
 
-# Enable the generic exception handler for client errors.
-app.exception_handler(ClientRequestError)(client_request_error_handler)
+    # Add middleware.
+    app.add_middleware(XForwardedMiddleware)
+
+    # Enable Slack alerting for uncaught exceptions.
+    if config.alert_hook:
+        logger = structlog.get_logger("mobu")
+        SlackRouteErrorHandler.initialize(
+            str(config.alert_hook), "mobu", logger
+        )
+        logger.debug("Initialized Slack webhook")
+
+    # Enable the generic exception handler for client errors.
+    app.exception_handler(ClientRequestError)(client_request_error_handler)
+
+    return app
 
 
 def create_openapi() -> str:
     """Create the OpenAPI spec for static documentation."""
+    app = create_app()
     return json.dumps(
         get_openapi(
             title=app.title,

@@ -68,5 +68,5 @@ You can run mobu locally while having all of the actual business run against ser
       # Don't set MOBU_GITHUB_CONFIG_PATH if you don't need any of the GitHub integrations.
       export MOBU_GITHUB_CONFIG_PATH="$ci_config_path"
 
-      uvicorn mobu.main:app 2>&1
+      uvicorn mobu.main:create_app 2>&1
 
