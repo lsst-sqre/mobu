@@ -6,6 +6,7 @@ from datetime import timedelta
 from pathlib import Path
 
 __all__ = [
+    "CONFIGURATION_PATH",
     "GITHUB_REPO_CONFIG_PATH",
     "GITHUB_WEBHOOK_WAIT_SECONDS",
     "NOTEBOOK_REPO_BRANCH",
@@ -15,6 +16,8 @@ __all__ = [
     "WEBSOCKET_OPEN_TIMEOUT",
 ]
 
+CONFIGURATION_PATH = Path("/etc/mobu/config.yaml")
+"""Default path to configuration."""
 
 GITHUB_REPO_CONFIG_PATH = Path("mobu.yaml")
 """The path to a config file with repo-specific configuration."""

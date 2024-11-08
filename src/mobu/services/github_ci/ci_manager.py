@@ -12,7 +12,7 @@ from httpx import AsyncClient
 from safir.github import GitHubAppClientFactory
 from structlog.stdlib import BoundLogger
 
-from ...config import config
+from ...dependencies.config import config_dependency
 from ...models.ci_manager import CiManagerSummary, CiWorkerSummary
 from ...models.user import User
 from ...storage.gafaelfawr import GafaelfawrStorage
@@ -78,6 +78,7 @@ class CiManager:
         gafaelfawr_storage: GafaelfawrStorage,
         logger: BoundLogger,
     ) -> None:
+        self._config = config_dependency.config
         self._scopes = scopes
         self._users = users
         self._gafaelfawr = gafaelfawr_storage
@@ -242,7 +243,7 @@ class CiManager:
         )
 
         check_run = await storage.create_check_run(
-            name=f"Mobu ({config.environment_url})",
+            name=f"Mobu ({self._config.environment_url})",
             summary="Waiting for Mobu to run...",
         )
 

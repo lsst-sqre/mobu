@@ -9,10 +9,10 @@ from gidgethub.sansio import Event
 from safir.github.webhooks import GitHubPushEventModel
 from safir.slack.webhook import SlackRouteErrorHandler
 
+from ..config import Configuration
 from ..constants import GITHUB_WEBHOOK_WAIT_SECONDS
+from ..dependencies.config import config_dependency
 from ..dependencies.context import RequestContext, anonymous_context_dependency
-from ..dependencies.github import github_refresh_app_config_dependency
-from ..github_config import GitHubRefreshAppConfig
 
 __all__ = ["api_router"]
 
@@ -32,28 +32,27 @@ gidgethub_router = routing.Router()
 )
 async def post_webhook(
     context: Annotated[RequestContext, Depends(anonymous_context_dependency)],
-    refresh_app_config: Annotated[
-        GitHubRefreshAppConfig,
-        Depends(github_refresh_app_config_dependency),
-    ],
+    config: Annotated[Configuration, Depends(config_dependency)],
 ) -> None:
     """Process GitHub webhook events for the mobu refresh GitHub app.
 
     Rejects webhooks from organizations that are not explicitly allowed via the
     mobu config. This should be exposed via a Gafaelfawr anonymous ingress.
     """
-    webhook_secret = refresh_app_config.webhook_secret
+    if config.github_refresh_app is None:
+        raise RuntimeError("GitHub refresh app configuration is missing")
+    webhook_secret = config.github_refresh_app.webhook_secret
     body = await context.request.body()
     event = Event.from_http(
         context.request.headers, body, secret=webhook_secret
     )
 
     owner = event.data.get("organization", {}).get("login")
-    if owner not in refresh_app_config.accepted_github_orgs:
+    if owner not in config.github_refresh_app.accepted_github_orgs:
         context.logger.debug(
             "Ignoring GitHub event for unaccepted org",
             owner=owner,
-            accepted_orgs=refresh_app_config.accepted_github_orgs,
+            accepted_orgs=config.github_refresh_app.accepted_github_orgs,
         )
         raise HTTPException(
             status_code=403,

@@ -1,0 +1,18 @@
+slackAlerts: true
+environmentUrl: "https://example.com"
+availableServices:
+  - some_service
+  - some_other_service
+githubCiApp:
+  users:
+    - username: bot-mobu-unittest-1
+    - username: bot-mobu-unittest-2
+  acceptedGithubOrgs:
+    - org1
+    - org2
+    - lsst-sqre
+  scopes:
+    - "exec:notebook"
+    - "exec:portal"
+    - "read:image"
+    - "read:tap"

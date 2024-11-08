@@ -11,8 +11,8 @@ from pydantic import BaseModel, Field, ValidationError
 from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
 
-from ..config import config
 from ..constants import TOKEN_LIFETIME, USERNAME_REGEX
+from ..dependencies.config import config_dependency
 from ..exceptions import GafaelfawrParseError, GafaelfawrWebError
 from ..models.user import AuthenticatedUser, User
 
@@ -82,10 +82,11 @@ class GafaelfawrStorage:
     def __init__(self, http_client: AsyncClient, logger: BoundLogger) -> None:
         self._client = http_client
         self._logger = logger
+        self._config = config_dependency.config
 
-        if not config.environment_url:
+        if not self._config.environment_url:
             raise RuntimeError("environment_url not set")
-        base_url = str(config.environment_url).rstrip("/")
+        base_url = str(self._config.environment_url).rstrip("/")
         self._token_url = base_url + "/auth/api/v1/tokens"
 
     async def create_service_token(
@@ -131,7 +132,9 @@ class GafaelfawrStorage:
             # a better way to do this.
             r = await self._client.post(
                 self._token_url,
-                headers={"Authorization": f"Bearer {config.gafaelfawr_token}"},
+                headers={
+                    "Authorization": f"Bearer {self._config.gafaelfawr_token}"
+                },
                 json=json.loads(request.model_dump_json(exclude_none=True)),
             )
             r.raise_for_status()
