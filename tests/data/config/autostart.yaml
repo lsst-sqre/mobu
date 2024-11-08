@@ -1,0 +1,32 @@
+slackAlerts: true
+environmentUrl: "https://example.com"
+availableServices:
+  - some_service
+  - some_other_service
+autostart:
+  - name: basic
+    count: 10
+    user_spec:
+      username_prefix: bot-mobu-testuser
+      uid_start: 1000
+      gid_start: 2000
+    scopes: ["exec:notebook"]
+    business:
+      type: EmptyLoop
+  - name: python
+    count: 2
+    users:
+      - username: bot-mobu-python
+        uidnumber: 60000
+      - username: bot-mobu-otherpython
+        uidnumber: 70000
+    scopes: ["exec:notebook"]
+    restart: true
+    business:
+      type: NubladoPythonLoop
+      restart: True
+      options:
+        image:
+          image_class: latest-weekly
+          size: Large
+        spawn_settle_time: 0

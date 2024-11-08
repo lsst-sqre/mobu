@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import asyncio
 
-import yaml
 from aiojobs import Scheduler
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
-from ..config import config
+from ..dependencies.config import config_dependency
 from ..exceptions import FlockNotFoundError
 from ..models.flock import FlockConfig, FlockSummary
 from ..storage.gafaelfawr import GafaelfawrStorage
@@ -41,6 +40,7 @@ class FlockManager:
         http_client: AsyncClient,
         logger: BoundLogger,
     ) -> None:
+        self._config = config_dependency.config
         self._gafaelfawr = gafaelfawr_storage
         self._http_client = http_client
         self._logger = logger
@@ -59,14 +59,7 @@ class FlockManager:
         This function should be called from the startup hook of the FastAPI
         application.
         """
-        if not config.autostart:
-            return
-        with config.autostart.open("r") as f:
-            autostart = yaml.safe_load(f)
-        flock_configs = [
-            FlockConfig.model_validate(flock) for flock in autostart
-        ]
-        for flock_config in flock_configs:
+        for flock_config in self._config.autostart:
             await self.start_flock(flock_config)
 
     async def start_flock(self, flock_config: FlockConfig) -> Flock:

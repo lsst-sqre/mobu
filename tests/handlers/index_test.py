@@ -5,12 +5,13 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
-from mobu.config import config
+from mobu.dependencies.config import config_dependency
 
 
 @pytest.mark.asyncio
 async def test_get_index(client: AsyncClient) -> None:
     """Test ``GET /mobu/``."""
+    config = config_dependency.config
     response = await client.get("/mobu/")
     assert response.status_code == 200
     data = response.json()

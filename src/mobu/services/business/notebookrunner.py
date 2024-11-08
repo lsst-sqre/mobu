@@ -21,8 +21,8 @@ from rubin.nublado.client import JupyterLabSession
 from rubin.nublado.client.models import CodeContext
 from structlog.stdlib import BoundLogger
 
-from ...config import config
 from ...constants import GITHUB_REPO_CONFIG_PATH
+from ...dependencies.config import config_dependency
 from ...exceptions import NotebookRepositoryError, RepositoryConfigError
 from ...models.business.notebookrunner import (
     ListNotebookRunnerOptions,
@@ -62,6 +62,7 @@ class NotebookRunner(NubladoBusiness):
         logger: BoundLogger,
     ) -> None:
         super().__init__(options, user, http_client, logger)
+        self._config = config_dependency.config
         self._notebook: Path | None = None
         self._notebook_paths: list[Path] | None = None
         self._repo_dir: Path | None = None
@@ -155,7 +156,7 @@ class NotebookRunner(NubladoBusiness):
         """
         metadata = self.read_notebook_metadata(notebook)
         missing_services = (
-            metadata.required_services - config.available_services
+            metadata.required_services - self._config.available_services
         )
         if missing_services:
             msg = "Environment does not provide required services for notebook"

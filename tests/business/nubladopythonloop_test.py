@@ -17,7 +17,7 @@ from rubin.nublado.client.testing import (
 )
 from safir.testing.slack import MockSlackWebhook
 
-from mobu.config import config
+from mobu.dependencies.config import config_dependency
 
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
@@ -183,6 +183,7 @@ async def test_hub_failed(
     slack: MockSlackWebhook,
     respx_mock: respx.Router,
 ) -> None:
+    config = config_dependency.config
     mock_gafaelfawr(respx_mock)
     jupyter.fail("bot-mobu-testuser2", JupyterAction.SPAWN)
 
@@ -268,6 +269,7 @@ async def test_redirect_loop(
     slack: MockSlackWebhook,
     respx_mock: respx.Router,
 ) -> None:
+    config = config_dependency.config
     mock_gafaelfawr(respx_mock)
     jupyter.redirect_loop = True
 

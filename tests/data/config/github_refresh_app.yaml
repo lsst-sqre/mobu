@@ -1,0 +1,10 @@
+slackAlerts: true
+environmentUrl: "https://example.com"
+availableServices:
+  - some_service
+  - some_other_service
+githubRefreshApp:
+  acceptedGithubOrgs:
+    - org1
+    - org2
+    - lsst-sqre

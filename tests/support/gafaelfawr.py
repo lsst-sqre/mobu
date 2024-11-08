@@ -12,7 +12,7 @@ import respx
 from httpx import Request, Response
 from safir.datetime import current_datetime
 
-from mobu.config import config
+from mobu.dependencies.config import config_dependency
 
 __all__ = ["make_gafaelfawr_token", "mock_gafaelfawr"]
 
@@ -47,6 +47,7 @@ def mock_gafaelfawr(
     Optionally verifies that the username and UID provided to Gafaelfawr are
     correct.
     """
+    config = config_dependency.config
     scopes = scopes or ["exec:notebook"]
     admin_token = config.gafaelfawr_token
     assert admin_token

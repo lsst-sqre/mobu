@@ -15,7 +15,7 @@ from safir.slack.blockkit import SlackException, SlackMessage, SlackTextField
 from safir.slack.webhook import SlackWebhookClient
 from structlog.stdlib import BoundLogger
 
-from ..config import config
+from ..dependencies.config import config_dependency
 from ..exceptions import MobuMixin
 from ..models.business.base import BusinessConfig
 from ..models.business.empty import EmptyLoopConfig
@@ -69,6 +69,7 @@ class Monkey:
         http_client: AsyncClient,
         logger: BoundLogger,
     ) -> None:
+        self._config = config_dependency.config
         self._name = name
         self._flock = flock
         self._restart = business_config.restart
@@ -117,9 +118,9 @@ class Monkey:
             raise TypeError(msg)
 
         self._slack = None
-        if config.alert_hook:
+        if self._config.slack_alerts and self._config.alert_hook:
             self._slack = SlackWebhookClient(
-                str(config.alert_hook), "Mobu", self._global_logger
+                str(self._config.alert_hook), "Mobu", self._global_logger
             )
 
     async def alert(self, exc: Exception) -> None:
@@ -283,7 +284,7 @@ class Monkey:
         logger.setLevel(self._log_level.value)
         logger.addHandler(file_handler)
         logger.propagate = False
-        if config.profile == Profile.development:
+        if self._config.profile == Profile.development:
             stream_handler = logging.StreamHandler(stream=sys.stdout)
             stream_handler.setFormatter(formatter)
             logger.addHandler(stream_handler)

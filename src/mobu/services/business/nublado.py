@@ -17,7 +17,7 @@ from safir.datetime import current_datetime, format_datetime_for_logging
 from safir.slack.blockkit import SlackException
 from structlog.stdlib import BoundLogger
 
-from ...config import config
+from ...dependencies.config import config_dependency
 from ...exceptions import (
     CodeExecutionError,
     JupyterProtocolError,
@@ -111,6 +111,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
     ) -> None:
         super().__init__(options, user, http_client, logger)
 
+        config = config_dependency.config
         if not config.environment_url:
             raise RuntimeError("environment_url not set")
         environment_url = str(config.environment_url).rstrip("/")

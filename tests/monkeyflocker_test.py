@@ -14,10 +14,10 @@ import pytest
 from click.testing import CliRunner
 from safir.testing.uvicorn import UvicornProcess, spawn_uvicorn
 
-from mobu.config import config
+from mobu.dependencies.config import config_dependency
 from monkeyflocker.cli import main
 
-from .support.gafaelfawr import make_gafaelfawr_token
+from .support.config import config_path
 
 FLOCK_CONFIG = """
 name: basic
@@ -31,28 +31,27 @@ business:
 
 
 @pytest.fixture
-def monkeyflocker_app(
-    tmp_path: Path, test_filesystem: Path, environment_url: str
-) -> Iterator[UvicornProcess]:
+def monkeyflocker_app(tmp_path: Path) -> Iterator[UvicornProcess]:
     """Run the application as a separate process for monkeyflocker access."""
+    config = config_dependency.config
+    assert config.gafaelfawr_token
     assert config.environment_url
-    config.gafaelfawr_token = make_gafaelfawr_token()
     uvicorn = spawn_uvicorn(
         working_directory=tmp_path,
         factory="tests.support.monkeyflocker:create_app",
         env={
-            "MOBU_ENVIRONMENT_URL": str(config.environment_url),
             "MOBU_GAFAELFAWR_TOKEN": config.gafaelfawr_token,
+            "MOBU_CONFIG_PATH": str(config_path("base")),
         },
     )
     yield uvicorn
-    config.gafaelfawr_token = None
     uvicorn.process.terminate()
 
 
 def test_start_report_refresh_stop(
     tmp_path: Path, monkeyflocker_app: UvicornProcess
 ) -> None:
+    config = config_dependency.config
     runner = CliRunner()
     spec_path = tmp_path / "spec.yaml"
     spec_path.write_text(FLOCK_CONFIG)
