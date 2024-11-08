@@ -28,6 +28,8 @@ monkeyflocker = "monkeyflocker.cli:main"
 [project.urls]
 Homepage = "https://mobu.lsst.io"
 Source = "https://github.com/lsst-sqre/mobu"
+"Change log" = "https://mobu.lsst.io/changelog.html"
+"Issue tracker" = "https://github.com/lsst-sqre/mobu/issues"
 
 [build-system]
 requires = ["setuptools>=61", "wheel", "setuptools_scm[toml]>=6.2"]

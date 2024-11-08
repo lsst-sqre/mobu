@@ -7,6 +7,11 @@
    development/index
    api
 
+.. toctree::
+   :hidden:
+
+   changelog
+
 ####
 Mobu
 ####
