@@ -6,6 +6,13 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-13.0.0'></a>
+## 13.0.0 (2024-11-12)
+
+### Backwards-incompatible changes
+
+- All app config, including autostart config (and excluding secrets, which still come from env vars) now comes from a single YAML file, provisioned by a single `ConfigMap` in Phalanx.
+
 <a id='changelog-12.0.2'></a>
 ## 12.0.2 (2024-10-31)
 
