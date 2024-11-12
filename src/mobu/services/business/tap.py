@@ -12,7 +12,7 @@ import requests
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
-from ...config import config
+from ...dependencies.config import config_dependency
 from ...exceptions import CodeExecutionError, TAPClientError
 from ...models.business.tap import TAPBusinessData, TAPBusinessOptions
 from ...models.user import AuthenticatedUser
@@ -145,6 +145,7 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
         pyvo.dal.TAPService
             TAP client object.
         """
+        config = config_dependency.config
         if not config.environment_url:
             raise RuntimeError("environment_url not set")
         tap_url = str(config.environment_url).rstrip("/") + "/api/tap"

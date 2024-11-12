@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from safir.slack.blockkit import SlackMessage
 
-from .config import config
+from .dependencies.config import config_dependency
 from .dependencies.context import context_dependency
 from .factory import Factory
 
@@ -18,6 +18,7 @@ async def post_status() -> None:
     clear that mobu is alive, but a secondary benefit is to provide some
     summary statistics.
     """
+    config = config_dependency.config
     process_context = context_dependency.process_context
     factory = Factory(process_context)
     slack = factory.create_slack_webhook_client()

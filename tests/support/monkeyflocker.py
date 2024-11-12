@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request, Response
 from rubin.nublado.client.testing import mock_jupyter
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from mobu.main import app
+from mobu.main import create_app as main_create_app
 
 from .constants import TEST_BASE_URL
 from .gafaelfawr import mock_gafaelfawr
@@ -45,5 +45,6 @@ def create_app() -> FastAPI:
     respx.start()
     mock_gafaelfawr(respx.mock)
     mock_jupyter(respx.mock, base_url=TEST_BASE_URL, user_dir=Path())
+    app = main_create_app()
     app.add_middleware(AddAuthHeaderMiddleware)
     return app

@@ -43,6 +43,6 @@ In :samp:`applications/mobu/values-{env}.yaml`, add a ``config.githubRefreshApp`
 
 All of these items are required.
 
-``accepted_github_orgs``
+``acceptedGithubOrgs``
     A list of GitHub organizations from which this instance of Mobu will accept webhook requests.
     Webhook requests from any orgs not in this list will get a ``403`` response.

@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from safir.slack.webhook import SlackWebhookClient
 from structlog.stdlib import BoundLogger
 
-from .config import config
+from .dependencies.config import config_dependency
 from .models.solitary import SolitaryConfig
 from .services.manager import FlockManager
 from .services.solitary import Solitary
@@ -68,6 +68,7 @@ class Factory:
     ) -> None:
         self._context = context
         self._logger = logger if logger else structlog.get_logger("mobu")
+        self._config = config_dependency.config
 
     def create_slack_webhook_client(self) -> SlackWebhookClient | None:
         """Create a Slack webhook client if configured for Slack alerting.
@@ -78,9 +79,11 @@ class Factory:
             Newly-created Slack client, or `None` if Slack alerting is not
             configured.
         """
-        if not config.alert_hook:
-            return None
-        return SlackWebhookClient(str(config.alert_hook), "Mobu", self._logger)
+        if self._config.slack_alerts and self._config.alert_hook:
+            return SlackWebhookClient(
+                str(self._config.alert_hook), "Mobu", self._logger
+            )
+        return None
 
     def create_solitary(self, solitary_config: SolitaryConfig) -> Solitary:
         """Create a runner for a solitary monkey.

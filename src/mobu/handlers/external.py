@@ -12,7 +12,9 @@ from safir.metadata import get_metadata
 from safir.models import ErrorModel
 from safir.slack.webhook import SlackRouteErrorHandler
 
-from ..config import config
+from mobu.config import Configuration
+
+from ..dependencies.config import config_dependency
 from ..dependencies.context import RequestContext, context_dependency
 from ..dependencies.github import maybe_ci_manager_dependency
 from ..models.flock import FlockConfig, FlockData, FlockSummary
@@ -49,7 +51,9 @@ class FormattedJSONResponse(JSONResponse):
     response_model_exclude_none=True,
     summary="Application metadata",
 )
-async def get_index() -> Index:
+async def get_index(
+    config: Annotated[Configuration, Depends(config_dependency)],
+) -> Index:
     metadata = get_metadata(
         package_name="mobu",
         application_name=config.name,

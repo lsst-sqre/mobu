@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
-from importlib import reload
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from textwrap import dedent
 from unittest.mock import DEFAULT, patch
 
 import pytest
@@ -18,7 +16,6 @@ import structlog
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from pydantic import HttpUrl
 from rubin.nublado.client import NubladoClient
 from rubin.nublado.client.models import User
 from rubin.nublado.client.testing import (
@@ -31,10 +28,11 @@ from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 from structlog.stdlib import BoundLogger
 
 from mobu import main
-from mobu.config import config
+from mobu.dependencies.config import config_dependency
 from mobu.services.business.gitlfs import GitLFSBusiness
 from mobu.services.business.nublado import _GET_IMAGE, _GET_NODE
 
+from .support.config import config_path
 from .support.constants import (
     TEST_BASE_URL,
     TEST_GITHUB_CI_APP_PRIVATE_KEY,
@@ -72,7 +70,7 @@ def configured_logger() -> BoundLogger:
 
 
 @pytest.fixture(autouse=True)
-def _configure(environment_url: str) -> Iterator[None]:
+def _configure(environment_url: str, monkeypatch: pytest.MonkeyPatch) -> None:
     """Set minimal configuration settings.
 
     Add an environment URL for testing purposes and create a Gafaelfawr admin
@@ -82,13 +80,8 @@ def _configure(environment_url: str) -> Iterator[None]:
     minimal test configuration and a unique admin token that is replaced after
     the test runs.
     """
-    config.environment_url = HttpUrl(environment_url)
-    config.gafaelfawr_token = make_gafaelfawr_token()
-    config.available_services = {"some_service", "some_other_service"}
-    yield
-    config.environment_url = None
-    config.gafaelfawr_token = None
-    config.available_services = set()
+    monkeypatch.setenv("MOBU_GAFAELFAWR_TOKEN", make_gafaelfawr_token())
+    config_dependency.set_path(config_path("base"))
 
 
 @pytest.fixture
@@ -101,28 +94,7 @@ def test_filesystem() -> Iterator[Path]:
 def _enable_github_ci_app(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[None]:
-    """Enable the GitHub CI app functionality.
-
-    We need to reload the main module here because including the router is done
-    conditionally on module import.
-    """
-    github_config = tmp_path / "github_ci_app_config.yaml"
-    github_config.write_text(
-        dedent("""
-          users:
-            - username: bot-mobu-unittest-1
-            - username: bot-mobu-unittest-2
-          accepted_github_orgs:
-            - org1
-            - org2
-            - lsst-sqre
-          scopes:
-            - "exec:notebook"
-            - "exec:portal"
-            - "read:image"
-            - "read:tap"
-    """)
-    )
+    """Enable the GitHub CI app functionality."""
     monkeypatch.setenv("MOBU_GITHUB_CI_APP_ID", "1")
     monkeypatch.setenv(
         "MOBU_GITHUB_CI_APP_WEBHOOK_SECRET", TEST_GITHUB_CI_APP_SECRET
@@ -130,47 +102,27 @@ def _enable_github_ci_app(
     monkeypatch.setenv(
         "MOBU_GITHUB_CI_APP_PRIVATE_KEY", TEST_GITHUB_CI_APP_PRIVATE_KEY
     )
-    monkeypatch.setattr(config, "github_ci_app_config_path", github_config)
-
-    reload(main)
+    config_dependency.set_path(config_path("github_ci_app"))
 
     yield
 
-    reload(main)
+    config_dependency.set_path(config_path("base"))
 
 
 @pytest.fixture
 def _enable_github_refresh_app(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[None]:
-    """Enable the GitHub refresh app functionality.
-
-    We need to reload the main module here because including the router is done
-    conditionally on module import.
-    """
-    github_config = tmp_path / "github_ci_app_refresh.yaml"
-    github_config.write_text(
-        dedent("""
-          accepted_github_orgs:
-            - org1
-            - org2
-            - lsst-sqre
-    """)
-    )
+    """Enable the GitHub refresh app functionality."""
     monkeypatch.setenv("MOBU_GITHUB_REFRESH_APP_ID", "1")
     monkeypatch.setenv(
         "MOBU_GITHUB_REFRESH_APP_WEBHOOK_SECRET",
         TEST_GITHUB_REFRESH_APP_SECRET,
     )
-    monkeypatch.setattr(
-        config, "github_refresh_app_config_path", github_config
-    )
-
-    reload(main)
-
+    config_dependency.set_path(config_path("github_refresh_app"))
     yield
 
-    reload(main)
+    config_dependency.set_path(config_path("base"))
 
 
 @pytest_asyncio.fixture
@@ -189,8 +141,9 @@ async def app(jupyter: MockJupyter) -> AsyncIterator[FastAPI]:
     A tests in :file:`business/jupyterloginloop_test.py` depends on the exact
     shutdown timeout.
     """
-    async with LifespanManager(main.app, shutdown_timeout=10):
-        yield main.app
+    app = main.create_app()
+    async with LifespanManager(app, shutdown_timeout=10):
+        yield app
 
 
 @pytest.fixture
@@ -279,10 +232,13 @@ def jupyter(
 
 
 @pytest.fixture
-def slack(respx_mock: respx.Router) -> Iterator[MockSlackWebhook]:
-    config.alert_hook = HttpUrl("https://slack.example.com/XXXX")
-    yield mock_slack_webhook(str(config.alert_hook), respx_mock)
-    config.alert_hook = None
+def slack(
+    respx_mock: respx.Router, monkeypatch: pytest.MonkeyPatch
+) -> MockSlackWebhook:
+    alert_hook = "https://slack.example.com/XXXX"
+    monkeypatch.setenv("MOBU_ALERT_HOOK", alert_hook)
+    config_dependency.set_path(config_path("base"))
+    return mock_slack_webhook(alert_hook, respx_mock)
 
 
 @pytest.fixture

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from pathlib import Path
 from unittest.mock import ANY
 
 import pytest
@@ -11,51 +10,20 @@ import respx
 from httpx import AsyncClient
 from rubin.nublado.client.testing import MockJupyter
 
-from mobu.config import config
+from mobu.dependencies.config import config_dependency
 
+from .support.config import config_path
 from .support.gafaelfawr import mock_gafaelfawr
 from .support.util import wait_for_flock_start
 
-AUTOSTART_CONFIG = """
-- name: basic
-  count: 10
-  user_spec:
-    username_prefix: bot-mobu-testuser
-    uid_start: 1000
-    gid_start: 2000
-  scopes: ["exec:notebook"]
-  business:
-    type: EmptyLoop
-- name: python
-  count: 2
-  users:
-    - username: bot-mobu-python
-      uidnumber: 60000
-    - username: bot-mobu-otherpython
-      uidnumber: 70000
-  scopes: ["exec:notebook"]
-  restart: true
-  business:
-    type: NubladoPythonLoop
-    restart: True
-    options:
-      image:
-        image_class: latest-weekly
-        size: Large
-      spawn_settle_time: 0
-"""
-
 
 @pytest.fixture(autouse=True)
-def _configure_autostart(
-    tmp_path: Path, respx_mock: respx.Router
-) -> Iterator[None]:
+def _configure_autostart(respx_mock: respx.Router) -> Iterator[None]:
     """Set up the autostart configuration."""
+    config_dependency.set_path(config_path("autostart"))
     mock_gafaelfawr(respx_mock, any_uid=True)
-    config.autostart = tmp_path / "autostart.yaml"
-    config.autostart.write_text(AUTOSTART_CONFIG)
     yield
-    config.autostart = None
+    config_dependency.set_path(config_path("base"))
 
 
 @pytest.mark.asyncio
