@@ -23,7 +23,7 @@ pyvo<1.6
 pyyaml
 #rubin-nublado-client@git+https://github.com/lsst-sqre/nublado@tickets/DM-47277#subdirectory=client
 rubin.nublado.client>=8.0.2
-safir>=6.5.1
+safir>=7.0.0
 shortuuid
 structlog
 websockets
