@@ -6,6 +6,13 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-13.0.1'></a>
+## 13.0.1 (2024-11-19)
+
+### Bug fixes
+
+- Adopt Nublado client that should fix the XSRF issues.
+
 <a id='changelog-13.0.0'></a>
 ## 13.0.0 (2024-11-12)
 
