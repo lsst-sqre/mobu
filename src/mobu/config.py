@@ -11,6 +11,7 @@ from pydantic import AliasChoices, Field, HttpUrl
 from pydantic.alias_generators import to_camel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from safir.logging import LogLevel, Profile
+from safir.metrics import MetricsConfiguration, metrics_configuration_factory
 
 from mobu.models.flock import FlockConfig
 
@@ -235,6 +236,11 @@ class Configuration(BaseSettings):
     log_level: LogLevel = Field(
         LogLevel.INFO,
         title="Log level of the application's logger",
+    )
+
+    metrics: MetricsConfiguration = Field(
+        default_factory=metrics_configuration_factory,
+        title="Metrics configuration",
     )
 
     github_ci_app: GitHubCiAppConfig | None = Field(

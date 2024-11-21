@@ -36,7 +36,7 @@ You can use https://smee.io to proxy GitHub webhook requests from the data-dev M
        pyyaml
       -safir>=5.0.0
       +# safir>=5.0.0
-      +-e /home/danfuchs/src/safir
+      +-e /home/danfuchs/src/safir/safir
        shortuuid
        structlog
 

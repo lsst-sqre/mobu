@@ -5,14 +5,19 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
+from typing import cast
 from unittest.mock import ANY
 
 import pytest
 import respx
+from anys import AnySearch
 from httpx import AsyncClient
 from rubin.nublado.client.testing import MockJupyter
+from safir.metrics import NOT_NONE, MockEventPublisher
 from safir.testing.slack import MockSlackWebhook
 
+from mobu.events import NotebookCellExecution, NotebookExecution
+from mobu.events import events_dependency as ed
 from mobu.storage.git import Git
 
 from ..support.constants import TEST_DATA_DIR
@@ -110,6 +115,50 @@ async def test_run(
 
     # Make sure mobu ran all of the notebooks it thinks it should have
     assert "Done with this cycle of notebooks" in r.text
+
+    # Check events
+    common = {
+        "business": "bot-mobu-testuser1",
+        "duration": NOT_NONE,
+        "flock": "test",
+        "notebook": AnySearch(r"test-notebook.ipynb$"),
+        "repo": AnySearch("/notebooks$"),
+        "repo_ref": "main",
+        "success": True,
+        "username": "bot-mobu-testuser1",
+    }
+    pub_notebook = cast(
+        MockEventPublisher[NotebookExecution], ed.events.notebook_execution
+    ).published
+    pub_notebook.assert_published_all([common])
+
+    pub_cell = cast(
+        MockEventPublisher[NotebookCellExecution],
+        ed.events.notebook_cell_execution,
+    ).published
+    pub_cell.assert_published_all(
+        [
+            item | common
+            for item in [
+                {
+                    "cell_id": "f84f0959",
+                    "contents": 'print("This is a test")',
+                },
+                {
+                    "cell_id": "44ada997",
+                    "contents": 'print("This is another test")',
+                },
+                {
+                    "cell_id": "53a941a4",
+                    "contents": 'print("Final test")',
+                },
+                {
+                    "cell_id": "823560c6",
+                    "contents": "",
+                },
+            ]
+        ]
+    )
 
 
 @pytest.mark.asyncio
@@ -279,6 +328,46 @@ async def test_run_recursive(
 
     # Make sure mobu ran all of the notebooks it thinks it should have
     assert "Done with this cycle of notebooks" in r.text
+
+    # Check events
+    common = {
+        "business": "bot-mobu-testuser1",
+        "duration": NOT_NONE,
+        "flock": "test",
+        "repo": AnySearch("/notebooks$"),
+        "repo_ref": "main",
+        "success": True,
+        "username": "bot-mobu-testuser1",
+    }
+    published = cast(
+        MockEventPublisher[NotebookExecution], ed.events.notebook_execution
+    ).published
+    published.assert_published_all(
+        [
+            item | common
+            for item in [
+                {
+                    "notebook": AnySearch(
+                        r"/some-other-dir/test-some-other-dir.ipynb$"
+                    ),
+                },
+                {
+                    "notebook": AnySearch(
+                        r"/some-dir/test-some-dir-notebook.ipynb$"
+                    ),
+                },
+                {
+                    "notebook": AnySearch(r"/test-notebook.ipynb$"),
+                },
+                {
+                    "notebook": AnySearch(
+                        r"/some-other-dir/nested-dir/double-nested-dir/test-double-nested-dir.ipynb$"
+                    ),
+                },
+            ]
+        ],
+        any_order=True,
+    )
 
 
 @pytest.mark.asyncio
@@ -946,3 +1035,33 @@ async def test_alert(
     ]
     error = slack.messages[0]["attachments"][0]["blocks"][0]["text"]["text"]
     assert "KeyError: 'nothing'" in error
+
+    # Check events
+    common = {
+        "business": "bot-mobu-testuser1",
+        "duration": None,
+        "flock": "test",
+        "notebook": AnySearch(r"/exception.ipynb"),
+        "repo": AnySearch(r"/notebooks"),
+        "repo_ref": "main",
+        "username": "bot-mobu-testuser1",
+    }
+    pub_notebook = cast(
+        MockEventPublisher[NotebookExecution], ed.events.notebook_execution
+    ).published
+    pub_notebook.assert_published_all([{"success": True} | common])
+
+    pub_cell = cast(
+        MockEventPublisher[NotebookCellExecution],
+        ed.events.notebook_cell_execution,
+    ).published
+    pub_cell.assert_published_all(
+        [
+            common
+            | {
+                "cell_id": "ed399c0a",
+                "contents": 'foo = {"bar": "baz"}\nfoo["nothing"]',
+                "success": False,
+            }
+        ]
+    )

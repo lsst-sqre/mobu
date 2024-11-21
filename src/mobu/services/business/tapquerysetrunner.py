@@ -40,8 +40,10 @@ class TAPQuerySetRunner(TAPBusiness):
         user: AuthenticatedUser,
         http_client: AsyncClient,
         logger: BoundLogger,
+        monkey: str,
+        flock: str | None,
     ) -> None:
-        super().__init__(options, user, http_client, logger)
+        super().__init__(options, user, http_client, logger, monkey, flock)
         self._random = SystemRandom()
 
         # Load templates and parameters. The path has to be specified in two

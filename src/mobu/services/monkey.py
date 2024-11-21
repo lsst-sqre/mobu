@@ -91,27 +91,57 @@ class Monkey:
         self.business: Business
         if isinstance(business_config, EmptyLoopConfig):
             self.business = EmptyLoop(
-                business_config.options, user, self._http_client, self._logger
+                business_config.options,
+                user,
+                self._http_client,
+                self._logger,
+                self._name,
+                self._flock,
             )
         elif isinstance(business_config, GitLFSConfig):
             self.business = GitLFSBusiness(
-                business_config.options, user, self._http_client, self._logger
+                business_config.options,
+                user,
+                self._http_client,
+                self._logger,
+                self._name,
+                self._flock,
             )
         elif isinstance(business_config, NubladoPythonLoopConfig):
             self.business = NubladoPythonLoop(
-                business_config.options, user, self._http_client, self._logger
+                business_config.options,
+                user,
+                self._http_client,
+                self._logger,
+                self._name,
+                self._flock,
             )
         elif isinstance(business_config, NotebookRunnerConfig):
             self.business = NotebookRunner(
-                business_config.options, user, self._http_client, self._logger
+                business_config.options,
+                user,
+                self._http_client,
+                self._logger,
+                self._name,
+                self._flock,
             )
         elif isinstance(business_config, TAPQueryRunnerConfig):
             self.business = TAPQueryRunner(
-                business_config.options, user, self._http_client, self._logger
+                business_config.options,
+                user,
+                self._http_client,
+                self._logger,
+                self._name,
+                self._flock,
             )
         elif isinstance(business_config, TAPQuerySetRunnerConfig):
             self.business = TAPQuerySetRunner(
-                business_config.options, user, self._http_client, self._logger
+                business_config.options,
+                user,
+                self._http_client,
+                self._logger,
+                self._name,
+                self._flock,
             )
         else:
             msg = f"Unknown business config {business_config}"

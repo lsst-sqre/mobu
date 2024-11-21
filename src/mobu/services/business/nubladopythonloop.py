@@ -6,10 +6,14 @@ over again.
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from httpx import AsyncClient
 from rubin.nublado.client import JupyterLabSession
 from structlog.stdlib import BoundLogger
 
+from ...events import NubladoPythonExecution
+from ...events import events_dependency as ed
 from ...models.business.nubladopythonloop import NubladoPythonLoopOptions
 from ...models.user import AuthenticatedUser
 from .nublado import NubladoBusiness
@@ -38,14 +42,45 @@ class NubladoPythonLoop(NubladoBusiness):
         user: AuthenticatedUser,
         http_client: AsyncClient,
         logger: BoundLogger,
+        monkey: str,
+        flock: str | None,
     ) -> None:
-        super().__init__(options, user, http_client, logger)
+        super().__init__(options, user, http_client, logger, monkey, flock)
 
     async def execute_code(self, session: JupyterLabSession) -> None:
         code = self.options.code
         for _count in range(self.options.max_executions):
-            with self.timings.start("execute_code", self.annotations()):
-                reply = await session.run_python(code)
+            with self.timings.start("execute_code", self.annotations()) as sw:
+                try:
+                    reply = await session.run_python(code)
+                except:
+                    await self._publish_failure(code=code)
+                    raise
             self.logger.info(f"{code} -> {reply}")
+            await self._publish_success(code=code, duration=sw.elapsed)
             if not await self.execution_idle():
                 break
+
+    async def _publish_success(self, code: str, duration: timedelta) -> None:
+        await ed.events.nublado_python_execution.publish(
+            NubladoPythonExecution(
+                flock=self.flock,
+                business=self.monkey,
+                username=self.user.username,
+                duration=duration,
+                code=code,
+                success=True,
+            )
+        )
+
+    async def _publish_failure(self, code: str) -> None:
+        await ed.events.nublado_python_execution.publish(
+            NubladoPythonExecution(
+                flock=self.flock,
+                business=self.monkey,
+                username=self.user.username,
+                duration=None,
+                code=code,
+                success=False,
+            )
+        )

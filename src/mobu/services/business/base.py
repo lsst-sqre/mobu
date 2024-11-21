@@ -87,6 +87,8 @@ class Business(Generic[T], metaclass=ABCMeta):
         user: AuthenticatedUser,
         http_client: AsyncClient,
         logger: BoundLogger,
+        monkey: str,
+        flock: str | None,
     ) -> None:
         self.options = options
         self.user = user
@@ -98,6 +100,8 @@ class Business(Generic[T], metaclass=ABCMeta):
         self.control: Queue[BusinessCommand] = Queue()
         self.stopping = False
         self.refreshing = False
+        self.monkey = monkey
+        self.flock = flock
 
     # Methods that should be overridden by child classes if needed.
 

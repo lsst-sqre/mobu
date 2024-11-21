@@ -13,6 +13,8 @@ from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from ...dependencies.config import config_dependency
+from ...events import TapQuery
+from ...events import events_dependency as ed
 from ...exceptions import CodeExecutionError, TAPClientError
 from ...models.business.tap import TAPBusinessData, TAPBusinessOptions
 from ...models.user import AuthenticatedUser
@@ -49,8 +51,10 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
         user: AuthenticatedUser,
         http_client: AsyncClient,
         logger: BoundLogger,
+        monkey: str,
+        flock: str | None,
     ) -> None:
-        super().__init__(options, user, http_client, logger)
+        super().__init__(options, user, http_client, logger, monkey, flock)
         self._running_query: str | None = None
         self._client: pyvo.dal.TAPService | None = None
         self._pool = ThreadPoolExecutor(max_workers=1)
@@ -74,11 +78,13 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
         with self.timings.start("execute_query", {"query": query}) as sw:
             self._running_query = query
 
+            success = False
             try:
                 if self.options.sync:
                     await self.run_sync_query(query)
                 else:
                     await self.run_async_query(query)
+                success = True
             except Exception as e:
                 raise CodeExecutionError(
                     user=self.user.username,
@@ -88,6 +94,18 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
                     started_at=sw.start_time,
                     error=f"{type(e).__name__}: {e!s}",
                 ) from e
+            finally:
+                await ed.events.tap_query.publish(
+                    payload=TapQuery(
+                        flock=self.flock,
+                        business=self.monkey,
+                        username=self.user.username,
+                        success=success,
+                        duration=sw.elapsed,
+                        sync=self.options.sync,
+                        query=query,
+                    )
+                )
 
             self._running_query = None
             elapsed = sw.elapsed.total_seconds()
