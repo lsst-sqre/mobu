@@ -337,4 +337,7 @@ async def test_shutdown(
         ],
         num_queued=2,
     )
-    assert summary in (expected_summary1, expected_summary2)
+    assert summary.model_dump(mode="json") in (
+        expected_summary1.model_dump(mode="json"),
+        expected_summary2.model_dump(mode="json"),
+    )
