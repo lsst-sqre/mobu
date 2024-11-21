@@ -27,6 +27,7 @@ from .asyncio import schedule_periodic
 from .dependencies.config import config_dependency
 from .dependencies.context import context_dependency
 from .dependencies.github import ci_manager_dependency
+from .events import events_dependency
 from .handlers.external import external_router
 from .handlers.github_ci_app import api_router as github_ci_app_router
 from .handlers.github_refresh_app import (
@@ -48,6 +49,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         raise RuntimeError("MOBU_GAFAELFAWR_TOKEN was not set")
 
     await context_dependency.initialize()
+
+    event_manager = config.metrics.make_manager(
+        logger=context_dependency.process_context.logger
+    )
+    await event_manager.initialize()
+    await events_dependency.initialize(event_manager)
+
     await context_dependency.process_context.manager.autostart()
 
     status_interval = timedelta(days=1)

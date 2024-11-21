@@ -27,16 +27,20 @@ class TAPQueryRunner(TAPBusiness):
         Shared HTTP client for general web access.
     logger
         Logger to use to report the results of business.
+    flock
+        Flock that is running this business, if it is running in a flock.
     """
 
     def __init__(
         self,
+        *,
         options: TAPQueryRunnerOptions,
         user: AuthenticatedUser,
         http_client: AsyncClient,
         logger: BoundLogger,
+        flock: str | None,
     ) -> None:
-        super().__init__(options, user, http_client, logger)
+        super().__init__(options, user, http_client, logger, flock)
         self._random = SystemRandom()
 
     def get_next_query(self) -> str:

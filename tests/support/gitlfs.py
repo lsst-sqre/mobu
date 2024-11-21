@@ -3,6 +3,7 @@
 from contextlib import suppress
 from pathlib import Path
 
+from mobu.events import GitLfsCheck
 from mobu.exceptions import ComparisonError, SubprocessError
 from mobu.services.business.gitlfs import GitLFSBusiness
 from mobu.storage.git import Git
@@ -37,7 +38,9 @@ async def uninstall_git_lfs(
         await git.lfs("uninstall", scope)
 
 
-async def no_git_lfs_data(self: GitLFSBusiness, git: Git) -> None:
+async def no_git_lfs_data(
+    self: GitLFSBusiness, git: Git, event: GitLfsCheck
+) -> None:
     pass
 
 

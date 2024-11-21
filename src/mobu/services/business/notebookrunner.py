@@ -11,6 +11,7 @@ import random
 import shutil
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
@@ -21,8 +22,12 @@ from rubin.nublado.client import JupyterLabSession
 from rubin.nublado.client.models import CodeContext
 from structlog.stdlib import BoundLogger
 
+from mobu.services.business.base import CommonEventAttrs
+
 from ...constants import GITHUB_REPO_CONFIG_PATH
 from ...dependencies.config import config_dependency
+from ...events import NotebookCellExecution, NotebookExecution
+from ...events import events_dependency as ed
 from ...exceptions import NotebookRepositoryError, RepositoryConfigError
 from ...models.business.notebookrunner import (
     ListNotebookRunnerOptions,
@@ -39,6 +44,12 @@ from .nublado import NubladoBusiness
 __all__ = ["NotebookRunner"]
 
 
+class CommonNotebookEventAttrs(CommonEventAttrs):
+    notebook: str
+    repo: str
+    repo_ref: str
+
+
 class NotebookRunner(NubladoBusiness):
     """Start a Jupyter lab and run a sequence of notebooks.
 
@@ -52,16 +63,20 @@ class NotebookRunner(NubladoBusiness):
         Shared HTTP client for general web access.
     logger
         Logger to use to report the results of business.
+    flock
+        Flock that is running this business, if it is running in a flock.
     """
 
     def __init__(
         self,
+        *,
         options: NotebookRunnerOptions | ListNotebookRunnerOptions,
         user: AuthenticatedUser,
         http_client: AsyncClient,
         logger: BoundLogger,
+        flock: str | None,
     ) -> None:
-        super().__init__(options, user, http_client, logger)
+        super().__init__(options, user, http_client, logger, flock)
         self._config = config_dependency.config
         self._notebook: Path | None = None
         self._notebook_paths: list[Path] | None = None
@@ -295,25 +310,86 @@ class NotebookRunner(NubladoBusiness):
             msg = f"Notebook {self._notebook.name} iteration {iteration}"
             self.logger.info(msg)
 
-            for cell in self.read_notebook(self._notebook):
-                code = "".join(cell["source"])
-                cell_id = cell.get("id") or cell["_index"]
-                ctx = CodeContext(
-                    notebook=self._notebook.name,
-                    path=str(self._notebook),
-                    cell=cell_id,
-                    cell_number=f"#{cell['_index']}",
-                    cell_source=code,
-                )
-                await self.execute_cell(session, code, cell_id, ctx)
-                if not await self.execution_idle():
-                    break
+            with self.timings.start(
+                "execute_notebook", self.annotations(str(self._notebook))
+            ) as sw:
+                try:
+                    for cell in self.read_notebook(self._notebook):
+                        code = "".join(cell["source"])
+                        cell_id = cell.get("id") or cell["_index"]
+                        ctx = CodeContext(
+                            notebook=self._notebook.name,
+                            path=str(self._notebook),
+                            cell=cell_id,
+                            cell_number=f"#{cell['_index']}",
+                            cell_source=code,
+                        )
+                        await self.execute_cell(session, code, cell_id, ctx)
+                        if not await self.execution_idle():
+                            break
+                except:
+                    await self._publish_notebook_failure()
+                    raise
 
             self.logger.info(f"Success running notebook {self._notebook.name}")
+            await self._publish_notebook_success(sw.elapsed)
             if not self._notebook_paths:
                 self.logger.info("Done with this cycle of notebooks")
             if self.stopping:
                 break
+
+    async def _publish_notebook_success(self, duration: timedelta) -> None:
+        await ed.events.notebook_execution.publish(
+            NotebookExecution(
+                **self.common_notebook_event_attrs(),
+                duration=duration,
+                success=True,
+            )
+        )
+
+    async def _publish_notebook_failure(self) -> None:
+        await ed.events.notebook_execution.publish(
+            NotebookExecution(
+                **self.common_notebook_event_attrs(),
+                duration=None,
+                success=True,
+            )
+        )
+
+    async def _publish_cell_success(
+        self, *, cell_id: str, contents: str, duration: timedelta
+    ) -> None:
+        await ed.events.notebook_cell_execution.publish(
+            NotebookCellExecution(
+                **self.common_notebook_event_attrs(),
+                duration=duration,
+                success=True,
+                cell_id=cell_id,
+                contents=contents,
+            )
+        )
+
+    async def _publish_cell_failure(
+        self, *, cell_id: str, contents: str
+    ) -> None:
+        await ed.events.notebook_cell_execution.publish(
+            NotebookCellExecution(
+                **self.common_notebook_event_attrs(),
+                duration=None,
+                success=False,
+                cell_id=cell_id,
+                contents=contents,
+            )
+        )
+
+    def common_notebook_event_attrs(self) -> CommonNotebookEventAttrs:
+        """Return notebook event attrs with the other common attrs."""
+        return {
+            **self.common_event_attrs(),
+            "repo": self.options.repo_url,
+            "repo_ref": self.options.repo_ref,
+            "notebook": str(self._notebook),
+        }
 
     async def execute_cell(
         self,
@@ -325,11 +401,22 @@ class NotebookRunner(NubladoBusiness):
         if not self._notebook:
             raise RuntimeError("Executing a cell without a notebook")
         self.logger.info(f"Executing cell {cell_id}:\n{code}\n")
-        with self.timings.start("execute_cell", self.annotations(cell_id)):
+        with self.timings.start(
+            "execute_cell", self.annotations(cell_id)
+        ) as sw:
             self._running_code = code
-            reply = await session.run_python(code, context=context)
+            try:
+                reply = await session.run_python(code, context=context)
+            except:
+                await self._publish_cell_failure(
+                    cell_id=cell_id, contents=code
+                )
+                raise
             self._running_code = None
         self.logger.info(f"Result:\n{reply}\n")
+        await self._publish_cell_success(
+            cell_id=cell_id, contents=code, duration=sw.elapsed
+        )
 
     def dump(self) -> NotebookRunnerData:
         return NotebookRunnerData(

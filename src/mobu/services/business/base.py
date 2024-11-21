@@ -8,7 +8,7 @@ from asyncio import Queue, QueueEmpty
 from collections.abc import AsyncIterable, AsyncIterator
 from datetime import timedelta
 from enum import Enum
-from typing import Generic, TypeVar
+from typing import Generic, TypedDict, TypeVar
 
 from httpx import AsyncClient
 from safir.datetime import current_datetime
@@ -23,6 +23,12 @@ T = TypeVar("T", bound="BusinessOptions")
 U = TypeVar("U")
 
 __all__ = ["Business"]
+
+
+class CommonEventAttrs(TypedDict):
+    flock: str | None
+    username: str
+    business: str
 
 
 class BusinessCommand(Enum):
@@ -59,6 +65,8 @@ class Business(Generic[T], metaclass=ABCMeta):
         Shared HTTP client.
     logger
         Logger to use to report the results of business.
+    flock
+        Flock that is running this business, if it is running in a flock.
 
     Attributes
     ----------
@@ -79,14 +87,18 @@ class Business(Generic[T], metaclass=ABCMeta):
         Execution timings.
     stopping
         Whether `stop` has been called and further execution should stop.
+    flock
+        Flock that is running this business, if it is running in a flock.
     """
 
     def __init__(
         self,
+        *,
         options: T,
         user: AuthenticatedUser,
         http_client: AsyncClient,
         logger: BoundLogger,
+        flock: str | None,
     ) -> None:
         self.options = options
         self.user = user
@@ -98,6 +110,7 @@ class Business(Generic[T], metaclass=ABCMeta):
         self.control: Queue[BusinessCommand] = Queue()
         self.stopping = False
         self.refreshing = False
+        self.flock = flock
 
     # Methods that should be overridden by child classes if needed.
 
@@ -306,6 +319,14 @@ class Business(Generic[T], metaclass=ABCMeta):
             refreshing=self.refreshing,
             timings=self.timings.dump(),
         )
+
+    def common_event_attrs(self) -> CommonEventAttrs:
+        """Attributes that are on every published event."""
+        return {
+            "flock": self.flock,
+            "username": self.user.username,
+            "business": self.__class__.__name__,
+        }
 
     async def _pause_no_return(self, interval: timedelta) -> None:
         """Pause for up to an interval, handling commands.
