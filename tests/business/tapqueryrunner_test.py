@@ -2,19 +2,25 @@
 
 from __future__ import annotations
 
+from typing import cast
 from unittest.mock import ANY, patch
 
 import pytest
 import pyvo
 import respx
 from httpx import AsyncClient
+from safir.metrics import NOT_NONE, MockEventPublisher
+
+from mobu.events import Events
 
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
 
 
 @pytest.mark.asyncio
-async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
+async def test_run(
+    client: AsyncClient, respx_mock: respx.Router, events: Events
+) -> None:
     mock_gafaelfawr(respx_mock)
     queries = [
         "SELECT TOP 10 * FROM TAP_SCHEMA.tables",
@@ -68,3 +74,17 @@ async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
                 found = True
         assert found, "Ran one of the appropriate queries"
         assert "Query finished after " in r.text
+
+        published = cast(MockEventPublisher, events.tap_query).published
+        published.assert_published_all(
+            [
+                {
+                    "business": "TAPQueryRunner",
+                    "duration": NOT_NONE,
+                    "flock": "test",
+                    "success": True,
+                    "sync": True,
+                    "username": "bot-mobu-testuser1",
+                }
+            ]
+        )

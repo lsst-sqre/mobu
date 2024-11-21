@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from typing import cast
 from unittest.mock import ANY
 from urllib.parse import urljoin
 
@@ -15,9 +16,11 @@ from rubin.nublado.client.testing import (
     JupyterState,
     MockJupyter,
 )
+from safir.metrics import NOT_NONE, MockEventPublisher
 from safir.testing.slack import MockSlackWebhook
 
 from mobu.dependencies.config import config_dependency
+from mobu.events import Events
 
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
@@ -25,7 +28,10 @@ from ..support.util import wait_for_business
 
 @pytest.mark.asyncio
 async def test_run(
-    client: AsyncClient, jupyter: MockJupyter, respx_mock: respx.Router
+    client: AsyncClient,
+    jupyter: MockJupyter,
+    respx_mock: respx.Router,
+    events: Events,
 ) -> None:
     mock_gafaelfawr(
         respx_mock, username="bot-mobu-testuser1", uid=1000, gid=1000
@@ -83,6 +89,52 @@ async def test_run(
 
     r = await client.delete("/mobu/flocks/test")
     assert r.status_code == 204
+
+    # Check events
+    publisher = cast(MockEventPublisher, events.nublado_python_execution)
+    published = publisher.published
+    published.assert_published_all(
+        [
+            {
+                "business": "NubladoPythonLoop",
+                "code": 'print(2+2, end="")',
+                "duration": NOT_NONE,
+                "flock": "test",
+                "success": True,
+                "username": "bot-mobu-testuser1",
+            },
+            {
+                "business": "NubladoPythonLoop",
+                "code": 'print(2+2, end="")',
+                "duration": NOT_NONE,
+                "flock": "test",
+                "success": True,
+                "username": "bot-mobu-testuser1",
+            },
+            {
+                "business": "NubladoPythonLoop",
+                "code": 'print(2+2, end="")',
+                "duration": NOT_NONE,
+                "flock": "test",
+                "success": True,
+                "username": "bot-mobu-testuser1",
+            },
+        ]
+    )
+
+    publisher = cast(MockEventPublisher, events.nublado_spawn_lab)
+    published = publisher.published
+    published.assert_published_all(
+        [
+            {
+                "business": "NubladoPythonLoop",
+                "duration": NOT_NONE,
+                "flock": "test",
+                "success": True,
+                "username": "bot-mobu-testuser1",
+            }
+        ]
+    )
 
 
 @pytest.mark.asyncio
@@ -182,6 +234,7 @@ async def test_hub_failed(
     jupyter: MockJupyter,
     slack: MockSlackWebhook,
     respx_mock: respx.Router,
+    events: Events,
 ) -> None:
     config = config_dependency.config
     mock_gafaelfawr(respx_mock)
@@ -260,6 +313,28 @@ async def test_hub_failed(
             ]
         }
     ]
+
+    # Check events
+    publisher = cast(MockEventPublisher, events.nublado_spawn_lab)
+    published = publisher.published
+    published.assert_published_all(
+        [
+            {
+                "business": "NubladoPythonLoop",
+                "duration": NOT_NONE,
+                "flock": "test",
+                "success": False,
+                "username": "bot-mobu-testuser2",
+            },
+            {
+                "business": "NubladoPythonLoop",
+                "duration": NOT_NONE,
+                "flock": "test",
+                "success": True,
+                "username": "bot-mobu-testuser1",
+            },
+        ]
+    )
 
 
 @pytest.mark.asyncio
@@ -598,7 +673,10 @@ async def test_delete_timeout(
 
 @pytest.mark.asyncio
 async def test_code_exception(
-    client: AsyncClient, slack: MockSlackWebhook, respx_mock: respx.Router
+    client: AsyncClient,
+    slack: MockSlackWebhook,
+    respx_mock: respx.Router,
+    events: Events,
 ) -> None:
     mock_gafaelfawr(respx_mock)
 
@@ -707,6 +785,22 @@ async def test_code_exception(
     ]
     error = slack.messages[0]["attachments"][0]["blocks"][0]["text"]["text"]
     assert "Exception: some error" in error
+
+    # Check events
+    publisher = cast(MockEventPublisher, events.nublado_python_execution)
+    published = publisher.published
+    published.assert_published_all(
+        [
+            {
+                "business": "NubladoPythonLoop",
+                "code": 'raise Exception("some error")',
+                "duration": None,
+                "flock": "test",
+                "success": False,
+                "username": "bot-mobu-testuser1",
+            }
+        ]
+    )
 
 
 @pytest.mark.asyncio

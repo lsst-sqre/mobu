@@ -11,6 +11,7 @@ from httpx import AsyncClient
 from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
 
+from ..events import Events
 from ..exceptions import MonkeyNotFoundError
 from ..models.business.notebookrunner import (
     NotebookRunnerConfig,
@@ -37,6 +38,8 @@ class Flock:
         Gafaelfawr storage client.
     http_client
         Shared HTTP client.
+    events
+        Event publishers.
     logger
         Global logger.
     """
@@ -48,6 +51,7 @@ class Flock:
         scheduler: Scheduler,
         gafaelfawr_storage: GafaelfawrStorage,
         http_client: AsyncClient,
+        events: Events,
         logger: BoundLogger,
     ) -> None:
         self.name = flock_config.name
@@ -55,6 +59,7 @@ class Flock:
         self._scheduler = scheduler
         self._gafaelfawr = gafaelfawr_storage
         self._http_client = http_client
+        self._events = events
         self._logger = logger.bind(flock=self.name)
         self._monkeys: dict[str, Monkey] = {}
         self._start_time: datetime | None = None
@@ -161,6 +166,7 @@ class Flock:
             business_config=self._config.business,
             user=user,
             http_client=self._http_client,
+            events=self._events,
             logger=self._logger,
         )
 

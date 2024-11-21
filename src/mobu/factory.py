@@ -8,6 +8,7 @@ from safir.slack.webhook import SlackWebhookClient
 from structlog.stdlib import BoundLogger
 
 from .dependencies.config import config_dependency
+from .events import Events
 from .models.solitary import SolitaryConfig
 from .services.manager import FlockManager
 from .services.solitary import Solitary
@@ -26,6 +27,8 @@ class ProcessContext:
     ----------
     http_client
         Shared HTTP client.
+    events
+        Event publishers.
 
     Attributes
     ----------
@@ -33,15 +36,22 @@ class ProcessContext:
         Shared HTTP client.
     manager
         Manager for all running flocks.
+    events
+        Object with attributes for all metrics event publishers.
     """
 
-    def __init__(self, http_client: AsyncClient) -> None:
+    def __init__(self, http_client: AsyncClient, events: Events) -> None:
         self.http_client = http_client
         self.logger = structlog.get_logger("mobu")
         self.gafaelfawr = GafaelfawrStorage(self.http_client, self.logger)
+        self.events = events
         self.manager = FlockManager(
-            self.gafaelfawr, self.http_client, self.logger
+            gafaelfawr_storage=self.gafaelfawr,
+            http_client=self.http_client,
+            logger=self.logger,
+            events=self.events,
         )
+        self.events = events
 
     async def aclose(self) -> None:
         """Clean up a process context.
@@ -104,6 +114,7 @@ class Factory:
                 self._context.http_client, self._logger
             ),
             http_client=self._context.http_client,
+            events=self._context.events,
             logger=self._logger,
         )
 

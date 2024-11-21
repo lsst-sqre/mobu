@@ -13,8 +13,10 @@ from fastapi import Depends, Request
 from safir.dependencies.gafaelfawr import auth_logger_dependency
 from safir.dependencies.http_client import http_client_dependency
 from safir.dependencies.logger import logger_dependency
+from safir.metrics import EventManager
 from structlog.stdlib import BoundLogger
 
+from ..events import Events
 from ..factory import Factory, ProcessContext
 from ..services.manager import FlockManager
 
@@ -87,12 +89,15 @@ class ContextDependency:
             raise RuntimeError("ContextDependency not initialized")
         return self._process_context
 
-    async def initialize(self) -> None:
+    async def initialize(self, event_manager: EventManager) -> None:
         """Initialize the process-wide shared context."""
         if self._process_context:
             await self._process_context.aclose()
         http_client = await http_client_dependency()
-        self._process_context = ProcessContext(http_client)
+        events = Events()
+        self._process_context = ProcessContext(http_client, events)
+        event_manager.logger = self.process_context.logger
+        await events.initialize(event_manager)
 
     async def aclose(self) -> None:
         """Clean up the per-process configuration."""

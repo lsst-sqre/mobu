@@ -9,6 +9,7 @@ from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from ..dependencies.config import config_dependency
+from ..events import Events
 from ..exceptions import FlockNotFoundError
 from ..models.flock import FlockConfig, FlockSummary
 from ..storage.gafaelfawr import GafaelfawrStorage
@@ -30,19 +31,24 @@ class FlockManager:
         Gafaelfawr storage client.
     http_client
         Shared HTTP client.
+    events
+        Event publishers.
     logger
         Global logger to use for process-wide (not monkey) logging.
     """
 
     def __init__(
         self,
+        *,
         gafaelfawr_storage: GafaelfawrStorage,
         http_client: AsyncClient,
+        events: Events,
         logger: BoundLogger,
     ) -> None:
         self._config = config_dependency.config
         self._gafaelfawr = gafaelfawr_storage
         self._http_client = http_client
+        self._events = events
         self._logger = logger
         self._flocks: dict[str, Flock] = {}
         self._scheduler = Scheduler(limit=1000, pending_limit=0)
@@ -80,6 +86,7 @@ class FlockManager:
             scheduler=self._scheduler,
             gafaelfawr_storage=self._gafaelfawr,
             http_client=self._http_client,
+            events=self._events,
             logger=self._logger,
         )
         if flock.name in self._flocks:

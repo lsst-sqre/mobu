@@ -13,9 +13,11 @@ import structlog
 import yaml
 from httpx import AsyncClient
 from safir.dependencies.http_client import http_client_dependency
+from safir.metrics import NOT_NONE, MockEventPublisher
 from safir.testing.slack import MockSlackWebhook
 
 import mobu
+from mobu.events import Events
 from mobu.models.business.tapquerysetrunner import TAPQuerySetRunnerOptions
 from mobu.models.user import AuthenticatedUser
 from mobu.services.business.tapquerysetrunner import TAPQuerySetRunner
@@ -25,7 +27,9 @@ from ..support.util import wait_for_business
 
 
 @pytest.mark.asyncio
-async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
+async def test_run(
+    client: AsyncClient, respx_mock: respx.Router, events: Events
+) -> None:
     mock_gafaelfawr(respx_mock)
 
     with patch.object(pyvo.dal, "TAPService"):
@@ -67,6 +71,21 @@ async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
         assert r.status_code == 200
         assert "Running (sync): " in r.text
         assert "Query finished after " in r.text
+
+    # Confirm metrics events
+    published = cast(MockEventPublisher, events.tap_query).published
+    published.assert_published_all(
+        [
+            {
+                "business": "TAPQuerySetRunner",
+                "duration": NOT_NONE,
+                "flock": "test",
+                "success": True,
+                "sync": True,
+                "username": "bot-mobu-testuser1",
+            }
+        ]
+    )
 
 
 @pytest.mark.asyncio
@@ -146,8 +165,11 @@ async def test_setup_error(
 
 
 @pytest.mark.asyncio
-async def test_alert(
-    client: AsyncClient, slack: MockSlackWebhook, respx_mock: respx.Router
+async def test_failure(
+    client: AsyncClient,
+    slack: MockSlackWebhook,
+    respx_mock: respx.Router,
+    events: Events,
 ) -> None:
     mock_gafaelfawr(respx_mock)
 
@@ -169,6 +191,21 @@ async def test_alert(
         # Wait until we've finished at least one loop and check the results.
         data = await wait_for_business(client, "bot-mobu-testuser1")
         assert data["business"]["failure_count"] == 1
+
+    # Confirm metrics events
+    published = cast(MockEventPublisher, events.tap_query).published
+    published.assert_published_all(
+        [
+            {
+                "business": "TAPQuerySetRunner",
+                "duration": NOT_NONE,
+                "flock": "test",
+                "success": False,
+                "sync": True,
+                "username": "bot-mobu-testuser1",
+            }
+        ]
+    )
 
     assert slack.messages == [
         {
@@ -238,7 +275,7 @@ async def test_alert(
 
 
 @pytest.mark.asyncio
-async def test_random_object() -> None:
+async def test_random_object(events: Events) -> None:
     for query_set in ("dp0.1", "dp0.2"):
         params_path = (
             Path(mobu.__file__).parent
@@ -257,7 +294,14 @@ async def test_random_object() -> None:
         options = TAPQuerySetRunnerOptions(query_set=query_set)
         http_client = await http_client_dependency()
         with patch.object(pyvo.dal, "TAPService"):
-            runner = TAPQuerySetRunner(options, user, http_client, logger)
+            runner = TAPQuerySetRunner(
+                options=options,
+                user=user,
+                http_client=http_client,
+                events=events,
+                logger=logger,
+                flock=None,
+            )
         parameters = runner._generate_parameters()
 
         assert parameters["object"] in objects

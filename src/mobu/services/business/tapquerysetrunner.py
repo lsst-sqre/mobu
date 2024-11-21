@@ -12,6 +12,7 @@ import yaml
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
+from ...events import Events
 from ...models.business.tapquerysetrunner import TAPQuerySetRunnerOptions
 from ...models.user import AuthenticatedUser
 from .tap import TAPBusiness
@@ -30,18 +31,32 @@ class TAPQuerySetRunner(TAPBusiness):
         User with their authentication token to use to run the business.
     http_client
         Shared HTTP client for general web access.
+    events
+        Event publishers.
     logger
         Logger to use to report the results of business.
+    flock
+        Flock that is running this business, if it is running in a flock.
     """
 
     def __init__(
         self,
+        *,
         options: TAPQuerySetRunnerOptions,
         user: AuthenticatedUser,
         http_client: AsyncClient,
+        events: Events,
         logger: BoundLogger,
+        flock: str | None,
     ) -> None:
-        super().__init__(options, user, http_client, logger)
+        super().__init__(
+            options=options,
+            user=user,
+            http_client=http_client,
+            events=events,
+            logger=logger,
+            flock=flock,
+        )
         self._random = SystemRandom()
 
         # Load templates and parameters. The path has to be specified in two

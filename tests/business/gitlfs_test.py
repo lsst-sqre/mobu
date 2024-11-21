@@ -1,10 +1,14 @@
 """Tests for GitLFS."""
 
+from typing import cast
 from unittest.mock import ANY
 
 import pytest
 import respx
 from httpx import AsyncClient
+from safir.metrics import NOT_NONE, MockEventPublisher
+
+from mobu.events import Events
 
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.gitlfs import flock_message
@@ -13,7 +17,10 @@ from ..support.util import wait_for_business
 
 @pytest.mark.asyncio
 async def test_run(
-    client: AsyncClient, respx_mock: respx.Router, gitlfs_mock: None
+    client: AsyncClient,
+    respx_mock: respx.Router,
+    gitlfs_mock: None,
+    events: Events,
 ) -> None:
     mock_gafaelfawr(respx_mock)
 
@@ -49,9 +56,24 @@ async def test_run(
     assert "Running Git-LFS check..." in r.text
     assert "Git-LFS check finished after " in r.text
 
+    published = cast(MockEventPublisher, events.git_lfs_check).published
+    published.assert_published_all(
+        [
+            {
+                "business": "GitLFSBusiness",
+                "duration": NOT_NONE,
+                "flock": "test",
+                "success": True,
+                "username": "bot-mobu-testuser1",
+            }
+        ]
+    )
+
 
 @pytest.mark.asyncio
-async def test_fail(client: AsyncClient, respx_mock: respx.Router) -> None:
+async def test_fail(
+    client: AsyncClient, respx_mock: respx.Router, events: Events
+) -> None:
     mock_gafaelfawr(respx_mock)
 
     # Because we are not mocking the LFS calls, this will fail because there
@@ -88,3 +110,16 @@ async def test_fail(client: AsyncClient, respx_mock: respx.Router) -> None:
     assert r.status_code == 200
     assert "Running Git-LFS check..." in r.text
     assert ("mobu.exceptions.SubprocessError") in r.text
+
+    published = cast(MockEventPublisher, events.git_lfs_check).published
+    published.assert_published_all(
+        [
+            {
+                "business": "GitLFSBusiness",
+                "duration": None,
+                "flock": "test",
+                "success": False,
+                "username": "bot-mobu-testuser1",
+            }
+        ]
+    )

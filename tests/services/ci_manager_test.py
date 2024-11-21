@@ -9,6 +9,7 @@ from httpx import AsyncClient
 from pydantic import HttpUrl
 from pytest_mock import MockerFixture
 
+from mobu.events import Events
 from mobu.models.ci_manager import (
     CiJobSummary,
     CiManagerSummary,
@@ -24,7 +25,7 @@ from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.github import GitHubMocker, MockJob
 
 
-def create_ci_manager(respx_mock: respx.Router) -> CiManager:
+def create_ci_manager(respx_mock: respx.Router, events: Events) -> CiManager:
     """Create a CiManger with appropriately mocked dependencies."""
     scopes = [
         "exec_notebook",
@@ -44,6 +45,7 @@ def create_ci_manager(respx_mock: respx.Router) -> CiManager:
     return CiManager(
         http_client=http_client,
         gafaelfawr_storage=gafaelfawr,
+        events=events,
         logger=logger,
         scopes=scopes,
         github_app_id=123,
@@ -60,6 +62,7 @@ async def setup_and_run_jobs(
     github_mocker: GitHubMocker,
     respx_mock: respx.Router,
     mocker: MockerFixture,
+    events: Events,
 ) -> None:
     """Create a CiManager, enqueue all jobs, wait for them all to be processed,
     wait for the manager to shut down.
@@ -68,9 +71,9 @@ async def setup_and_run_jobs(
         Business, "run_once", new=github_mocker.get_mock_run_function()
     )
 
-    ci_manager = create_ci_manager(respx_mock)
+    ci_manager = create_ci_manager(respx_mock, events)
     await ci_manager.start()
-    events: list[asyncio.Event] = []
+    aioevents: list[asyncio.Event] = []
     for job in jobs:
         lifecycle = await ci_manager.enqueue(
             installation_id=job.installation_id,
@@ -78,8 +81,8 @@ async def setup_and_run_jobs(
             repo_name=job.repo_name,
             ref=job.ref,
         )
-        events.append(lifecycle.processed)
-    await asyncio.gather(*[event.wait() for event in events])
+        aioevents.append(lifecycle.processed)
+    await asyncio.gather(*[event.wait() for event in aioevents])
     await ci_manager.aclose()
 
 
@@ -88,9 +91,9 @@ async def setup_and_run_jobs(
     "_enable_github_ci_app",
 )
 async def test_stops_on_empty_queue(
-    respx_mock: respx.Router,
+    respx_mock: respx.Router, events: Events
 ) -> None:
-    ci_manager = create_ci_manager(respx_mock)
+    ci_manager = create_ci_manager(respx_mock, events)
     await ci_manager.start()
     expected_summary = CiManagerSummary(
         workers=[
@@ -123,6 +126,7 @@ async def test_no_changed_files(
     respx_mock: respx.Router,
     github_mocker: GitHubMocker,
     mocker: MockerFixture,
+    events: Events,
 ) -> None:
     jobs = [
         github_mocker.job_no_changed_files(id="ref1"),
@@ -133,6 +137,7 @@ async def test_no_changed_files(
         github_mocker=github_mocker,
         mocker=mocker,
         respx_mock=respx_mock,
+        events=events,
     )
 
 
@@ -144,6 +149,7 @@ async def test_runs_jobs(
     respx_mock: respx.Router,
     github_mocker: GitHubMocker,
     mocker: MockerFixture,
+    events: Events,
 ) -> None:
     jobs = [
         github_mocker.job_processed_completely(id="ref1", should_fail=False),
@@ -161,6 +167,7 @@ async def test_runs_jobs(
         github_mocker=github_mocker,
         mocker=mocker,
         respx_mock=respx_mock,
+        events=events,
     )
 
 
@@ -172,6 +179,7 @@ async def test_shutdown(
     respx_mock: respx.Router,
     github_mocker: GitHubMocker,
     mocker: MockerFixture,
+    events: Events,
 ) -> None:
     """Test that all queued jobs conclude in GitHub during shutdown."""
     completed_jobs = [
@@ -201,7 +209,7 @@ async def test_shutdown(
         new=github_mocker.get_mock_run_function(blocking_jobs=True),
     )
 
-    ci_manager = create_ci_manager(respx_mock)
+    ci_manager = create_ci_manager(respx_mock, events)
     await ci_manager.start()
 
     completed_lifecycles = [
@@ -337,4 +345,7 @@ async def test_shutdown(
         ],
         num_queued=2,
     )
-    assert summary in (expected_summary1, expected_summary2)
+    assert summary.model_dump(mode="json") in (
+        expected_summary1.model_dump(mode="json"),
+        expected_summary2.model_dump(mode="json"),
+    )

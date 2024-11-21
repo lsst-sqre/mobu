@@ -47,7 +47,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if not config.gafaelfawr_token:
         raise RuntimeError("MOBU_GAFAELFAWR_TOKEN was not set")
 
-    await context_dependency.initialize()
+    event_manager = config.metrics.make_manager()
+    await event_manager.initialize()
+    await context_dependency.initialize(event_manager)
+
     await context_dependency.process_context.manager.autostart()
 
     status_interval = timedelta(days=1)

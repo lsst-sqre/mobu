@@ -13,6 +13,7 @@ from safir.github import GitHubAppClientFactory
 from structlog.stdlib import BoundLogger
 
 from ...dependencies.config import config_dependency
+from ...events import Events
 from ...models.ci_manager import CiManagerSummary, CiWorkerSummary
 from ...models.user import User
 from ...storage.gafaelfawr import GafaelfawrStorage
@@ -62,6 +63,8 @@ class CiManager:
         Shared HTTP client.
     gafaelfawr_storage
         Gafaelfawr storage client.
+    events
+        Event publishers.
     logger
         Global logger to use for process-wide (not monkey) logging.
     """
@@ -75,6 +78,7 @@ class CiManager:
         scopes: list[str],
         users: list[User],
         http_client: AsyncClient,
+        events: Events,
         gafaelfawr_storage: GafaelfawrStorage,
         logger: BoundLogger,
     ) -> None:
@@ -83,6 +87,7 @@ class CiManager:
         self._users = users
         self._gafaelfawr = gafaelfawr_storage
         self._http_client = http_client
+        self._events = events
         self._logger = logger.bind(ci_manager=True)
         self._scheduler: Scheduler = Scheduler()
         self._queue: Queue[QueueItem] = Queue()
@@ -251,6 +256,7 @@ class CiManager:
             github_storage=storage,
             check_run=check_run,
             http_client=self._http_client,
+            events=self._events,
             logger=self._logger,
             gafaelfawr_storage=self._gafaelfawr,
         )
