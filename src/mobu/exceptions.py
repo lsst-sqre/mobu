@@ -39,8 +39,8 @@ __all__ = [
     "MobuSlackException",
     "MobuSlackWebException",
     "MonkeyNotFoundError",
-    "TAPClientError",
     "SubprocessError",
+    "TAPClientError",
 ]
 
 

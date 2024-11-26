@@ -22,7 +22,7 @@ from safir.github.models import GitHubCheckRunConclusion, GitHubCheckRunStatus
 
 from ..exceptions import GitHubFileNotFoundError
 
-__all__ = ["GitHubStorage", "CheckRun"]
+__all__ = ["CheckRun", "GitHubStorage"]
 
 
 class _CheckRunRequestOutput(BaseModel):

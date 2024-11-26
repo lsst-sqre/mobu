@@ -29,7 +29,6 @@ __all__ = ["internal_router"]
         " a health check. This route is not exposed outside the cluster and"
         " therefore cannot be used by external clients."
     ),
-    response_model=Metadata,
     response_model_exclude_none=True,
     summary="Application metadata",
 )

@@ -10,8 +10,8 @@ from ..timings import StopwatchData
 
 __all__ = [
     "BusinessConfig",
-    "BusinessOptions",
     "BusinessData",
+    "BusinessOptions",
     "SerializableTimedelta",
 ]
 
