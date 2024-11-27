@@ -21,8 +21,8 @@ from ..services.manager import FlockManager
 __all__ = [
     "ContextDependency",
     "RequestContext",
-    "context_dependency",
     "anonymous_context_dependency",
+    "context_dependency",
 ]
 
 

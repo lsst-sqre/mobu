@@ -47,7 +47,6 @@ class FormattedJSONResponse(JSONResponse):
 @external_router.get(
     "/",
     description=("Metadata about the running version of mobu"),
-    response_model=Index,
     response_model_exclude_none=True,
     summary="Application metadata",
 )
@@ -61,9 +60,7 @@ async def get_index(
     return Index(metadata=metadata)
 
 
-@external_router.get(
-    "/flocks", response_model=list[str], summary="List running flocks"
-)
+@external_router.get("/flocks", summary="List running flocks")
 async def get_flocks(
     context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> list[str]:
@@ -73,7 +70,6 @@ async def get_flocks(
 @external_router.put(
     "/flocks",
     response_class=FormattedJSONResponse,
-    response_model=FlockData,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
     status_code=201,
@@ -98,7 +94,6 @@ async def put_flock(
 @external_router.get(
     "/flocks/{flock}",
     response_class=FormattedJSONResponse,
-    response_model=FlockData,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
     responses={404: {"description": "Flock not found", "model": ErrorModel}},
@@ -142,7 +137,6 @@ async def delete_flock(
 @external_router.get(
     "/flocks/{flock}/monkeys",
     response_class=FormattedJSONResponse,
-    response_model=list[str],
     responses={404: {"description": "Flock not found", "model": ErrorModel}},
     summary="Monkeys in flock",
 )
@@ -156,7 +150,6 @@ async def get_monkeys(
 @external_router.get(
     "/flocks/{flock}/monkeys/{monkey}",
     response_class=FormattedJSONResponse,
-    response_model=MonkeyData,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
     responses={
@@ -212,7 +205,6 @@ def get_monkey_log(
 @external_router.get(
     "/flocks/{flock}/summary",
     response_class=FormattedJSONResponse,
-    response_model=FlockSummary,
     responses={404: {"description": "Flock not found", "model": ErrorModel}},
     summary="Summary of statistics for a flock",
 )
@@ -226,7 +218,6 @@ async def get_flock_summary(
 @external_router.post(
     "/run",
     response_class=FormattedJSONResponse,
-    response_model=SolitaryResult,
     response_model_exclude_none=True,
     response_model_exclude_unset=True,
     summary="Run monkey business once",
@@ -246,7 +237,6 @@ async def put_run(
 @external_router.get(
     "/summary",
     response_class=FormattedJSONResponse,
-    response_model=CombinedSummary,
     summary="Summary of all app state",
 )
 async def get_summary(
