@@ -8,6 +8,7 @@
 -c main.txt
 
 # Testing
+anys
 asgi-lifespan
 coverage[toml]
 documenteer[guide]

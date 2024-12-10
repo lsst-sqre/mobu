@@ -108,8 +108,15 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         user: AuthenticatedUser,
         http_client: AsyncClient,
         logger: BoundLogger,
+        flock: str | None,
     ) -> None:
-        super().__init__(options, user, http_client, logger)
+        super().__init__(
+            options=options,
+            user=user,
+            http_client=http_client,
+            logger=logger,
+            flock=flock,
+        )
 
         config = config_dependency.config
         if not config.environment_url:
