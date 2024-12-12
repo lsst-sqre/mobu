@@ -11,10 +11,12 @@ import random
 import shutil
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from dataclasses import asdict
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
+import sentry_sdk
 import yaml
 from httpx import AsyncClient
 from rubin.nublado.client import JupyterLabSession
@@ -23,7 +25,7 @@ from structlog.stdlib import BoundLogger
 
 from ...constants import GITHUB_REPO_CONFIG_PATH
 from ...dependencies.config import config_dependency
-from ...exceptions import NotebookRepositoryError, RepositoryConfigError
+from ...exceptions import NotebookRepositoryError
 from ...models.business.notebookrunner import (
     ListNotebookRunnerOptions,
     NotebookFilterResults,
@@ -108,18 +110,22 @@ class NotebookRunner(NubladoBusiness):
 
         repo_config_path = self._repo_dir / GITHUB_REPO_CONFIG_PATH
         if repo_config_path.exists():
-            try:
-                repo_config = RepoConfig.model_validate(
-                    yaml.safe_load(repo_config_path.read_text())
-                )
-            except Exception as err:
-                raise RepositoryConfigError(
-                    err=err,
-                    user=self.user.username,
-                    config_file=GITHUB_REPO_CONFIG_PATH,
-                    repo_url=self.options.repo_url,
-                    repo_ref=self.options.repo_ref,
-                ) from err
+            sentry_sdk.set_context(
+                "repo_info",
+                {
+                    "repo_url": self.options.repo_url,
+                    "repo_ref": self.options.repo_ref,
+                },
+            )
+            sentry_sdk.set_tag("repo_url", self.options.repo_url)
+            sentry_sdk.set_tag("repo_ref", self.options.repo_ref)
+            sentry_sdk.set_context(
+                "repo_info", {"config_file": GITHUB_REPO_CONFIG_PATH}
+            )
+
+            repo_config = RepoConfig.model_validate(
+                yaml.safe_load(repo_config_path.read_text())
+            )
         else:
             repo_config = RepoConfig()
 
@@ -290,6 +296,7 @@ class NotebookRunner(NubladoBusiness):
                 return
 
             self._notebook = self.next_notebook()
+            sentry_sdk.set_tag("notebook", self._notebook.name)
 
             iteration = f"{count + 1}/{num_executions}"
             msg = f"Notebook {self._notebook.name} iteration {iteration}"
@@ -305,6 +312,8 @@ class NotebookRunner(NubladoBusiness):
                     cell_number=f"#{cell['_index']}",
                     cell_source=code,
                 )
+                sentry_sdk.set_tag("cell", cell_id)
+                sentry_sdk.set_context("cell_info", asdict(ctx))
                 await self.execute_cell(session, code, cell_id, ctx)
                 if not await self.execution_idle():
                     break

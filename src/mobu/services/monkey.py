@@ -6,12 +6,11 @@ import logging
 import sys
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 
+import sentry_sdk
 import structlog
 from aiojobs import Job, Scheduler
 from httpx import AsyncClient
-from safir.datetime import current_datetime, format_datetime_for_logging
 from safir.logging import Profile
-from safir.slack.blockkit import SlackException, SlackMessage, SlackTextField
 from safir.slack.webhook import SlackWebhookClient
 from structlog.stdlib import BoundLogger
 
@@ -135,36 +134,10 @@ class Monkey:
             state = self._state.name
             self._logger.info(f"Not sending alert because state is {state}")
             return
-        if not self._slack:
-            self._logger.info("Alert hook isn't set, so not sending to Slack")
-            return
-        monkey = f"{self._flock}/{self._name}" if self._flock else self._name
-        if isinstance(exc, MobuMixin):
-            # Add the monkey info if it is not already set.
-            if not exc.monkey:
-                exc.monkey = monkey
-        if isinstance(exc, SlackException):
-            # Avoid post_exception here since it adds the application name,
-            # but mobu (unusually) uses a dedicated web hook and therefore
-            # doesn't need to label its alerts.
-            await self._slack.post(exc.to_slack())
-        else:
-            now = current_datetime(microseconds=True)
-            date = format_datetime_for_logging(now)
-            name = type(exc).__name__
-            error = f"{name}: {exc!s}"
-            message = SlackMessage(
-                message=f"Unexpected exception {error}",
-                fields=[
-                    SlackTextField(heading="Exception type", text=name),
-                    SlackTextField(heading="Failed at", text=date),
-                    SlackTextField(heading="Monkey", text=monkey),
-                    SlackTextField(heading="User", text=self._user.username),
-                ],
-            )
-            await self._slack.post(message)
-
-        self._global_logger.info("Sent alert to Slack")
+        context = {}
+        if error := getattr(exc, "error", None):
+            context["error_info"] = {"error": error}
+        sentry_sdk.capture_exception(exc, contexts=context)
 
     def logfile(self) -> str:
         """Get the log file for a monkey's log."""
@@ -205,32 +178,39 @@ class Monkey:
         run = True
 
         while run:
-            try:
-                self._state = MonkeyState.RUNNING
-                await self.business.run()
-                run = False
-            except Exception as e:
-                msg = "Exception thrown while doing monkey business"
-                if self._flock:
-                    monkey = f"{self._flock}/{self._name}"
-                else:
-                    monkey = self._name
-                if isinstance(e, MobuMixin):
-                    e.monkey = monkey
+            with sentry_sdk.isolation_scope() as scope:
+                scope.clear_breadcrumbs()
+                scope.set_tag("flock", self._flock)
+                scope.set_user({"username": self._user.username})
+                scope.set_tag("monkey", self._name)
+                scope.set_tag("business", self.business.__class__.__name__)
 
-                await self.alert(e)
-                self._logger.exception(msg)
+                try:
+                    self._state = MonkeyState.RUNNING
+                    await self.business.run()
+                    run = False
+                except Exception as e:
+                    msg = "Exception thrown while doing monkey business"
+                    if self._flock:
+                        monkey = f"{self._flock}/{self._name}"
+                    else:
+                        monkey = self._name
+                    if isinstance(e, MobuMixin):
+                        e.monkey = monkey
 
-                run = self._restart and self._state == MonkeyState.RUNNING
-                if run:
-                    self._state = MonkeyState.ERROR
-                    await self.business.error_idle()
-                    if self._state == MonkeyState.STOPPING:
-                        run = False
-                else:
-                    self._state = MonkeyState.STOPPING
-                    msg = "Shutting down monkey due to error"
-                    self._global_logger.warning(msg)
+                    await self.alert(e)
+                    self._logger.exception(msg)
+
+                    run = self._restart and self._state == MonkeyState.RUNNING
+                    if run:
+                        self._state = MonkeyState.ERROR
+                        await self.business.error_idle()
+                        if self._state == MonkeyState.STOPPING:
+                            run = False
+                    else:
+                        self._state = MonkeyState.STOPPING
+                        msg = "Shutting down monkey due to error"
+                        self._global_logger.warning(msg)
 
         await self.business.close()
         self.state = MonkeyState.FINISHED

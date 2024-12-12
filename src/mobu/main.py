@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 from datetime import timedelta
 from importlib.metadata import metadata, version
 
+import sentry_sdk
 import structlog
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
@@ -34,6 +35,8 @@ from .handlers.github_refresh_app import (
 )
 from .handlers.internal import internal_router
 from .status import post_status
+
+sentry_sdk.init(traces_sample_rate=0)
 
 __all__ = ["create_app", "lifespan"]
 

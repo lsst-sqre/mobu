@@ -9,11 +9,12 @@ from typing import Generic, TypeVar
 
 import pyvo
 import requests
+import sentry_sdk
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from ...dependencies.config import config_dependency
-from ...exceptions import CodeExecutionError, TAPClientError
+from ...exceptions import TAPClientError
 from ...models.business.tap import TAPBusinessData, TAPBusinessOptions
 from ...models.user import AuthenticatedUser
 from .base import Business
@@ -73,21 +74,16 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
         query = self.get_next_query()
         with self.timings.start("execute_query", {"query": query}) as sw:
             self._running_query = query
+            sentry_sdk.set_tag("event", "execute_query")
+            sentry_sdk.set_tag("sync", self.options.sync)
+            sentry_sdk.set_context(
+                "query_info", {"query": query, "started_at": sw.start_time}
+            )
 
-            try:
-                if self.options.sync:
-                    await self.run_sync_query(query)
-                else:
-                    await self.run_async_query(query)
-            except Exception as e:
-                raise CodeExecutionError(
-                    user=self.user.username,
-                    code=query,
-                    code_type="TAP query",
-                    event="execute_query",
-                    started_at=sw.start_time,
-                    error=f"{type(e).__name__}: {e!s}",
-                ) from e
+            if self.options.sync:
+                await self.run_sync_query(query)
+            else:
+                await self.run_async_query(query)
 
             self._running_query = None
             elapsed = sw.elapsed.total_seconds()

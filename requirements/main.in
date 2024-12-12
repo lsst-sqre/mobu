@@ -23,6 +23,7 @@ pyvo<1.6
 pyyaml
 rubin-nublado-client>=8.0.3
 safir>=6.5.1
+sentry-sdk
 shortuuid
 structlog
 websockets
