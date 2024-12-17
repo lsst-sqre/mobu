@@ -6,6 +6,13 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-13.2.0'></a>
+## 13.2.0 (2024-12-17)
+
+### New features
+
+- Publish [application metrics](https://safir.lsst.io/user-guide/metrics/index.html)
+
 <a id='changelog-13.0.1'></a>
 ## 13.0.1 (2024-11-19)
 
