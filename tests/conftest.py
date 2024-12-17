@@ -29,6 +29,8 @@ from structlog.stdlib import BoundLogger
 
 from mobu import main
 from mobu.dependencies.config import config_dependency
+from mobu.dependencies.context import context_dependency
+from mobu.events import Events
 from mobu.services.business.gitlfs import GitLFSBusiness
 from mobu.services.business.nublado import _GET_IMAGE, _GET_NODE
 
@@ -144,6 +146,12 @@ async def app(jupyter: MockJupyter) -> AsyncIterator[FastAPI]:
     app = main.create_app()
     async with LifespanManager(app, shutdown_timeout=10):
         yield app
+
+
+@pytest.fixture
+def events(app: FastAPI) -> Events:
+    """Event publishers from a configured test application."""
+    return context_dependency.process_context.events
 
 
 @pytest.fixture

@@ -18,6 +18,7 @@ from safir.slack.blockkit import SlackException
 from structlog.stdlib import BoundLogger
 
 from ...dependencies.config import config_dependency
+from ...events import Events, NubladoDeleteLab, NubladoSpawnLab
 from ...exceptions import (
     CodeExecutionError,
     JupyterProtocolError,
@@ -31,6 +32,7 @@ from ...models.business.nublado import (
     RunningImage,
 )
 from ...models.user import AuthenticatedUser
+from ...services.timings import Stopwatch
 from .base import Business
 
 T = TypeVar("T", bound="NubladoBusinessOptions")
@@ -98,18 +100,30 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         User with their authentication token to use to run the business.
     http_client
         Shared HTTP client for general web access.
+    events
+        Event publishers.
     logger
         Logger to use to report the results of business.
     """
 
     def __init__(
         self,
+        *,
         options: T,
         user: AuthenticatedUser,
         http_client: AsyncClient,
+        events: Events,
         logger: BoundLogger,
+        flock: str | None,
     ) -> None:
-        super().__init__(options, user, http_client, logger)
+        super().__init__(
+            options=options,
+            user=user,
+            http_client=http_client,
+            events=events,
+            logger=logger,
+            flock=flock,
+        )
 
         config = config_dependency.config
         if not config.environment_url:
@@ -246,84 +260,106 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
                     started_at=sw.start_time,
                 ) from exc
 
-    async def spawn_lab(self) -> bool:  # noqa: C901
+    async def spawn_lab(self) -> bool:
         with self.timings.start("spawn_lab", self.annotations()) as sw:
-            timeout = self.options.spawn_timeout
             try:
-                await self._client.spawn_lab(self.options.image)
-            except ne.JupyterWebError as exc:
-                raise JupyterWebError.from_client_exception(
-                    exc,
-                    event=sw.event,
-                    annotations=sw.annotations,
-                    started_at=sw.start_time,
-                ) from exc
-
-            # Pause before using the progress API, since otherwise it may not
-            # have attached to the spawner and will not return a full stream
-            # of events.
-            if not await self.pause(self.options.spawn_settle_time):
-                return False
-            timeout -= self.options.spawn_settle_time
-
-            # Watch the progress API until the lab has spawned.
-            log_messages = []
-            progress = self._client.watch_spawn_progress()
-            try:
-                async for message in self.iter_with_timeout(progress, timeout):
-                    log_messages.append(ProgressLogMessage(message.message))
-                    if message.ready:
-                        return True
-            except TimeoutError:
-                log = "\n".join([str(m) for m in log_messages])
-                raise JupyterSpawnError(
-                    log,
-                    self.user.username,
-                    event=sw.event,
-                    started_at=sw.start_time,
-                ) from None
-            except ne.JupyterWebError as exc:
-                raise JupyterWebError.from_client_exception(
-                    exc,
-                    event=sw.event,
-                    annotations=sw.annotations,
-                    started_at=sw.start_time,
-                ) from exc
-            except SlackException:
-                raise
-            except Exception as e:
-                log = "\n".join([str(m) for m in log_messages])
-                user = self.user.username
-                raise JupyterSpawnError.from_exception(
-                    log,
-                    e,
-                    user,
-                    event=sw.event,
-                    annotations=sw.annotations,
-                    started_at=sw.start_time,
-                ) from e
-
-            # We only fall through if the spawn failed, timed out, or if we're
-            # stopping the business.
-            if self.stopping:
-                return False
-            log = "\n".join([str(m) for m in log_messages])
-            if sw.elapsed > timeout:
-                elapsed_seconds = round(sw.elapsed.total_seconds())
-                msg = f"Lab did not spawn after {elapsed_seconds}s"
-                raise JupyterTimeoutError(
-                    msg,
-                    self.user.username,
-                    log,
-                    event=sw.event,
-                    started_at=sw.start_time,
+                result = await self._spawn_lab(sw)
+            except:
+                await self.events.nublado_spawn_lab.publish(
+                    NubladoSpawnLab(
+                        success=False,
+                        duration=sw.elapsed,
+                        **self.common_event_attrs(),
+                    )
                 )
+                raise
+        await self.events.nublado_spawn_lab.publish(
+            NubladoSpawnLab(
+                success=True, duration=sw.elapsed, **self.common_event_attrs()
+            )
+        )
+        return result
+
+    async def _spawn_lab(self, sw: Stopwatch) -> bool:  # noqa: C901
+        # Ruff says this method is too complex, and it is, but it will become
+        # less complex when we refactor and potentially Sentry-fy the slack
+        # error reporting
+        timeout = self.options.spawn_timeout
+        try:
+            await self._client.spawn_lab(self.options.image)
+        except ne.JupyterWebError as exc:
+            raise JupyterWebError.from_client_exception(
+                exc,
+                event=sw.event,
+                annotations=sw.annotations,
+                started_at=sw.start_time,
+            ) from exc
+
+        # Pause before using the progress API, since otherwise it may not
+        # have attached to the spawner and will not return a full stream
+        # of events.
+        if not await self.pause(self.options.spawn_settle_time):
+            return False
+        timeout -= self.options.spawn_settle_time
+
+        # Watch the progress API until the lab has spawned.
+        log_messages = []
+        progress = self._client.watch_spawn_progress()
+        try:
+            async for message in self.iter_with_timeout(progress, timeout):
+                log_messages.append(ProgressLogMessage(message.message))
+                if message.ready:
+                    return True
+        except TimeoutError:
+            log = "\n".join([str(m) for m in log_messages])
             raise JupyterSpawnError(
                 log,
                 self.user.username,
                 event=sw.event,
                 started_at=sw.start_time,
+            ) from None
+        except ne.JupyterWebError as exc:
+            raise JupyterWebError.from_client_exception(
+                exc,
+                event=sw.event,
+                annotations=sw.annotations,
+                started_at=sw.start_time,
+            ) from exc
+        except SlackException:
+            raise
+        except Exception as e:
+            log = "\n".join([str(m) for m in log_messages])
+            user = self.user.username
+            raise JupyterSpawnError.from_exception(
+                log,
+                e,
+                user,
+                event=sw.event,
+                annotations=sw.annotations,
+                started_at=sw.start_time,
+            ) from e
+
+        # We only fall through if the spawn failed, timed out, or if we're
+        # stopping the business.
+        if self.stopping:
+            return False
+        log = "\n".join([str(m) for m in log_messages])
+        if sw.elapsed > timeout:
+            elapsed_seconds = round(sw.elapsed.total_seconds())
+            msg = f"Lab did not spawn after {elapsed_seconds}s"
+            raise JupyterTimeoutError(
+                msg,
+                self.user.username,
+                log,
+                event=sw.event,
+                started_at=sw.start_time,
             )
+        raise JupyterSpawnError(
+            log,
+            self.user.username,
+            event=sw.event,
+            started_at=sw.start_time,
+        )
 
     async def lab_login(self) -> None:
         self.logger.info("Logging in to lab")
@@ -383,47 +419,82 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             await session.run_python(code)
 
     async def delete_lab(self) -> None:
-        self.logger.info("Deleting lab")
         with self.timings.start("delete_lab", self.annotations()) as sw:
             try:
-                await self._client.stop_lab()
-            except ne.JupyterWebError as exc:
-                raise JupyterWebError.from_client_exception(
-                    exc,
-                    event=sw.event,
-                    annotations=sw.annotations,
-                    started_at=sw.start_time,
-                ) from exc
-            if self.stopping:
-                return
+                result = await self._delete_lab(sw)
+            except:
+                await self.events.nublado_delete_lab.publish(
+                    NubladoDeleteLab(
+                        success=False,
+                        duration=sw.elapsed,
+                        **self.common_event_attrs(),
+                    )
+                )
+                raise
+        if result:
+            # Only record a success if we waited to see if the delete was
+            # actually successful.
+            await self.events.nublado_delete_lab.publish(
+                NubladoDeleteLab(
+                    success=True,
+                    duration=sw.elapsed,
+                    **self.common_event_attrs(),
+                )
+            )
 
-            # If we're not stopping, wait for the lab to actually go away.  If
-            # we don't do this, we may try to create a new lab while the old
-            # one is still shutting down.
-            start = current_datetime(microseconds=True)
-            while not await self._client.is_lab_stopped():
-                elapsed = current_datetime(microseconds=True) - start
-                elapsed_seconds = round(elapsed.total_seconds())
-                if elapsed > self.options.delete_timeout:
-                    if not await self._client.is_lab_stopped(log_running=True):
-                        msg = f"Lab not deleted after {elapsed_seconds}s"
-                        jte = JupyterTimeoutError(
-                            msg,
-                            self.user.username,
-                            started_at=start,
-                            event=sw.event,
-                        )
-                        jte.annotations["image"] = (
-                            self.options.image.description
-                        )
-                        raise jte
-                msg = f"Waiting for lab deletion ({elapsed_seconds}s elapsed)"
-                self.logger.info(msg)
-                if not await self.pause(timedelta(seconds=2)):
-                    return
+    async def _delete_lab(self, sw: Stopwatch) -> bool:
+        """Delete a lab.
+
+        Parameters
+        ----------
+        sw
+            A Stopwatch to time the lab deletion
+
+        Returns
+        -------
+        bool
+            True if we know the lab was successfully deleted, False if we
+            didn't wait to find out if the lab was successfully deleted.
+        """
+        self.logger.info("Deleting lab")
+        try:
+            await self._client.stop_lab()
+        except ne.JupyterWebError as exc:
+            raise JupyterWebError.from_client_exception(
+                exc,
+                event=sw.event,
+                annotations=sw.annotations,
+                started_at=sw.start_time,
+            ) from exc
+        if self.stopping:
+            return False
+
+        # If we're not stopping, wait for the lab to actually go away.  If
+        # we don't do this, we may try to create a new lab while the old
+        # one is still shutting down.
+        start = current_datetime(microseconds=True)
+        while not await self._client.is_lab_stopped():
+            elapsed = current_datetime(microseconds=True) - start
+            elapsed_seconds = round(elapsed.total_seconds())
+            if elapsed > self.options.delete_timeout:
+                if not await self._client.is_lab_stopped(log_running=True):
+                    msg = f"Lab not deleted after {elapsed_seconds}s"
+                    jte = JupyterTimeoutError(
+                        msg,
+                        self.user.username,
+                        started_at=start,
+                        event=sw.event,
+                    )
+                    jte.annotations["image"] = self.options.image.description
+                    raise jte
+            msg = f"Waiting for lab deletion ({elapsed_seconds}s elapsed)"
+            self.logger.info(msg)
+            if not await self.pause(timedelta(seconds=2)):
+                return False
 
         self.logger.info("Lab successfully deleted")
         self._image = None
+        return True
 
     def dump(self) -> NubladoBusinessData:
         return NubladoBusinessData(

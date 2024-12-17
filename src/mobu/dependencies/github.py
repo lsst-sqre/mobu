@@ -40,6 +40,7 @@ class CiManagerDependency:
             github_private_key=github_private_key,
             scopes=scopes,
             http_client=base_context.process_context.http_client,
+            events=base_context.process_context.events,
             gafaelfawr_storage=base_context.process_context.gafaelfawr,
             logger=base_context.process_context.logger,
         )

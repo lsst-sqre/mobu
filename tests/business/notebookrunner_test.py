@@ -5,14 +5,18 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
+from typing import cast
 from unittest.mock import ANY
 
 import pytest
 import respx
+from anys import AnySearch
 from httpx import AsyncClient
 from rubin.nublado.client.testing import MockJupyter
+from safir.metrics import NOT_NONE, MockEventPublisher
 from safir.testing.slack import MockSlackWebhook
 
+from mobu.events import Events
 from mobu.storage.git import Git
 
 from ..support.constants import TEST_DATA_DIR
@@ -20,8 +24,14 @@ from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business, wait_for_log_message
 
 
-async def setup_git_repo(repo_path: Path) -> None:
-    """Initialize and populate a git repo at `repo_path`."""
+async def setup_git_repo(repo_path: Path) -> str:
+    """Initialize and populate a git repo at `repo_path`.
+
+    Returns
+    -------
+    str
+        Commit hash of the cloned repo
+    """
     git = Git(repo=repo_path)
     await git.init("--initial-branch=main")
     await git.config("user.email", "gituser@example.com")
@@ -30,11 +40,15 @@ async def setup_git_repo(repo_path: Path) -> None:
         if not path.name.startswith("."):
             await git.add(str(path))
     await git.commit("-m", "Initial commit")
+    return await git.repo_hash()
 
 
 @pytest.mark.asyncio
 async def test_run(
-    client: AsyncClient, respx_mock: respx.Router, tmp_path: Path
+    client: AsyncClient,
+    respx_mock: respx.Router,
+    tmp_path: Path,
+    events: Events,
 ) -> None:
     mock_gafaelfawr(respx_mock)
     cwd = Path.cwd()
@@ -46,7 +60,7 @@ async def test_run(
     shutil.copytree(str(source_path), str(repo_path))
 
     # Set up git repo
-    await setup_git_repo(repo_path)
+    repo_hash = await setup_git_repo(repo_path)
 
     # Start a monkey. We have to do this in a try/finally block since the
     # runner will change working directories, which because working
@@ -110,6 +124,39 @@ async def test_run(
 
     # Make sure mobu ran all of the notebooks it thinks it should have
     assert "Done with this cycle of notebooks" in r.text
+
+    # Check events
+    common = {
+        "business": "NotebookRunner",
+        "duration": NOT_NONE,
+        "flock": "test",
+        "notebook": AnySearch("test-notebook.ipynb$"),
+        "repo": AnySearch("/notebooks$"),
+        "repo_ref": "main",
+        "repo_hash": repo_hash,
+        "success": True,
+        "username": "bot-mobu-testuser1",
+    }
+    pub_notebook = cast(
+        MockEventPublisher, events.notebook_execution
+    ).published
+    pub_notebook.assert_published_all([common])
+
+    pub_cell = cast(
+        MockEventPublisher,
+        events.notebook_cell_execution,
+    ).published
+    pub_cell.assert_published_all(
+        [
+            item | common
+            for item in [
+                {"cell_id": "f84f0959"},
+                {"cell_id": "44ada997"},
+                {"cell_id": "53a941a4"},
+                {"cell_id": "823560c6"},
+            ]
+        ]
+    )
 
 
 @pytest.mark.asyncio
@@ -186,7 +233,10 @@ async def test_run_debug_log(
 
 @pytest.mark.asyncio
 async def test_run_recursive(
-    client: AsyncClient, respx_mock: respx.Router, tmp_path: Path
+    client: AsyncClient,
+    respx_mock: respx.Router,
+    tmp_path: Path,
+    events: Events,
 ) -> None:
     mock_gafaelfawr(respx_mock)
     cwd = Path.cwd()
@@ -200,7 +250,7 @@ async def test_run_recursive(
     (repo_path / "exception.ipynb").unlink()
 
     # Set up git repo
-    await setup_git_repo(repo_path)
+    repo_hash = await setup_git_repo(repo_path)
 
     # Start a monkey. We have to do this in a try/finally block since the
     # runner will change working directories, which because working
@@ -279,6 +329,39 @@ async def test_run_recursive(
 
     # Make sure mobu ran all of the notebooks it thinks it should have
     assert "Done with this cycle of notebooks" in r.text
+
+    # Check events
+    common = {
+        "business": "NotebookRunner",
+        "duration": NOT_NONE,
+        "flock": "test",
+        "repo": AnySearch("/notebooks$"),
+        "repo_ref": "main",
+        "repo_hash": repo_hash,
+        "success": True,
+        "username": "bot-mobu-testuser1",
+    }
+    published = cast(MockEventPublisher, events.notebook_execution).published
+    published.assert_published_all(
+        [
+            item | common
+            for item in [
+                {
+                    "notebook": AnySearch("test-some-other-dir.ipynb$"),
+                },
+                {
+                    "notebook": AnySearch("test-some-dir-notebook.ipynb$"),
+                },
+                {
+                    "notebook": AnySearch("test-notebook.ipynb$"),
+                },
+                {
+                    "notebook": AnySearch("test-double-nested-dir.ipynb$"),
+                },
+            ]
+        ],
+        any_order=True,
+    )
 
 
 @pytest.mark.asyncio
@@ -789,6 +872,7 @@ async def test_alert(
     slack: MockSlackWebhook,
     respx_mock: respx.Router,
     tmp_path: Path,
+    events: Events,
 ) -> None:
     mock_gafaelfawr(respx_mock)
 
@@ -799,7 +883,7 @@ async def test_alert(
     shutil.copy(str(source_path / "exception.ipynb"), str(repo_path))
 
     # Set up git repo
-    await setup_git_repo(repo_path)
+    repo_hash = await setup_git_repo(repo_path)
 
     # The bad code run by the exception test.
     bad_code = 'foo = {"bar": "baz"}\nfoo["nothing"]'
@@ -946,3 +1030,27 @@ async def test_alert(
     ]
     error = slack.messages[0]["attachments"][0]["blocks"][0]["text"]["text"]
     assert "KeyError: 'nothing'" in error
+
+    # Check events
+    common = {
+        "business": "NotebookRunner",
+        "duration": NOT_NONE,
+        "flock": "test",
+        "notebook": AnySearch("exception.ipynb"),
+        "repo": AnySearch("/notebooks"),
+        "repo_ref": "main",
+        "repo_hash": repo_hash,
+        "username": "bot-mobu-testuser1",
+    }
+    pub_notebook = cast(
+        MockEventPublisher, events.notebook_execution
+    ).published
+    pub_notebook.assert_published_all([{"success": False} | common])
+
+    pub_cell = cast(
+        MockEventPublisher,
+        events.notebook_cell_execution,
+    ).published
+    pub_cell.assert_published_all(
+        [common | {"cell_id": "ed399c0a", "success": False}]
+    )

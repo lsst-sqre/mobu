@@ -24,7 +24,7 @@ You can use https://smee.io to proxy GitHub webhook requests from the data-dev M
 
 #. Configure the [data-dev GitHub Mobu CI app](https://github.com/organizations/lsst-sqre/settings/apps/mobu-ci-data-dev-lsst-cloud) to send webooks to the smee URL.
 #. Run your local mobu against the ``idfdev`` env, as described :doc:`here <idfdev>`.
-#. Point your local mobu at a local `Safir <https://github.com/lsst-sqre/safir>`__ .
+#. Point your local mobu at a local or remote git `Safir <https://github.com/lsst-sqre/safir>`__ .
 
    .. code-block:: diff
 
@@ -36,11 +36,16 @@ You can use https://smee.io to proxy GitHub webhook requests from the data-dev M
        pyyaml
       -safir>=5.0.0
       +# safir>=5.0.0
-      +-e /home/danfuchs/src/safir
+
+      # For testing against a local safir
+      +-e /home/danfuchs/src/safir/safir
+
+      # For testing against a remote git safir
+      +safir @ git+https://github.com/lsst-sqre/safir@<branch>#subdirectory=safir
        shortuuid
        structlog
 
-#. Patch your local Safir to handle the malformed requests that smee.io sends.
+#. Patch your local or remote git Safir to handle the malformed requests that smee.io sends.
    The requests sent by the smee proxy have ``:port`` suffixes in the ``X-Forwarded-For`` values.
    Safir doesn't handle this (and I don't think it's Safir's fault; I _think_ the port should be in ``X-Forwarded-Port``), so you have to change Safir:
 

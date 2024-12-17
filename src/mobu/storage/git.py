@@ -7,12 +7,21 @@ the cwd be inside a worktree.
 
 import asyncio
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from shlex import join
 
 from structlog.stdlib import BoundLogger
 
 from ..exceptions import SubprocessError
+
+
+@dataclass
+class Output:
+    """The output from running a command in a subprocess."""
+
+    stdout: str
+    stderr: str
 
 
 class Git:
@@ -45,7 +54,7 @@ class Git:
         *args: str,
         env: dict[str, str] | None = None,
         cwd: Path | None = None,
-    ) -> None:
+    ) -> Output:
         """Execute a non-interactive subprocess.
 
         We need this to make the git commands behave correctly in an
@@ -103,8 +112,9 @@ class Git:
                 cwd=str(cwd),
                 env=env,
             )
+        return Output(stdout=stdout_text, stderr=stderr_text)
 
-    async def git(self, *args: str) -> None:
+    async def git(self, *args: str) -> Output:
         """Run an arbitrary git command with arbitrary string arguments.
 
         Constrain the environment of the subprocess: only pass HOME, LANG,
@@ -130,7 +140,7 @@ class Git:
             env["GIT_CONFIG_GLOBAL"] = str(self._config_location)
             env["GIT_CONFIG_SYSTEM"] = ""
 
-        await self._exec("git", *args, cwd=self.repo, env=env)
+        return await self._exec("git", *args, cwd=self.repo, env=env)
 
     async def init(self, *args: str) -> None:
         """Run `git init` with arbitrary arguments.
@@ -260,3 +270,8 @@ class Git:
             Arguments to command.
         """
         await self.git("reset", *args)
+
+    async def repo_hash(self) -> str:
+        """Get the commit hash of the currently cloned repo."""
+        output = await self.git("rev-parse", "HEAD")
+        return output.stdout.strip()

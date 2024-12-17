@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
+from ...events import Events, GitLfsCheck
 from ...exceptions import ComparisonError
 from ...models.business.gitlfs import GitLFSBusinessOptions
 from ...models.user import AuthenticatedUser
@@ -24,12 +25,22 @@ class GitLFSBusiness(Business):
 
     def __init__(
         self,
+        *,
         options: GitLFSBusinessOptions,
         user: AuthenticatedUser,
         http_client: AsyncClient,
+        events: Events,
         logger: BoundLogger,
+        flock: str | None,
     ) -> None:
-        super().__init__(options, user, http_client, logger)
+        super().__init__(
+            options=options,
+            user=user,
+            http_client=http_client,
+            events=events,
+            logger=logger,
+            flock=flock,
+        )
         self._lfs_read_url = options.lfs_read_url
         self._lfs_write_url = options.lfs_write_url
         self._package_data = Path(
@@ -65,10 +76,20 @@ class GitLFSBusiness(Business):
         created anew.
         """
         self.logger.info("Running Git-LFS check...")
-        with self.timings.start("execute git-lfs check") as sw:
-            await self._git_lfs_check()
-        elapsed = sw.elapsed.total_seconds()
-        self.logger.info(f"...Git-LFS check finished after {elapsed}s")
+        event = GitLfsCheck(success=False, **self.common_event_attrs())
+        try:
+            with self.timings.start("execute git-lfs check") as sw:
+                await self._git_lfs_check()
+            elapsed = sw.elapsed.total_seconds()
+            self.logger.info(f"...Git-LFS check finished after {elapsed}s")
+
+            event.duration = sw.elapsed
+            event.success = True
+        except:
+            event.success = False
+            raise
+        finally:
+            await self.events.git_lfs_check.publish(event)
 
     def _git(self, repo: Path) -> Git:
         """Return a configured Git client for a specified repo path.

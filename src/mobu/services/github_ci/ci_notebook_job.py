@@ -5,15 +5,15 @@ from pathlib import Path
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
-from mobu.models.business.notebookrunner import (
+from ...events import Events
+from ...models.business.notebookrunner import (
     ListNotebookRunnerOptions,
     NotebookRunnerConfig,
 )
-from mobu.models.solitary import SolitaryConfig
-from mobu.models.user import User
-from mobu.services.solitary import Solitary
-
 from ...models.ci_manager import CiJobSummary
+from ...models.solitary import SolitaryConfig
+from ...models.user import User
+from ...services.solitary import Solitary
 from ...storage.gafaelfawr import GafaelfawrStorage
 from ...storage.github import CheckRun, GitHubStorage
 
@@ -29,6 +29,8 @@ class CiNotebookJob:
         A GitHub storage check run.
     http_client:
         Shared HTTP client.
+    events:
+        Event publishers.
     gafaelfawr_storage:
         Gafaelfawr storage client.
     logger:
@@ -41,12 +43,14 @@ class CiNotebookJob:
         github_storage: GitHubStorage,
         check_run: CheckRun,
         http_client: AsyncClient,
+        events: Events,
         gafaelfawr_storage: GafaelfawrStorage,
         logger: BoundLogger,
     ) -> None:
         self._github = github_storage
         self.check_run = check_run
         self._http_client = http_client
+        self._events = events
         self._gafaelfawr = gafaelfawr_storage
         self._logger = logger.bind(ci_job_type="NotebookJob")
         self._notebooks: list[Path] = []
@@ -96,6 +100,7 @@ class CiNotebookJob:
             solitary_config=solitary_config,
             gafaelfawr_storage=self._gafaelfawr,
             http_client=self._http_client,
+            events=self._events,
             logger=self._logger,
         )
 

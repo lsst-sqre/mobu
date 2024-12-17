@@ -7,6 +7,7 @@ from pathlib import Path
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
+from ..events import Events
 from ..models.solitary import SolitaryConfig, SolitaryResult
 from ..storage.gafaelfawr import GafaelfawrStorage
 from .monkey import Monkey
@@ -25,6 +26,8 @@ class Solitary:
         Gafaelfawr storage client.
     http_client
         Shared HTTP client.
+    events
+        Event publishers.
     logger
         Global logger.
     """
@@ -35,11 +38,13 @@ class Solitary:
         solitary_config: SolitaryConfig,
         gafaelfawr_storage: GafaelfawrStorage,
         http_client: AsyncClient,
+        events: Events,
         logger: BoundLogger,
     ) -> None:
         self._config = solitary_config
         self._gafaelfawr = gafaelfawr_storage
         self._http_client = http_client
+        self._events = events
         self._logger = logger
 
     async def run(self) -> SolitaryResult:
@@ -58,6 +63,7 @@ class Solitary:
             business_config=self._config.business,
             user=user,
             http_client=self._http_client,
+            events=self._events,
             logger=self._logger,
         )
         error = await monkey.run_once()

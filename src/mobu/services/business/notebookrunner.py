@@ -11,6 +11,7 @@ import random
 import shutil
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
@@ -23,6 +24,7 @@ from structlog.stdlib import BoundLogger
 
 from ...constants import GITHUB_REPO_CONFIG_PATH
 from ...dependencies.config import config_dependency
+from ...events import Events, NotebookCellExecution, NotebookExecution
 from ...exceptions import NotebookRepositoryError, RepositoryConfigError
 from ...models.business.notebookrunner import (
     ListNotebookRunnerOptions,
@@ -33,10 +35,18 @@ from ...models.business.notebookrunner import (
 )
 from ...models.repo import RepoConfig
 from ...models.user import AuthenticatedUser
+from ...services.business.base import CommonEventAttrs
 from ...storage.git import Git
 from .nublado import NubladoBusiness
 
 __all__ = ["NotebookRunner"]
+
+
+class CommonNotebookEventAttrs(CommonEventAttrs):
+    notebook: str
+    repo: str
+    repo_ref: str
+    repo_hash: str
 
 
 class NotebookRunner(NubladoBusiness):
@@ -50,22 +60,37 @@ class NotebookRunner(NubladoBusiness):
         User with their authentication token to use to run the business.
     http_client
         Shared HTTP client for general web access.
+    events
+        Event publishers.
     logger
         Logger to use to report the results of business.
+    flock
+        Flock that is running this business, if it is running in a flock.
     """
 
     def __init__(
         self,
+        *,
         options: NotebookRunnerOptions | ListNotebookRunnerOptions,
         user: AuthenticatedUser,
         http_client: AsyncClient,
+        events: Events,
         logger: BoundLogger,
+        flock: str | None,
     ) -> None:
-        super().__init__(options, user, http_client, logger)
+        super().__init__(
+            options=options,
+            user=user,
+            http_client=http_client,
+            events=events,
+            logger=logger,
+            flock=flock,
+        )
         self._config = config_dependency.config
         self._notebook: Path | None = None
         self._notebook_paths: list[Path] | None = None
         self._repo_dir: Path | None = None
+        self._repo_hash: str | None = None
         self._exclude_paths: set[Path] = set()
         self._running_code: str | None = None
         self._git = Git(logger=logger)
@@ -145,6 +170,7 @@ class NotebookRunner(NubladoBusiness):
             self._git.repo = self._repo_dir
             await self._git.clone(url, str(self._repo_dir))
             await self._git.checkout(ref)
+        self._repo_hash = await self._git.repo_hash()
 
     def is_excluded(self, notebook: Path) -> bool:
         # A notebook is excluded if any of its parent directories are excluded
@@ -295,25 +321,71 @@ class NotebookRunner(NubladoBusiness):
             msg = f"Notebook {self._notebook.name} iteration {iteration}"
             self.logger.info(msg)
 
-            for cell in self.read_notebook(self._notebook):
-                code = "".join(cell["source"])
-                cell_id = cell.get("id") or cell["_index"]
-                ctx = CodeContext(
-                    notebook=self._notebook.name,
-                    path=str(self._notebook),
-                    cell=cell_id,
-                    cell_number=f"#{cell['_index']}",
-                    cell_source=code,
-                )
-                await self.execute_cell(session, code, cell_id, ctx)
-                if not await self.execution_idle():
-                    break
+            with self.timings.start(
+                "execute_notebook", self.annotations(self._notebook.name)
+            ) as sw:
+                try:
+                    for cell in self.read_notebook(self._notebook):
+                        code = "".join(cell["source"])
+                        cell_id = cell.get("id") or cell["_index"]
+                        ctx = CodeContext(
+                            notebook=self._notebook.name,
+                            path=str(self._notebook),
+                            cell=cell_id,
+                            cell_number=f"#{cell['_index']}",
+                            cell_source=code,
+                        )
+                        await self.execute_cell(session, code, cell_id, ctx)
+                        if not await self.execution_idle():
+                            break
+                except:
+                    await self._publish_notebook_event(
+                        duration=sw.elapsed, success=False
+                    )
+                    raise
 
             self.logger.info(f"Success running notebook {self._notebook.name}")
+            await self._publish_notebook_event(
+                duration=sw.elapsed, success=True
+            )
             if not self._notebook_paths:
                 self.logger.info("Done with this cycle of notebooks")
             if self.stopping:
                 break
+
+    async def _publish_notebook_event(
+        self, duration: timedelta, *, success: bool
+    ) -> None:
+        await self.events.notebook_execution.publish(
+            NotebookExecution(
+                **self.common_notebook_event_attrs(),
+                duration=duration,
+                success=success,
+            )
+        )
+
+    async def _publish_cell_event(
+        self, *, cell_id: str, duration: timedelta, success: bool
+    ) -> None:
+        await self.events.notebook_cell_execution.publish(
+            NotebookCellExecution(
+                **self.common_notebook_event_attrs(),
+                duration=duration,
+                success=success,
+                cell_id=cell_id,
+            )
+        )
+
+    def common_notebook_event_attrs(self) -> CommonNotebookEventAttrs:
+        """Return notebook event attrs with the other common attrs."""
+        notebook = self._notebook.name if self._notebook else "unknown"
+        return {
+            **self.common_event_attrs(),
+            "repo": self.options.repo_url,
+            "repo_ref": self.options.repo_ref,
+            "repo_hash": self._repo_hash or "unknown",
+            "notebook": notebook,
+        }
 
     async def execute_cell(
         self,
@@ -325,11 +397,24 @@ class NotebookRunner(NubladoBusiness):
         if not self._notebook:
             raise RuntimeError("Executing a cell without a notebook")
         self.logger.info(f"Executing cell {cell_id}:\n{code}\n")
-        with self.timings.start("execute_cell", self.annotations(cell_id)):
+        with self.timings.start(
+            "execute_cell", self.annotations(cell_id)
+        ) as sw:
             self._running_code = code
-            reply = await session.run_python(code, context=context)
+            try:
+                reply = await session.run_python(code, context=context)
+            except:
+                await self._publish_cell_event(
+                    cell_id=cell_id,
+                    duration=sw.elapsed,
+                    success=False,
+                )
+                raise
             self._running_code = None
         self.logger.info(f"Result:\n{reply}\n")
+        await self._publish_cell_event(
+            cell_id=cell_id, duration=sw.elapsed, success=True
+        )
 
     def dump(self) -> NotebookRunnerData:
         return NotebookRunnerData(

@@ -16,6 +16,7 @@ from safir.slack.webhook import SlackWebhookClient
 from structlog.stdlib import BoundLogger
 
 from ..dependencies.config import config_dependency
+from ..events import Events
 from ..exceptions import MobuMixin
 from ..models.business.base import BusinessConfig
 from ..models.business.empty import EmptyLoopConfig
@@ -55,6 +56,8 @@ class Monkey:
         User the monkey should run as.
     http_client
         Shared HTTP client.
+    events
+        Event publishers.
     logger
         Global logger.
     """
@@ -67,6 +70,7 @@ class Monkey:
         business_config: BusinessConfig,
         user: AuthenticatedUser,
         http_client: AsyncClient,
+        events: Events,
         logger: BoundLogger,
     ) -> None:
         self._config = config_dependency.config
@@ -75,6 +79,7 @@ class Monkey:
         self._restart = business_config.restart
         self._log_level = business_config.options.log_level
         self._http_client = http_client
+        self._events = events
         self._user = user
 
         self._state = MonkeyState.IDLE
@@ -91,27 +96,57 @@ class Monkey:
         self.business: Business
         if isinstance(business_config, EmptyLoopConfig):
             self.business = EmptyLoop(
-                business_config.options, user, self._http_client, self._logger
+                options=business_config.options,
+                user=user,
+                http_client=self._http_client,
+                events=self._events,
+                logger=self._logger,
+                flock=self._flock,
             )
         elif isinstance(business_config, GitLFSConfig):
             self.business = GitLFSBusiness(
-                business_config.options, user, self._http_client, self._logger
+                options=business_config.options,
+                user=user,
+                http_client=self._http_client,
+                events=self._events,
+                logger=self._logger,
+                flock=self._flock,
             )
         elif isinstance(business_config, NubladoPythonLoopConfig):
             self.business = NubladoPythonLoop(
-                business_config.options, user, self._http_client, self._logger
+                options=business_config.options,
+                user=user,
+                http_client=self._http_client,
+                events=self._events,
+                logger=self._logger,
+                flock=self._flock,
             )
         elif isinstance(business_config, NotebookRunnerConfig):
             self.business = NotebookRunner(
-                business_config.options, user, self._http_client, self._logger
+                options=business_config.options,
+                user=user,
+                http_client=self._http_client,
+                events=self._events,
+                logger=self._logger,
+                flock=self._flock,
             )
         elif isinstance(business_config, TAPQueryRunnerConfig):
             self.business = TAPQueryRunner(
-                business_config.options, user, self._http_client, self._logger
+                options=business_config.options,
+                user=user,
+                http_client=self._http_client,
+                events=self._events,
+                logger=self._logger,
+                flock=self._flock,
             )
         elif isinstance(business_config, TAPQuerySetRunnerConfig):
             self.business = TAPQuerySetRunner(
-                business_config.options, user, self._http_client, self._logger
+                options=business_config.options,
+                user=user,
+                http_client=self._http_client,
+                events=self._events,
+                logger=self._logger,
+                flock=self._flock,
             )
         else:
             msg = f"Unknown business config {business_config}"

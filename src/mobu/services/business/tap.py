@@ -13,6 +13,7 @@ from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from ...dependencies.config import config_dependency
+from ...events import Events, TapQuery
 from ...exceptions import CodeExecutionError, TAPClientError
 from ...models.business.tap import TAPBusinessData, TAPBusinessOptions
 from ...models.user import AuthenticatedUser
@@ -39,18 +40,30 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
         User with their authentication token to use to run the business.
     http_client
         Shared HTTP client for general web access.
+    events
+        Event publishers.
     logger
         Logger to use to report the results of business.
     """
 
     def __init__(
         self,
+        *,
         options: T,
         user: AuthenticatedUser,
         http_client: AsyncClient,
+        events: Events,
         logger: BoundLogger,
+        flock: str | None,
     ) -> None:
-        super().__init__(options, user, http_client, logger)
+        super().__init__(
+            options=options,
+            user=user,
+            http_client=http_client,
+            events=events,
+            logger=logger,
+            flock=flock,
+        )
         self._running_query: str | None = None
         self._client: pyvo.dal.TAPService | None = None
         self._pool = ThreadPoolExecutor(max_workers=1)
@@ -74,11 +87,13 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
         with self.timings.start("execute_query", {"query": query}) as sw:
             self._running_query = query
 
+            success = False
             try:
                 if self.options.sync:
                     await self.run_sync_query(query)
                 else:
                     await self.run_async_query(query)
+                success = True
             except Exception as e:
                 raise CodeExecutionError(
                     user=self.user.username,
@@ -88,6 +103,15 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
                     started_at=sw.start_time,
                     error=f"{type(e).__name__}: {e!s}",
                 ) from e
+            finally:
+                await self.events.tap_query.publish(
+                    payload=TapQuery(
+                        success=success,
+                        duration=sw.elapsed,
+                        sync=self.options.sync,
+                        **self.common_event_attrs(),
+                    )
+                )
 
             self._running_query = None
             elapsed = sw.elapsed.total_seconds()
