@@ -10,7 +10,7 @@ from safir.metrics import EventManager, EventPayload
 class EventBase(EventPayload):
     """Attributes on every mobu event."""
 
-    flock: str | None
+    flock: str
     business: str
     username: str
 
@@ -27,14 +27,14 @@ class NotebookBase(EventBase):
 class NotebookExecution(NotebookBase):
     """Reported after a notebook is finished executing."""
 
-    duration: timedelta | None
+    duration: timedelta
     success: bool
 
 
 class NotebookCellExecution(NotebookBase):
     """Reported after a notebook cell is finished executing."""
 
-    duration: timedelta | None
+    duration: timedelta
     cell_id: str
     success: bool
 
@@ -42,7 +42,7 @@ class NotebookCellExecution(NotebookBase):
 class NubladoPythonExecution(EventBase):
     """Reported after a nublado python execution."""
 
-    duration: timedelta | None
+    duration: timedelta
     success: bool
     code: str
 
@@ -65,14 +65,14 @@ class GitLfsCheck(EventBase):
     """Reported from Git LFS businesses."""
 
     success: bool
-    duration: timedelta | None = None
+    duration: timedelta
 
 
 class TapQuery(EventBase):
     """Reported when a TAP query is executed."""
 
     success: bool
-    duration: timedelta | None
+    duration: timedelta
     sync: bool
 
 
