@@ -22,7 +22,7 @@ pydantic-settings>=2.6.1
 pyvo<1.6
 pyyaml
 rubin-nublado-client>=8.0.3
-safir>=9.0.1
+safir @ git+https://github.com/lsst-sqre/safir@tickets/DM-48214/disable-kafka-x509-strict-verification#subdirectory=safir
 shortuuid
 structlog
 websockets
