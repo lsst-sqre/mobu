@@ -40,7 +40,6 @@ async def test_run(
             "name": "GitLFSBusiness",
             "refreshing": False,
             "success_count": 1,
-            "timings": ANY,
         },
         "state": "RUNNING",
         "user": {
@@ -95,7 +94,6 @@ async def test_fail(
             "name": "GitLFSBusiness",
             "refreshing": False,
             "success_count": 0,
-            "timings": ANY,
         },
         "state": ANY,
         "user": {
