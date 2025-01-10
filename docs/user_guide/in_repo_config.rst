@@ -41,6 +41,8 @@ For instance:
 .. image:: metadata_example.png
    :alt: Editing notebook metadata in JupyterLab
    :align: center
+   :width: 400px
+
 
 Annotating notebooks in this way is optional and depending on flock configuration redundant; for example, at Rubin mobu is configured to run the Rubin Science Platform tutorial notebooks only on Rubin Science Platform clusters, so all required services can be assumed to be available.
 This feature is more useful for notebook payload repos that perform monitoring actions.
