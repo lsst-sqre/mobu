@@ -1,6 +1,6 @@
-##############
-In-repo config
-##############
+#################################
+Configuring notebooks run by mobu
+#################################
 
 Some mobu behavior can be controlled by files within notebook repos that mobu clones and runs.
 
@@ -23,20 +23,21 @@ Service-specific notebooks
 
 Each mobu instance knows what other `services <https://phalanx.lsst.io/applications/index.html>`_ are running in its environment.
 You can annotate a notebook to specify that it should only be run if certain services are available.
-Add a ``mobu`` section to the `notebook metadata <https://phalanx.lsst.io/applications/index.html>`_ with a ``required_services`` key:
+Add a ``mobu`` section to the notebook metadata with a ``required_services`` key:
 
 .. code-block:: jsonnet
 
    {
-     "cells": [
-       // A bunch of cells
-     ],
      "metadata": {
        "mobu": {
-         "required_services": ["nublado"]
+         "required_services": ["tap"]
        },
-       // A bunch of other metadata
-     },
-     "nbformat": 4,
-     "nbformat_minor": 5
    }
+
+Notebook metadata can be edited directly with an editor ("Edit Cell Tags (JSON)" in VS Code and look for the "metadata" key) or from the JupyerLab Property Inspector:
+
+For instance:
+
+.. image:: metadata_example.png
+   :alt: Editing notebook metadata in JupyterLab
+   :align: center
