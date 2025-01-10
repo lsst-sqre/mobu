@@ -44,4 +44,4 @@ For instance:
 
 Annotating notebooks in this way is optional and depending on flock configuration redundant; for example, at Rubin mobu is configured to run the Rubin Science Platform tutorial notebooks only on Rubin Science Platform clusters, so all required services can be assumed to be available.
 This feature is more useful for notebook payload repos that perform monitoring actions.
-In such a case, annotating notebooks not to chech a service that is not expected to be available on a particular environment prevents false positive noise.
+In such a case, annotating notebooks not to check a service that is not expected to be available on a particular environment prevents false positive noise.
