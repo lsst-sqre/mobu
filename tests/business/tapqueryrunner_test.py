@@ -52,7 +52,6 @@ async def test_run(
                 "name": "TAPQueryRunner",
                 "refreshing": False,
                 "success_count": 1,
-                "timings": ANY,
             },
             "state": "RUNNING",
             "user": {

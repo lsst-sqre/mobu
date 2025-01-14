@@ -90,7 +90,6 @@ def test_start_report_refresh_stop(
                     "name": "EmptyLoop",
                     "refreshing": ANY,
                     "success_count": ANY,
-                    "timings": ANY,
                 },
                 "state": ANY,
                 "user": {

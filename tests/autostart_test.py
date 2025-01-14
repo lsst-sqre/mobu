@@ -38,7 +38,6 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
                 "name": "EmptyLoop",
                 "refreshing": False,
                 "success_count": ANY,
-                "timings": ANY,
             },
             "state": ANY,
             "user": {
@@ -110,7 +109,6 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
                     "name": "NubladoPythonLoop",
                     "refreshing": False,
                     "success_count": ANY,
-                    "timings": ANY,
                 },
                 "state": "RUNNING",
                 "user": {
@@ -132,7 +130,6 @@ async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
                     "name": "NubladoPythonLoop",
                     "refreshing": False,
                     "success_count": ANY,
-                    "timings": ANY,
                 },
                 "state": "RUNNING",
                 "user": {
