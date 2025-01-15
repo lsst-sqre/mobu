@@ -7,7 +7,6 @@ from contextlib import contextmanager
 from typing import Any, Literal
 
 import sentry_sdk
-from astropy.utils.xml.writer import contextlib
 from safir.sentry import before_send_handler
 from sentry_sdk.tracing import Span, Transaction
 from sentry_sdk.types import Event, Hint
@@ -71,7 +70,7 @@ def start_span(op: str, **kwargs: Any) -> Generator[Span]:
             sentry_sdk.get_isolation_scope().remove_tag("phase")
 
 
-@contextlib.contextmanager
+@contextmanager
 def start_transaction(
     name: str, op: str, **kwargs: Any
 ) -> Generator[Transaction | Span]:
