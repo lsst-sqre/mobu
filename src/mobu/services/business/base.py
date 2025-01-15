@@ -18,7 +18,7 @@ from ...asyncio import wait_first
 from ...events import Events
 from ...models.business.base import BusinessData, BusinessOptions
 from ...models.user import AuthenticatedUser
-from ..timings import Timings
+from ...sentry import start_span
 
 T = TypeVar("T", bound="BusinessOptions")
 U = TypeVar("U")
@@ -88,8 +88,6 @@ class Business(Generic[T], metaclass=ABCMeta):
         Number of successes.
     failure_count
         Number of failures.
-    timings
-        Execution timings.
     stopping
         Whether `stop` has been called and further execution should stop.
     flock
@@ -113,7 +111,6 @@ class Business(Generic[T], metaclass=ABCMeta):
         self.logger = logger
         self.success_count = 0
         self.failure_count = 0
-        self.timings = Timings()
         self.control: Queue[BusinessCommand] = Queue()
         self.stopping = False
         self.refreshing = False
@@ -199,7 +196,7 @@ class Business(Generic[T], metaclass=ABCMeta):
     async def idle(self) -> None:
         """Pause at the end of each business loop."""
         self.logger.info("Idling...")
-        with self.timings.start("idle"):
+        with start_span(op="idle"):
             await self.pause(self.options.idle_time)
 
     async def error_idle(self) -> None:
@@ -324,7 +321,6 @@ class Business(Generic[T], metaclass=ABCMeta):
             failure_count=self.failure_count,
             success_count=self.success_count,
             refreshing=self.refreshing,
-            timings=self.timings.dump(),
         )
 
     def common_event_attrs(self) -> CommonEventAttrs:

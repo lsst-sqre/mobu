@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Generator, Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -24,6 +24,11 @@ from rubin.nublado.client.testing import (
     mock_jupyter,
     mock_jupyter_websocket,
 )
+from safir.testing.sentry import (
+    Captured,
+    capture_events_fixture,
+    sentry_init_fixture,
+)
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 from structlog.stdlib import BoundLogger
 
@@ -31,6 +36,7 @@ from mobu import main
 from mobu.dependencies.config import config_dependency
 from mobu.dependencies.context import context_dependency
 from mobu.events import Events
+from mobu.sentry import before_send, send_all_error_transactions
 from mobu.services.business.gitlfs import GitLFSBusiness
 from mobu.services.business.nublado import _GET_IMAGE, _GET_NODE
 
@@ -286,3 +292,18 @@ def github_mocker() -> Iterator[GitHubMocker]:
     github_mocker = GitHubMocker()
     with github_mocker.router:
         yield github_mocker
+
+
+@pytest.fixture
+def sentry_items(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Generator[Captured]:
+    """Mock Sentry transport and yield a list that will contain all events."""
+    with sentry_init_fixture() as init:
+        init(
+            traces_sample_rate=1.0,
+            before_send=before_send,
+            before_send_transaction=send_all_error_transactions,
+        )
+        events = capture_events_fixture(monkeypatch)
+        yield events()

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from textwrap import dedent
-from typing import Self
+from typing import Literal, Self
 
 import yaml
 from pydantic import AliasChoices, Field, HttpUrl
@@ -179,6 +179,42 @@ class Configuration(BaseSettings):
         examples=["https://data.example.org/"],
         validation_alias=AliasChoices(
             "MOBU_ENVIRONMENT_URL", "environmentUrl"
+        ),
+    )
+
+    sentry_dsn: str | None = Field(
+        None,
+        title="Sentry DSN",
+        description="The Sentry DSN: https://docs.sentry.io/platforms/python/#configure",
+        examples=[
+            "https://foo@bar.ingest.us.sentry.io/123456",
+        ],
+        validation_alias=AliasChoices("MOBU_SENTRY_DSN", "mobuSentryDsn"),
+    )
+
+    sentry_traces_sample_config: float | Literal["errors"] = Field(
+        0,
+        title="Sentry traces sample config",
+        description=(
+            "Set the Sentry sampling strategy for traces. If this is a float,"
+            " it will be passed as the traces_sample_rate: https://docs.sentry.io/platforms/python/configuration/sampling/#configuring-the-transaction-sample-rate"
+            ' If this is set to "errors", then all transactions during which'
+            " an error occurred will be sent."
+        ),
+        examples=[0, 0.5, "errors"],
+        validation_alias=AliasChoices(
+            "MOBU_SENTRY_TRACES_SAMPLE_CONFIG", "sentryTracesSampleConfig"
+        ),
+    )
+
+    sentry_environment: str = Field(
+        ...,
+        title="Sentry environment",
+        description=(
+            "The Sentry environment: https://docs.sentry.io/concepts/key-terms/environments/"
+        ),
+        validation_alias=AliasChoices(
+            "MOBU_SENTRY_ENVIRONMENT", "sentryEnvironment"
         ),
     )
 

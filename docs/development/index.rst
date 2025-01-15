@@ -8,3 +8,4 @@ Here are some guides on developing and testing mobu.
 
    idfdev
    github
+   sentry

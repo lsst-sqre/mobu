@@ -10,6 +10,7 @@ called.
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import timedelta
@@ -22,6 +23,8 @@ from safir.fastapi import ClientRequestError, client_request_error_handler
 from safir.logging import Profile, configure_logging, configure_uvicorn_logging
 from safir.middleware.x_forwarded import XForwardedMiddleware
 from safir.slack.webhook import SlackRouteErrorHandler
+
+from mobu.sentry import sentry_init
 
 from .asyncio import schedule_periodic
 from .dependencies.config import config_dependency
@@ -36,6 +39,14 @@ from .handlers.internal import internal_router
 from .status import post_status
 
 __all__ = ["create_app", "lifespan"]
+
+
+if os.environ.get("MOBU_SENTRY_DSN"):
+    sentry_init(
+        dsn=config_dependency.config.sentry_dsn,
+        env=config_dependency.config.sentry_environment,
+        traces_sample_config=config_dependency.config.sentry_traces_sample_config,
+    )
 
 
 @asynccontextmanager
