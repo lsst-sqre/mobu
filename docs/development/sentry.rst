@@ -16,8 +16,7 @@ All tags and contexts are set on the isolation scope, and any exceptions are man
 * For ``Nublado`` businesses, there are transactions created for startup and shutdown.
 * For ``NotebookRunner`` businesses, a transaction is created for every notebook execution.
 
-The ``Nublado`` and ``NotebookRunner`` business transactions will appear in Sentry as separate transactions.
-The details of these transactions will not appear in the ``run`` transaction.
+The details of the notebook execution transactions, or the startup and shutdown transactions, will not appear in the main business iteration transaction.
 We have these separate inner transactions because Sentry waits until all spans are closed in a transaction before sending it, and we don't want to wait for ``max_executions`` notebook executions before tracing information for a single notebook executions is sent.
 
 Fingerprints
