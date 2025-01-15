@@ -22,13 +22,14 @@ pydantic-settings>=2.6.1
 pyvo<1.6
 pyyaml
 rubin-nublado-client>=8.0.3
-safir>=9.0.1
+safir>=9.2.0
 shortuuid
 structlog
 websockets
+sentry-sdk
 
 # Uncomment this, change the branch, comment out safir above, and run make
 # update-deps-no-hashes to test against an unreleased version of Safir.
-#safir @ git+https://github.com/lsst-sqre/safir@tickets/DM-38272#subdirectory=safir
+# safir @ git+https://github.com/lsst-sqre/safir@tickets/DM-48101/sentry-helpers#subdirectory=safir
 # Similar for rubin-nublado-client:
 #rubin-nublado-client@git+https://github.com/lsst-sqre/nublado@tickets/DM-45702#subdirectory=client
