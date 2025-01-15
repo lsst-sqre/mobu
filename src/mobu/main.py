@@ -23,6 +23,8 @@ from safir.logging import Profile, configure_logging, configure_uvicorn_logging
 from safir.middleware.x_forwarded import XForwardedMiddleware
 from safir.slack.webhook import SlackRouteErrorHandler
 
+from mobu.sentry import sentry_init
+
 from .asyncio import schedule_periodic
 from .dependencies.config import config_dependency
 from .dependencies.context import context_dependency
@@ -88,6 +90,12 @@ def create_app(*, load_config: bool = True) -> FastAPI:
         required but the configuration won't matter.
     """
     if load_config:
+        sentry_init(
+            dsn=config_dependency.config.sentry_dsn,
+            env=config_dependency.config.sentry_environment,
+            traces_sample_config=config_dependency.config.sentry_traces_sample_config,
+        )
+
         config = config_dependency.config
         path_prefix = config.path_prefix
         github_ci_app = config.github_ci_app

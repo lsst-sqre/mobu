@@ -8,12 +8,14 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from httpx import AsyncClient
+from safir.sentry import duration
 from structlog.stdlib import BoundLogger
 
 from ...events import Events, GitLfsCheck
 from ...exceptions import ComparisonError
 from ...models.business.gitlfs import GitLFSBusinessOptions
 from ...models.user import AuthenticatedUser
+from ...sentry import capturing_start_span, start_transaction
 from ...storage.git import Git
 from .base import Business
 
@@ -75,21 +77,26 @@ class GitLFSBusiness(Business):
         Each time through the loop, the entire set of repositories is
         created anew.
         """
-        self.logger.info("Running Git-LFS check...")
-        event = GitLfsCheck(success=False, **self.common_event_attrs())
-        try:
-            with self.timings.start("execute git-lfs check") as sw:
-                await self._git_lfs_check()
-            elapsed = sw.elapsed.total_seconds()
-            self.logger.info(f"...Git-LFS check finished after {elapsed}s")
+        with start_transaction(
+            name=f"{self.name} - execute",
+            op="mobu.gitlfs.check",
+        ):
+            self.logger.info("Running Git-LFS check...")
+            event = GitLfsCheck(success=False, **self.common_event_attrs())
+            try:
+                with capturing_start_span(op="mobu.gitlfs.check") as span:
+                    await self._git_lfs_check()
+                span_duration = duration(span)
+                elapsed = span_duration.total_seconds()
+                self.logger.info(f"...Git-LFS check finished after {elapsed}s")
 
-            event.duration = sw.elapsed
-            event.success = True
-        except:
-            event.success = False
-            raise
-        finally:
-            await self.events.git_lfs_check.publish(event)
+                event.duration = span_duration
+                event.success = True
+            except:
+                event.success = False
+                raise
+            finally:
+                await self.events.git_lfs_check.publish(event)
 
     def _git(self, repo: Path) -> Git:
         """Return a configured Git client for a specified repo path.
@@ -107,26 +114,26 @@ class GitLFSBusiness(Business):
         self._uuid = uuid.uuid4().hex
         with tempfile.TemporaryDirectory() as working_dir:
             self._working_dir = Path(working_dir)
-            with self.timings.start("create origin repo"):
+            with capturing_start_span(op="create origin repo"):
                 await self._create_origin_repo()
-            with self.timings.start("populate origin repo"):
+            with capturing_start_span(op="populate origin repo"):
                 await self._populate_origin_repo()
-            with self.timings.start("create checkout repo"):
+            with capturing_start_span(op="create checkout repo"):
                 await self._create_checkout_repo()
-            with self.timings.start("add LFS-tracked assets"):
+            with capturing_start_span(op="add LFS-tracked assets"):
                 await self._add_lfs_assets()
             git = self._git(repo=Path(self._working_dir / "checkout"))
-            with self.timings.start("add git credentials"):
+            with capturing_start_span(op="add git credentials"):
                 await self._add_credentials(git)
-            with self.timings.start("push LFS-tracked assets"):
+            with capturing_start_span(op="push LFS-tracked assets"):
                 await git.push("origin", "main")
-            with self.timings.start("remove git credentials"):
+            with capturing_start_span(op="remove git credentials"):
                 Path(self._working_dir / ".git_credentials").unlink()
-            with self.timings.start("verify origin contents"):
+            with capturing_start_span(op="verify origin contents"):
                 await self._verify_origin_contents()
-            with self.timings.start("create clone repo with asset"):
+            with capturing_start_span(op="create clone repo with asset"):
                 await self._create_clone_repo()
-            with self.timings.start("verify asset contents"):
+            with capturing_start_span(op="verify asset contents"):
                 await self._verify_asset_contents()
 
     async def _create_origin_repo(self) -> None:
@@ -179,9 +186,9 @@ class GitLFSBusiness(Business):
     async def _add_lfs_assets(self) -> None:
         checkout_path = Path(self._working_dir / "checkout")
         git = self._git(repo=checkout_path)
-        with self.timings.start("install git lfs to checkout repo"):
+        with capturing_start_span(op="install git lfs to checkout repo"):
             await self._install_git_lfs(git)
-        with self.timings.start("add lfs data to checkout repo"):
+        with capturing_start_span(op="add lfs data to checkout repo"):
             await self._add_git_lfs_data(git)
         asset_path = Path(checkout_path / "assets")
         asset_path.mkdir()
@@ -208,7 +215,7 @@ class GitLFSBusiness(Business):
     async def _add_git_lfs_data(self, git: Git) -> None:
         if git.repo is None:
             raise ValueError("Git client repository cannot be 'None'")
-        with self.timings.start("git attribute installation"):
+        with capturing_start_span(op="git attribute installation"):
             shutil.copyfile(
                 Path(self._package_data / "gitattributes"),
                 Path(git.repo / ".gitattributes"),

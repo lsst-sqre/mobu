@@ -10,13 +10,16 @@ from typing import Generic, TypeVar
 import pyvo
 import requests
 from httpx import AsyncClient
+from safir.sentry import duration
+from sentry_sdk import set_context
 from structlog.stdlib import BoundLogger
 
 from ...dependencies.config import config_dependency
 from ...events import Events, TapQuery
-from ...exceptions import CodeExecutionError, TAPClientError
+from ...exceptions import TAPClientError
 from ...models.business.tap import TAPBusinessData, TAPBusinessOptions
 from ...models.user import AuthenticatedUser
+from ...sentry import capturing_start_span, start_transaction
 from .base import Business
 
 T = TypeVar("T", bound="TAPBusinessOptions")
@@ -69,8 +72,7 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
         self._pool = ThreadPoolExecutor(max_workers=1)
 
     async def startup(self) -> None:
-        with self.timings.start("make_client"):
-            self._client = self._make_client(self.user.token)
+        self._client = self._make_client(self.user.token)
 
     @abstractmethod
     def get_next_query(self) -> str:
@@ -83,40 +85,39 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
         """
 
     async def execute(self) -> None:
-        query = self.get_next_query()
-        with self.timings.start("execute_query", {"query": query}) as sw:
-            self._running_query = query
-
-            success = False
-            try:
-                if self.options.sync:
-                    await self.run_sync_query(query)
-                else:
-                    await self.run_async_query(query)
-                success = True
-            except Exception as e:
-                raise CodeExecutionError(
-                    user=self.user.username,
-                    code=query,
-                    code_type="TAP query",
-                    event="execute_query",
-                    started_at=sw.start_time,
-                    error=f"{type(e).__name__}: {e!s}",
-                ) from e
-            finally:
-                await self.events.tap_query.publish(
-                    payload=TapQuery(
-                        success=success,
-                        duration=sw.elapsed,
-                        sync=self.options.sync,
-                        **self.common_event_attrs(),
-                    )
+        with start_transaction(
+            name=f"{self.name} - execute",
+            op="mobu.tap.execute",
+        ):
+            query = self.get_next_query()
+            with capturing_start_span(op="mobu.tap.execute_query") as span:
+                set_context(
+                    "query_info",
+                    {"query": query, "started_at": span.start_timestamp},
                 )
+                self._running_query = query
 
-            self._running_query = None
-            elapsed = sw.elapsed.total_seconds()
+                success = False
+                try:
+                    if self.options.sync:
+                        await self.run_sync_query(query)
+                    else:
+                        await self.run_async_query(query)
+                    success = True
+                finally:
+                    await self.events.tap_query.publish(
+                        payload=TapQuery(
+                            success=success,
+                            duration=duration(span),
+                            sync=self.options.sync,
+                            **self.common_event_attrs(),
+                        )
+                    )
 
-        self.logger.info(f"Query finished after {elapsed} seconds")
+                self._running_query = None
+                elapsed = duration(span).total_seconds()
+
+            self.logger.info(f"Query finished after {elapsed} seconds")
 
     async def run_async_query(self, query: str) -> None:
         """Run the query asynchronously.
@@ -169,19 +170,26 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
         pyvo.dal.TAPService
             TAP client object.
         """
-        config = config_dependency.config
-        if not config.environment_url:
-            raise RuntimeError("environment_url not set")
-        tap_url = str(config.environment_url).rstrip("/") + "/api/tap"
-        try:
-            s = requests.Session()
-            s.headers["Authorization"] = "Bearer " + token
-            auth = pyvo.auth.AuthSession()
-            auth.credentials.set("lsst-token", s)
-            auth.add_security_method_for_url(tap_url, "lsst-token")
-            auth.add_security_method_for_url(tap_url + "/sync", "lsst-token")
-            auth.add_security_method_for_url(tap_url + "/async", "lsst-token")
-            auth.add_security_method_for_url(tap_url + "/tables", "lsst-token")
-            return pyvo.dal.TAPService(tap_url, auth)
-        except Exception as e:
-            raise TAPClientError(e, user=self.user.username) from e
+        with capturing_start_span(op="make_client"):
+            config = config_dependency.config
+            if not config.environment_url:
+                raise RuntimeError("environment_url not set")
+            tap_url = str(config.environment_url).rstrip("/") + "/api/tap"
+            try:
+                s = requests.Session()
+                s.headers["Authorization"] = "Bearer " + token
+                auth = pyvo.auth.AuthSession()
+                auth.credentials.set("lsst-token", s)
+                auth.add_security_method_for_url(tap_url, "lsst-token")
+                auth.add_security_method_for_url(
+                    tap_url + "/sync", "lsst-token"
+                )
+                auth.add_security_method_for_url(
+                    tap_url + "/async", "lsst-token"
+                )
+                auth.add_security_method_for_url(
+                    tap_url + "/tables", "lsst-token"
+                )
+                return pyvo.dal.TAPService(tap_url, auth)
+            except Exception as e:
+                raise TAPClientError(e) from e

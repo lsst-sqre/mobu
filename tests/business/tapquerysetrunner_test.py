@@ -11,10 +11,11 @@ import pyvo
 import respx
 import structlog
 import yaml
+from anys import ANY_AWARE_DATETIME_STR, AnyContains, AnySearch, AnyWithEntries
 from httpx import AsyncClient
 from safir.dependencies.http_client import http_client_dependency
 from safir.metrics import NOT_NONE, MockEventPublisher
-from safir.testing.slack import MockSlackWebhook
+from safir.testing.sentry import Captured
 
 import mobu
 from mobu.events import Events
@@ -54,7 +55,6 @@ async def test_run(
                 "name": "TAPQuerySetRunner",
                 "refreshing": False,
                 "success_count": 1,
-                "timings": ANY,
             },
             "state": "RUNNING",
             "user": {
@@ -91,8 +91,8 @@ async def test_run(
 @pytest.mark.asyncio
 async def test_setup_error(
     client: AsyncClient,
-    slack: MockSlackWebhook,
     respx_mock: respx.Router,
+    sentry_items: Captured,
 ) -> None:
     """Test that client creation is deferred to setup.
 
@@ -117,62 +117,40 @@ async def test_setup_error(
     data = await wait_for_business(client, "bot-mobu-tapuser")
     assert data["business"]["failure_count"] == 1
 
-    assert slack.messages == [
-        {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": (
-                            "Unable to create TAP client: DALServiceError:"
-                            " No working capabilities endpoint provided"
-                        ),
-                        "verbatim": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Exception type*\nTAPClientError",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-tapuser",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Event*\nmake_client",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-tapuser",
-                            "verbatim": True,
-                        },
-                    ],
-                },
-                {"type": "divider"},
-            ]
-        }
-    ]
+    # Confirm Sentry events
+    (sentry_error,) = sentry_items.errors
+
+    assert sentry_error["exception"]["values"] == AnyContains(
+        AnyWithEntries(
+            {
+                "type": "DALServiceError",
+                "value": "No working capabilities endpoint provided",
+            }
+        )
+    )
+    assert sentry_error["contexts"]["phase"] == {
+        "phase": "make_client",
+        "started_at": ANY_AWARE_DATETIME_STR,
+    }
+    assert sentry_error["tags"] == {
+        "flock": "test",
+        "business": "TAPQuerySetRunner",
+        "phase": "make_client",
+    }
+    assert sentry_error["user"] == {"username": "bot-mobu-tapuser"}
+
+    (sentry_transaction,) = sentry_items.transactions
+    assert sentry_transaction["transaction"] == "TAPQuerySetRunner - startup"
 
 
 @pytest.mark.asyncio
 async def test_failure(
     client: AsyncClient,
-    slack: MockSlackWebhook,
     respx_mock: respx.Router,
     events: Events,
+    sentry_items: Captured,
 ) -> None:
     mock_gafaelfawr(respx_mock)
-
     with patch.object(pyvo.dal, "TAPService") as mock:
         mock.return_value.search.side_effect = [Exception("some error")]
 
@@ -192,6 +170,26 @@ async def test_failure(
         data = await wait_for_business(client, "bot-mobu-testuser1")
         assert data["business"]["failure_count"] == 1
 
+    # Confirm Sentry errors
+    (sentry_error,) = sentry_items.errors
+    assert sentry_error["contexts"]["phase"] == {
+        "phase": "mobu.tap.execute_query",
+        "started_at": ANY_AWARE_DATETIME_STR,
+    }
+    assert sentry_error["contexts"]["query_info"] == {
+        "started_at": ANY_AWARE_DATETIME_STR,
+        "query": AnySearch("SELECT"),
+    }
+    assert sentry_error["tags"] == {
+        "flock": "test",
+        "business": "TAPQuerySetRunner",
+        "phase": "mobu.tap.execute_query",
+    }
+    assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
+
+    (sentry_transaction,) = sentry_items.transactions
+    assert sentry_transaction["transaction"] == "TAPQuerySetRunner - execute"
+
     # Confirm metrics events
     published = cast(MockEventPublisher, events.tap_query).published
     published.assert_published_all(
@@ -206,72 +204,6 @@ async def test_failure(
             }
         ]
     )
-
-    assert slack.messages == [
-        {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "Error while running TAP query",
-                        "verbatim": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Exception type*\nCodeExecutionError",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Event*\nexecute_query",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                    ],
-                },
-            ],
-            "attachments": [
-                {
-                    "blocks": [
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": (
-                                    "*Error*\n```\nException: some error\n```"
-                                ),
-                                "verbatim": True,
-                            },
-                        },
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": ANY,
-                                "verbatim": True,
-                            },
-                        },
-                    ]
-                }
-            ],
-        }
-    ]
 
 
 @pytest.mark.asyncio

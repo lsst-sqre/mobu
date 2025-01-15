@@ -10,11 +10,11 @@ from unittest.mock import ANY
 
 import pytest
 import respx
-from anys import AnySearch
+from anys import ANY_AWARE_DATETIME_STR, AnyContains, AnySearch, AnyWithEntries
 from httpx import AsyncClient
 from rubin.nublado.client.testing import MockJupyter
 from safir.metrics import NOT_NONE, MockEventPublisher
-from safir.testing.slack import MockSlackWebhook
+from safir.testing.sentry import Captured
 
 from mobu.events import Events
 from mobu.storage.git import Git
@@ -98,7 +98,6 @@ async def test_run(
                 "notebook": "test-notebook.ipynb",
                 "refreshing": False,
                 "success_count": 1,
-                "timings": ANY,
             },
             "state": "RUNNING",
             "user": {
@@ -212,7 +211,6 @@ async def test_run_debug_log(
                 "notebook": "test-notebook.ipynb",
                 "refreshing": False,
                 "success_count": 1,
-                "timings": ANY,
             },
             "state": "RUNNING",
             "user": {
@@ -288,7 +286,6 @@ async def test_run_recursive(
                 "notebook": ANY,
                 "refreshing": False,
                 "success_count": 1,
-                "timings": ANY,
             },
             "state": "RUNNING",
             "user": {
@@ -416,7 +413,6 @@ async def test_run_required_services(
                 "notebook": ANY,
                 "refreshing": False,
                 "success_count": 1,
-                "timings": ANY,
             },
             "state": "RUNNING",
             "user": {
@@ -507,7 +503,6 @@ async def test_run_all_notebooks(
                 "notebook": "test-notebook-has-services.ipynb",
                 "refreshing": False,
                 "success_count": 1,
-                "timings": ANY,
             },
             "state": "RUNNING",
             "user": {
@@ -675,7 +670,6 @@ async def test_exclude_dirs(
                 "notebook": ANY,
                 "refreshing": False,
                 "success_count": 1,
-                "timings": ANY,
             },
             "state": "RUNNING",
             "user": {
@@ -719,7 +713,7 @@ async def test_invalid_repo_config(
     client: AsyncClient,
     respx_mock: respx.Router,
     tmp_path: Path,
-    slack: MockSlackWebhook,
+    sentry_items: Captured,
 ) -> None:
     mock_gafaelfawr(respx_mock)
     cwd = Path.cwd()
@@ -774,7 +768,6 @@ async def test_invalid_repo_config(
                 "name": "NotebookRunner",
                 "refreshing": False,
                 "success_count": 0,
-                "timings": ANY,
             },
             "name": "bot-mobu-testuser1",
             "state": "STOPPING",
@@ -787,92 +780,45 @@ async def test_invalid_repo_config(
     finally:
         os.chdir(cwd)
 
-    # Make sure we sent a validation error in a Slack notification
-    assert slack.messages == [
-        {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "Error parsing config file: mobu.yaml",
-                        "verbatim": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {
-                            "type": "mrkdwn",
-                            "text": ANY,
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Exception type*\nRepositoryConfigError",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                    ],
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": ANY,
-                        "verbatim": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "*Git Ref*\nmain",
-                        "verbatim": True,
-                    },
-                },
-            ],
-            "attachments": [
-                {
-                    "blocks": [
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": ANY,
-                                "verbatim": True,
-                            },
-                        }
-                    ]
-                }
-            ],
-        }
+    # Confirm Sentry errors
+    (sentry_error,) = sentry_items.errors
+    assert sentry_error["contexts"]["repo_info"] == {
+        "repo_config_file": "PosixPath('mobu.yaml')",
+        "repo_hash": ANY,
+        "repo_ref": "main",
+        "repo_url": AnySearch("test_invalid_repo_config0/notebooks$"),
+    }
+    assert sentry_error["exception"]["values"] == [
+        AnyWithEntries(
+            {
+                "type": "ValidationError",
+                "value": (AnySearch("2 validation errors for RepoConfig")),
+            }
+        ),
+        AnyWithEntries(
+            {
+                "type": "RepositoryConfigError",
+                "value": ("Error parsing config file: mobu.yaml"),
+            }
+        ),
     ]
+    assert sentry_error["tags"] == {
+        "business": "NotebookRunner",
+        "flock": "test",
+    }
+    assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
 
-    repo = slack.messages[0]["blocks"][2]["text"]["text"]
-    assert "test_invalid_repo_config0/notebooks" in repo
-
-    error = slack.messages[0]["attachments"][0]["blocks"][0]["text"]["text"]
-    assert "ValidationError:" in error
-    assert "2 validation errors for RepoConfig" in error
+    (sentry_transaction,) = sentry_items.transactions
+    assert sentry_transaction["transaction"] == ("NotebookRunner - startup")
 
 
 @pytest.mark.asyncio
 async def test_alert(
     client: AsyncClient,
-    slack: MockSlackWebhook,
     respx_mock: respx.Router,
     tmp_path: Path,
     events: Events,
+    sentry_items: Captured,
 ) -> None:
     mock_gafaelfawr(respx_mock)
 
@@ -926,7 +872,6 @@ async def test_alert(
             "refreshing": False,
             "running_code": bad_code,
             "success_count": 0,
-            "timings": ANY,
         },
         "state": "ERROR",
         "user": {
@@ -935,101 +880,63 @@ async def test_alert(
             "username": "bot-mobu-testuser1",
         },
     }
+    # Confirm Sentry errors
+    (sentry_error,) = sentry_items.errors
 
-    # Check that an appropriate error was posted.
-    assert slack.messages == [
-        {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": (
-                            "Error while running `exception.ipynb`"
-                            " cell `ed399c0a`"
-                        ),
-                        "verbatim": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Exception type*\nCodeExecutionError",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Image*\nRecommended (Weekly 2077_43)",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Event*\nexecute_code",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                    ],
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "*Node*\nNode1",
-                        "verbatim": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": (
-                            "*Cell*\n`exception.ipynb` cell `ed399c0a` (#1)"
-                        ),
-                        "verbatim": True,
-                    },
-                },
-            ],
-            "attachments": [
-                {
-                    "blocks": [
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": ANY,
-                                "verbatim": True,
-                            },
-                        },
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": (
-                                    f"*Code executed*\n```\n{bad_code}\n```"
-                                ),
-                                "verbatim": True,
-                            },
-                        },
-                    ]
-                }
-            ],
-        }
-    ]
-    error = slack.messages[0]["attachments"][0]["blocks"][0]["text"]["text"]
-    assert "KeyError: 'nothing'" in error
+    assert sentry_error["contexts"]["cell_info"] == {
+        "code": 'foo = {"bar": "baz"}\nfoo["nothing"]',
+        "cell_id": "ed399c0a",
+        "cell_number": "#1",
+    }
+    assert sentry_error["contexts"]["notebook_filter_info"] == {
+        "all": [AnySearch("/exception.ipynb$")],
+        "excluded_by_dir": [],
+        "excluded_by_requested": [],
+        "excluded_by_service": [],
+        "runnable": [AnySearch("/exception.ipynb$")],
+    }
+    assert sentry_error["contexts"]["notebook_info"] == {
+        "iteration": "1/1",
+        "notebook": "exception.ipynb",
+    }
+    assert sentry_error["contexts"]["phase"] == {
+        "phase": "execute_cell",
+        "started_at": ANY_AWARE_DATETIME_STR,
+    }
+    assert sentry_error["contexts"]["repo_info"] == {
+        "repo_config_file": "PosixPath('mobu.yaml')",
+        "repo_hash": ANY,
+        "repo_ref": "main",
+        "repo_url": AnySearch(r"/notebooks$"),
+    }
+    assert sentry_error["exception"]["values"] == AnyContains(
+        AnyWithEntries(
+            {
+                "type": "NotebookCellExecutionError",
+                "value": ("exception.ipynb: Error executing cell"),
+            }
+        )
+    )
+    assert sentry_error["tags"] == {
+        "business": "NotebookRunner",
+        "cell": "ed399c0a",
+        "flock": "test",
+        "image_description": "Recommended (Weekly 2077_43)",
+        "image_reference": "lighthouse.ceres/library/sketchbook:recommended",
+        "node": "Node1",
+        "notebook": "exception.ipynb",
+        "phase": "execute_cell",
+    }
+    assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
+
+    (sentry_attachment,) = sentry_items.attachments
+    assert sentry_attachment.filename == "nublado_error.txt"
+    assert "KeyError: 'nothing'" in sentry_attachment.bytes.decode()
+
+    (sentry_transaction,) = sentry_items.transactions
+    assert sentry_transaction["transaction"] == (
+        "NotebookRunner - Execute notebook"
+    )
 
     # Check events
     common = {

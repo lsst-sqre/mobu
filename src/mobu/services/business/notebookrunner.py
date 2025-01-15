@@ -6,26 +6,36 @@ the notebooks, and run them on the remote Nublado lab.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import random
 import shutil
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
+import sentry_sdk
 import yaml
 from httpx import AsyncClient
 from rubin.nublado.client import JupyterLabSession
+from rubin.nublado.client.exceptions import CodeExecutionError
 from rubin.nublado.client.models import CodeContext
+from safir.sentry import duration
+from sentry_sdk import set_context, set_tag
+from sentry_sdk.tracing import Span, Transaction
 from structlog.stdlib import BoundLogger
 
 from ...constants import GITHUB_REPO_CONFIG_PATH
 from ...dependencies.config import config_dependency
 from ...events import Events, NotebookCellExecution, NotebookExecution
-from ...exceptions import NotebookRepositoryError, RepositoryConfigError
+from ...exceptions import (
+    NotebookCellExecutionError,
+    NotebookRepositoryError,
+    RepositoryConfigError,
+)
 from ...models.business.notebookrunner import (
     ListNotebookRunnerOptions,
     NotebookFilterResults,
@@ -35,6 +45,7 @@ from ...models.business.notebookrunner import (
 )
 from ...models.repo import RepoConfig
 from ...models.user import AuthenticatedUser
+from ...sentry import capturing_start_span, start_transaction
 from ...services.business.base import CommonEventAttrs
 from ...storage.git import Git
 from .nublado import NubladoBusiness
@@ -42,7 +53,9 @@ from .nublado import NubladoBusiness
 __all__ = ["NotebookRunner"]
 
 
-class CommonNotebookEventAttrs(CommonEventAttrs):
+class _CommonNotebookEventAttrs(CommonEventAttrs):
+    """Common notebook event attributes."""
+
     notebook: str
     repo: str
     repo_ref: str
@@ -103,14 +116,6 @@ class NotebookRunner(NubladoBusiness):
             case ListNotebookRunnerOptions(notebooks_to_run=notebooks_to_run):
                 self._notebooks_to_run = notebooks_to_run
 
-    def annotations(self, cell_id: str | None = None) -> dict[str, str]:
-        result = super().annotations()
-        if self._notebook:
-            result["notebook"] = self._notebook.name
-        if cell_id:
-            result["cell"] = cell_id
-        return result
-
     async def startup(self) -> None:
         await self.initialize()
         await super().startup()
@@ -132,6 +137,15 @@ class NotebookRunner(NubladoBusiness):
             await self.clone_repo()
 
         repo_config_path = self._repo_dir / GITHUB_REPO_CONFIG_PATH
+        set_context(
+            "repo_info",
+            {
+                "repo_url": self.options.repo_url,
+                "repo_ref": self.options.repo_ref,
+                "repo_hash": self._repo_hash,
+                "repo_config_file": GITHUB_REPO_CONFIG_PATH,
+            },
+        )
         if repo_config_path.exists():
             try:
                 repo_config = RepoConfig.model_validate(
@@ -139,11 +153,7 @@ class NotebookRunner(NubladoBusiness):
                 )
             except Exception as err:
                 raise RepositoryConfigError(
-                    err=err,
-                    user=self.user.username,
-                    config_file=GITHUB_REPO_CONFIG_PATH,
-                    repo_url=self.options.repo_url,
-                    repo_ref=self.options.repo_ref,
+                    f"Error parsing config file: {GITHUB_REPO_CONFIG_PATH}"
                 ) from err
         else:
             repo_config = RepoConfig()
@@ -151,6 +161,9 @@ class NotebookRunner(NubladoBusiness):
         exclude_dirs = repo_config.exclude_dirs
         self._exclude_paths = {self._repo_dir / path for path in exclude_dirs}
         self._notebooks = self.find_notebooks()
+        set_context(
+            "notebook_filter_info", self._notebooks.model_dump(mode="json")
+        )
         self.logger.info("Repository cloned and ready")
 
     async def shutdown(self) -> None:
@@ -166,7 +179,7 @@ class NotebookRunner(NubladoBusiness):
     async def clone_repo(self) -> None:
         url = self.options.repo_url
         ref = self.options.repo_ref
-        with self.timings.start("clone_repo"):
+        with capturing_start_span(op="clone_repo"):
             self._git.repo = self._repo_dir
             await self._git.clone(url, str(self._repo_dir))
             await self._git.checkout(ref)
@@ -196,7 +209,7 @@ class NotebookRunner(NubladoBusiness):
         return False
 
     def find_notebooks(self) -> NotebookFilterResults:
-        with self.timings.start("find_notebooks"):
+        with capturing_start_span(op="find_notebooks"):
             if self._repo_dir is None:
                 raise NotebookRepositoryError(
                     "Repository directory must be set", self.user.username
@@ -260,9 +273,7 @@ class NotebookRunner(NubladoBusiness):
 
     def read_notebook_metadata(self, notebook: Path) -> NotebookMetadata:
         """Extract mobu-specific metadata from a notebook."""
-        with self.timings.start(
-            "read_notebook_metadata", {"notebook": notebook.name}
-        ):
+        with capturing_start_span(op="read_notebook_metadata"):
             try:
                 notebook_text = notebook.read_text()
                 notebook_json = json.loads(notebook_text)
@@ -273,7 +284,7 @@ class NotebookRunner(NubladoBusiness):
                 raise NotebookRepositoryError(msg, self.user.username) from e
 
     def read_notebook(self, notebook: Path) -> list[dict[str, Any]]:
-        with self.timings.start("read_notebook", {"notebook": notebook.name}):
+        with capturing_start_span(op="read_notebook"):
             try:
                 notebook_text = notebook.read_text()
                 cells = json.loads(notebook_text)["cells"]
@@ -314,44 +325,65 @@ class NotebookRunner(NubladoBusiness):
             if self.refreshing:
                 await self.refresh()
                 return
+            await self.execute_notebook(session, count, num_executions)
 
-            self._notebook = self.next_notebook()
-
-            iteration = f"{count + 1}/{num_executions}"
-            msg = f"Notebook {self._notebook.name} iteration {iteration}"
-            self.logger.info(msg)
-
-            with self.timings.start(
-                "execute_notebook", self.annotations(self._notebook.name)
-            ) as sw:
-                try:
-                    for cell in self.read_notebook(self._notebook):
-                        code = "".join(cell["source"])
-                        cell_id = cell.get("id") or cell["_index"]
-                        ctx = CodeContext(
-                            notebook=self._notebook.name,
-                            path=str(self._notebook),
-                            cell=cell_id,
-                            cell_number=f"#{cell['_index']}",
-                            cell_source=code,
-                        )
-                        await self.execute_cell(session, code, cell_id, ctx)
-                        if not await self.execution_idle():
-                            break
-                except:
-                    await self._publish_notebook_event(
-                        duration=sw.elapsed, success=False
-                    )
-                    raise
-
-            self.logger.info(f"Success running notebook {self._notebook.name}")
-            await self._publish_notebook_event(
-                duration=sw.elapsed, success=True
-            )
-            if not self._notebook_paths:
-                self.logger.info("Done with this cycle of notebooks")
             if self.stopping:
                 break
+
+    @contextlib.contextmanager
+    def trace_notebook(
+        self, notebook: str, iteration: str
+    ) -> Iterator[Transaction | Span]:
+        """Set up tracing context for executing a notebook."""
+        notebook_info = {"notebook": notebook, "iteration": iteration}
+        with start_transaction(
+            name=f"{self.name} - Execute notebook",
+            op="mobu.notebookrunner.execute_notebook",
+        ) as span:
+            set_tag("notebook", notebook)
+            set_context("notebook_info", notebook_info)
+            yield span
+
+    async def execute_notebook(
+        self, session: JupyterLabSession, count: int, num_executions: int
+    ) -> None:
+        self._notebook = self.next_notebook()
+        relative_notebook = str(
+            self._notebook.relative_to(self._repo_dir or "/")
+        )
+        iteration = f"{count + 1}/{num_executions}"
+        msg = f"Notebook {self._notebook.name} iteration {iteration}"
+        self.logger.info(msg)
+
+        with self.trace_notebook(
+            notebook=relative_notebook, iteration=iteration
+        ) as span:
+            try:
+                for cell in self.read_notebook(self._notebook):
+                    code = "".join(cell["source"])
+                    cell_id = cell.get("id") or cell["_index"]
+                    ctx = CodeContext(
+                        notebook=relative_notebook,
+                        path=str(self._notebook),
+                        cell=cell_id,
+                        cell_number=f"#{cell['_index']}",
+                        cell_source=code,
+                    )
+                    await self.execute_cell(session, code, cell_id, ctx)
+                    if not await self.execution_idle():
+                        break
+            except:
+                await self._publish_notebook_event(
+                    duration=duration(span), success=False
+                )
+                raise
+
+        self.logger.info(f"Success running notebook {self._notebook.name}")
+        await self._publish_notebook_event(
+            duration=duration(span), success=True
+        )
+        if not self._notebook_paths:
+            self.logger.info("Done with this cycle of notebooks")
 
     async def _publish_notebook_event(
         self, duration: timedelta, *, success: bool
@@ -376,7 +408,7 @@ class NotebookRunner(NubladoBusiness):
             )
         )
 
-    def common_notebook_event_attrs(self) -> CommonNotebookEventAttrs:
+    def common_notebook_event_attrs(self) -> _CommonNotebookEventAttrs:
         """Return notebook event attrs with the other common attrs."""
         notebook = self._notebook.name if self._notebook else "unknown"
         return {
@@ -392,28 +424,49 @@ class NotebookRunner(NubladoBusiness):
         session: JupyterLabSession,
         code: str,
         cell_id: str,
-        context: CodeContext | None = None,
+        context: CodeContext,
     ) -> None:
         if not self._notebook:
             raise RuntimeError("Executing a cell without a notebook")
         self.logger.info(f"Executing cell {cell_id}:\n{code}\n")
-        with self.timings.start(
-            "execute_cell", self.annotations(cell_id)
-        ) as sw:
+        set_tag("cell", cell_id)
+        cell_info = {
+            "code": code,
+            "cell_id": cell_id,
+            "cell_number": context.cell_number,
+        }
+        set_context("cell_info", cell_info)
+        with capturing_start_span(op="execute_cell") as span:
+            # The scope context only appears on the transaction, and not on
+            # individual spans. Since the cell info will be different for
+            # different spans, we need to set this data directly on the span.
+            # We have to set it in the context too so that it shows up in any
+            # exception events. Unfortuantely, span data is not included in
+            # exception events.
+            span.set_data("cell_info", cell_info)
             self._running_code = code
             try:
                 reply = await session.run_python(code, context=context)
-            except:
+            except Exception as e:
+                if isinstance(e, CodeExecutionError) and e.error:
+                    sentry_sdk.get_current_scope().add_attachment(
+                        filename="nublado_error.txt",
+                        bytes=self.remove_ansi_escapes(e.error).encode(),
+                    )
                 await self._publish_cell_event(
                     cell_id=cell_id,
-                    duration=sw.elapsed,
+                    duration=duration(span),
                     success=False,
                 )
-                raise
+
+                notebook = getattr(context, "notebook", "<unknown notebook")
+                msg = f"{notebook}: Error executing cell"
+                raise NotebookCellExecutionError(msg) from e
+
             self._running_code = None
         self.logger.info(f"Result:\n{reply}\n")
         await self._publish_cell_event(
-            cell_id=cell_id, duration=sw.elapsed, success=True
+            cell_id=cell_id, duration=duration(span), success=True
         )
 
     def dump(self) -> NotebookRunnerData:

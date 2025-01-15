@@ -49,3 +49,6 @@ USERNAME_REGEX = (
     "^[a-z0-9](?:[a-z0-9]|-[a-z0-9])*[a-z](?:[a-z0-9]|-[a-z0-9])*$"
 )
 """Regex matching all valid usernames."""
+
+SENTRY_ERRORED_KEY = "errored"
+"""Tag name to set on transactions that had exceptions."""
