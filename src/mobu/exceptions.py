@@ -61,7 +61,7 @@ class GafaelfawrParseError(SentryException):
     ) -> None:
         super().__init__(message)
         if user:
-            self.tags["gafaelfawr_user"] = user
+            self.tags["user"] = user
             self.contexts["validation_info"] = {"error": error}
 
         self.error = error
