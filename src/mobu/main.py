@@ -10,7 +10,6 @@ called.
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import timedelta
@@ -39,14 +38,6 @@ from .handlers.internal import internal_router
 from .status import post_status
 
 __all__ = ["create_app", "lifespan"]
-
-
-if os.environ.get("MOBU_SENTRY_DSN"):
-    sentry_init(
-        dsn=config_dependency.config.sentry_dsn,
-        env=config_dependency.config.sentry_environment,
-        traces_sample_config=config_dependency.config.sentry_traces_sample_config,
-    )
 
 
 @asynccontextmanager
@@ -99,6 +90,12 @@ def create_app(*, load_config: bool = True) -> FastAPI:
         required but the configuration won't matter.
     """
     if load_config:
+        sentry_init(
+            dsn=config_dependency.config.sentry_dsn,
+            env=config_dependency.config.sentry_environment,
+            traces_sample_config=config_dependency.config.sentry_traces_sample_config,
+        )
+
         config = config_dependency.config
         path_prefix = config.path_prefix
         github_ci_app = config.github_ci_app

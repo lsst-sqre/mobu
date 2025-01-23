@@ -444,12 +444,11 @@ class NotebookRunner(NubladoBusiness):
             try:
                 reply = await session.run_python(code, context=context)
             except Exception as e:
-                if isinstance(e, CodeExecutionError):
-                    if e.error:
-                        sentry_sdk.get_current_scope().add_attachment(
-                            filename="nublado_error.txt",
-                            bytes=self.remove_ansi_escapes(e.error).encode(),
-                        )
+                if isinstance(e, CodeExecutionError) and e.error:
+                    sentry_sdk.get_current_scope().add_attachment(
+                        filename="nublado_error.txt",
+                        bytes=self.remove_ansi_escapes(e.error).encode(),
+                    )
                 await self._publish_cell_event(
                     cell_id=cell_id,
                     duration=duration(span),
