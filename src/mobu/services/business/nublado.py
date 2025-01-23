@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from abc import ABCMeta, abstractmethod
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -25,7 +26,6 @@ from ...exceptions import (
     JupyterDeleteTimeoutError,
     JupyterSpawnError,
     JupyterSpawnTimeoutError,
-    remove_ansi_escapes,
 )
 from ...models.business.nublado import (
     NubladoBusinessData,
@@ -40,6 +40,8 @@ T = TypeVar("T", bound="NubladoBusinessOptions")
 
 __all__ = ["NubladoBusiness", "ProgressLogMessage"]
 
+_ANSI_REGEX = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
+"""Regex that matches ANSI escape sequences."""
 _CHDIR_TEMPLATE = 'import os; os.chdir("{wd}")'
 """Template to construct the code to run to set the working directory."""
 
@@ -278,7 +280,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             log = "\n".join([str(m) for m in log_messages])
             sentry_sdk.get_current_scope().add_attachment(
                 filename="spawn_log.txt",
-                bytes=remove_ansi_escapes(log).encode(),
+                bytes=self.remove_ansi_escapes(log).encode(),
             )
             raise
 
@@ -289,7 +291,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         log = "\n".join([str(m) for m in log_messages])
         sentry_sdk.get_current_scope().add_attachment(
             filename="spawn_log.txt",
-            bytes=remove_ansi_escapes(log).encode(),
+            bytes=self.remove_ansi_escapes(log).encode(),
         )
         spawn_duration = duration(span)
         if spawn_duration > timeout:
@@ -418,3 +420,25 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         return NubladoBusinessData(
             image=self._image, **super().dump().model_dump()
         )
+
+    def remove_ansi_escapes(self, string: str) -> str:
+        """Remove ANSI escape sequences from a string.
+
+        Jupyter labs like to format error messages with lots of ANSI
+        escape sequences, and Slack doesn't like that in messages (nor do
+        humans want to see them). Strip them out.
+
+        Based on `this StackOverflow answer
+        <https://stackoverflow.com/questions/14693701/>`__.
+
+        Parameters
+        ----------
+        string
+            String to strip ANSI escapes from.
+
+        Returns
+        -------
+        str
+            Sanitized string.
+        """
+        return _ANSI_REGEX.sub("", string)

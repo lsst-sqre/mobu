@@ -15,8 +15,6 @@ from rubin.nublado.client.exceptions import CodeExecutionError
 from safir.sentry import duration
 from structlog.stdlib import BoundLogger
 
-from mobu.exceptions import remove_ansi_escapes
-
 from ...events import Events, NubladoPythonExecution
 from ...models.business.nubladopythonloop import NubladoPythonLoopOptions
 from ...models.user import AuthenticatedUser
@@ -75,7 +73,9 @@ class NubladoPythonLoop(NubladoBusiness):
                         if e.error:
                             sentry_sdk.get_current_scope().add_attachment(
                                 filename="nublado_error.txt",
-                                bytes=remove_ansi_escapes(e.error).encode(),
+                                bytes=self.remove_ansi_escapes(
+                                    e.error
+                                ).encode(),
                             )
                     await self._publish_failure(code=code)
                     raise

@@ -33,7 +33,6 @@ from ...exceptions import (
     NotebookCellExecutionError,
     NotebookRepositoryError,
     RepositoryConfigError,
-    remove_ansi_escapes,
 )
 from ...models.business.notebookrunner import (
     ListNotebookRunnerOptions,
@@ -449,7 +448,7 @@ class NotebookRunner(NubladoBusiness):
                     if e.error:
                         sentry_sdk.get_current_scope().add_attachment(
                             filename="nublado_error.txt",
-                            bytes=remove_ansi_escapes(e.error).encode(),
+                            bytes=self.remove_ansi_escapes(e.error).encode(),
                         )
                 await self._publish_cell_event(
                     cell_id=cell_id,

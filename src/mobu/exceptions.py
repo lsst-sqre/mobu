@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Self
 
@@ -11,9 +10,6 @@ from pydantic import ValidationError
 from safir.fastapi import ClientRequestError
 from safir.models import ErrorLocation
 from safir.sentry import SentryException, SentryWebException
-
-_ANSI_REGEX = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
-"""Regex that matches ANSI escape sequences."""
 
 __all__ = [
     "ComparisonError",
@@ -24,29 +20,6 @@ __all__ = [
     "MonkeyNotFoundError",
     "SubprocessError",
 ]
-
-
-def remove_ansi_escapes(string: str) -> str:
-    """Remove ANSI escape sequences from a string.
-
-    Jupyter labs like to format error messages with lots of ANSI escape
-    sequences, and Slack doesn't like that in messages (nor do humans want to
-    see them). Strip them out.
-
-    Based on `this StackOverflow answer
-    <https://stackoverflow.com/questions/14693701/>`__.
-
-    Parameters
-    ----------
-    string
-        String to strip ANSI escapes from.
-
-    Returns
-    -------
-    str
-        Sanitized string.
-    """
-    return _ANSI_REGEX.sub("", string)
 
 
 class GafaelfawrParseError(SentryException):
