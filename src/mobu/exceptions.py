@@ -175,11 +175,13 @@ class JupyterSpawnTimeoutError(Exception):
     """Timed out waiting for the lab to spawn."""
 
 
-class JupyterDeleteTimeoutError(Exception): ...
+class JupyterDeleteTimeoutError(Exception):
+    """Timed out waiting for a lab to delete."""
 
 
 class JupyterSpawnError(Exception):
     """The Jupyter Lab pod failed to spawn."""
 
 
-class NotebookCellExecutionError(Exception): ...
+class NotebookCellExecutionError(Exception):
+    """Error when executing a notebook cell."""
