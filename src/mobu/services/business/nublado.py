@@ -166,8 +166,8 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         # enclosing transaction in the Sentry UI.
         with sentry_sdk.start_span(name="startup", op="startup"):
             with start_transaction(
-                name=f"{self.__class__.__name__} - startup",
-                op=f"{self.__class__.__name__} - startup",
+                name=f"{type(self).__name__} - startup",
+                op=f"{type(self).__name__} - startup",
             ):
                 if self.options.jitter:
                     with start_span(op="pre_login_delay"):
@@ -215,8 +215,8 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         # enclosing transaction in the Sentry UI.
         with sentry_sdk.start_span(name="shutdown", op="shutdown"):
             with start_transaction(
-                name=f"{self.__class__.__name__} - shutdown",
-                op=f"{self.__class__.__name__} - shutdown",
+                name=f"{type(self).__name__} - shutdown",
+                op=f"{type(self).__name__} - shutdown",
             ):
                 await self.hub_login()
                 await self.delete_lab()

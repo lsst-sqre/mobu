@@ -328,7 +328,7 @@ class Business(Generic[T], metaclass=ABCMeta):
         return {
             "flock": self.flock,
             "username": self.user.username,
-            "business": self.__class__.__name__,
+            "business": type(self).__name__,
         }
 
     async def _pause_no_return(self, interval: timedelta) -> None:

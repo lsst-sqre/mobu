@@ -189,11 +189,11 @@ class Monkey:
         error = None
         with sentry_sdk.isolation_scope():
             sentry_sdk.set_user({"username": self._user.username})
-            sentry_sdk.set_tag("business", self.business.__class__.__name__)
+            sentry_sdk.set_tag("business", type(self.business).__name__)
             try:
                 with start_transaction(
-                    name=self.__class__.__name__,
-                    op=self.__class__.__name__,
+                    name=type(self.business).__name__,
+                    op=type(self.business).__name__,
                 ):
                     await self.business.run_once()
                 self._state = MonkeyState.FINISHED
@@ -221,14 +221,12 @@ class Monkey:
             with sentry_sdk.isolation_scope():
                 sentry_sdk.set_tag("flock", self._flock)
                 sentry_sdk.set_user({"username": self._user.username})
-                sentry_sdk.set_tag(
-                    "business", self.business.__class__.__name__
-                )
+                sentry_sdk.set_tag("business", type(self.business).__name__)
                 try:
                     self._state = MonkeyState.RUNNING
                     with start_transaction(
-                        name=self.business.__class__.__name__,
-                        op=self.business.__class__.__name__,
+                        name=type(self.business).__name__,
+                        op=type(self.business).__name__,
                     ):
                         await self.business.run()
                     run = False
