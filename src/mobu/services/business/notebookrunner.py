@@ -466,10 +466,11 @@ class NotebookRunner(NubladoBusiness):
                     duration=duration(span),
                     success=False,
                 )
-                raise NotebookCellExecutionError(
-                    f"{getattr(context, 'notebook', '<unknown notebook')}:"
-                    f" Error executing cell"
-                ) from e
+
+                notebook = getattr(context, "notebook", "<unknown notebook")
+                msg = f"{notebook}: Error executing cell"
+                raise NotebookCellExecutionError(msg) from e
+
             self._running_code = None
         self.logger.info(f"Result:\n{reply}\n")
         await self._publish_cell_event(
