@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from mobu.events import EmptyLoopExecution
+
 from .base import Business
 
 __all__ = ["EmptyLoop"]
@@ -15,4 +17,6 @@ class EmptyLoop(Business):
     """
 
     async def execute(self) -> None:
-        pass
+        await self.events.empty_loop.publish(
+            EmptyLoopExecution(success=True, **self.common_event_attrs())
+        )

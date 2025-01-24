@@ -76,11 +76,20 @@ class TapQuery(EventBase):
     sync: bool
 
 
+class EmptyLoopExecution(EventBase):
+    """Reported when an empty loop... loops."""
+
+    success: bool
+
+
 class Events(EventMaker):
     """Container for app metrics event publishers."""
 
     @override
     async def initialize(self, manager: EventManager) -> None:
+        self.empty_loop = await manager.create_publisher(
+            "EmptyLoop", EmptyLoopExecution
+        )
         self.tap_query = await manager.create_publisher("tap_query", TapQuery)
         self.git_lfs_check = await manager.create_publisher(
             "git_lfs_check", GitLfsCheck
