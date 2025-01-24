@@ -6,10 +6,11 @@ the notebooks, and run them on the remote Nublado lab.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import random
 import shutil
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
@@ -24,6 +25,7 @@ from rubin.nublado.client.exceptions import CodeExecutionError
 from rubin.nublado.client.models import CodeContext
 from safir.sentry import duration
 from sentry_sdk import set_context, set_tag
+from sentry_sdk.tracing import Span, Transaction
 from structlog.stdlib import BoundLogger
 
 from ...constants import GITHUB_REPO_CONFIG_PATH
@@ -51,7 +53,9 @@ from .nublado import NubladoBusiness
 __all__ = ["NotebookRunner"]
 
 
-class CommonNotebookEventAttrs(CommonEventAttrs):
+class _CommonNotebookEventAttrs(CommonEventAttrs):
+    """Common notebook event attributes."""
+
     notebook: str
     repo: str
     repo_ref: str
@@ -321,65 +325,73 @@ class NotebookRunner(NubladoBusiness):
             if self.refreshing:
                 await self.refresh()
                 return
+            await self.execute_notebook(session, count, num_executions)
 
-            self._notebook = self.next_notebook()
-            relative_notebook = str(
-                self._notebook.relative_to(self._repo_dir or "/")
-            )
-            iteration = f"{count + 1}/{num_executions}"
-            msg = f"Notebook {self._notebook.name} iteration {iteration}"
-            self.logger.info(msg)
+            if self.stopping:
+                break
 
-            set_tag("notebook", relative_notebook)
-            notebook_info = {
-                "notebook": relative_notebook,
-                "iteration": iteration,
-            }
-            set_context("notebook_info", notebook_info)
+    @contextlib.contextmanager
+    def trace_notebook(
+        self, notebook: str, iteration: str
+    ) -> Iterator[Transaction | Span]:
+        """Set up tracing context for executing a notebook."""
+        notebook_info = {"notebook": notebook, "iteration": iteration}
+        set_tag("notebook", notebook)
+        set_context("notebook_info", notebook_info)
 
-            # We need to start a span around this transaction becaues if we
-            # don't, the nested transaction shows up as "No instrumentation" in
-            # the enclosing transaction in the Sentry UI.
-            with start_span(
-                name="execute_notebook", op="execute_notebook"
-            ) as notebook_span:
-                notebook_span.set_data("notebook_info", notebook_info)
-                with start_transaction(
-                    name="execute_notebook",
-                    op="execute_notebook",
-                ) as span:
-                    try:
-                        for cell in self.read_notebook(self._notebook):
-                            code = "".join(cell["source"])
-                            cell_id = cell.get("id") or cell["_index"]
-                            ctx = CodeContext(
-                                notebook=relative_notebook,
-                                path=str(self._notebook),
-                                cell=cell_id,
-                                cell_number=f"#{cell['_index']}",
-                                cell_source=code,
-                            )
-                            await self.execute_cell(
-                                session, code, cell_id, ctx
-                            )
-                            if not await self.execution_idle():
-                                break
-                    except:
-                        await self._publish_notebook_event(
-                            duration=duration(span), success=False
-                        )
-                        raise
+        # We need to start a span around this transaction becaues if we
+        # don't, the nested transaction shows up as "No instrumentation" in
+        # the enclosing transaction in the Sentry UI.
+        with start_span(
+            name="execute_notebook", op="execute_notebook"
+        ) as notebook_span:
+            notebook_span.set_data("notebook_info", notebook_info)
+            with start_transaction(
+                name="execute_notebook",
+                op="execute_notebook",
+            ) as span:
+                yield span
 
-                self.logger.info(
-                    f"Success running notebook {self._notebook.name}"
-                )
+    async def execute_notebook(
+        self, session: JupyterLabSession, count: int, num_executions: int
+    ) -> None:
+        self._notebook = self.next_notebook()
+        relative_notebook = str(
+            self._notebook.relative_to(self._repo_dir or "/")
+        )
+        iteration = f"{count + 1}/{num_executions}"
+        msg = f"Notebook {self._notebook.name} iteration {iteration}"
+        self.logger.info(msg)
+
+        with self.trace_notebook(
+            notebook=relative_notebook, iteration=iteration
+        ) as span:
+            try:
+                for cell in self.read_notebook(self._notebook):
+                    code = "".join(cell["source"])
+                    cell_id = cell.get("id") or cell["_index"]
+                    ctx = CodeContext(
+                        notebook=relative_notebook,
+                        path=str(self._notebook),
+                        cell=cell_id,
+                        cell_number=f"#{cell['_index']}",
+                        cell_source=code,
+                    )
+                    await self.execute_cell(session, code, cell_id, ctx)
+                    if not await self.execution_idle():
+                        break
+            except:
                 await self._publish_notebook_event(
-                    duration=duration(span), success=True
+                    duration=duration(span), success=False
                 )
-                if not self._notebook_paths:
-                    self.logger.info("Done with this cycle of notebooks")
-                if self.stopping:
-                    break
+                raise
+
+        self.logger.info(f"Success running notebook {self._notebook.name}")
+        await self._publish_notebook_event(
+            duration=duration(span), success=True
+        )
+        if not self._notebook_paths:
+            self.logger.info("Done with this cycle of notebooks")
 
     async def _publish_notebook_event(
         self, duration: timedelta, *, success: bool
@@ -404,7 +416,7 @@ class NotebookRunner(NubladoBusiness):
             )
         )
 
-    def common_notebook_event_attrs(self) -> CommonNotebookEventAttrs:
+    def common_notebook_event_attrs(self) -> _CommonNotebookEventAttrs:
         """Return notebook event attrs with the other common attrs."""
         notebook = self._notebook.name if self._notebook else "unknown"
         return {
