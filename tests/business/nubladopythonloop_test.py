@@ -280,7 +280,8 @@ async def test_hub_failed(
     assert sentry_error["tags"] == {
         "business": "NubladoPythonLoop",
         "flock": "test",
-        "image": None,
+        "image_reference": None,
+        "image_description": None,
         "phase": "spawn_lab",
     }
     assert sentry_error["user"] == {"username": "bot-mobu-testuser2"}
@@ -354,7 +355,8 @@ async def test_redirect_loop(
     assert sentry_error["tags"] == {
         "business": "NubladoPythonLoop",
         "flock": "test",
-        "image": None,
+        "image_reference": None,
+        "image_description": None,
         "phase": "spawn_lab",
     }
     assert sentry_error["contexts"]["phase"] == {
@@ -415,7 +417,8 @@ async def test_spawn_timeout(
     assert sentry_error["tags"] == {
         "business": "NubladoPythonLoop",
         "flock": "test",
-        "image": None,
+        "image_reference": None,
+        "image_description": None,
         "phase": "spawn_lab",
     }
     assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
@@ -472,7 +475,8 @@ async def test_spawn_failed(
     assert sentry_error["tags"] == {
         "business": "NubladoPythonLoop",
         "flock": "test",
-        "image": None,
+        "image_reference": None,
+        "image_description": None,
         "phase": "spawn_lab",
     }
     assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
@@ -547,7 +551,8 @@ async def test_delete_timeout(
     assert sentry_error["tags"] == {
         "business": "NubladoPythonLoop",
         "flock": "test",
-        "image": "Recommended (Weekly 2077_43)",
+        "image_description": "Recommended (Weekly 2077_43)",
+        "image_reference": "lighthouse.ceres/library/sketchbook:recommended",
         "node": None,
         "phase": "delete_lab",
     }
@@ -606,7 +611,8 @@ async def test_code_exception(
     assert sentry_error["tags"] == {
         "business": "NubladoPythonLoop",
         "flock": "test",
-        "image": "Recommended (Weekly 2077_43)",
+        "image_description": "Recommended (Weekly 2077_43)",
+        "image_reference": "lighthouse.ceres/library/sketchbook:recommended",
         "node": "Node1",
         "phase": "execute_code",
     }
@@ -682,7 +688,8 @@ async def test_long_error(
     assert sentry_error["tags"] == {
         "business": "NubladoPythonLoop",
         "flock": "test",
-        "image": "Recommended (Weekly 2077_43)",
+        "image_description": "Recommended (Weekly 2077_43)",
+        "image_reference": "lighthouse.ceres/library/sketchbook:recommended",
         "node": "Node1",
         "phase": "execute_code",
     }
@@ -864,7 +871,8 @@ async def test_ansi_error(
     assert sentry_error["tags"] == {
         "business": "NubladoPythonLoop",
         "flock": "test",
-        "image": "Recommended (Weekly 2077_43)",
+        "image_description": "Recommended (Weekly 2077_43)",
+        "image_reference": "lighthouse.ceres/library/sketchbook:recommended",
         "node": "Node1",
         "phase": "execute_code",
     }

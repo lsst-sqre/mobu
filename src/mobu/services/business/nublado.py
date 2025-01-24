@@ -189,7 +189,8 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
     async def execute(self) -> None:
         if self.options.delete_lab or await self._client.is_lab_stopped():
             self._image = None
-            set_tag("image", None)
+            set_tag("image_description", None)
+            set_tag("image_reference", None)
             if not await self.spawn_lab():
                 return
         await self.lab_login()
@@ -341,12 +342,8 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             reference=reference.strip() if reference else None,
             description=description.strip() if description else None,
         )
-        set_tag(
-            "image",
-            self._image.description
-            or self._image.reference
-            or "<image unknown>",
-        )
+        set_tag("image_description", self._image.description)
+        set_tag("image_reference", self._image.reference)
         if self.options.get_node:
             self._node = await session.run_python(_GET_NODE)
             set_tag("node", self._node)
@@ -413,7 +410,8 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
 
         self.logger.info("Lab successfully deleted")
         self._image = None
-        set_tag("image", None)
+        set_tag("image_description", None)
+        set_tag("image_reference", None)
         return True
 
     def dump(self) -> NubladoBusinessData:
