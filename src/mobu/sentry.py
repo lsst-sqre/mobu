@@ -18,12 +18,9 @@ __all__ = ["before_send", "fingerprint", "start_span"]
 
 def fingerprint(event: Event) -> list[str]:
     """Generate a fingerprint to force separate issues for tag combos."""
-    username = str(event.get("user", {}).get("username", "no username"))
-    username = str(event.get("user", {}).get("username", "no username"))
     fingerprint = event.get("fingerprint", [])
     return [
         *fingerprint,
-        username,
         "{{ tags.flock }}",
         "{{ tags.business }}",
         "{{ tags.notebook }}",
