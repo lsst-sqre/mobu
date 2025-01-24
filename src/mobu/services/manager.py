@@ -51,7 +51,7 @@ class FlockManager:
         self._events = events
         self._logger = logger
         self._flocks: dict[str, Flock] = {}
-        self._scheduler = Scheduler(limit=1000, pending_limit=0)
+        self._scheduler = Scheduler(limit=10000, pending_limit=0)
 
     async def aclose(self) -> None:
         """Stop all flocks and free all resources."""
