@@ -6,8 +6,6 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
 from safir.logging import LogLevel
 
-from ..timings import StopwatchData
-
 __all__ = [
     "BusinessConfig",
     "BusinessData",
@@ -88,7 +86,5 @@ class BusinessData(BaseModel):
     refreshing: bool = Field(
         ..., title="If the business is currently in the process of refreshing"
     )
-
-    timings: list[StopwatchData] = Field(..., title="Timings of events")
 
     model_config = ConfigDict(extra="forbid")

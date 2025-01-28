@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from abc import ABCMeta, abstractmethod
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -10,21 +11,21 @@ from datetime import datetime, timedelta
 from random import SystemRandom
 from typing import Generic, TypeVar
 
-import rubin.nublado.client.exceptions as ne
+import sentry_sdk
 from httpx import AsyncClient
 from rubin.nublado.client import JupyterLabSession, NubladoClient
 from safir.datetime import current_datetime, format_datetime_for_logging
-from safir.slack.blockkit import SlackException
+from safir.sentry import duration
+from sentry_sdk import set_tag
+from sentry_sdk.tracing import Span
 from structlog.stdlib import BoundLogger
 
 from ...dependencies.config import config_dependency
 from ...events import Events, NubladoDeleteLab, NubladoSpawnLab
 from ...exceptions import (
-    CodeExecutionError,
-    JupyterProtocolError,
+    JupyterDeleteTimeoutError,
     JupyterSpawnError,
-    JupyterTimeoutError,
-    JupyterWebError,
+    JupyterSpawnTimeoutError,
 )
 from ...models.business.nublado import (
     NubladoBusinessData,
@@ -32,13 +33,15 @@ from ...models.business.nublado import (
     RunningImage,
 )
 from ...models.user import AuthenticatedUser
-from ...services.timings import Stopwatch
+from ...sentry import capturing_start_span, start_transaction
 from .base import Business
 
 T = TypeVar("T", bound="NubladoBusinessOptions")
 
 __all__ = ["NubladoBusiness", "ProgressLogMessage"]
 
+_ANSI_REGEX = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
+"""Regex that matches ANSI escape sequences."""
 _CHDIR_TEMPLATE = 'import os; os.chdir("{wd}")'
 """Template to construct the code to run to set the working directory."""
 
@@ -139,6 +142,10 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         self._node: str | None = None
         self._random = SystemRandom()
 
+        # We want multiple transactions for each call to execute (one for each
+        # notebook in a NotebookRunner business, for example)
+        self.execute_transaction = False
+
     @abstractmethod
     async def execute_code(self, session: JupyterLabSession) -> None:
         """Execute some code inside the Jupyter lab.
@@ -157,27 +164,12 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
     async def close(self) -> None:
         await self._client.close()
 
-    def annotations(self) -> dict[str, str]:
-        """Timer annotations to use.
-
-        Subclasses should override this to add more annotations based on
-        current business state.  They should call ``super().annotations()``
-        and then add things to the resulting dictionary.
-        """
-        result = {}
-        if self._image:
-            result["image"] = (
-                self._image.description
-                or self._image.reference
-                or "<image unknown>"
-            )
-        if self._node:
-            result["node"] = self._node
-        return result
-
     async def startup(self) -> None:
+        # We need to start a span around this transaction becaues if we don't,
+        # the nested transaction shows up as "No instrumentation" in the
+        # enclosing transaction in the Sentry UI.
         if self.options.jitter:
-            with self.timings.start("pre_login_delay"):
+            with capturing_start_span(op="pre_login_delay"):
                 max_delay = self.options.jitter.total_seconds()
                 delay = self._random.uniform(0, max_delay)
                 if not await self.pause(timedelta(seconds=delay)):
@@ -186,36 +178,31 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         if not await self._client.is_lab_stopped():
             try:
                 await self.delete_lab()
-            except JupyterTimeoutError:
+            except JupyterDeleteTimeoutError:
                 msg = "Unable to delete pre-existing lab, continuing anyway"
                 self.logger.warning(msg)
 
     async def execute(self) -> None:
-        try:
-            await self._execute()
-        except Exception as exc:
-            monkey = getattr(exc, "monkey", None)
-            event = getattr(exc, "event", "execute_code")
-            if isinstance(exc, ne.CodeExecutionError):
-                raise CodeExecutionError.from_client_exception(
-                    exc,
-                    monkey=monkey,
-                    event=event,
-                    annotations=self.annotations(),
-                ) from exc
-            raise
-
-    async def _execute(self) -> None:
-        if self.options.delete_lab or await self._client.is_lab_stopped():
-            self._image = None
-            if not await self.spawn_lab():
-                return
-        await self.lab_login()
+        with start_transaction(
+            name=f"{self.name} - pre execute code",
+            op=f"mobu.{self.name}.pre_execute_code",
+        ):
+            if self.options.delete_lab or await self._client.is_lab_stopped():
+                self._image = None
+                set_tag("image_description", None)
+                set_tag("image_reference", None)
+                if not await self.spawn_lab():
+                    return
+            await self.lab_login()
         async with self.open_session() as session:
             await self.execute_code(session)
-        if self.options.delete_lab:
-            await self.hub_login()
-            await self.delete_lab()
+        with start_transaction(
+            name=f"{self.name} - post execute code",
+            op=f"mobu.{self.name}.post_execute_code",
+        ):
+            if self.options.delete_lab:
+                await self.hub_login()
+                await self.delete_lab()
 
     async def execution_idle(self) -> bool:
         """Pause between each unit of work execution.
@@ -224,7 +211,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         subclasses in `execute_code` in between each block of code that is
         executed.
         """
-        with self.timings.start("execution_idle"):
+        with capturing_start_span(op="execution_idle"):
             return await self.pause(self.options.execution_idle_time)
 
     async def shutdown(self) -> None:
@@ -234,7 +221,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
     async def idle(self) -> None:
         if self.options.jitter:
             self.logger.info("Idling...")
-            with self.timings.start("idle"):
+            with capturing_start_span(op="idle"):
                 extra_delay = self._random.uniform(0, self.options.jitter)
                 await self.pause(self.options.idle_time + extra_delay)
         else:
@@ -242,58 +229,34 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
 
     async def hub_login(self) -> None:
         self.logger.info("Logging in to hub")
-        with self.timings.start("hub_login", self.annotations()) as sw:
-            try:
-                await self._client.auth_to_hub()
-            except ne.JupyterProtocolError as exc:
-                raise JupyterProtocolError.from_client_exception(
-                    exc,
-                    event=sw.event,
-                    annotations=sw.annotations,
-                    started_at=sw.start_time,
-                ) from exc
-            except ne.JupyterWebError as exc:
-                raise JupyterWebError.from_client_exception(
-                    exc,
-                    event=sw.event,
-                    annotations=sw.annotations,
-                    started_at=sw.start_time,
-                ) from exc
+        with capturing_start_span(op="hub_login"):
+            await self._client.auth_to_hub()
 
     async def spawn_lab(self) -> bool:
-        with self.timings.start("spawn_lab", self.annotations()) as sw:
+        with capturing_start_span(op="spawn_lab") as span:
             try:
-                result = await self._spawn_lab(sw)
+                result = await self._spawn_lab(span)
             except:
                 await self.events.nublado_spawn_lab.publish(
                     NubladoSpawnLab(
                         success=False,
-                        duration=sw.elapsed,
+                        duration=duration(span),
                         **self.common_event_attrs(),
                     )
                 )
                 raise
         await self.events.nublado_spawn_lab.publish(
             NubladoSpawnLab(
-                success=True, duration=sw.elapsed, **self.common_event_attrs()
+                success=True,
+                duration=duration(span),
+                **self.common_event_attrs(),
             )
         )
         return result
 
-    async def _spawn_lab(self, sw: Stopwatch) -> bool:  # noqa: C901
-        # Ruff says this method is too complex, and it is, but it will become
-        # less complex when we refactor and potentially Sentry-fy the slack
-        # error reporting
+    async def _spawn_lab(self, span: Span) -> bool:
         timeout = self.options.spawn_timeout
-        try:
-            await self._client.spawn_lab(self.options.image)
-        except ne.JupyterWebError as exc:
-            raise JupyterWebError.from_client_exception(
-                exc,
-                event=sw.event,
-                annotations=sw.annotations,
-                started_at=sw.start_time,
-            ) from exc
+        await self._client.spawn_lab(self.options.image)
 
         # Pause before using the progress API, since otherwise it may not
         # have attached to the spawner and will not return a full stream
@@ -310,69 +273,34 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
                 log_messages.append(ProgressLogMessage(message.message))
                 if message.ready:
                     return True
-        except TimeoutError:
+        except:
             log = "\n".join([str(m) for m in log_messages])
-            raise JupyterSpawnError(
-                log,
-                self.user.username,
-                event=sw.event,
-                started_at=sw.start_time,
-            ) from None
-        except ne.JupyterWebError as exc:
-            raise JupyterWebError.from_client_exception(
-                exc,
-                event=sw.event,
-                annotations=sw.annotations,
-                started_at=sw.start_time,
-            ) from exc
-        except SlackException:
+            sentry_sdk.get_current_scope().add_attachment(
+                filename="spawn_log.txt",
+                bytes=self.remove_ansi_escapes(log).encode(),
+            )
             raise
-        except Exception as e:
-            log = "\n".join([str(m) for m in log_messages])
-            user = self.user.username
-            raise JupyterSpawnError.from_exception(
-                log,
-                e,
-                user,
-                event=sw.event,
-                annotations=sw.annotations,
-                started_at=sw.start_time,
-            ) from e
 
         # We only fall through if the spawn failed, timed out, or if we're
         # stopping the business.
         if self.stopping:
             return False
         log = "\n".join([str(m) for m in log_messages])
-        if sw.elapsed > timeout:
-            elapsed_seconds = round(sw.elapsed.total_seconds())
-            msg = f"Lab did not spawn after {elapsed_seconds}s"
-            raise JupyterTimeoutError(
-                msg,
-                self.user.username,
-                log,
-                event=sw.event,
-                started_at=sw.start_time,
-            )
-        raise JupyterSpawnError(
-            log,
-            self.user.username,
-            event=sw.event,
-            started_at=sw.start_time,
+        sentry_sdk.get_current_scope().add_attachment(
+            filename="spawn_log.txt",
+            bytes=self.remove_ansi_escapes(log).encode(),
         )
+        spawn_duration = duration(span)
+        if spawn_duration > timeout:
+            elapsed_seconds = round(spawn_duration.total_seconds())
+            msg = f"Lab did not spawn after {elapsed_seconds}s"
+            raise JupyterSpawnTimeoutError(msg)
+        raise JupyterSpawnError
 
     async def lab_login(self) -> None:
         self.logger.info("Logging in to lab")
-        with self.timings.start("lab_login", self.annotations()) as sw:
-            try:
-                await self._client.auth_to_lab()
-            except ne.JupyterProtocolError as exc:
-                raise JupyterProtocolError.from_client_exception(
-                    exc,
-                    event=sw.event,
-                    annotations=sw.annotations,
-                    started_at=sw.start_time,
-                ) from exc
+        with capturing_start_span(op="lab_login"):
+            await self._client.auth_to_lab()
 
     @asynccontextmanager
     async def open_session(
@@ -380,19 +308,20 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
     ) -> AsyncIterator[JupyterLabSession]:
         self.logger.info("Creating lab session")
         opts = {"max_websocket_size": self.options.max_websocket_message_size}
-        stopwatch = self.timings.start("create_session", self.annotations())
+        create_session_cm = capturing_start_span(op="create_session")
+        create_session_cm.__enter__()
         async with self._client.open_lab_session(notebook, **opts) as session:
-            stopwatch.stop()
-            with self.timings.start("execute_setup", self.annotations()):
+            create_session_cm.__exit__(None, None, None)
+            with capturing_start_span(op="execute_setup"):
                 await self.setup_session(session)
             yield session
             await self.lab_login()
             self.logger.info("Deleting lab session")
-            stopwatch = self.timings.start(
-                "delete_session", self.annotations()
-            )
-        stopwatch.stop()
+            delete_session_cm = capturing_start_span(op="delete_session")
+            delete_session_cm.__enter__()
+        delete_session_cm.__exit__(None, None, None)
         self._node = None
+        set_tag("node", None)
 
     async def setup_session(self, session: JupyterLabSession) -> None:
         image_data = await session.run_python(_GET_IMAGE)
@@ -409,8 +338,11 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             reference=reference.strip() if reference else None,
             description=description.strip() if description else None,
         )
+        set_tag("image_description", self._image.description)
+        set_tag("image_reference", self._image.reference)
         if self.options.get_node:
             self._node = await session.run_python(_GET_NODE)
+            set_tag("node", self._node)
             self.logger.info(f"Running on node {self._node}")
         if self.options.working_directory:
             path = self.options.working_directory
@@ -419,14 +351,14 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             await session.run_python(code)
 
     async def delete_lab(self) -> None:
-        with self.timings.start("delete_lab", self.annotations()) as sw:
+        with capturing_start_span(op="delete_lab") as span:
             try:
-                result = await self._delete_lab(sw)
+                result = await self._delete_lab()
             except:
                 await self.events.nublado_delete_lab.publish(
                     NubladoDeleteLab(
                         success=False,
-                        duration=sw.elapsed,
+                        duration=duration(span),
                         **self.common_event_attrs(),
                     )
                 )
@@ -437,18 +369,13 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             await self.events.nublado_delete_lab.publish(
                 NubladoDeleteLab(
                     success=True,
-                    duration=sw.elapsed,
+                    duration=duration(span),
                     **self.common_event_attrs(),
                 )
             )
 
-    async def _delete_lab(self, sw: Stopwatch) -> bool:
+    async def _delete_lab(self) -> bool:
         """Delete a lab.
-
-        Parameters
-        ----------
-        sw
-            A Stopwatch to time the lab deletion
 
         Returns
         -------
@@ -457,15 +384,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             didn't wait to find out if the lab was successfully deleted.
         """
         self.logger.info("Deleting lab")
-        try:
-            await self._client.stop_lab()
-        except ne.JupyterWebError as exc:
-            raise JupyterWebError.from_client_exception(
-                exc,
-                event=sw.event,
-                annotations=sw.annotations,
-                started_at=sw.start_time,
-            ) from exc
+        await self._client.stop_lab()
         if self.stopping:
             return False
 
@@ -479,14 +398,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
             if elapsed > self.options.delete_timeout:
                 if not await self._client.is_lab_stopped(log_running=True):
                     msg = f"Lab not deleted after {elapsed_seconds}s"
-                    jte = JupyterTimeoutError(
-                        msg,
-                        self.user.username,
-                        started_at=start,
-                        event=sw.event,
-                    )
-                    jte.annotations["image"] = self.options.image.description
-                    raise jte
+                    raise JupyterDeleteTimeoutError(msg)
             msg = f"Waiting for lab deletion ({elapsed_seconds}s elapsed)"
             self.logger.info(msg)
             if not await self.pause(timedelta(seconds=2)):
@@ -494,9 +406,33 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
 
         self.logger.info("Lab successfully deleted")
         self._image = None
+        set_tag("image_description", None)
+        set_tag("image_reference", None)
         return True
 
     def dump(self) -> NubladoBusinessData:
         return NubladoBusinessData(
             image=self._image, **super().dump().model_dump()
         )
+
+    def remove_ansi_escapes(self, string: str) -> str:
+        """Remove ANSI escape sequences from a string.
+
+        Jupyter labs like to format error messages with lots of ANSI
+        escape sequences, and Slack doesn't like that in messages (nor do
+        humans want to see them). Strip them out.
+
+        Based on `this StackOverflow answer
+        <https://stackoverflow.com/questions/14693701/>`__.
+
+        Parameters
+        ----------
+        string
+            String to strip ANSI escapes from.
+
+        Returns
+        -------
+        str
+            Sanitized string.
+        """
+        return _ANSI_REGEX.sub("", string)

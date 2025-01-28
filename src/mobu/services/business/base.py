@@ -18,7 +18,7 @@ from ...asyncio import wait_first
 from ...events import Events
 from ...models.business.base import BusinessData, BusinessOptions
 from ...models.user import AuthenticatedUser
-from ..timings import Timings
+from ...sentry import capturing_start_span, start_transaction
 
 T = TypeVar("T", bound="BusinessOptions")
 U = TypeVar("U")
@@ -88,12 +88,12 @@ class Business(Generic[T], metaclass=ABCMeta):
         Number of successes.
     failure_count
         Number of failures.
-    timings
-        Execution timings.
     stopping
         Whether `stop` has been called and further execution should stop.
     flock
         Flock that is running this business, if it is running in a flock.
+    name
+        The name of this kind of business
     """
 
     def __init__(
@@ -113,11 +113,11 @@ class Business(Generic[T], metaclass=ABCMeta):
         self.logger = logger
         self.success_count = 0
         self.failure_count = 0
-        self.timings = Timings()
         self.control: Queue[BusinessCommand] = Queue()
         self.stopping = False
         self.refreshing = False
         self.flock = flock
+        self.name = type(self).__name__
 
     # Methods that should be overridden by child classes if needed.
 
@@ -155,7 +155,11 @@ class Business(Generic[T], metaclass=ABCMeta):
         self.logger.info("Starting up...")
         try:
             try:
-                await self.startup()
+                with start_transaction(
+                    name=f"{self.name} - startup",
+                    op=f"mobu.{self.name}.startup",
+                ):
+                    await self.startup()
             except Exception:
                 # Strictly speaking, this is not an iteration, but unless we
                 # count startup failure as a failed iteration, a business that
@@ -175,7 +179,12 @@ class Business(Generic[T], metaclass=ABCMeta):
                 await self.idle()
 
             self.logger.info("Shutting down...")
-            await self.shutdown()
+
+            with start_transaction(
+                name=f"{self.name} - shutdown",
+                op=f"mobu.{self.name}.shutdown",
+            ):
+                await self.shutdown()
             await self.close()
         finally:
             # Tell the control channel we've processed the stop command.
@@ -199,7 +208,7 @@ class Business(Generic[T], metaclass=ABCMeta):
     async def idle(self) -> None:
         """Pause at the end of each business loop."""
         self.logger.info("Idling...")
-        with self.timings.start("idle"):
+        with capturing_start_span(op="idle"):
             await self.pause(self.options.idle_time)
 
     async def error_idle(self) -> None:
@@ -320,11 +329,10 @@ class Business(Generic[T], metaclass=ABCMeta):
 
     def dump(self) -> BusinessData:
         return BusinessData(
-            name=type(self).__name__,
+            name=self.name,
             failure_count=self.failure_count,
             success_count=self.success_count,
             refreshing=self.refreshing,
-            timings=self.timings.dump(),
         )
 
     def common_event_attrs(self) -> CommonEventAttrs:
@@ -332,7 +340,7 @@ class Business(Generic[T], metaclass=ABCMeta):
         return {
             "flock": self.flock,
             "username": self.user.username,
-            "business": self.__class__.__name__,
+            "business": self.name,
         }
 
     async def _pause_no_return(self, interval: timedelta) -> None:

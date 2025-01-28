@@ -10,6 +10,7 @@ from urllib.parse import urljoin
 
 import pytest
 import respx
+from anys import ANY_AWARE_DATETIME_STR, AnyContains, AnyWithEntries
 from httpx import AsyncClient
 from rubin.nublado.client.testing import (
     JupyterAction,
@@ -17,6 +18,7 @@ from rubin.nublado.client.testing import (
     MockJupyter,
 )
 from safir.metrics import NOT_NONE, MockEventPublisher
+from safir.testing.sentry import Captured
 from safir.testing.slack import MockSlackWebhook
 
 from mobu.dependencies.config import config_dependency
@@ -64,7 +66,6 @@ async def test_run(
             "name": "NubladoPythonLoop",
             "refreshing": False,
             "success_count": 1,
-            "timings": ANY,
         },
         "state": "RUNNING",
         "user": {
@@ -232,9 +233,9 @@ async def test_delayed_delete(
 async def test_hub_failed(
     client: AsyncClient,
     jupyter: MockJupyter,
-    slack: MockSlackWebhook,
     respx_mock: respx.Router,
     events: Events,
+    sentry_items: Captured,
 ) -> None:
     config = config_dependency.config
     mock_gafaelfawr(respx_mock)
@@ -260,59 +261,35 @@ async def test_hub_failed(
     assert data["business"]["success_count"] == 0
     assert data["business"]["failure_count"] > 0
 
-    # Check that an appropriate error was posted.
+    # Confirm Sentry events
+    (sentry_error,) = sentry_items.errors
     assert config.environment_url
     url = urljoin(str(config.environment_url), "/nb/hub/spawn")
-    assert slack.messages == [
-        {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"Status 500 from POST {url}",
-                        "verbatim": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Exception type*\nJupyterWebError",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser2",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Event*\nspawn_lab",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser2",
-                            "verbatim": True,
-                        },
-                    ],
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"*URL*\nPOST {url}",
-                        "verbatim": True,
-                    },
-                },
-                {"type": "divider"},
-            ]
-        }
-    ]
+    assert sentry_error["contexts"]["phase"] == {
+        "phase": "spawn_lab",
+        "started_at": ANY_AWARE_DATETIME_STR,
+    }
+    assert sentry_error["exception"]["values"] == AnyContains(
+        AnyWithEntries(
+            {
+                "type": "JupyterWebError",
+                "value": (f"Status 500 from POST {url}"),
+            }
+        )
+    )
+    assert sentry_error["tags"] == {
+        "business": "NubladoPythonLoop",
+        "flock": "test",
+        "image_reference": None,
+        "image_description": None,
+        "phase": "spawn_lab",
+    }
+    assert sentry_error["user"] == {"username": "bot-mobu-testuser2"}
+
+    (sentry_transaction,) = sentry_items.transactions
+    assert sentry_transaction["transaction"] == (
+        "NubladoPythonLoop - pre execute code"
+    )
 
     # Check events
     publisher = cast(MockEventPublisher, events.nublado_spawn_lab)
@@ -341,10 +318,9 @@ async def test_hub_failed(
 async def test_redirect_loop(
     client: AsyncClient,
     jupyter: MockJupyter,
-    slack: MockSlackWebhook,
     respx_mock: respx.Router,
+    sentry_items: Captured,
 ) -> None:
-    config = config_dependency.config
     mock_gafaelfawr(respx_mock)
     jupyter.redirect_loop = True
 
@@ -369,73 +345,46 @@ async def test_redirect_loop(
     assert data["business"]["failure_count"] > 0
 
     # Check that an appropriate error was posted.
-    assert config.environment_url
-    url = urljoin(
-        str(config.environment_url),
-        "/nb/hub/api/users/bot-mobu-testuser1/server/progress",
+    (sentry_error,) = sentry_items.errors
+    assert sentry_error["exception"]["values"] == AnyContains(
+        AnyWithEntries(
+            {
+                "type": "JupyterWebError",
+                "value": (
+                    "TooManyRedirects: Exceeded maximum allowed redirects."
+                ),
+            }
+        )
     )
+    assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
+    assert sentry_error["tags"] == {
+        "business": "NubladoPythonLoop",
+        "flock": "test",
+        "image_reference": None,
+        "image_description": None,
+        "phase": "spawn_lab",
+    }
+    assert sentry_error["contexts"]["phase"] == {
+        "phase": "spawn_lab",
+        "started_at": ANY_AWARE_DATETIME_STR,
+    }
 
-    assert slack.messages == [
-        {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": (
-                            "TooManyRedirects: Exceeded maximum allowed"
-                            " redirects."
-                        ),
-                        "verbatim": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Exception type*\nJupyterWebError",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Event*\nspawn_lab",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                    ],
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"*URL*\nGET {url}",
-                        "verbatim": True,
-                    },
-                },
-                {"type": "divider"},
-            ]
-        }
-    ]
+    (sentry_attachment,) = sentry_items.attachments
+    assert sentry_attachment.filename == "spawn_log.txt"
+    assert sentry_attachment.bytes.decode() == ""
+
+    (sentry_transaction,) = sentry_items.transactions
+    assert sentry_transaction["transaction"] == (
+        "NubladoPythonLoop - pre execute code"
+    )
 
 
 @pytest.mark.asyncio
 async def test_spawn_timeout(
     client: AsyncClient,
     jupyter: MockJupyter,
-    slack: MockSlackWebhook,
     respx_mock: respx.Router,
+    sentry_items: Captured,
 ) -> None:
     mock_gafaelfawr(respx_mock)
     jupyter.spawn_timeout = True
@@ -460,56 +409,45 @@ async def test_spawn_timeout(
     data = await wait_for_business(client, "bot-mobu-testuser1")
     assert data["business"]["success_count"] == 0
     assert data["business"]["failure_count"] > 0
-    assert slack.messages == [
-        {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "Lab did not spawn after 1s",
-                        "verbatim": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Exception type*\nJupyterTimeoutError",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Event*\nspawn_lab",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                    ],
-                },
-                {"type": "divider"},
-            ]
-        }
-    ]
+
+    # Check that an appropriate error was posted.
+    (sentry_error,) = sentry_items.errors
+    assert sentry_error["contexts"]["phase"] == {
+        "phase": "spawn_lab",
+        "started_at": ANY_AWARE_DATETIME_STR,
+    }
+    assert sentry_error["exception"]["values"] == AnyContains(
+        AnyWithEntries(
+            {
+                "type": "JupyterSpawnTimeoutError",
+                "value": ("Lab did not spawn after 1s"),
+            }
+        )
+    )
+    assert sentry_error["tags"] == {
+        "business": "NubladoPythonLoop",
+        "flock": "test",
+        "image_reference": None,
+        "image_description": None,
+        "phase": "spawn_lab",
+    }
+    assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
+
+    (sentry_attachment,) = sentry_items.attachments
+    assert sentry_attachment.filename == "spawn_log.txt"
+
+    (sentry_transaction,) = sentry_items.transactions
+    assert sentry_transaction["transaction"] == (
+        "NubladoPythonLoop - pre execute code"
+    )
 
 
 @pytest.mark.asyncio
 async def test_spawn_failed(
     client: AsyncClient,
     jupyter: MockJupyter,
-    slack: MockSlackWebhook,
     respx_mock: respx.Router,
+    sentry_items: Captured,
 ) -> None:
     mock_gafaelfawr(respx_mock)
     jupyter.fail("bot-mobu-testuser1", JupyterAction.PROGRESS)
@@ -534,59 +472,47 @@ async def test_spawn_failed(
     data = await wait_for_business(client, "bot-mobu-testuser1")
     assert data["business"]["success_count"] == 0
     assert data["business"]["failure_count"] > 0
-    assert slack.messages == [
-        {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "Spawning lab failed",
-                        "verbatim": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Exception type*\nJupyterSpawnError",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Event*\nspawn_lab",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                    ],
-                },
-                {
-                    "type": "section",
-                    "text": {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                },
-                {"type": "divider"},
-            ],
-        }
-    ]
-    log = slack.messages[0]["blocks"][2]["text"]["text"]
-    log = re.sub(r"\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d(.\d\d\d)?", "<ts>", log)
+
+    # Check that an appropriate error was posted.
+    (sentry_error,) = sentry_items.errors
+    assert sentry_error["contexts"]["phase"] == {
+        "phase": "spawn_lab",
+        "started_at": ANY_AWARE_DATETIME_STR,
+    }
+    assert sentry_error["exception"]["values"] == AnyContains(
+        AnyWithEntries(
+            {
+                "type": "JupyterSpawnError",
+                "value": "",
+            }
+        )
+    )
+    assert sentry_error["tags"] == {
+        "business": "NubladoPythonLoop",
+        "flock": "test",
+        "image_reference": None,
+        "image_description": None,
+        "phase": "spawn_lab",
+    }
+    assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
+
+    (sentry_attachment,) = sentry_items.attachments
+    assert sentry_attachment.filename == "spawn_log.txt"
+
+    log = re.sub(
+        r"\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d(.\d\d\d)?",
+        "<ts>",
+        sentry_attachment.bytes.decode(),
+    )
     assert log == (
-        "*Log*\n"
         "<ts> - Server requested\n"
         "<ts> - Spawning server...\n"
         "<ts> - Spawn failed!"
+    )
+
+    (sentry_transaction,) = sentry_items.transactions
+    assert sentry_transaction["transaction"] == (
+        "NubladoPythonLoop - pre execute code"
     )
 
 
@@ -594,8 +520,8 @@ async def test_spawn_failed(
 async def test_delete_timeout(
     client: AsyncClient,
     jupyter: MockJupyter,
-    slack: MockSlackWebhook,
     respx_mock: respx.Router,
+    sentry_items: Captured,
 ) -> None:
     mock_gafaelfawr(respx_mock)
     jupyter.delete_immediate = False
@@ -627,56 +553,43 @@ async def test_delete_timeout(
     data = await wait_for_business(client, "bot-mobu-testuser1")
     assert data["business"]["success_count"] == 0
     assert data["business"]["failure_count"] > 0
-    assert slack.messages == [
-        {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "Lab not deleted after 2s",
-                        "verbatim": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Exception type*\nJupyterTimeoutError",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Event*\ndelete_lab",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                    ],
-                },
-                {"type": "divider"},
-            ]
-        }
-    ]
+
+    # Check that an appropriate error was posted.
+    (sentry_error,) = sentry_items.errors
+    assert sentry_error["contexts"]["phase"] == {
+        "phase": "delete_lab",
+        "started_at": ANY_AWARE_DATETIME_STR,
+    }
+    assert sentry_error["exception"]["values"] == AnyContains(
+        AnyWithEntries(
+            {
+                "type": "JupyterDeleteTimeoutError",
+                "value": "Lab not deleted after 2s",
+            }
+        )
+    )
+    assert sentry_error["tags"] == {
+        "business": "NubladoPythonLoop",
+        "flock": "test",
+        "image_description": "Recommended (Weekly 2077_43)",
+        "image_reference": "lighthouse.ceres/library/sketchbook:recommended",
+        "node": None,
+        "phase": "delete_lab",
+    }
+    assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
+
+    (sentry_transaction,) = sentry_items.transactions
+    assert sentry_transaction["transaction"] == (
+        "NubladoPythonLoop - post execute code"
+    )
 
 
 @pytest.mark.asyncio
 async def test_code_exception(
     client: AsyncClient,
-    slack: MockSlackWebhook,
     respx_mock: respx.Router,
     events: Events,
+    sentry_items: Captured,
 ) -> None:
     mock_gafaelfawr(respx_mock)
 
@@ -704,87 +617,31 @@ async def test_code_exception(
     assert data["business"]["failure_count"] == 1
 
     # Check that an appropriate error was posted.
-    assert slack.messages == [
-        {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "Error while running code",
-                        "verbatim": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Exception type*\nCodeExecutionError",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Image*\nRecommended (Weekly 2077_43)",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Event*\nexecute_code",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                    ],
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "*Node*\nNode1",
-                        "verbatim": True,
-                    },
-                },
-            ],
-            "attachments": [
-                {
-                    "blocks": [
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": ANY,
-                                "verbatim": True,
-                            },
-                        },
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": (
-                                    "*Code executed*\n"
-                                    '```\nraise Exception("some error")\n```'
-                                ),
-                                "verbatim": True,
-                            },
-                        },
-                    ]
-                }
-            ],
-        }
-    ]
-    error = slack.messages[0]["attachments"][0]["blocks"][0]["text"]["text"]
-    assert "Exception: some error" in error
+    (sentry_error,) = sentry_items.errors
+    assert sentry_error["contexts"]["code_info"] == {
+        "code": 'raise Exception("some error")'
+    }
+    assert sentry_error["exception"]["values"] == AnyContains(
+        AnyWithEntries(
+            {
+                "type": "CodeExecutionError",
+                "value": "Code execution failed",
+            }
+        )
+    )
+    assert sentry_error["tags"] == {
+        "business": "NubladoPythonLoop",
+        "flock": "test",
+        "image_description": "Recommended (Weekly 2077_43)",
+        "image_reference": "lighthouse.ceres/library/sketchbook:recommended",
+        "node": "Node1",
+    }
+    assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
+
+    (sentry_transaction,) = sentry_items.transactions
+    assert sentry_transaction["transaction"] == (
+        "NubladoPythonLoop - Execute Python"
+    )
 
     # Check events
     publisher = cast(MockEventPublisher, events.nublado_python_execution)
@@ -809,6 +666,7 @@ async def test_long_error(
     jupyter: MockJupyter,
     slack: MockSlackWebhook,
     respx_mock: respx.Router,
+    sentry_items: Captured,
 ) -> None:
     mock_gafaelfawr(respx_mock)
 
@@ -842,90 +700,40 @@ async def test_long_error(
     }
 
     # Check that an appropriate error was posted.
-    error = "... truncated ...\n"
+    (sentry_error,) = sentry_items.errors
+    assert sentry_error["exception"]["values"] == AnyContains(
+        AnyWithEntries(
+            {
+                "type": "CodeExecutionError",
+                "value": "Code execution failed",
+            }
+        )
+    )
+    assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
+    assert sentry_error["tags"] == {
+        "business": "NubladoPythonLoop",
+        "flock": "test",
+        "image_description": "Recommended (Weekly 2077_43)",
+        "image_reference": "lighthouse.ceres/library/sketchbook:recommended",
+        "node": "Node1",
+    }
+    assert sentry_error["contexts"]["code_info"] == {
+        "code": "long_error_for_test()"
+    }
+
+    # Check that an appropriate error attachment was captured.
+    (sentry_attachment,) = sentry_items.attachments
+    text = sentry_attachment.bytes.decode()
+    error = ""
     line = "this is a single line of output to test trimming errors"
-    for i in range(5, 54):
+    for i in range(54):
         error += f"{line} #{i}\n"
-    assert 2977 - len(line) <= len(error) <= 2977
-    assert slack.messages == [
-        {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "Error while running code",
-                        "verbatim": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Exception type*\nCodeExecutionError",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Image*\nRecommended (Weekly 2077_43)",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Event*\nexecute_code",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                    ],
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "*Node*\nNode1",
-                        "verbatim": True,
-                    },
-                },
-            ],
-            "attachments": [
-                {
-                    "blocks": [
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": f"*Error*\n```\n{error}```",
-                                "verbatim": True,
-                            },
-                        },
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": (
-                                    "*Code executed*\n"
-                                    "```\nlong_error_for_test()\n```"
-                                ),
-                                "verbatim": True,
-                            },
-                        },
-                    ]
-                }
-            ],
-        }
-    ]
+    assert text == error
+
+    (sentry_transaction,) = sentry_items.transactions
+    assert sentry_transaction["transaction"] == (
+        "NubladoPythonLoop - Execute Python"
+    )
 
 
 @pytest.mark.asyncio
@@ -1029,8 +837,8 @@ async def test_lab_controller(
 async def test_ansi_error(
     client: AsyncClient,
     jupyter: MockJupyter,
-    slack: MockSlackWebhook,
     respx_mock: respx.Router,
+    sentry_items: Captured,
 ) -> None:
     mock_gafaelfawr(respx_mock)
 
@@ -1067,86 +875,30 @@ async def test_ansi_error(
     assert data["business"]["failure_count"] == 1
 
     # Check that an appropriate error was posted.
-    assert slack.messages == [
-        {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "Error while running code",
-                        "verbatim": True,
-                    },
-                },
-                {
-                    "type": "section",
-                    "fields": [
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {"type": "mrkdwn", "text": ANY, "verbatim": True},
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Exception type*\nCodeExecutionError",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*User*\nbot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Image*\nRecommended (Weekly 2077_43)",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Event*\nexecute_code",
-                            "verbatim": True,
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*Monkey*\ntest/bot-mobu-testuser1",
-                            "verbatim": True,
-                        },
-                    ],
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "*Node*\nNode1",
-                        "verbatim": True,
-                    },
-                },
-            ],
-            "attachments": [
-                {
-                    "blocks": [
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": ANY,
-                                "verbatim": True,
-                            },
-                        },
-                        {
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "text": (
-                                    "*Code executed*\n"
-                                    '```\nraise ValueError("\\033[38;5;28;01m'
-                                    'Foo\\033[39;00m")\n```'
-                                ),
-                                "verbatim": True,
-                            },
-                        },
-                    ]
-                }
-            ],
-        }
-    ]
-    error = slack.messages[0]["attachments"][0]["blocks"][0]["text"]["text"]
+    (sentry_attachment,) = sentry_items.attachments
+    error = sentry_attachment.bytes.decode()
     assert "ValueError: Foo" in error
     assert "\033" not in error
+
+    (sentry_error,) = sentry_items.errors
+    assert sentry_error["contexts"]["code_info"] == {
+        "code": 'raise ValueError("\\033[38;5;28;01mFoo\\033[39;00m")'
+    }
+    assert sentry_error["exception"]["values"] == AnyContains(
+        AnyWithEntries(
+            {"type": "CodeExecutionError", "value": "Code execution failed"}
+        )
+    )
+    assert sentry_error["tags"] == {
+        "business": "NubladoPythonLoop",
+        "flock": "test",
+        "image_description": "Recommended (Weekly 2077_43)",
+        "image_reference": "lighthouse.ceres/library/sketchbook:recommended",
+        "node": "Node1",
+    }
+    assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
+
+    (sentry_transaction,) = sentry_items.transactions
+    assert sentry_transaction["transaction"] == (
+        "NubladoPythonLoop - Execute Python"
+    )

@@ -8,13 +8,17 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+import sentry_sdk
 from httpx import AsyncClient
 from rubin.nublado.client import JupyterLabSession
+from rubin.nublado.client.exceptions import CodeExecutionError
+from safir.sentry import duration
 from structlog.stdlib import BoundLogger
 
 from ...events import Events, NubladoPythonExecution
 from ...models.business.nubladopythonloop import NubladoPythonLoopOptions
 from ...models.user import AuthenticatedUser
+from ...sentry import start_transaction
 from .nublado import NubladoBusiness
 
 __all__ = ["NubladoPythonLoop"]
@@ -58,15 +62,24 @@ class NubladoPythonLoop(NubladoBusiness):
 
     async def execute_code(self, session: JupyterLabSession) -> None:
         code = self.options.code
+        sentry_sdk.set_context("code_info", {"code": code})
         for _count in range(self.options.max_executions):
-            with self.timings.start("execute_code", self.annotations()) as sw:
+            with start_transaction(
+                name=f"{self.name} - Execute Python",
+                op="mobu.notebookrunner.execute_python",
+            ) as span:
                 try:
                     reply = await session.run_python(code)
-                except:
+                except Exception as e:
+                    if isinstance(e, CodeExecutionError) and e.error:
+                        sentry_sdk.get_current_scope().add_attachment(
+                            filename="nublado_error.txt",
+                            bytes=self.remove_ansi_escapes(e.error).encode(),
+                        )
                     await self._publish_failure(code=code)
                     raise
             self.logger.info(f"{code} -> {reply}")
-            await self._publish_success(code=code, duration=sw.elapsed)
+            await self._publish_success(code=code, duration=duration(span))
             if not await self.execution_idle():
                 break
 

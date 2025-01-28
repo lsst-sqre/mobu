@@ -53,7 +53,6 @@ async def test_start_stop_refresh(
                     "name": "EmptyLoop",
                     "refreshing": False,
                     "success_count": ANY,
-                    "timings": ANY,
                 },
                 "state": ANY,
                 "user": {
@@ -175,7 +174,6 @@ async def test_user_list(
                     "name": "EmptyLoop",
                     "refreshing": False,
                     "success_count": ANY,
-                    "timings": ANY,
                 },
                 "state": ANY,
                 "user": {
@@ -193,7 +191,6 @@ async def test_user_list(
                     "name": "EmptyLoop",
                     "refreshing": False,
                     "success_count": ANY,
-                    "timings": ANY,
                 },
                 "state": ANY,
                 "user": {
