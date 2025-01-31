@@ -6,6 +6,21 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-14.0.0'></a>
+## 14.0.0 (2025-01-31)
+
+### Backwards-incompatible changes
+
+- Instrument tracing and exception handling with Sentry. All timings are now calculated with Sentry tracing functionality, and all Slack notifications for errors come from Sentry instead of the Safir `SlackException` machinery.
+
+### New features
+
+- Send an app metrics event for EmptyLoop iterations
+
+### Other changes
+
+- Remove the limit from the autostart `aiojobs` `Scheduler`. Attempts to start a job past the limit resulted in jobs silently never starting. There are no cases where we would want to limit the autostart concurrency, so a limit is not needed.
+
 <a id='changelog-13.2.0'></a>
 ## 13.2.0 (2024-12-17)
 
