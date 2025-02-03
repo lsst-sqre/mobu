@@ -127,12 +127,12 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
         if not self._client:
             raise RuntimeError("TAPBusiness startup never ran")
 
-        mode = "(sync)" if self.options.sync else "(async)"
-        method = (
-            self._client.search
-            if self.options.sync
-            else self._client.run_async
-        )
+        if self.options.sync:
+            mode = "(sync)"
+            method = self._client.search
+        else:
+            mode = "(async)"
+            method = self._client.run_async
 
         self.logger.info(f"Running {mode}: {query}")
         loop = asyncio.get_event_loop()
