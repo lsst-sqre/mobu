@@ -76,6 +76,13 @@ class TapQuery(EventBase):
     sync: bool
 
 
+class SIAQuery(EventBase):
+    """Reported when a SIA query is executed."""
+
+    success: bool
+    duration: timedelta | None
+
+
 class EmptyLoopExecution(EventBase):
     """Reported when an empty loop... loops."""
 
@@ -91,6 +98,7 @@ class Events(EventMaker):
             "EmptyLoop", EmptyLoopExecution
         )
         self.tap_query = await manager.create_publisher("tap_query", TapQuery)
+        self.sia_query = await manager.create_publisher("sia_query", SIAQuery)
         self.git_lfs_check = await manager.create_publisher(
             "git_lfs_check", GitLfsCheck
         )
