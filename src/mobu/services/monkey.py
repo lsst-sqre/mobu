@@ -21,6 +21,7 @@ from ..models.business.empty import EmptyLoopConfig
 from ..models.business.gitlfs import GitLFSConfig
 from ..models.business.notebookrunner import NotebookRunnerConfig
 from ..models.business.nubladopythonloop import NubladoPythonLoopConfig
+from ..models.business.siaquerysetrunner import SIAQuerySetRunnerConfig
 from ..models.business.tapqueryrunner import TAPQueryRunnerConfig
 from ..models.business.tapquerysetrunner import TAPQuerySetRunnerConfig
 from ..models.monkey import MonkeyData, MonkeyState
@@ -31,6 +32,7 @@ from .business.empty import EmptyLoop
 from .business.gitlfs import GitLFSBusiness
 from .business.notebookrunner import NotebookRunner
 from .business.nubladopythonloop import NubladoPythonLoop
+from .business.siaquerysetrunner import SIAQuerySetRunner
 from .business.tapqueryrunner import TAPQueryRunner
 from .business.tapquerysetrunner import TAPQuerySetRunner
 
@@ -144,6 +146,14 @@ class Monkey:
             )
         elif isinstance(business_config, TAPQuerySetRunnerConfig):
             self.business = TAPQuerySetRunner(
+                options=business_config.options,
+                user=user,
+                events=self._events,
+                logger=self._logger,
+                flock=self._flock,
+            )
+        elif isinstance(business_config, SIAQuerySetRunnerConfig):
+            self.business = SIAQuerySetRunner(
                 options=business_config.options,
                 user=user,
                 events=self._events,
