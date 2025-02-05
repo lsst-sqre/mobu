@@ -99,10 +99,7 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
 
                 success = False
                 try:
-                    if self.options.sync:
-                        await self.run_sync_query(query)
-                    else:
-                        await self.run_async_query(query)
+                    await self.run_query(query)
                     success = True
                 finally:
                     await self.events.tap_query.publish(
@@ -119,8 +116,8 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
 
             self.logger.info(f"Query finished after {elapsed} seconds")
 
-    async def run_async_query(self, query: str) -> None:
-        """Run the query asynchronously.
+    async def run_query(self, query: str) -> None:
+        """Run a TAP query either synchronously or asynchronously.
 
         Parameters
         ----------
@@ -129,28 +126,17 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
         """
         if not self._client:
             raise RuntimeError("TAPBusiness startup never ran")
-        self.logger.info(f"Running (async): {query}")
-        job = self._client.submit_job(query)
-        try:
-            job.run()
-            while job.phase not in ("COMPLETED", "ERROR"):
-                await asyncio.sleep(30)
-        finally:
-            job.delete()
 
-    async def run_sync_query(self, query: str) -> None:
-        """Run the query synchronously.
+        if self.options.sync:
+            mode = "(sync)"
+            method = self._client.search
+        else:
+            mode = "(async)"
+            method = self._client.run_async
 
-        Parameters
-        ----------
-        query
-            Query string to execute.
-        """
-        if not self._client:
-            raise RuntimeError("TAPBusiness startup never ran")
-        self.logger.info(f"Running (sync): {query}")
+        self.logger.info(f"Running {mode}: {query}")
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(self._pool, self._client.search, query)
+        await loop.run_in_executor(self._pool, method, query)
 
     def dump(self) -> TAPBusinessData:
         return TAPBusinessData(
