@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Generator, Iterator
+from collections.abc import AsyncGenerator, Generator, Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -134,7 +134,7 @@ def _enable_github_refresh_app(
 
 
 @pytest_asyncio.fixture
-async def app(jupyter: MockJupyter) -> AsyncIterator[FastAPI]:
+async def app(jupyter: MockJupyter) -> AsyncGenerator[FastAPI]:
     """Return a configured test application.
 
     Wraps the application in a lifespan manager so that startup and shutdown
@@ -184,7 +184,7 @@ async def client(
     app: FastAPI,
     test_user: User,
     jupyter: MockJupyter,
-) -> AsyncIterator[AsyncClient]:
+) -> AsyncGenerator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
     async with AsyncClient(
         transport=ASGITransport(app=app),
@@ -198,7 +198,7 @@ async def client(
 
 
 @pytest_asyncio.fixture
-async def anon_client(app: FastAPI) -> AsyncIterator[AsyncClient]:
+async def anon_client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Return an anonymous ``httpx.AsyncClient`` configured to talk to the test
     app.
     """
@@ -228,7 +228,7 @@ def jupyter(
         extra_headers: dict[str, str],
         max_size: int | None,
         open_timeout: int,
-    ) -> AsyncIterator[MockJupyterWebSocket]:
+    ) -> AsyncGenerator[MockJupyterWebSocket]:
         yield mock_jupyter_websocket(url, extra_headers, jupyter_mock)
 
     with patch("rubin.nublado.client.nubladoclient.websocket_connect") as mock:

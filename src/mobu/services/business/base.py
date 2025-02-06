@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from abc import ABCMeta, abstractmethod
 from asyncio import Queue, QueueEmpty
-from collections.abc import AsyncIterable, AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterable
 from datetime import timedelta
 from enum import Enum
 from typing import Generic, TypedDict, TypeVar
@@ -14,7 +14,7 @@ from httpx import AsyncClient
 from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
 
-from ...asyncio import wait_first
+from ...asyncio import aclosing_iter, wait_first
 from ...events import Events
 from ...models.business.base import BusinessData, BusinessOptions
 from ...models.user import AuthenticatedUser
@@ -267,7 +267,7 @@ class Business(Generic[T], metaclass=ABCMeta):
 
     async def iter_with_timeout(
         self, iterable: AsyncIterable[U], timeout: timedelta
-    ) -> AsyncIterator[U]:
+    ) -> AsyncGenerator[U]:
         """Run an iterator with a timeout.
 
         Returns the next element of the iterator on success and ends the
@@ -316,16 +316,17 @@ class Business(Generic[T], metaclass=ABCMeta):
             return await iterator.__anext__()
 
         start = current_datetime(microseconds=True)
-        while True:
-            now = current_datetime(microseconds=True)
-            remaining = timeout - (now - start)
-            if remaining < timedelta(seconds=0):
-                break
-            pause = self._pause_no_return(timeout)
-            result = await wait_first(iter_next(), pause)
-            if result is None or self.stopping:
-                break
-            yield result
+        async with aclosing_iter(iterator):
+            while True:
+                now = current_datetime(microseconds=True)
+                remaining = timeout - (now - start)
+                if remaining < timedelta(seconds=0):
+                    break
+                pause = self._pause_no_return(timeout)
+                result = await wait_first(iter_next(), pause)
+                if result is None or self.stopping:
+                    break
+                yield result
 
     def dump(self) -> BusinessData:
         return BusinessData(
