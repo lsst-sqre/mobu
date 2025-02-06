@@ -10,7 +10,7 @@ called.
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from importlib.metadata import metadata, version
@@ -41,7 +41,7 @@ __all__ = ["create_app", "lifespan"]
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Set up and tear down the the base application."""
     config = config_dependency.config
     if not config.environment_url:

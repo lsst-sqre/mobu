@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 from abc import ABCMeta, abstractmethod
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator
+from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from random import SystemRandom
@@ -268,18 +268,20 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         # Watch the progress API until the lab has spawned.
         log_messages = []
         progress = self._client.watch_spawn_progress()
-        try:
-            async for message in self.iter_with_timeout(progress, timeout):
-                log_messages.append(ProgressLogMessage(message.message))
-                if message.ready:
-                    return True
-        except:
-            log = "\n".join([str(m) for m in log_messages])
-            sentry_sdk.get_current_scope().add_attachment(
-                filename="spawn_log.txt",
-                bytes=self.remove_ansi_escapes(log).encode(),
-            )
-            raise
+        progress_generator = self.iter_with_timeout(progress, timeout)
+        async with aclosing(progress_generator):
+            try:
+                async for message in progress_generator:
+                    log_messages.append(ProgressLogMessage(message.message))
+                    if message.ready:
+                        return True
+            except:
+                log = "\n".join([str(m) for m in log_messages])
+                sentry_sdk.get_current_scope().add_attachment(
+                    filename="spawn_log.txt",
+                    bytes=self.remove_ansi_escapes(log).encode(),
+                )
+                raise
 
         # We only fall through if the spawn failed, timed out, or if we're
         # stopping the business.
@@ -305,7 +307,7 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
     @asynccontextmanager
     async def open_session(
         self, notebook: str | None = None
-    ) -> AsyncIterator[JupyterLabSession]:
+    ) -> AsyncGenerator[JupyterLabSession]:
         self.logger.info("Creating lab session")
         opts = {"max_websocket_size": self.options.max_websocket_message_size}
         create_session_cm = capturing_start_span(op="create_session")

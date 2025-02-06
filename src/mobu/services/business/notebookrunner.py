@@ -10,7 +10,7 @@ import contextlib
 import json
 import random
 import shutil
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncGenerator, Iterator
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
@@ -308,7 +308,7 @@ class NotebookRunner(NubladoBusiness):
     @asynccontextmanager
     async def open_session(
         self, notebook_name: str | None = None
-    ) -> AsyncIterator[JupyterLabSession]:
+    ) -> AsyncGenerator[JupyterLabSession]:
         """Override to add the notebook name."""
         if not notebook_name:
             notebook_name = self._notebook.name if self._notebook else None
