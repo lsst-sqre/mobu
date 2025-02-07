@@ -81,12 +81,16 @@ class Monkey:
         self._user = user
 
         self._state = MonkeyState.IDLE
-        self._logfile = NamedTemporaryFile()
-        self._logger = self._build_logger(self._logfile)
         self._global_logger = logger.bind(
             monkey=self._name, user=self._user.username
         )
         self._job: Job | None = None
+
+        self._logfile = NamedTemporaryFile()
+        if self._config.log_monkeys_to_file:
+            self._logger = self._build_logger(self._logfile)
+        else:
+            self._logger = self._global_logger
 
         # Determine the business class from the type of configuration we got,
         # which in turn will be based on Pydantic validation of the value of

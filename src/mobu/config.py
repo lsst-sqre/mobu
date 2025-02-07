@@ -274,6 +274,15 @@ class Configuration(BaseSettings):
         title="Log level of the application's logger",
     )
 
+    log_monkeys_to_file: bool = Field(
+        True,
+        title="Log monkey messages to a file",
+        description=(
+            "Log monkey messages to a file instead of doing whatever the"
+            " normal global logger does"
+        ),
+    )
+
     metrics: MetricsConfiguration = Field(
         default_factory=metrics_configuration_factory,
         title="Metrics configuration",
