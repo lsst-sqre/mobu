@@ -18,6 +18,7 @@ __all__ = [
     "GafaelfawrWebError",
     "GitHubFileNotFoundError",
     "MonkeyNotFoundError",
+    "NotRetainingLogsError",
     "SubprocessError",
 ]
 
@@ -92,6 +93,17 @@ class MonkeyNotFoundError(ClientRequestError):
         self.monkey = monkey
         msg = f"Monkey {monkey} not found"
         super().__init__(msg, ErrorLocation.path, ["monkey"])
+
+
+class NotRetainingLogsError(ClientRequestError):
+    """Mobu is not configured to retain logs."""
+
+    error = "mobu_not_retaining_logs"
+    status_code = status.HTTP_404_NOT_FOUND
+
+    def __init__(self) -> None:
+        msg = "Mobu is not configured to retain monkey logs"
+        super().__init__(msg)
 
 
 class NotebookRepositoryError(Exception):

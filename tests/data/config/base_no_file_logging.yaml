@@ -1,0 +1,11 @@
+slackAlerts: true
+environmentUrl: "https://example.com"
+sentryEnvironment: "pytest"
+availableServices:
+  - some_service
+  - some_other_service
+metrics:
+  enabled: false
+  mock: true
+  appName: mobu
+logMonkeysToFile: false

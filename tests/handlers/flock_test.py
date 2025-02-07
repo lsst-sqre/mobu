@@ -353,3 +353,24 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
         "msg": ANY,
         "type": "union_tag_invalid",
     }
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_disable_file_logging")
+async def test_file_logging_disabled(
+    client: AsyncClient, respx_mock: respx.Router
+) -> None:
+    mock_gafaelfawr(respx_mock)
+
+    config = {
+        "name": "test",
+        "count": 1,
+        "user_spec": {"username_prefix": "bot-mobu-testuser"},
+        "scopes": ["exec:notebook"],
+        "business": {"type": "EmptyLoop"},
+    }
+    r = await client.put("/mobu/flocks", json=config)
+    assert r.status_code == 201
+
+    r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1/log")
+    assert r.status_code == 404

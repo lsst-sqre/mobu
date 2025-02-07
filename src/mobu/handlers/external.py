@@ -13,6 +13,7 @@ from safir.models import ErrorModel
 from safir.slack.webhook import SlackRouteErrorHandler
 
 from mobu.config import Configuration
+from mobu.exceptions import NotRetainingLogsError
 
 from ..dependencies.config import config_dependency
 from ..dependencies.context import RequestContext, context_dependency
@@ -170,15 +171,25 @@ async def get_monkey(
     description="Returns the monkey log output as a file",
     response_class=StreamingResponse,
     responses={
-        404: {"description": "Monkey or flock not found", "model": ErrorModel}
+        404: {
+            "description": (
+                "Monkey or flock not found, or Mobu is not configured to"
+                " retain logs."
+            ),
+            "model": ErrorModel,
+        },
     },
     summary="Log for monkey",
 )
 def get_monkey_log(
     flock: str,
     monkey: str,
+    config: Annotated[Configuration, Depends(config_dependency)],
     context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> StreamingResponse:
+    if not config.log_monkeys_to_file:
+        raise NotRetainingLogsError
+
     logfile = context.manager.get_flock(flock).get_monkey(monkey).logfile()
 
     # We can't use FileResponse because the log file is constantly changing

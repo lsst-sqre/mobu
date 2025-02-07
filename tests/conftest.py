@@ -118,6 +118,12 @@ def _enable_github_ci_app(
 
 
 @pytest.fixture
+def _disable_file_logging() -> None:
+    """Disable monkey file logging."""
+    config_dependency.set_path(config_path("base_no_file_logging"))
+
+
+@pytest.fixture
 def _enable_github_refresh_app(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[None]:
