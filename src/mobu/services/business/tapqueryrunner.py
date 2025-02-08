@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from random import SystemRandom
 
-from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from ...events import Events
@@ -24,8 +23,6 @@ class TAPQueryRunner(TAPBusiness):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
-    http_client
-        Shared HTTP client for general web access.
     events
         Event publishers.
     logger
@@ -39,7 +36,6 @@ class TAPQueryRunner(TAPBusiness):
         *,
         options: TAPQueryRunnerOptions,
         user: AuthenticatedUser,
-        http_client: AsyncClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
@@ -47,7 +43,6 @@ class TAPQueryRunner(TAPBusiness):
         super().__init__(
             options=options,
             user=user,
-            http_client=http_client,
             events=events,
             logger=logger,
             flock=flock,

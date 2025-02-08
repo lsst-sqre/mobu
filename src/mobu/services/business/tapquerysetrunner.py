@@ -9,7 +9,6 @@ from random import SystemRandom
 import jinja2
 import shortuuid
 import yaml
-from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
 from ...events import Events
@@ -29,8 +28,6 @@ class TAPQuerySetRunner(TAPBusiness):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
-    http_client
-        Shared HTTP client for general web access.
     events
         Event publishers.
     logger
@@ -44,7 +41,6 @@ class TAPQuerySetRunner(TAPBusiness):
         *,
         options: TAPQuerySetRunnerOptions,
         user: AuthenticatedUser,
-        http_client: AsyncClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
@@ -52,7 +48,6 @@ class TAPQuerySetRunner(TAPBusiness):
         super().__init__(
             options=options,
             user=user,
-            http_client=http_client,
             events=events,
             logger=logger,
             flock=flock,

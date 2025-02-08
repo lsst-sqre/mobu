@@ -13,7 +13,6 @@ import structlog
 import yaml
 from anys import ANY_AWARE_DATETIME_STR, AnyContains, AnySearch, AnyWithEntries
 from httpx import AsyncClient
-from safir.dependencies.http_client import http_client_dependency
 from safir.metrics import NOT_NONE, MockEventPublisher
 from safir.testing.sentry import Captured
 
@@ -224,12 +223,10 @@ async def test_random_object(events: Events) -> None:
         )
         logger = structlog.get_logger(__file__)
         options = TAPQuerySetRunnerOptions(query_set=query_set)
-        http_client = await http_client_dependency()
         with patch.object(pyvo.dal, "TAPService"):
             runner = TAPQuerySetRunner(
                 options=options,
                 user=user,
-                http_client=http_client,
                 events=events,
                 logger=logger,
                 flock=None,

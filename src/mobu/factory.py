@@ -51,7 +51,6 @@ class ProcessContext:
             logger=self.logger,
             events=self.events,
         )
-        self.events = events
 
     async def aclose(self) -> None:
         """Clean up a process context.

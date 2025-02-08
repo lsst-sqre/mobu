@@ -96,7 +96,6 @@ class Monkey:
             self.business = EmptyLoop(
                 options=business_config.options,
                 user=user,
-                http_client=self._http_client,
                 events=self._events,
                 logger=self._logger,
                 flock=self._flock,
@@ -105,7 +104,6 @@ class Monkey:
             self.business = GitLFSBusiness(
                 options=business_config.options,
                 user=user,
-                http_client=self._http_client,
                 events=self._events,
                 logger=self._logger,
                 flock=self._flock,
@@ -114,7 +112,6 @@ class Monkey:
             self.business = NubladoPythonLoop(
                 options=business_config.options,
                 user=user,
-                http_client=self._http_client,
                 events=self._events,
                 logger=self._logger,
                 flock=self._flock,
@@ -123,7 +120,6 @@ class Monkey:
             self.business = NotebookRunner(
                 options=business_config.options,
                 user=user,
-                http_client=self._http_client,
                 events=self._events,
                 logger=self._logger,
                 flock=self._flock,
@@ -132,7 +128,6 @@ class Monkey:
             self.business = TAPQueryRunner(
                 options=business_config.options,
                 user=user,
-                http_client=self._http_client,
                 events=self._events,
                 logger=self._logger,
                 flock=self._flock,
@@ -141,7 +136,6 @@ class Monkey:
             self.business = TAPQuerySetRunner(
                 options=business_config.options,
                 user=user,
-                http_client=self._http_client,
                 events=self._events,
                 logger=self._logger,
                 flock=self._flock,

@@ -10,7 +10,6 @@ from datetime import timedelta
 from enum import Enum
 from typing import Generic, TypedDict, TypeVar
 
-from httpx import AsyncClient
 from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
 
@@ -62,8 +61,6 @@ class Business(Generic[T], metaclass=ABCMeta):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
-    http_client
-        Shared HTTP client.
     events
         Event publishers.
     logger
@@ -77,8 +74,6 @@ class Business(Generic[T], metaclass=ABCMeta):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
-    http_client
-        Shared HTTP client.
     events
         Event publishers.
     logger
@@ -101,14 +96,12 @@ class Business(Generic[T], metaclass=ABCMeta):
         *,
         options: T,
         user: AuthenticatedUser,
-        http_client: AsyncClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
     ) -> None:
         self.options = options
         self.user = user
-        self.http_client = http_client
         self.events = events
         self.logger = logger
         self.success_count = 0

@@ -7,7 +7,6 @@ import uuid
 from pathlib import Path
 from urllib.parse import urlparse
 
-from httpx import AsyncClient
 from safir.sentry import duration
 from structlog.stdlib import BoundLogger
 
@@ -30,7 +29,6 @@ class GitLFSBusiness(Business):
         *,
         options: GitLFSBusinessOptions,
         user: AuthenticatedUser,
-        http_client: AsyncClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
@@ -38,7 +36,6 @@ class GitLFSBusiness(Business):
         super().__init__(
             options=options,
             user=user,
-            http_client=http_client,
             events=events,
             logger=logger,
             flock=flock,
