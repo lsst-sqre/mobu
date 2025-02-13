@@ -9,7 +9,6 @@ from typing import Generic, TypeVar
 
 import pyvo
 import requests
-from httpx import AsyncClient
 from safir.sentry import duration
 from sentry_sdk import set_context
 from structlog.stdlib import BoundLogger
@@ -41,8 +40,6 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
-    http_client
-        Shared HTTP client for general web access.
     events
         Event publishers.
     logger
@@ -54,7 +51,6 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
         *,
         options: T,
         user: AuthenticatedUser,
-        http_client: AsyncClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
@@ -62,7 +58,6 @@ class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
         super().__init__(
             options=options,
             user=user,
-            http_client=http_client,
             events=events,
             logger=logger,
             flock=flock,

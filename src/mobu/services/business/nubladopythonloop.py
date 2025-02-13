@@ -9,7 +9,6 @@ from __future__ import annotations
 from datetime import timedelta
 
 import sentry_sdk
-from httpx import AsyncClient
 from rubin.nublado.client import JupyterLabSession
 from rubin.nublado.client.exceptions import CodeExecutionError
 from safir.sentry import duration
@@ -33,8 +32,6 @@ class NubladoPythonLoop(NubladoBusiness):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
-    http_client
-        Shared HTTP client for general web access.
     logger
         Logger to use to report the results of business.
     flock
@@ -46,7 +43,6 @@ class NubladoPythonLoop(NubladoBusiness):
         *,
         options: NubladoPythonLoopOptions,
         user: AuthenticatedUser,
-        http_client: AsyncClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
@@ -54,7 +50,6 @@ class NubladoPythonLoop(NubladoBusiness):
         super().__init__(
             options=options,
             user=user,
-            http_client=http_client,
             events=events,
             logger=logger,
             flock=flock,

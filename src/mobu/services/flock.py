@@ -179,10 +179,10 @@ class Flock:
             count = self._config.count
             users = self._users_from_spec(self._config.user_spec, count)
         scopes = self._config.scopes
-        return [
-            await self._gafaelfawr.create_service_token(u, scopes)
-            for u in users
+        coros = [
+            self._gafaelfawr.create_service_token(u, scopes) for u in users
         ]
+        return await asyncio.gather(*coros)
 
     def _users_from_spec(self, spec: UserSpec, count: int) -> list[User]:
         """Generate count Users from the provided spec."""

@@ -12,7 +12,6 @@ from random import SystemRandom
 from typing import Generic, TypeVar
 
 import sentry_sdk
-from httpx import AsyncClient
 from rubin.nublado.client import JupyterLabSession, NubladoClient
 from safir.datetime import current_datetime, format_datetime_for_logging
 from safir.sentry import duration
@@ -101,8 +100,6 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
-    http_client
-        Shared HTTP client for general web access.
     events
         Event publishers.
     logger
@@ -114,7 +111,6 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         *,
         options: T,
         user: AuthenticatedUser,
-        http_client: AsyncClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
@@ -122,7 +118,6 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         super().__init__(
             options=options,
             user=user,
-            http_client=http_client,
             events=events,
             logger=logger,
             flock=flock,

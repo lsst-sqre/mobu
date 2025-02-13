@@ -19,7 +19,6 @@ from typing import Any
 
 import sentry_sdk
 import yaml
-from httpx import AsyncClient
 from rubin.nublado.client import JupyterLabSession
 from rubin.nublado.client.exceptions import CodeExecutionError
 from rubin.nublado.client.models import CodeContext
@@ -71,8 +70,6 @@ class NotebookRunner(NubladoBusiness):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
-    http_client
-        Shared HTTP client for general web access.
     events
         Event publishers.
     logger
@@ -86,7 +83,6 @@ class NotebookRunner(NubladoBusiness):
         *,
         options: NotebookRunnerOptions | ListNotebookRunnerOptions,
         user: AuthenticatedUser,
-        http_client: AsyncClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
@@ -94,7 +90,6 @@ class NotebookRunner(NubladoBusiness):
         super().__init__(
             options=options,
             user=user,
-            http_client=http_client,
             events=events,
             logger=logger,
             flock=flock,
