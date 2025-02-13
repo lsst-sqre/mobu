@@ -19,6 +19,7 @@ from structlog.stdlib import BoundLogger
 from ..events import Events
 from ..factory import Factory, ProcessContext
 from ..services.manager import FlockManager
+from ..services.repo import RepoManager
 
 __all__ = [
     "ContextDependency",
@@ -40,6 +41,9 @@ class RequestContext:
 
     manager: FlockManager
     """Global singleton flock manager."""
+
+    repo_manager: RepoManager
+    """Global singleton git repo manager."""
 
     factory: Factory
     """Component factory."""
@@ -80,6 +84,7 @@ class ContextDependency:
             request=request,
             logger=logger,
             manager=self._process_context.manager,
+            repo_manager=self._process_context.repo_manager,
             factory=Factory(self._process_context, logger),
         )
 

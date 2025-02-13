@@ -9,6 +9,7 @@ from structlog.stdlib import BoundLogger
 
 from ..events import Events
 from ..models.solitary import SolitaryConfig, SolitaryResult
+from ..services.repo import RepoManager
 from ..storage.gafaelfawr import GafaelfawrStorage
 from .monkey import Monkey
 
@@ -28,6 +29,8 @@ class Solitary:
         Shared HTTP client.
     events
         Event publishers.
+    repo_manager
+        For efficiently cloning git repos.
     logger
         Global logger.
     """
@@ -39,12 +42,14 @@ class Solitary:
         gafaelfawr_storage: GafaelfawrStorage,
         http_client: AsyncClient,
         events: Events,
+        repo_manager: RepoManager,
         logger: BoundLogger,
     ) -> None:
         self._config = solitary_config
         self._gafaelfawr = gafaelfawr_storage
         self._http_client = http_client
         self._events = events
+        self._repo_manager = repo_manager
         self._logger = logger
 
     async def run(self) -> SolitaryResult:
@@ -64,6 +69,7 @@ class Solitary:
             user=user,
             http_client=self._http_client,
             events=self._events,
+            repo_manager=self._repo_manager,
             logger=self._logger,
         )
         error = await monkey.run_once()

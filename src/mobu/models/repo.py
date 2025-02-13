@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from pydantic import BaseModel, ConfigDict, Field
+
+__all__ = ["ClonedRepoInfo", "RepoConfig"]
 
 
 class RepoConfig(BaseModel):
@@ -25,3 +29,12 @@ class RepoConfig(BaseModel):
         ),
         examples=["some-dir", "some-dir/some-other-dir"],
     )
+
+
+@dataclass(frozen=True)
+class ClonedRepoInfo:
+    """Information about a cloned git repo."""
+
+    dir: TemporaryDirectory
+    path: Path
+    hash: str

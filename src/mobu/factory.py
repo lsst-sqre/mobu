@@ -11,6 +11,7 @@ from .dependencies.config import config_dependency
 from .events import Events
 from .models.solitary import SolitaryConfig
 from .services.manager import FlockManager
+from .services.repo import RepoManager
 from .services.solitary import Solitary
 from .storage.gafaelfawr import GafaelfawrStorage
 
@@ -38,17 +39,25 @@ class ProcessContext:
         Manager for all running flocks.
     events
         Object with attributes for all metrics event publishers.
+    repo_manager
+        For efficiently cloning git repos.
     """
 
-    def __init__(self, http_client: AsyncClient, events: Events) -> None:
+    def __init__(
+        self,
+        http_client: AsyncClient,
+        events: Events,
+    ) -> None:
         self.http_client = http_client
         self.logger = structlog.get_logger("mobu")
         self.gafaelfawr = GafaelfawrStorage(self.http_client, self.logger)
         self.events = events
+        self.repo_manager = RepoManager(self.logger)
         self.manager = FlockManager(
             gafaelfawr_storage=self.gafaelfawr,
             http_client=self.http_client,
             logger=self.logger,
+            repo_manager=self.repo_manager,
             events=self.events,
         )
 
@@ -58,6 +67,7 @@ class ProcessContext:
         Called before shutdown to free resources.
         """
         await self.manager.aclose()
+        self.repo_manager.close()
 
 
 class Factory:
@@ -114,6 +124,7 @@ class Factory:
             ),
             http_client=self._context.http_client,
             events=self._context.events,
+            repo_manager=self._context.repo_manager,
             logger=self._logger,
         )
 

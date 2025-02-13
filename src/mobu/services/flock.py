@@ -18,6 +18,7 @@ from ..models.business.notebookrunner import (
 )
 from ..models.flock import FlockConfig, FlockData, FlockSummary
 from ..models.user import AuthenticatedUser, User, UserSpec
+from ..services.repo import RepoManager
 from ..storage.gafaelfawr import GafaelfawrStorage
 from .monkey import Monkey
 
@@ -39,6 +40,8 @@ class Flock:
         Shared HTTP client.
     events
         Event publishers.
+    repo_manager
+        For efficiently cloning git repos.
     logger
         Global logger.
     """
@@ -51,6 +54,7 @@ class Flock:
         gafaelfawr_storage: GafaelfawrStorage,
         http_client: AsyncClient,
         events: Events,
+        repo_manager: RepoManager,
         logger: BoundLogger,
     ) -> None:
         self.name = flock_config.name
@@ -59,6 +63,7 @@ class Flock:
         self._gafaelfawr = gafaelfawr_storage
         self._http_client = http_client
         self._events = events
+        self._repo_manager = repo_manager
         self._logger = logger.bind(flock=self.name)
         self._monkeys: dict[str, Monkey] = {}
         self._start_time: datetime | None = None
@@ -166,6 +171,7 @@ class Flock:
             user=user,
             http_client=self._http_client,
             events=self._events,
+            repo_manager=self._repo_manager,
             logger=self._logger,
         )
 

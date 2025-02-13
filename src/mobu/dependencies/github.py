@@ -41,6 +41,7 @@ class CiManagerDependency:
             scopes=scopes,
             http_client=base_context.process_context.http_client,
             events=base_context.process_context.events,
+            repo_manager=base_context.process_context.repo_manager,
             gafaelfawr_storage=base_context.process_context.gafaelfawr,
             logger=base_context.process_context.logger,
         )

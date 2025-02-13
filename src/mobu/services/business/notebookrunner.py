@@ -9,12 +9,10 @@ from __future__ import annotations
 import contextlib
 import json
 import random
-import shutil
 from collections.abc import AsyncGenerator, Iterator
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Any, override
 
 import sentry_sdk
@@ -46,7 +44,7 @@ from ...models.repo import RepoConfig
 from ...models.user import AuthenticatedUser
 from ...sentry import capturing_start_span, start_transaction
 from ...services.business.base import CommonEventAttrs
-from ...storage.git import Git
+from ...services.repo import RepoManager
 from .nublado import NubladoBusiness
 
 __all__ = ["NotebookRunner"]
@@ -83,6 +81,7 @@ class NotebookRunner(NubladoBusiness):
         *,
         options: NotebookRunnerOptions | ListNotebookRunnerOptions,
         user: AuthenticatedUser,
+        repo_manager: RepoManager,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
@@ -97,13 +96,13 @@ class NotebookRunner(NubladoBusiness):
         self._config = config_dependency.config
         self._notebook: Path | None = None
         self._notebook_paths: list[Path] | None = None
-        self._repo_dir: Path | None = None
+        self._repo_path: Path | None = None
         self._repo_hash: str | None = None
         self._exclude_paths: set[Path] = set()
         self._running_code: str | None = None
-        self._git = Git(logger=logger)
         self._max_executions: int | None = None
         self._notebooks_to_run: list[Path] | None = None
+        self._repo_manager = repo_manager
 
         match options:
             case NotebookRunnerOptions(max_executions=max_executions):
@@ -117,22 +116,30 @@ class NotebookRunner(NubladoBusiness):
         await super().startup()
 
     async def cleanup(self) -> None:
-        shutil.rmtree(str(self._repo_dir))
-        self._repo_dir = None
+        if self._repo_hash is not None:
+            await self._repo_manager.invalidate(
+                url=self.options.repo_url,
+                ref=self.options.repo_ref,
+                repo_hash=self._repo_hash,
+            )
+        self._repo_path = None
+        self._repo_hash = None
         self._notebook_filter_results = None
 
     async def initialize(self) -> None:
         """Prepare to run the business.
 
-        * Check out the repository
+        * Get notebook repo files from the repo manager
         * Parse the in-repo config
         * Filter the notebooks
         """
-        if self._repo_dir is None:
-            self._repo_dir = Path(TemporaryDirectory(delete=False).name)
-            await self.clone_repo()
+        info = await self._repo_manager.clone(
+            url=self.options.repo_url, ref=self.options.repo_ref
+        )
+        self._repo_path = info.path
+        self._repo_hash = info.hash
 
-        repo_config_path = self._repo_dir / GITHUB_REPO_CONFIG_PATH
+        repo_config_path = self._repo_path / GITHUB_REPO_CONFIG_PATH
         set_context(
             "repo_info",
             {
@@ -155,7 +162,7 @@ class NotebookRunner(NubladoBusiness):
             repo_config = RepoConfig()
 
         exclude_dirs = repo_config.exclude_dirs
-        self._exclude_paths = {self._repo_dir / path for path in exclude_dirs}
+        self._exclude_paths = {self._repo_path / path for path in exclude_dirs}
         self._notebooks = self.find_notebooks()
         set_context(
             "notebook_filter_info", self._notebooks.model_dump(mode="json")
@@ -168,19 +175,10 @@ class NotebookRunner(NubladoBusiness):
         await super().shutdown()
 
     async def refresh(self) -> None:
-        self.logger.info("Recloning notebooks and forcing new execution")
+        self.logger.info("Getting new notebooks and forcing new execution")
         await self.cleanup()
         await self.initialize()
         self.refreshing = False
-
-    async def clone_repo(self) -> None:
-        url = self.options.repo_url
-        ref = self.options.repo_ref
-        with capturing_start_span(op="clone_repo"):
-            self._git.repo = self._repo_dir
-            await self._git.clone(url, str(self._repo_dir))
-            await self._git.checkout(ref)
-        self._repo_hash = await self._git.repo_hash()
 
     def is_excluded(self, notebook: Path) -> bool:
         # A notebook is excluded if any of its parent directories are excluded
@@ -207,12 +205,12 @@ class NotebookRunner(NubladoBusiness):
 
     def find_notebooks(self) -> NotebookFilterResults:
         with capturing_start_span(op="find_notebooks"):
-            if self._repo_dir is None:
+            if self._repo_path is None:
                 raise NotebookRepositoryError(
                     "Repository directory must be set", self.user.username
                 )
 
-            all_notebooks = set(self._repo_dir.glob("**/*.ipynb"))
+            all_notebooks = set(self._repo_path.glob("**/*.ipynb"))
             if not all_notebooks:
                 msg = "No notebooks found in {self._repo_dir}"
                 raise NotebookRepositoryError(msg, self.user.username)
@@ -227,14 +225,14 @@ class NotebookRunner(NubladoBusiness):
 
             if self._notebooks_to_run:
                 requested = {
-                    self._repo_dir / notebook
+                    self._repo_path / notebook
                     for notebook in self._notebooks_to_run
                 }
                 not_found = requested - filter_results.all
                 if not_found:
                     msg = (
                         "Requested notebooks do not exist in"
-                        f" {self._repo_dir}: {not_found}"
+                        f" {self._repo_path}: {not_found}"
                     )
                     raise NotebookRepositoryError(msg, self.user.username)
                 filter_results.excluded_by_requested = (
@@ -348,7 +346,7 @@ class NotebookRunner(NubladoBusiness):
     ) -> None:
         self._notebook = self.next_notebook()
         relative_notebook = str(
-            self._notebook.relative_to(self._repo_dir or "/")
+            self._notebook.relative_to(self._repo_path or "/")
         )
         iteration = f"{count + 1}/{num_executions}"
         msg = f"Notebook {self._notebook.name} iteration {iteration}"

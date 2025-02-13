@@ -18,6 +18,7 @@ from mobu.models.ci_manager import (
 from mobu.models.user import User
 from mobu.services.business.base import Business
 from mobu.services.github_ci.ci_manager import CiManager
+from mobu.services.repo import RepoManager
 from mobu.storage.gafaelfawr import GafaelfawrStorage
 from tests.support.constants import TEST_GITHUB_CI_APP_PRIVATE_KEY
 
@@ -41,11 +42,13 @@ def create_ci_manager(respx_mock: respx.Router, events: Events) -> CiManager:
     http_client = AsyncClient()
     logger = structlog.get_logger()
     gafaelfawr = GafaelfawrStorage(http_client=http_client, logger=logger)
+    repo_manager = RepoManager(logger=logger)
 
     return CiManager(
         http_client=http_client,
         gafaelfawr_storage=gafaelfawr,
         events=events,
+        repo_manager=repo_manager,
         logger=logger,
         scopes=scopes,
         github_app_id=123,
