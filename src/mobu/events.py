@@ -80,6 +80,12 @@ class EmptyLoopExecution(EventBase):
     """Reported when an empty loop... loops."""
 
     success: bool
+    notebook: str = "dfuchs-test/blah/blah/blah"
+    repo: str = "some/repo/or/something"
+    repo_ref: str = "asdfasdfasdfasdfasdfasdfasdf"
+    repo_hash: str = "asdfasdfasdfasdfasdfasdfasdfsadf"
+    duration: timedelta | None = timedelta(seconds=12345)
+    cell_id: str = "asdfasdfsadf"
 
 
 class Events(EventMaker):
