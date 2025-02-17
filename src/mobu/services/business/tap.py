@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 from abc import ABCMeta, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
-from typing import Generic, TypeVar
 
 import pyvo
 import requests
@@ -21,12 +20,10 @@ from ...models.user import AuthenticatedUser
 from ...sentry import capturing_start_span, start_transaction
 from .base import Business
 
-T = TypeVar("T", bound="TAPBusinessOptions")
-
 __all__ = ["TAPBusiness"]
 
 
-class TAPBusiness(Business, Generic[T], metaclass=ABCMeta):
+class TAPBusiness[T: TAPBusinessOptions](Business[T], metaclass=ABCMeta):
     """Base class for business that executes TAP query.
 
     This class modifies the core `~mobu.business.base.Business` loop by

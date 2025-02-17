@@ -8,7 +8,7 @@ from asyncio import Queue, QueueEmpty
 from collections.abc import AsyncGenerator, AsyncIterable
 from datetime import timedelta
 from enum import Enum
-from typing import Generic, TypedDict, TypeVar
+from typing import TypedDict
 
 from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
@@ -18,9 +18,6 @@ from ...events import Events
 from ...models.business.base import BusinessData, BusinessOptions
 from ...models.user import AuthenticatedUser
 from ...sentry import capturing_start_span, start_transaction
-
-T = TypeVar("T", bound="BusinessOptions")
-U = TypeVar("U")
 
 __all__ = ["Business"]
 
@@ -37,7 +34,7 @@ class BusinessCommand(Enum):
     STOP = "STOP"
 
 
-class Business(Generic[T], metaclass=ABCMeta):
+class Business[T: BusinessOptions](metaclass=ABCMeta):
     """Base class for monkey business (one type of repeated operation).
 
     The basic flow for a monkey business is as follows:
@@ -114,21 +111,21 @@ class Business(Generic[T], metaclass=ABCMeta):
 
     # Methods that should be overridden by child classes if needed.
 
-    async def startup(self) -> None:
+    async def startup(self) -> None:  # noqa: B027
         """Run before the start of the first iteration and then not again."""
 
     @abstractmethod
     async def execute(self) -> None:
         """Execute the core of each business loop."""
 
-    async def close(self) -> None:
+    async def close(self) -> None:  # noqa: B027
         """Clean up any allocated resources.
 
         This should be overridden by child classes to free any resources that
         were allocated in ``__init__``.
         """
 
-    async def shutdown(self) -> None:
+    async def shutdown(self) -> None:  # noqa: B027
         """Perform any cleanup required after stopping."""
 
     # Public Business API called by the Monkey class. These methods handle the
@@ -258,7 +255,7 @@ class Business(Generic[T], metaclass=ABCMeta):
         except (TimeoutError, QueueEmpty):
             return True
 
-    async def iter_with_timeout(
+    async def iter_with_timeout[U](
         self, iterable: AsyncIterable[U], timeout: timedelta
     ) -> AsyncGenerator[U]:
         """Run an iterator with a timeout.
