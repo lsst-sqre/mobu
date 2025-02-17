@@ -1,36 +1,30 @@
 """Base models for monkey business."""
 
-from datetime import timedelta
-from typing import Annotated
+from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
+from datetime import timedelta
+
+from pydantic import BaseModel, ConfigDict, Field
 from safir.logging import LogLevel
+from safir.pydantic import HumanTimedelta
 
 __all__ = [
     "BusinessConfig",
     "BusinessData",
     "BusinessOptions",
-    "SerializableTimedelta",
-]
-
-SerializableTimedelta = Annotated[
-    timedelta,
-    PlainSerializer(
-        lambda v: round(v.total_seconds()), return_type=int, when_used="json"
-    ),
 ]
 
 
 class BusinessOptions(BaseModel):
     """Options for monkey business."""
 
-    error_idle_time: SerializableTimedelta = Field(
+    error_idle_time: HumanTimedelta = Field(
         timedelta(minutes=1),
         title="How long to wait after an error before restarting",
         examples=[600],
     )
 
-    idle_time: SerializableTimedelta = Field(
+    idle_time: HumanTimedelta = Field(
         timedelta(minutes=1),
         title="How long to wait between business executions",
         description=(
