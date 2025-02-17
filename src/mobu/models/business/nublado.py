@@ -10,8 +10,9 @@ from rubin.nublado.client.models import (
     NubladoImageByReference,
     NubladoImageByTag,
 )
+from safir.pydantic import HumanTimedelta
 
-from .base import BusinessData, BusinessOptions, SerializableTimedelta
+from .base import BusinessData, BusinessOptions
 
 __all__ = [
     "NubladoBusinessData",
@@ -34,11 +35,11 @@ class NubladoBusinessOptions(BusinessOptions):
         examples=[True],
     )
 
-    delete_timeout: SerializableTimedelta = Field(
+    delete_timeout: HumanTimedelta = Field(
         timedelta(minutes=1), title="Timeout for deleting a lab", examples=[60]
     )
 
-    execution_idle_time: SerializableTimedelta = Field(
+    execution_idle_time: HumanTimedelta = Field(
         timedelta(seconds=1),
         title="How long to wait between cell executions",
         description="Used by NubladoPythonLoop and NotebookRunner",
@@ -60,7 +61,7 @@ class NubladoBusinessOptions(BusinessOptions):
         default_factory=NubladoImageByClass, title="Nublado lab image to use"
     )
 
-    jitter: SerializableTimedelta = Field(
+    jitter: HumanTimedelta = Field(
         timedelta(seconds=0),
         title="Maximum random time to pause",
         description=(
@@ -74,7 +75,7 @@ class NubladoBusinessOptions(BusinessOptions):
         examples=[60],
     )
 
-    jupyter_timeout: SerializableTimedelta = Field(
+    jupyter_timeout: HumanTimedelta = Field(
         timedelta(minutes=1),
         title="HTTP client timeout for Jupyter requests",
         description=(
@@ -93,7 +94,7 @@ class NubladoBusinessOptions(BusinessOptions):
         ),
     )
 
-    spawn_settle_time: SerializableTimedelta = Field(
+    spawn_settle_time: HumanTimedelta = Field(
         timedelta(seconds=10),
         title="How long to wait before polling spawn progress",
         description=(
@@ -105,7 +106,7 @@ class NubladoBusinessOptions(BusinessOptions):
         examples=[10],
     )
 
-    spawn_timeout: SerializableTimedelta = Field(
+    spawn_timeout: HumanTimedelta = Field(
         timedelta(seconds=610),
         title="Timeout for spawning a lab",
         examples=[610],
