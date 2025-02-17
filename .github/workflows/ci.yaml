@@ -26,7 +26,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
 
       - name: Run pre-commit
         uses: pre-commit/action@v3.0.1
@@ -38,7 +38,7 @@ jobs:
     strategy:
       matrix:
         python:
-          - "3.12"
+          - "3.13"
 
     steps:
       - uses: actions/checkout@v4
@@ -103,7 +103,7 @@ jobs:
         if: steps.filter.outputs.docs == 'true' || github.event_name == 'workflow_dispatch'
         uses: lsst-sqre/run-tox@v1
         with:
-          python-version: "3.12"
+          python-version: "3.13"
           tox-envs: docs
           tox-plugins: tox-uv
           cache-key-prefix: docs
