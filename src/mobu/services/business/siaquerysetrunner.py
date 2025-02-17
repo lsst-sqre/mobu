@@ -5,12 +5,11 @@ from __future__ import annotations
 import importlib.resources
 from random import SystemRandom
 
-import jinja2
 import yaml
 from structlog.stdlib import BoundLogger
 
 from ...events import Events
-from ...models.business.sia import SIA2SearchParameters
+from ...models.business.sia import SIA2Query
 from ...models.business.siaquerysetrunner import SIAQuerySetRunnerOptions
 from ...models.user import AuthenticatedUser
 from .sia import SIABusiness
@@ -53,38 +52,31 @@ class SIAQuerySetRunner(SIABusiness):
         )
         self._random = SystemRandom()
 
-        # Load templates and parameters. The path has to be specified in two
-        # different ways: as a relative path for Jinja's PackageLoader, and as
-        # a sequence of joinpath operations for importlib.resources.
-        template_path = ("data", "siaquerysetrunner", self.options.query_set)
-        self._env = jinja2.Environment(
-            loader=jinja2.PackageLoader("mobu", "/".join(template_path)),
-            undefined=jinja2.StrictUndefined,
-            autoescape=jinja2.select_autoescape(disabled_extensions=["sql"]),
+        # Load parameters. We don't need jinja here since we're not
+        # generating queries, just parameters from the ranges.
+        params_path = importlib.resources.files("mobu").joinpath(
+            "data", "siaquerysetrunner", self.options.query_set, "params.yaml"
         )
-        files = importlib.resources.files("mobu")
-        for directory in template_path:
-            files = files.joinpath(directory)
-        with files.joinpath("params.yaml").open("r") as f:
+        with params_path.open("r") as f:
             self._params = yaml.safe_load(f)
 
     async def startup(self) -> None:
         await super().startup()
         self.logger.info("Starting SIA Query Set Runner")
 
-    def get_next_query(self) -> SIA2SearchParameters:
+    def get_next_query(self) -> SIA2Query:
         """Generate a random SIAv2 Query using the stored param ranges.
 
         Returns
         -------
-        SIA2SearchParameters
+        SIA2Query
             Next SIA query to run.
         """
         return self._generate_siav2_params()
 
     def _generate_siav2_params(
         self,
-    ) -> SIA2SearchParameters:
+    ) -> SIA2Query:
         """Generate a random SIAv2 query."""
         min_ra = self._params.get("min_ra", 55.0)
         max_ra = self._params.get("max_ra", 70.0)
@@ -95,11 +87,11 @@ class SIAQuerySetRunner(SIABusiness):
         start_time = self._params.get("start_time", 60550.31803461111)
         end_time = self._params.get("end_time", 60550.31838182871)
 
-        ra = min_ra + self._random.random() * (max_ra - min_ra)
-        dec = min_dec + self._random.random() * (max_dec - min_dec)
-        radius = min_radius + self._random.random() * radius_range
+        ra = min_ra + self._random.uniform(min_ra, max_ra)
+        dec = min_dec + self._random.uniform(min_dec, max_dec)
+        radius = self._random.uniform(min_radius, min_radius + radius_range)
 
-        return SIA2SearchParameters(
+        return SIA2Query(
             ra=ra,
             dec=dec,
             radius=radius,

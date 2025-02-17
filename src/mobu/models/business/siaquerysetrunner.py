@@ -6,8 +6,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from .base import BusinessConfig
-from .sia import SIABusinessOptions
+from .base import BusinessConfig, BusinessOptions
 
 __all__ = [
     "SIAQuerySetRunnerConfig",
@@ -15,7 +14,7 @@ __all__ = [
 ]
 
 
-class SIAQuerySetRunnerOptions(SIABusinessOptions):
+class SIAQuerySetRunnerOptions(BusinessOptions):
     """Options for SIAQuerySetRunner monkey business."""
 
     query_set: str = Field(

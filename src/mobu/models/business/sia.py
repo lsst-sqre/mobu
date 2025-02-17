@@ -5,12 +5,12 @@ from __future__ import annotations
 from astropy.time import Time
 from pydantic import BaseModel, Field
 
-from .base import BusinessData, BusinessOptions
+from .base import BusinessData
 
-__all__ = ["SIA2SearchParameters", "SIABusinessData", "SIABusinessOptions"]
+__all__ = ["SIA2Query", "SIABusinessData"]
 
 
-class SIA2SearchParameters(BaseModel):
+class SIA2Query(BaseModel):
     """The parameters of an SIAv2 query."""
 
     ra: float
@@ -37,17 +37,13 @@ class SIA2SearchParameters(BaseModel):
     def __str__(self) -> str:
         """Return a string representation of the query."""
         times = ", ".join([str(t) for t in self.time])
-        return f"SIA2Query(pos={self.pos}, time=[{times}])"
-
-
-class SIABusinessOptions(BusinessOptions):
-    """Options for any business that runs SIA queries."""
+        return f"SIAv2 parameters: pos={self.pos}, time=[{times}])"
 
 
 class SIABusinessData(BusinessData):
     """Status of a running SIA business."""
 
-    running_query: SIA2SearchParameters | None = Field(
+    running_query: SIA2Query | None = Field(
         None,
         title="Currently running query",
         description="Will not be present if no query is being executed",

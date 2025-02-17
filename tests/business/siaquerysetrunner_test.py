@@ -101,7 +101,7 @@ async def test_setup_error(
         json={
             "name": "test",
             "count": 1,
-            "users": [{"username": "bot-mobu-tapuser"}],
+            "users": [{"username": "bot-mobu-siauser"}],
             "scopes": ["exec:notebook"],
             "business": {"type": "SIAQuerySetRunner"},
         },
@@ -109,7 +109,7 @@ async def test_setup_error(
     assert r.status_code == 201
 
     # Wait until we've finished at least one loop and check the results.
-    data = await wait_for_business(client, "bot-mobu-tapuser")
+    data = await wait_for_business(client, "bot-mobu-siauser")
     assert data["business"]["failure_count"] == 1
 
     # Confirm Sentry events
@@ -132,7 +132,7 @@ async def test_setup_error(
         "business": "SIAQuerySetRunner",
         "phase": "make_client",
     }
-    assert sentry_error["user"] == {"username": "bot-mobu-tapuser"}
+    assert sentry_error["user"] == {"username": "bot-mobu-siauser"}
 
     (sentry_transaction,) = sentry_items.transactions
     assert sentry_transaction["transaction"] == "SIAQuerySetRunner - startup"
@@ -173,7 +173,7 @@ async def test_failure(
     }
     assert sentry_error["contexts"]["query_info"] == {
         "started_at": ANY_AWARE_DATETIME_STR,
-        "query": AnySearch("SIA2Query"),
+        "query": AnySearch("SIAv2 parameters"),
     }
     assert sentry_error["tags"] == {
         "flock": "test",
@@ -204,7 +204,7 @@ async def test_failure(
 async def test_random_object(events: Events) -> None:
     query_set = "dp02"
     user = AuthenticatedUser(
-        username="bot-mobu-user", scopes=["read:tap"], token="blah blah"
+        username="bot-mobu-user", scopes=["read:image"], token="blah blah"
     )
     logger = structlog.get_logger(__file__)
     options = SIAQuerySetRunnerOptions(query_set=query_set)
