@@ -9,9 +9,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine
 from contextlib import AbstractAsyncContextManager
 from datetime import timedelta
 from types import TracebackType
-from typing import Literal, TypeVar
-
-T = TypeVar("T")
+from typing import Literal
 
 __all__ = [
     "aclosing_iter",
@@ -88,7 +86,7 @@ def schedule_periodic(
     return asyncio.ensure_future(loop())
 
 
-async def wait_first(*args: Coroutine[None, None, T]) -> T | None:
+async def wait_first[T](*args: Coroutine[None, None, T]) -> T | None:
     """Return the result of the first awaitable to finish.
 
     The other awaitables will be cancelled.  The first awaitable determines

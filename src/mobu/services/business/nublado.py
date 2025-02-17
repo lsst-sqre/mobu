@@ -9,7 +9,7 @@ from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from random import SystemRandom
-from typing import Generic, TypeVar
+from typing import Any
 
 import sentry_sdk
 from rubin.nublado.client import JupyterLabSession, NubladoClient
@@ -35,12 +35,11 @@ from ...models.user import AuthenticatedUser
 from ...sentry import capturing_start_span, start_transaction
 from .base import Business
 
-T = TypeVar("T", bound="NubladoBusinessOptions")
-
 __all__ = ["NubladoBusiness", "ProgressLogMessage"]
 
 _ANSI_REGEX = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
 """Regex that matches ANSI escape sequences."""
+
 _CHDIR_TEMPLATE = 'import os; os.chdir("{wd}")'
 """Template to construct the code to run to set the working directory."""
 
@@ -78,7 +77,9 @@ class ProgressLogMessage:
         return f"{timestamp} - {self.message}"
 
 
-class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
+class NubladoBusiness[T: NubladoBusinessOptions](
+    Business[T], metaclass=ABCMeta
+):
     """Base class for business that executes Python code in a Nublado notebook.
 
     This class modifies the core `~mobu.business.base.Business` loop by
@@ -216,9 +217,11 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
     async def idle(self) -> None:
         if self.options.jitter:
             self.logger.info("Idling...")
+            jitter = self.options.jitter.total_seconds()
+            delay_seconds = self._random.uniform(0, jitter)
+            delay = timedelta(seconds=delay_seconds)
             with capturing_start_span(op="idle"):
-                extra_delay = self._random.uniform(0, self.options.jitter)
-                await self.pause(self.options.idle_time + extra_delay)
+                await self.pause(self.options.idle_time + delay)
         else:
             await super().idle()
 
@@ -304,7 +307,9 @@ class NubladoBusiness(Business, Generic[T], metaclass=ABCMeta):
         self, notebook: str | None = None
     ) -> AsyncGenerator[JupyterLabSession]:
         self.logger.info("Creating lab session")
-        opts = {"max_websocket_size": self.options.max_websocket_message_size}
+        opts: dict[str, Any] = {
+            "max_websocket_size": self.options.max_websocket_message_size
+        }
         create_session_cm = capturing_start_span(op="create_session")
         create_session_cm.__enter__()
         async with self._client.open_lab_session(notebook, **opts) as session:
