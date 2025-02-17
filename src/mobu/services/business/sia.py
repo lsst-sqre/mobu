@@ -14,18 +14,16 @@ from sentry_sdk import set_context
 from structlog.stdlib import BoundLogger
 
 from ...dependencies.config import config_dependency
-from ...events import Events, SIAQuery
+from ...events import Events
+from ...events import SIAQuery as SIAQueryEvent
 from ...exceptions import SIAClientError
-from ...models.business.sia import (
-    SIA2SearchParameters,
-    SIABusinessData,
-    SIABusinessOptions,
-)
+from ...models.business.base import BusinessOptions
+from ...models.business.sia import SIA2Query, SIABusinessData
 from ...models.user import AuthenticatedUser
 from ...sentry import capturing_start_span, start_transaction
 from .base import Business
 
-T = TypeVar("T", bound="SIABusinessOptions")
+T = TypeVar("T", bound="BusinessOptions")
 
 __all__ = ["SIABusiness"]
 
@@ -66,7 +64,7 @@ class SIABusiness(Business, Generic[T], metaclass=ABCMeta):
             logger=logger,
             flock=flock,
         )
-        self._running_query: SIA2SearchParameters | None = None
+        self._running_query: SIA2Query | None = None
         self._client: pyvo.dal.SIA2Service | None = None
         self._pool = ThreadPoolExecutor(max_workers=1)
         self.query_set: str = self.options.query_set
@@ -75,7 +73,7 @@ class SIABusiness(Business, Generic[T], metaclass=ABCMeta):
         self._client = self._make_client(self.user.token)
 
     @abstractmethod
-    def get_next_query(self) -> SIA2SearchParameters:
+    def get_next_query(self) -> SIA2Query:
         """Get the next SIA query to run.
 
         Returns
@@ -111,7 +109,7 @@ class SIABusiness(Business, Generic[T], metaclass=ABCMeta):
                     success = True
                 finally:
                     await self.events.sia_query.publish(
-                        payload=SIAQuery(
+                        payload=SIAQueryEvent(
                             success=success,
                             duration=duration(span),
                             **self.common_event_attrs(),
