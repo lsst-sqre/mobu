@@ -13,6 +13,7 @@ import pytest_asyncio
 import respx
 import safir.logging
 import structlog
+import websockets
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
@@ -237,7 +238,7 @@ def jupyter(
     ) -> AsyncGenerator[MockJupyterWebSocket]:
         yield mock_jupyter_websocket(url, extra_headers, jupyter_mock)
 
-    with patch("rubin.nublado.client.nubladoclient.websocket_connect") as mock:
+    with patch.object(websockets, "connect") as mock:
         mock.side_effect = mock_connect
         # Register some code we call over and over and over...
         jupyter_mock.register_python_result(_GET_NODE, "Node1")
