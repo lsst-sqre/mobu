@@ -3,7 +3,7 @@
 import json
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, override
 
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -34,6 +34,7 @@ __all__ = ["external_router"]
 class FormattedJSONResponse(JSONResponse):
     """The same as ``fastapi.JSONResponse`` except formatted for humans."""
 
+    @override
     def render(self, content: Any) -> bytes:
         """Render a data structure into JSON formatted for humans."""
         return json.dumps(

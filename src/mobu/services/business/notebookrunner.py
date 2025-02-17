@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import Any, override
 
 import sentry_sdk
 import yaml
@@ -111,6 +111,7 @@ class NotebookRunner(NubladoBusiness):
             case ListNotebookRunnerOptions(notebooks_to_run=notebooks_to_run):
                 self._notebooks_to_run = notebooks_to_run
 
+    @override
     async def startup(self) -> None:
         await self.initialize()
         await super().startup()
@@ -161,6 +162,7 @@ class NotebookRunner(NubladoBusiness):
         )
         self.logger.info("Repository cloned and ready")
 
+    @override
     async def shutdown(self) -> None:
         await self.cleanup()
         await super().shutdown()
@@ -300,6 +302,7 @@ class NotebookRunner(NubladoBusiness):
 
         return cells
 
+    @override
     @asynccontextmanager
     async def open_session(
         self, notebook_name: str | None = None
@@ -310,6 +313,7 @@ class NotebookRunner(NubladoBusiness):
         async with super().open_session(notebook_name) as session:
             yield session
 
+    @override
     async def execute_code(self, session: JupyterLabSession) -> None:
         """Run a set number of notebooks (flocks), or all available (CI)."""
         if self._max_executions:
@@ -464,6 +468,7 @@ class NotebookRunner(NubladoBusiness):
             cell_id=cell_id, duration=duration(span), success=True
         )
 
+    @override
     def dump(self) -> NotebookRunnerData:
         return NotebookRunnerData(
             notebook=self._notebook.name if self._notebook else None,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.resources
 import math
 from random import SystemRandom
+from typing import override
 
 import jinja2
 import shortuuid
@@ -69,11 +70,13 @@ class TAPQuerySetRunner(TAPBusiness):
         with files.joinpath("params.yaml").open("r") as f:
             self._params = yaml.safe_load(f)
 
+    @override
     async def startup(self) -> None:
         await super().startup()
         templates = self._env.list_templates(["sql"])
         self.logger.info("Query templates to choose from: %s", templates)
 
+    @override
     def get_next_query(self) -> str:
         """Choose a random query from the query set.
 

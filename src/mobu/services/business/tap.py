@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from abc import ABCMeta, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
+from typing import override
 
 import pyvo
 import requests
@@ -63,6 +64,7 @@ class TAPBusiness[T: TAPBusinessOptions](Business[T], metaclass=ABCMeta):
         self._client: pyvo.dal.TAPService | None = None
         self._pool = ThreadPoolExecutor(max_workers=1)
 
+    @override
     async def startup(self) -> None:
         self._client = self._make_client(self.user.token)
 
@@ -76,6 +78,7 @@ class TAPBusiness[T: TAPBusinessOptions](Business[T], metaclass=ABCMeta):
             TAP query as a string.
         """
 
+    @override
     async def execute(self) -> None:
         with start_transaction(
             name=f"{self.name} - execute",
@@ -130,6 +133,7 @@ class TAPBusiness[T: TAPBusinessOptions](Business[T], metaclass=ABCMeta):
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(self._pool, method, query)
 
+    @override
     def dump(self) -> TAPBusinessData:
         return TAPBusinessData(
             running_query=self._running_query, **super().dump().model_dump()
