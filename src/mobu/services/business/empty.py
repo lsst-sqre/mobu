@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import override
+
 from mobu.events import EmptyLoopExecution
 
 from .base import Business
@@ -16,6 +18,7 @@ class EmptyLoop(Business):
     for testing mobu.
     """
 
+    @override
     async def execute(self) -> None:
         await self.events.empty_loop.publish(
             EmptyLoopExecution(success=True, **self.common_event_attrs())

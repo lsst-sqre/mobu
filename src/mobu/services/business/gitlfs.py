@@ -5,6 +5,7 @@ import shutil
 import tempfile
 import uuid
 from pathlib import Path
+from typing import override
 from urllib.parse import urlparse
 
 from safir.sentry import duration
@@ -20,8 +21,10 @@ from .base import Business
 
 
 class GitLFSBusiness(Business):
-    """Check out a Git-LFS backed repository, edit a Git-LFS-backed asset,
-    and push it back.
+    """Test a Git-LFS service.
+
+    Check out a Git-LFS backed repository, edit a Git-LFS-backed asset, and
+    push it back.
     """
 
     def __init__(
@@ -52,6 +55,7 @@ class GitLFSBusiness(Business):
         # Likewise, any UUID checks will fail if it's not updated
         self._uuid = "this is not a valid UUID"
 
+    @override
     async def execute(self) -> None:
         """Run a Git-LFS check.
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from random import SystemRandom
+from typing import override
 
 from structlog.stdlib import BoundLogger
 
@@ -49,5 +50,6 @@ class TAPQueryRunner(TAPBusiness):
         )
         self._random = SystemRandom()
 
+    @override
     def get_next_query(self) -> str:
         return self._random.choice(self.options.queries)

@@ -9,7 +9,7 @@ from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from random import SystemRandom
-from typing import Any
+from typing import Any, override
 
 import sentry_sdk
 from rubin.nublado.client import JupyterLabSession, NubladoClient
@@ -157,9 +157,11 @@ class NubladoBusiness[T: NubladoBusinessOptions](
             Authenticated session to the Nublado lab.
         """
 
+    @override
     async def close(self) -> None:
         await self._client.close()
 
+    @override
     async def startup(self) -> None:
         # We need to start a span around this transaction becaues if we don't,
         # the nested transaction shows up as "No instrumentation" in the
@@ -178,6 +180,7 @@ class NubladoBusiness[T: NubladoBusinessOptions](
                 msg = "Unable to delete pre-existing lab, continuing anyway"
                 self.logger.warning(msg)
 
+    @override
     async def execute(self) -> None:
         with start_transaction(
             name=f"{self.name} - pre execute code",
@@ -210,6 +213,7 @@ class NubladoBusiness[T: NubladoBusinessOptions](
         with capturing_start_span(op="execution_idle"):
             return await self.pause(self.options.execution_idle_time)
 
+    @override
     async def shutdown(self) -> None:
         await self.hub_login()
         await self.delete_lab()
@@ -412,6 +416,7 @@ class NubladoBusiness[T: NubladoBusinessOptions](
         set_tag("image_reference", None)
         return True
 
+    @override
     def dump(self) -> NubladoBusinessData:
         return NubladoBusinessData(
             image=self._image, **super().dump().model_dump()

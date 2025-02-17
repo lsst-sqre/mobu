@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from typing import override
 
 import respx
 from fastapi import FastAPI, Request, Response
@@ -26,6 +27,7 @@ class AddAuthHeaderMiddleware(BaseHTTPMiddleware):
     have to muck about with internals.
     """
 
+    @override
     async def dispatch(
         self,
         request: Request,
