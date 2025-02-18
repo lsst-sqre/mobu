@@ -12,6 +12,7 @@ from ..dependencies.config import config_dependency
 from ..events import Events
 from ..exceptions import FlockNotFoundError
 from ..models.flock import FlockConfig, FlockSummary
+from ..services.repo import RepoManager
 from ..storage.gafaelfawr import GafaelfawrStorage
 from .flock import Flock
 
@@ -33,6 +34,8 @@ class FlockManager:
         Shared HTTP client.
     events
         Event publishers.
+    repo_manager
+        For efficiently cloning git repos.
     logger
         Global logger to use for process-wide (not monkey) logging.
     """
@@ -43,12 +46,14 @@ class FlockManager:
         gafaelfawr_storage: GafaelfawrStorage,
         http_client: AsyncClient,
         events: Events,
+        repo_manager: RepoManager,
         logger: BoundLogger,
     ) -> None:
         self._config = config_dependency.config
         self._gafaelfawr = gafaelfawr_storage
         self._http_client = http_client
         self._events = events
+        self._repo_manager = repo_manager
         self._logger = logger
         self._flocks: dict[str, Flock] = {}
         self._scheduler = Scheduler(limit=None, pending_limit=0)
@@ -87,6 +92,7 @@ class FlockManager:
             gafaelfawr_storage=self._gafaelfawr,
             http_client=self._http_client,
             events=self._events,
+            repo_manager=self._repo_manager,
             logger=self._logger,
         )
         if flock.name in self._flocks:

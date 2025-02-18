@@ -551,6 +551,7 @@ async def test_refresh(
     # Set up git repo
     await setup_git_repo(repo_path)
 
+    num_monkeys = 5
     # Start a monkey. We have to do this in a try/finally block since the
     # runner will change working directories, which because working
     # directories are process-global may mess up future tests.
@@ -559,7 +560,7 @@ async def test_refresh(
             "/mobu/flocks",
             json={
                 "name": "test",
-                "count": 1,
+                "count": num_monkeys,
                 "user_spec": {"username_prefix": "bot-mobu-testuser"},
                 "scopes": ["exec:notebook"],
                 "business": {
@@ -578,10 +579,11 @@ async def test_refresh(
         )
         assert r.status_code == 201
 
-        # We should see a message from the notebook execution in the logs.
-        assert await wait_for_log_message(
-            client, "bot-mobu-testuser1", msg="This is a test"
-        )
+        # We should see messages from the notebook execution in the logs.
+        for i in range(num_monkeys):
+            assert await wait_for_log_message(
+                client, f"bot-mobu-testuser{i + 1}", msg="This is a test"
+            )
 
         # Change the notebook and git commit it
         notebook = repo_path / "test-notebook.ipynb"
@@ -596,19 +598,21 @@ async def test_refresh(
         jupyter.expected_session_name = "test-notebook.ipynb"
         jupyter.expected_session_type = "notebook"
 
-        # Refresh the notebook
+        # Refresh the flock
         r = await client.post("/mobu/flocks/test/refresh")
         assert r.status_code == 202
 
-        # The refresh should have forced a new execution
-        assert await wait_for_log_message(
-            client, "bot-mobu-testuser1", msg="Deleting lab"
-        )
+        # The refresh should have forced new executions
+        for i in range(num_monkeys):
+            assert await wait_for_log_message(
+                client, f"bot-mobu-testuser{i + 1}", msg="Deleting lab"
+            )
 
-        # We should see a message from the updated notebook.
-        assert await wait_for_log_message(
-            client, "bot-mobu-testuser1", msg="This is a NEW test"
-        )
+        # We should see messages from the updated notebook.
+        for i in range(num_monkeys):
+            assert await wait_for_log_message(
+                client, f"bot-mobu-testuser{i + 1}", msg="This is a NEW test"
+            )
     finally:
         os.chdir(cwd)
 

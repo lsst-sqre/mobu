@@ -16,6 +16,7 @@ from ...dependencies.config import config_dependency
 from ...events import Events
 from ...models.ci_manager import CiManagerSummary, CiWorkerSummary
 from ...models.user import User
+from ...services.repo import RepoManager
 from ...storage.gafaelfawr import GafaelfawrStorage
 from ...storage.github import GitHubStorage
 from .ci_notebook_job import CiNotebookJob
@@ -79,6 +80,7 @@ class CiManager:
         users: list[User],
         http_client: AsyncClient,
         events: Events,
+        repo_manager: RepoManager,
         gafaelfawr_storage: GafaelfawrStorage,
         logger: BoundLogger,
     ) -> None:
@@ -88,6 +90,7 @@ class CiManager:
         self._gafaelfawr = gafaelfawr_storage
         self._http_client = http_client
         self._events = events
+        self._repo_manager = repo_manager
         self._logger = logger.bind(ci_manager=True)
         self._scheduler: Scheduler = Scheduler()
         self._queue: Queue[QueueItem] = Queue()
@@ -257,6 +260,7 @@ class CiManager:
             check_run=check_run,
             http_client=self._http_client,
             events=self._events,
+            repo_manager=self._repo_manager,
             logger=self._logger,
             gafaelfawr_storage=self._gafaelfawr,
         )

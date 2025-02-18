@@ -25,6 +25,7 @@ from ..models.business.tapqueryrunner import TAPQueryRunnerConfig
 from ..models.business.tapquerysetrunner import TAPQuerySetRunnerConfig
 from ..models.monkey import MonkeyData, MonkeyState
 from ..models.user import AuthenticatedUser
+from ..services.repo import RepoManager
 from .business.base import Business
 from .business.empty import EmptyLoop
 from .business.gitlfs import GitLFSBusiness
@@ -56,6 +57,8 @@ class Monkey:
         Shared HTTP client.
     events
         Event publishers.
+    repo_manager
+        For efficiently cloning git repos.
     logger
         Global logger.
     """
@@ -69,6 +72,7 @@ class Monkey:
         user: AuthenticatedUser,
         http_client: AsyncClient,
         events: Events,
+        repo_manager: RepoManager,
         logger: BoundLogger,
     ) -> None:
         self._config = config_dependency.config
@@ -78,6 +82,7 @@ class Monkey:
         self._log_level = business_config.options.log_level
         self._http_client = http_client
         self._events = events
+        self._repo_manager = repo_manager
         self._user = user
 
         self._state = MonkeyState.IDLE
@@ -125,6 +130,7 @@ class Monkey:
                 options=business_config.options,
                 user=user,
                 events=self._events,
+                repo_manager=self._repo_manager,
                 logger=self._logger,
                 flock=self._flock,
             )

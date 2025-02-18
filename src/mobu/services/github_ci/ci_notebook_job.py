@@ -13,6 +13,7 @@ from ...models.business.notebookrunner import (
 from ...models.ci_manager import CiJobSummary
 from ...models.solitary import SolitaryConfig
 from ...models.user import User
+from ...services.repo import RepoManager
 from ...services.solitary import Solitary
 from ...storage.gafaelfawr import GafaelfawrStorage
 from ...storage.github import CheckRun, GitHubStorage
@@ -44,6 +45,7 @@ class CiNotebookJob:
         check_run: CheckRun,
         http_client: AsyncClient,
         events: Events,
+        repo_manager: RepoManager,
         gafaelfawr_storage: GafaelfawrStorage,
         logger: BoundLogger,
     ) -> None:
@@ -51,6 +53,7 @@ class CiNotebookJob:
         self.check_run = check_run
         self._http_client = http_client
         self._events = events
+        self._repo_manager = repo_manager
         self._gafaelfawr = gafaelfawr_storage
         self._logger = logger.bind(ci_job_type="NotebookJob")
         self._notebooks: list[Path] = []
@@ -101,6 +104,7 @@ class CiNotebookJob:
             gafaelfawr_storage=self._gafaelfawr,
             http_client=self._http_client,
             events=self._events,
+            repo_manager=self._repo_manager,
             logger=self._logger,
         )
 

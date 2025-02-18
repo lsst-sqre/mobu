@@ -71,10 +71,7 @@ async def post_webhook(
     context.logger.debug("Received GitHub webhook", payload=event.data)
     # Give GitHub some time to reach internal consistency.
     await asyncio.sleep(GITHUB_WEBHOOK_WAIT_SECONDS)
-    await gidgethub_router.dispatch(
-        event=event,
-        context=context,
-    )
+    await gidgethub_router.dispatch(event=event, context=context)
 
 
 @gidgethub_router.register("push")
