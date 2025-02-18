@@ -21,11 +21,10 @@ pytest-mock
 pytest-sugar
 respx
 ruff
+starlette
 types-PyYAML
 types-requests
+websockets
 
 # Documentation
 scriv[toml]
-
-# Not a dependency on Mac, but is on Linux
-greenlet
