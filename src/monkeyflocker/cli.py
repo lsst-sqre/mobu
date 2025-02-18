@@ -6,8 +6,18 @@ from pathlib import Path
 
 import click
 from safir.asyncio import run_with_asyncio
+from safir.click import display_help
 
 from .client import MonkeyflockerClient
+
+__all__ = [
+    "help",
+    "main",
+    "refresh",
+    "report",
+    "start",
+    "stop",
+]
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -21,17 +31,7 @@ def main() -> None:
 @click.pass_context
 def help(ctx: click.Context, topic: str | None) -> None:
     """Show help for any command."""
-    # The help command implementation is taken from
-    # https://www.burgundywall.com/post/having-click-help-subcommand
-    if topic:
-        if topic in main.commands:
-            click.echo(main.commands[topic].get_help(ctx))
-        else:
-            raise click.UsageError(f"Unknown help topic {topic}", ctx)
-    else:
-        if not ctx.parent:
-            raise RuntimeError("help somehow called without parent or topic")
-        click.echo(ctx.parent.get_help())
+    display_help(main, ctx, topic)
 
 
 @main.command()
