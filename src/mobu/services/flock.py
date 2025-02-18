@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import math
-from datetime import datetime
+from datetime import UTC, datetime
 
 from aiojobs import Scheduler
 from httpx import AsyncClient
-from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
 
 from ..events import Events
@@ -126,7 +125,7 @@ class Flock:
             monkey = self._create_monkey(user)
             self._monkeys[user.username] = monkey
             await monkey.start(self._scheduler)
-        self._start_time = current_datetime(microseconds=True)
+        self._start_time = datetime.now(tz=UTC)
 
     async def stop(self) -> None:
         """Stop all the monkeys.
