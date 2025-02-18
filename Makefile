@@ -31,3 +31,5 @@ update-deps:
 	    --output-file requirements/main.txt pyproject.toml
 	uv pip compile --upgrade --universal --generate-hashes		\
 	    --output-file requirements/dev.txt requirements/dev.in
+	uv pip compile --upgrade --universal --generate-hashes		\
+	    --output-file requirements/tox.txt requirements/tox.in
