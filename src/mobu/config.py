@@ -18,7 +18,7 @@ from mobu.models.flock import FlockConfig
 from .models.user import User
 
 __all__ = [
-    "Configuration",
+    "Config",
     "GitHubCiAppConfig",
     "GitHubRefreshAppConfig",
 ]
@@ -140,7 +140,7 @@ class GitHubRefreshAppConfig(BaseSettings):
     )
 
 
-class Configuration(BaseSettings):
+class Config(BaseSettings):
     """Configuration for mobu."""
 
     model_config = SettingsConfigDict(

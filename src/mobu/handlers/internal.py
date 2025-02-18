@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends
 from safir.metadata import Metadata, get_metadata
 from safir.slack.webhook import SlackRouteErrorHandler
 
-from ..config import Configuration
+from ..config import Config
 from ..dependencies.config import config_dependency
 
 internal_router = APIRouter(route_class=SlackRouteErrorHandler)
@@ -33,7 +33,7 @@ __all__ = ["internal_router"]
     summary="Application metadata",
 )
 async def get_index(
-    config: Annotated[Configuration, Depends(config_dependency)],
+    config: Annotated[Config, Depends(config_dependency)],
 ) -> Metadata:
     return get_metadata(
         package_name="mobu",
