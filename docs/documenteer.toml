@@ -10,3 +10,10 @@ openapi_path = "_static/openapi.json"
 
 [project.openapi.generator]
 function = "mobu.main:create_openapi"
+
+[sphinx.linkcheck]
+ignore = [
+    # Authenticated
+    '^https://data\.lsst\.cloud/mobu',
+    '^https://github\.com/organizations/lsst-sqre/settings',
+]

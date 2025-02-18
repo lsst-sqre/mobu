@@ -226,7 +226,7 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 - The default `error_idle_time` for Nublado-based business is back to 60 seconds instead of 10 minutes. The problem the longer timeout was working around should be fixed in the new Nublado lab controller.
 - Nublado-based notebooks now request the `JUPYTER_IMAGE_SPEC` environment variable instead of `JUPYTER_IMAGE` to get the running image for error reporting purposes. This is now the preferred environment variable and `JUPYTER_IMAGE` is deprecated.
-- mobu now uses the [Ruff](https://beta.ruff.rs/docs/) linter instead of flake8, isort, and pydocstyle.
+- mobu now uses the [Ruff](https://docs.astral.sh/ruff/) linter instead of flake8, isort, and pydocstyle.
 
 ## 5.0.0 (2023-03-22)
 
