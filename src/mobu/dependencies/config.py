@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 
-from ..config import Configuration
+from ..config import Config
 from ..constants import CONFIGURATION_PATH
 
 __all__ = [
@@ -32,16 +32,16 @@ class ConfigDependency:
         if test_path := os.environ.get("MOBU_CONFIG_PATH"):
             path = Path(test_path)
         self._path = path
-        self._config: Configuration | None = None
+        self._config: Config | None = None
 
-    async def __call__(self) -> Configuration:
+    async def __call__(self) -> Config:
         return self.config
 
     @property
-    def config(self) -> Configuration:
+    def config(self) -> Config:
         """Load configuration if needed and return it."""
         if self._config is None:
-            self._config = Configuration.from_file(self._path)
+            self._config = Config.from_file(self._path)
         return self._config
 
     @property
@@ -58,7 +58,7 @@ class ConfigDependency:
             New configuration path.
         """
         self._path = path
-        self._config = Configuration.from_file(path)
+        self._config = Config.from_file(path)
 
 
 config_dependency = ConfigDependency()

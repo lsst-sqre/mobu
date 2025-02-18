@@ -9,7 +9,7 @@ from gidgethub.sansio import Event
 from safir.github.webhooks import GitHubPushEventModel
 from safir.slack.webhook import SlackRouteErrorHandler
 
-from ..config import Configuration
+from ..config import Config
 from ..constants import GITHUB_WEBHOOK_WAIT_SECONDS
 from ..dependencies.config import config_dependency
 from ..dependencies.context import RequestContext, anonymous_context_dependency
@@ -32,7 +32,7 @@ gidgethub_router = routing.Router()
 )
 async def post_webhook(
     context: Annotated[RequestContext, Depends(anonymous_context_dependency)],
-    config: Annotated[Configuration, Depends(config_dependency)],
+    config: Annotated[Config, Depends(config_dependency)],
 ) -> None:
     """Process GitHub webhook events for the mobu refresh GitHub app.
 

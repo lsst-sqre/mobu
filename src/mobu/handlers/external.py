@@ -12,7 +12,7 @@ from safir.metadata import get_metadata
 from safir.models import ErrorModel
 from safir.slack.webhook import SlackRouteErrorHandler
 
-from mobu.config import Configuration
+from mobu.config import Config
 from mobu.exceptions import NotRetainingLogsError
 
 from ..dependencies.config import config_dependency
@@ -53,7 +53,7 @@ class FormattedJSONResponse(JSONResponse):
     summary="Application metadata",
 )
 async def get_index(
-    config: Annotated[Configuration, Depends(config_dependency)],
+    config: Annotated[Config, Depends(config_dependency)],
 ) -> Index:
     metadata = get_metadata(
         package_name="mobu",
@@ -185,7 +185,7 @@ async def get_monkey(
 def get_monkey_log(
     flock: str,
     monkey: str,
-    config: Annotated[Configuration, Depends(config_dependency)],
+    config: Annotated[Config, Depends(config_dependency)],
     context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> StreamingResponse:
     if not config.log_monkeys_to_file:
