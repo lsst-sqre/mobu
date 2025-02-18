@@ -151,7 +151,7 @@ class Monkey:
         self._slack = None
         if self._config.slack_alerts and self._config.alert_hook:
             self._slack = SlackWebhookClient(
-                str(self._config.alert_hook), "Mobu", self._global_logger
+                self._config.alert_hook, "Mobu", self._global_logger
             )
 
     async def alert(self, exc: Exception) -> None:

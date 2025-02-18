@@ -1,11 +1,4 @@
-"""The main application factory for the mobu service.
-
-Notes
------
-Be aware that, following the normal pattern for FastAPI services, the app is
-constructed when this module is loaded and is not deferred until a function is
-called.
-"""
+"""The main application factory for the mobu service."""
 
 from __future__ import annotations
 
@@ -90,17 +83,16 @@ def create_app(*, load_config: bool = True) -> FastAPI:
         required but the configuration won't matter.
     """
     if load_config:
+        config = config_dependency.config
+
+        # Initialize Sentry.
         sentry_init(
-            dsn=config_dependency.config.sentry_dsn,
-            env=config_dependency.config.sentry_environment,
-            traces_sample_config=config_dependency.config.sentry_traces_sample_config,
+            dsn=config.sentry_dsn,
+            env=config.sentry_environment,
+            traces_sample_config=config.sentry_traces_sample_config,
         )
 
-        config = config_dependency.config
-        path_prefix = config.path_prefix
-        github_ci_app = config.github_ci_app
-        github_refresh_app = config.github_refresh_app
-
+        # Configure logging.
         configure_logging(
             name="mobu", profile=config.profile, log_level=config.log_level
         )
@@ -111,9 +103,13 @@ def create_app(*, load_config: bool = True) -> FastAPI:
         if config.slack_alerts and config.alert_hook:
             logger = structlog.get_logger("mobu")
             SlackRouteErrorHandler.initialize(
-                str(config.alert_hook), "mobu", logger
+                config.alert_hook, "mobu", logger
             )
             logger.debug("Initialized Slack webhook")
+
+        path_prefix = config.path_prefix
+        github_ci_app = config.github_ci_app
+        github_refresh_app = config.github_refresh_app
     else:
         path_prefix = "/mobu"
         github_ci_app = None

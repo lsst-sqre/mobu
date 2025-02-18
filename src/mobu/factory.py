@@ -90,7 +90,7 @@ class Factory:
         """
         if self._config.slack_alerts and self._config.alert_hook:
             return SlackWebhookClient(
-                str(self._config.alert_hook), "Mobu", self._logger
+                self._config.alert_hook, "Mobu", self._logger
             )
         return None
 
