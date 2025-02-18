@@ -1,5 +1,7 @@
 """Models related to GitHub repos for the GitHub CI app functionality."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -12,6 +14,8 @@ class RepoConfig(BaseModel):
     certain mobu behavior.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     exclude_dirs: set[Path] = Field(
         set(),
         title="Any notebooks in these directories will not be run",
@@ -21,5 +25,3 @@ class RepoConfig(BaseModel):
         ),
         examples=["some-dir", "some-dir/some-other-dir"],
     )
-
-    model_config = ConfigDict(extra="forbid")

@@ -18,6 +18,8 @@ __all__ = [
 class BusinessOptions(BaseModel):
     """Options for monkey business."""
 
+    model_config = ConfigDict(extra="forbid")
+
     error_idle_time: HumanTimedelta = Field(
         timedelta(minutes=1),
         title="How long to wait after an error before restarting",
@@ -39,8 +41,6 @@ class BusinessOptions(BaseModel):
         title="Log level for this monkey business",
     )
 
-    model_config = ConfigDict(extra="forbid")
-
 
 class BusinessConfig(BaseModel):
     """Base configuration class for monkey business.
@@ -49,6 +49,8 @@ class BusinessConfig(BaseModel):
     different literal and ``options`` with a different type and default
     factory.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     type: str = Field(..., title="Type of business to run")
 
@@ -61,8 +63,6 @@ class BusinessConfig(BaseModel):
         False, title="Restart business after failure", examples=[True]
     )
 
-    model_config = ConfigDict(extra="forbid")
-
 
 class BusinessData(BaseModel):
     """Status of a running business.
@@ -70,6 +70,8 @@ class BusinessData(BaseModel):
     Each type of business with additional data should create a new type
     inheriting from this type and adding that information.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     name: str = Field(..., title="Type of business", examples=["Business"])
 
@@ -80,5 +82,3 @@ class BusinessData(BaseModel):
     refreshing: bool = Field(
         ..., title="If the business is currently in the process of refreshing"
     )
-
-    model_config = ConfigDict(extra="forbid")
