@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
+from safir.pydantic import HumanTimedelta
 
 from .business.business_config_type import BusinessConfigType
 from .monkey import MonkeyData
@@ -20,6 +21,24 @@ class FlockConfig(BaseModel):
     name: str = Field(..., title="Name of the flock", examples=["autostart"])
 
     count: int = Field(..., title="How many monkeys to run", examples=[100])
+
+    start_batch_size: int | None = Field(
+        None,
+        title="Start batch size",
+        description=(
+            "The number of monkeys to start in each batch. If not provided,"
+            " all monkeys will be started at the same time."
+        ),
+    )
+
+    start_batch_wait: HumanTimedelta | None = Field(
+        None,
+        title="Start batch wait",
+        description=(
+            "The amount of time to wait before starting each batch of monkeys."
+            " Must be provided if start_batch_size is provided."
+        ),
+    )
 
     users: list[User] | None = Field(
         None,
@@ -56,6 +75,10 @@ class FlockConfig(BaseModel):
             raise ValueError("both users and user_spec provided")
         if self.count and self.users and len(self.users) != self.count:
             raise ValueError(f"users list must contain {self.count} elements")
+        if self.start_batch_size and not self.start_batch_wait:
+            raise ValueError(
+                "start_batch_wait must be given if start_batch_size is given"
+            )
         return self
 
 
