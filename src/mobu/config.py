@@ -7,7 +7,7 @@ from textwrap import dedent
 from typing import Literal, Self
 
 import yaml
-from pydantic import AliasChoices, Field, HttpUrl
+from pydantic import AliasChoices, Field, HttpUrl, SecretStr
 from pydantic.alias_generators import to_camel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from safir.logging import LogLevel, Profile
@@ -156,13 +156,10 @@ class Config(BaseSettings):
         ),
     )
 
-    alert_hook: HttpUrl | None = Field(
+    alert_hook: SecretStr | None = Field(
         None,
-        title="Slack webhook URL used for sending alerts",
-        description=(
-            "An https URL, which should be considered secret. If not set or"
-            " set to `None`, this feature will be disabled."
-        ),
+        title="Slack alert webhook URL",
+        description="Slack incoming webhook to which to send alerts",
         examples=["https://slack.example.com/ADFAW1452DAF41/"],
         validation_alias=AliasChoices("MOBU_ALERT_HOOK", "alertHook"),
     )
