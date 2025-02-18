@@ -15,5 +15,5 @@ All of the GitHub applications:
 .. toctree::
    :maxdepth: 1
 
-   github_ci_app
-   github_refresh_app
+   github-ci-app
+   github-refresh-app
