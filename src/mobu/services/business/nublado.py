@@ -7,13 +7,13 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import AsyncGenerator
 from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from random import SystemRandom
 from typing import Any, override
 
 import sentry_sdk
 from rubin.nublado.client import JupyterLabSession, NubladoClient
-from safir.datetime import current_datetime, format_datetime_for_logging
+from safir.datetime import format_datetime_for_logging
 from safir.sentry import duration
 from sentry_sdk import set_tag
 from sentry_sdk.tracing import Span
@@ -67,9 +67,7 @@ class ProgressLogMessage:
     message: str
     """The message."""
 
-    timestamp: datetime = field(
-        default_factory=lambda: current_datetime(microseconds=True)
-    )
+    timestamp: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
     """When the event was received."""
 
     def __str__(self) -> str:
@@ -397,9 +395,9 @@ class NubladoBusiness[T: NubladoBusinessOptions](
         # If we're not stopping, wait for the lab to actually go away.  If
         # we don't do this, we may try to create a new lab while the old
         # one is still shutting down.
-        start = current_datetime(microseconds=True)
+        start = datetime.now(tz=UTC)
         while not await self._client.is_lab_stopped():
-            elapsed = current_datetime(microseconds=True) - start
+            elapsed = datetime.now(tz=UTC) - start
             elapsed_seconds = round(elapsed.total_seconds())
             if elapsed > self.options.delete_timeout:
                 if not await self._client.is_lab_stopped(log_running=True):

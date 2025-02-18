@@ -6,11 +6,10 @@ import asyncio
 from abc import ABCMeta, abstractmethod
 from asyncio import Queue, QueueEmpty
 from collections.abc import AsyncGenerator, AsyncIterable
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import TypedDict
 
-from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
 
 from ...asyncio import aclosing_iter, wait_first
@@ -300,16 +299,15 @@ class Business[T: BusinessOptions](metaclass=ABCMeta):
         # directly into wait_first and thus into asyncio.create_task, mypy
         # complains because technically the return value of __anext__ can be
         # any Awaitable and does not need to be a Coroutine (which is required
-        # for asyncio.create_task).  Turn it into an explicit Coroutine to
+        # for asyncio.create_task). Turn it into an explicit Coroutine to
         # guarantee this will always work correctly.
         async def iter_next() -> U:
             return await iterator.__anext__()
 
-        start = current_datetime(microseconds=True)
+        start = datetime.now(tz=UTC)
         async with aclosing_iter(iterator):
             while True:
-                now = current_datetime(microseconds=True)
-                remaining = timeout - (now - start)
+                remaining = timeout - (datetime.now(tz=UTC) - start)
                 if remaining < timedelta(seconds=0):
                     break
                 pause = self._pause_no_return(timeout)
