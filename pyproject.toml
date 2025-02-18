@@ -75,7 +75,7 @@ exclude_lines = [
     "raise NotImplementedError",
     "if 0:",
     "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:"
+    "if TYPE_CHECKING:",
 ]
 
 [tool.mypy]
@@ -100,10 +100,6 @@ warn_untyped_fields = true
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "strict"
-filterwarnings = [
-    # Bug in aiojobs
-    "ignore:with timeout\\(\\) is deprecated:DeprecationWarning"
-]
 # The python_files setting is not for test detection (pytest will pick up any
 # test files named *_test.py without this setting) but to enable special
 # assert processing in any non-test supporting files under tests.  We
@@ -114,13 +110,8 @@ filterwarnings = [
 # listed in python_files.
 python_files = ["tests/*.py", "tests/*/*.py"]
 
-# The rule used with Ruff configuration is to disable every lint that has
-# legitimate exceptions that are not dodgy code, rather than cluttering code
-# with noqa markers. This is therefore a reiatively relaxed configuration that
-# errs on the side of disabling legitimate lints.
-#
-# Reference for settings: https://docs.astral.sh/ruff/settings/
-# Reference for rules: https://docs.astral.sh/ruff/rules/
+# Use the generic Ruff configuration in ruff.toml and extend it with only
+# project-specific settings.
 [tool.ruff]
 extend = "ruff-shared.toml"
 
