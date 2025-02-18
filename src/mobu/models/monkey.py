@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from .business.base import BusinessData
 from .business.notebookrunner import NotebookRunnerData
 from .business.nublado import NubladoBusinessData
-from .business.sia import SIABusinessData
+from .business.siaquerysetrunner import SIABusinessData
 from .business.tap import TAPBusinessData
 from .user import AuthenticatedUser
 

@@ -173,7 +173,7 @@ async def test_failure(
     }
     assert sentry_error["contexts"]["query_info"] == {
         "started_at": ANY_AWARE_DATETIME_STR,
-        "query": AnySearch("SIAv2 parameters"),
+        "query": AnySearch("SIA parameters"),
     }
     assert sentry_error["tags"] == {
         "flock": "test",
@@ -217,7 +217,7 @@ async def test_random_object(events: Events) -> None:
             logger=logger,
             flock=None,
         )
-    parameters = runner._generate_siav2_params()
+    parameters = runner._generate_sia_params()
     assert parameters.ra >= 0.0
     assert parameters.ra <= 360.0
     assert parameters.dec >= -90.0
