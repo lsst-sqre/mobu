@@ -110,22 +110,25 @@ class Business[T: BusinessOptions](metaclass=ABCMeta):
 
     # Methods that should be overridden by child classes if needed.
 
-    async def startup(self) -> None:  # noqa: B027
+    async def startup(self) -> None:
         """Run before the start of the first iteration and then not again."""
+        return
 
     @abstractmethod
     async def execute(self) -> None:
         """Execute the core of each business loop."""
 
-    async def close(self) -> None:  # noqa: B027
+    async def close(self) -> None:
         """Clean up any allocated resources.
 
         This should be overridden by child classes to free any resources that
         were allocated in ``__init__``.
         """
+        return
 
-    async def shutdown(self) -> None:  # noqa: B027
+    async def shutdown(self) -> None:
         """Perform any cleanup required after stopping."""
+        return
 
     # Public Business API called by the Monkey class. These methods handle the
     # complex state logic of looping and handling a stop signal and should not
