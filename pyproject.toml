@@ -18,8 +18,25 @@ classifiers = [
     "Typing :: Typed",
 ]
 requires-python = ">=3.13"
-# Use requirements/main.in for runtime dependencies instead.
-dependencies = []
+dependencies = [
+    "aiojobs",
+    "click!=8.1.4,!=8.1.5", # see https://github.com/pallets/click/issues/2558
+    "fastapi>=0.100",
+    "gidgethub",
+    "httpx",
+    "httpx-sse",
+    "jinja2",
+    "pydantic>=2",
+    "pydantic-settings>=2.6.1",
+    "pyvo<1.6",
+    "pyyaml",
+    "rubin-nublado-client>=8.3.0",
+    "safir>=9.2.0",
+    "sentry-sdk",
+    "shortuuid",
+    "structlog",
+    "uvicorn[standard]",
+]
 dynamic = ["version"]
 
 [project.scripts]
