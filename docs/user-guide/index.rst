@@ -5,6 +5,6 @@ User Guide
 .. toctree::
 
    flocks
-   in_repo_config
+   in-repo-config
    github/index
 

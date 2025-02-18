@@ -2,7 +2,7 @@
    :maxdepth: 1
    :hidden:
 
-   user_guide/index
+   user-guide/index
    operations/index
    development/index
    api
@@ -27,7 +27,7 @@ mobu is on github at https://github.com/lsst-sqre/mobu.
 .. grid:: 3
 
    .. grid-item-card:: User Guide
-      :link: user_guide/index
+      :link: user-guide/index
       :link-type: doc
 
       Learn how to configure mobu to run your run and test your code.

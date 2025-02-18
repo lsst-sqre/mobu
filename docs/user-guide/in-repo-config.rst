@@ -38,7 +38,7 @@ Notebook metadata can be edited directly with an editor ("Edit Cell Tags (JSON)"
 
 For instance:
 
-.. image:: metadata_example.png
+.. image:: metadata-example.png
    :alt: Editing notebook metadata in JupyterLab
    :align: center
    :width: 400px
