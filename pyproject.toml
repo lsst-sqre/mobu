@@ -30,7 +30,7 @@ dependencies = [
     "pydantic-settings>=2.6.1",
     "pyvo<1.6",
     "pyyaml",
-    "rubin-nublado-client>=8.3.0",
+    "rubin-nublado-client>=8.4.2",
     "safir>=9.2.0",
     "sentry-sdk",
     "shortuuid",
