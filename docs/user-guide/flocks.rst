@@ -67,6 +67,33 @@ Important points to note here:
 * ``restart: true`` tells mobu to shut down and respawn the pod if there is any failure.
   The default is to attempt to keep using the same pod despite the failure.
 
+Starting monkeys in batches
+---------------------------
+
+In situations, you may want to start monkeys in a flock in batches with time in between each batch, rather than all at once.
+Load testing notebook business monkeys is a good example of this, where starting a large number of these monkeys might overwhelm JupyterHub.
+
+You can use add ``start_batch_size`` and ``start_batch_wait`` parameters to a flock configuration to do this.
+
+``start_batch_size`` specifies how many monkeys should be started in each batch, and ``start_batch_wait`` specifies how long to wait in between starting each batch.
+
+.. code-block:: yaml
+
+   autostart:
+     - name: "python"
+       count: 10
+       start_batch_size: 2
+       start_batch_wait: "60s"
+       users:
+         - username: "bot-mobu-user"
+       scopes: ["exec:notebook"]
+       business:
+         type: "JupyterPythonLoop"
+         restart: true
+         options:
+           max_executions: 1
+           code: "print(1+1)"
+
 Testing with notebooks
 ----------------------
 

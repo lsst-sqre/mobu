@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import math
 from datetime import UTC, datetime
+from itertools import batched
 
 from aiojobs import Scheduler
 from httpx import AsyncClient
@@ -129,7 +130,37 @@ class Flock:
         for user in users:
             monkey = self._create_monkey(user)
             self._monkeys[user.username] = monkey
-            await monkey.start(self._scheduler)
+
+        # Start in staggered batches
+        if self._config.start_batch_size and self._config.start_batch_wait:
+            size = self._config.start_batch_size
+            wait_secs = self._config.start_batch_wait.total_seconds()
+            batches = list(batched(self._monkeys.values(), size))
+            num = len(batches)
+            for i in range(num):
+                batch = batches[i]
+                logger = self._logger.bind(
+                    current_batch=i + 1,
+                    num_batches=num,
+                    monkeys_in_batch=len(batch),
+                )
+                logger.info("starting batch")
+                tasks = [monkey.start(self._scheduler) for monkey in batch]
+                await asyncio.gather(*tasks)
+
+                # Don't wait after starting the last batch
+                if i < num - 1:
+                    logger.info("pausing for batch", wait_secs=wait_secs)
+                    await asyncio.sleep(wait_secs)
+
+        # Start all at the same time
+        else:
+            tasks = [
+                monkey.start(self._scheduler)
+                for monkey in self._monkeys.values()
+            ]
+            await asyncio.gather(*tasks)
+
         self._start_time = datetime.now(tz=UTC)
 
     async def stop(self) -> None:
