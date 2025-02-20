@@ -6,6 +6,29 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-14.1.0'></a>
+## 14.1.0 (2025-02-20)
+
+### New features
+
+- All time durations in business configurations can now be given as human-readable durations with suffixes such as `h`, `m`, and `s`. For example, `5m30s` indicates a duration of five minutes and thirty seconds, or 330 seconds.
+
+- Add `log_monkeys_to_file` config option to choose whether to write monkey logs to files or console.
+
+- Add `start_batch_size` and `start_batch_wait` flock config parameters to allow starting monkeys in a more slow and controlled way.
+
+### Bug fixes
+
+- When starting a flock, create user tokens simultaneously (up to the limit of the httpx connection pool size of 100) rather than serially.
+
+- Fix jitter calculations in Nublado businesses.
+
+- Notebook repos are only cloned once per process (and once per refresh request), instead of once per monkey. This should speed up how fast NotebookRunner flocks start, especially in load testing usecases.
+
+### Other changes
+
+- Modify TAPBusiness to use pyvo run_async instead of using submit_job and polling
+
 <a id='changelog-14.0.0'></a>
 ## 14.0.0 (2025-01-31)
 
