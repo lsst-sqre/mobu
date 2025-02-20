@@ -6,6 +6,7 @@ import asyncio
 import importlib.resources
 from concurrent.futures import ThreadPoolExecutor
 from random import SystemRandom
+from typing import override
 
 import pyvo
 import requests
@@ -77,6 +78,7 @@ class SIAQuerySetRunner(Business):
         with params_path.open("r") as f:
             self._params = yaml.safe_load(f)
 
+    @override
     async def startup(self) -> None:
         self._client = self._make_client(self.user.token)
         self.logger.info("Starting SIA Query Set Runner")
@@ -91,6 +93,7 @@ class SIAQuerySetRunner(Business):
         """
         return self._generate_sia_params()
 
+    @override
     async def execute(self) -> None:
         with start_transaction(
             name=f"{self.name} - execute",
@@ -132,6 +135,7 @@ class SIAQuerySetRunner(Business):
 
             self.logger.info(f"Query finished after {elapsed} seconds")
 
+    @override
     def dump(self) -> SIABusinessData:
         return SIABusinessData(
             running_query=self._running_query, **super().dump().model_dump()
