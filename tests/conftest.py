@@ -232,11 +232,11 @@ def jupyter(
     @asynccontextmanager
     async def mock_connect(
         url: str,
-        extra_headers: dict[str, str],
+        additional_headers: dict[str, str],
         max_size: int | None,
         open_timeout: int,
     ) -> AsyncGenerator[MockJupyterWebSocket]:
-        yield mock_jupyter_websocket(url, extra_headers, jupyter_mock)
+        yield mock_jupyter_websocket(url, additional_headers, jupyter_mock)
 
     with patch.object(websockets, "connect") as mock:
         mock.side_effect = mock_connect
