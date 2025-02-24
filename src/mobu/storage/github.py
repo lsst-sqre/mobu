@@ -61,7 +61,7 @@ class _FileStatus(StrEnum):
     unchanged = "unchanged"
 
 
-class _ChangedFileResponse(BaseModel):
+class _PullRequestFileResponse(BaseModel):
     filename: Path = Field()
     status: _FileStatus = Field()
 
@@ -93,11 +93,13 @@ class GitHubStorage:
         repo_owner: str,
         repo_name: str,
         ref: str,
+        pull_number: int,
     ) -> None:
         self.client = client
         self.repo_owner = repo_owner
         self.repo_name = repo_name
         self.ref = ref
+        self._pull_number = pull_number
         self.commit_url = f"https://github.com/{self.repo_owner}/{self.repo_name}/commit/{self.ref}"
         self._api_path = f"/repos/{repo_owner}/{repo_name}"
 
@@ -109,6 +111,7 @@ class GitHubStorage:
         repo_owner: str,
         repo_name: str,
         ref: str,
+        pull_number: int,
     ) -> Self:
         """Create an auth'd GitHub client and construct an instance.
 
@@ -124,26 +127,32 @@ class GitHubStorage:
             A GitHub repo.
         ref
             A GitHub ref.
+        pull_number
+            The number that identifies a pull request.
         """
         client = await factory.create_installation_client(
             installation_id=installation_id,
         )
         return cls(
-            client=client, repo_name=repo_name, repo_owner=repo_owner, ref=ref
+            client=client,
+            repo_name=repo_name,
+            repo_owner=repo_owner,
+            ref=ref,
+            pull_number=pull_number,
         )
 
-    async def get_changed_files(self) -> list[Path]:
-        """Get a list of files whose contents have changed.
+    async def get_pr_files(self) -> list[Path]:
+        """Get a list of all changed or added files in the pull request.
 
         Returns
         -------
         list[Path]
             List of paths relative to the repo root.
         """
-        path = f"{self._api_path}/commits/{self.ref}"
+        path = f"{self._api_path}/pulls/{self._pull_number}/files"
         files = [
-            _ChangedFileResponse.model_validate(info)
-            async for info in self.client.getiter(path, iterable_key="files")
+            _PullRequestFileResponse.model_validate(info)
+            async for info in self.client.getiter(path)
         ]
         return [
             file.filename

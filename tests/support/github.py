@@ -20,6 +20,7 @@ class MockJob:
         self.should_fail = should_fail
         self.proceed_event = asyncio.Event()
         self.path_prefix = f"/repos/{self.repo_owner}/{self.repo_name}"
+        self.pull_number = 1
 
     @property
     def repo_owner(self) -> str:
@@ -217,7 +218,7 @@ class GitHubMocker:
     def _mock_get_changed_files(
         self, job: MockJob, *, has_changed_files: bool = True
     ) -> None:
-        """Mock different responses from the commits API."""
+        """Mock different responses from the pulls API."""
         if has_changed_files:
             changes = [
                 {"filename": "notebook_changed1.ipynb", "status": "modified"},
@@ -230,6 +231,5 @@ class GitHubMocker:
                 {"filename": "notebook_deleted.ipynb", "status": "removed"},
             ]
 
-        self.router.get(path=f"{job.path_prefix}/commits/{job.ref}").respond(
-            json={"files": changes}
-        )
+        path = f"{job.path_prefix}/pulls/{job.pull_number}/files"
+        self.router.get(path=path).respond(json=changes)

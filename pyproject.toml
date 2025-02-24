@@ -39,6 +39,9 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[tool.uv.sources]
+safir = { git = "https://github.com/lsst-sqre/safir.git", branch = "tickets/DM-49117/update-github-pr-model", subdirectory = "safir" }
+
 [project.scripts]
 monkeyflocker = "monkeyflocker.cli:main"
 

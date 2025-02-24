@@ -99,6 +99,7 @@ async def handle_check_suite_requested(
         repo_name=em.repository.name,
         repo_owner=em.repository.owner.login,
         ref=em.check_suite.head_sha,
+        pull_number=em.check_suite.pull_requests[0].number,
     )
 
     context.logger.info("github ci webhook handled")
@@ -123,6 +124,7 @@ async def handle_check_suite_rerequested(
         repo_name=em.repository.name,
         repo_owner=em.repository.owner.login,
         ref=em.check_suite.head_sha,
+        pull_number=em.check_suite.pull_requests[0].number,
     )
 
     context.logger.info("github ci webhook handled")
@@ -147,6 +149,7 @@ async def handle_check_run_rerequested(
         repo_name=em.repository.name,
         repo_owner=em.repository.owner.login,
         ref=em.check_run.head_sha,
+        pull_number=em.check_run.pull_requests[0].number,
     )
 
     context.logger.info("github ci webhook handled")

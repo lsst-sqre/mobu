@@ -220,6 +220,7 @@ class CiManager:
         repo_owner: str,
         repo_name: str,
         ref: str,
+        pull_number: int,
     ) -> JobLifecycle:
         """Enqueue a job to run something for a given Git repo and commit.
 
@@ -233,6 +234,8 @@ class CiManager:
             A GitHub repo name.
         ref
             A GitHub commit SHA.
+        pull_number
+            The number that identifies a pull request.
 
         Returns
         -------
@@ -248,6 +251,7 @@ class CiManager:
             repo_name=repo_name,
             repo_owner=repo_owner,
             ref=ref,
+            pull_number=pull_number,
         )
 
         check_run = await storage.create_check_run(
