@@ -66,7 +66,7 @@ class CiNotebookJob:
         any changed notebooks.
         """
         # Get changed notebook files
-        files = await self._github.get_changed_files()
+        files = await self._github.get_pr_files()
 
         self._notebooks = [file for file in files if file.suffix == ".ipynb"]
 

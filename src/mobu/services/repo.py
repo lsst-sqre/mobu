@@ -102,7 +102,9 @@ class RepoManager:
                 git = Git(logger=self._logger)
                 git.repo = Path(repo_dir.name)
                 await git.clone(url, repo_dir.name)
-                await git.checkout(ref)
+
+                # trailing "--" means checkout a ref, not a file
+                await git.checkout(ref, "--")
                 repo_hash = await git.repo_hash()
 
             # If we're in testing mode, record that we actually did a clone
