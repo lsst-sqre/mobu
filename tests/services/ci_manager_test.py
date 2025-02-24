@@ -83,6 +83,7 @@ async def setup_and_run_jobs(
             repo_owner=job.repo_owner,
             repo_name=job.repo_name,
             ref=job.ref,
+            pull_number=job.pull_number,
         )
         aioevents.append(lifecycle.processed)
     await asyncio.gather(*[event.wait() for event in aioevents])
@@ -221,6 +222,7 @@ async def test_shutdown(
             repo_owner=job.repo_owner,
             repo_name=job.repo_name,
             ref=job.ref,
+            pull_number=job.pull_number,
         )
         for job in completed_jobs
     ]
@@ -231,6 +233,7 @@ async def test_shutdown(
             repo_owner=job.repo_owner,
             repo_name=job.repo_name,
             ref=job.ref,
+            pull_number=job.pull_number,
         )
         for job in in_progress_jobs
     ]
@@ -241,6 +244,7 @@ async def test_shutdown(
             repo_owner=job.repo_owner,
             repo_name=job.repo_name,
             ref=job.ref,
+            pull_number=job.pull_number,
         )
         for job in queued_jobs
     ]
