@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from .business.base import BusinessData
 from .business.notebookrunner import NotebookRunnerData
 from .business.nublado import NubladoBusinessData
+from .business.siaquerysetrunner import SIABusinessData
 from .business.tap import TAPBusinessData
 from .user import AuthenticatedUser
 
@@ -39,6 +40,7 @@ class MonkeyData(BaseModel):
     # its parent class.
     business: (
         TAPBusinessData
+        | SIABusinessData
         | NotebookRunnerData
         | NubladoBusinessData
         | BusinessData

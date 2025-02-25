@@ -19,6 +19,7 @@ __all__ = [
     "GitHubFileNotFoundError",
     "MonkeyNotFoundError",
     "NotRetainingLogsError",
+    "SIAClientError",
     "SubprocessError",
 ]
 
@@ -196,6 +197,18 @@ class JupyterSpawnError(Exception):
 
 class NotebookCellExecutionError(Exception):
     """Error when executing a notebook cell."""
+
+
+class SIAClientError(Exception):
+    """Creating an SIA client failed."""
+
+    def __init__(self, exc: Exception) -> None:
+        if str(exc):
+            error = f"{type(exc).__name__}: {exc!s}"
+        else:
+            error = type(exc).__name__
+        msg = f"Unable to create SIA client: {error}"
+        super().__init__(msg)
 
 
 class TAPClientError(Exception):
