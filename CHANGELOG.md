@@ -6,6 +6,17 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-14.2.0'></a>
+## 14.2.0 (2025-02-26)
+
+### New features
+
+- Add SIAv2 QuerySet runner which uses pyvo.search to query the dp0.2 SIAv2 Service
+
+### Bug fixes
+
+- CI jobs will now run all notebooks included in the PR, not just the ones changed in the latest commit. This fixes the case where the latest commit only fixes one of multiple bad notebooks in a PR, but passes the Mobu CI check.
+
 <a id='changelog-14.1.0'></a>
 ## 14.1.0 (2025-02-20)
 
