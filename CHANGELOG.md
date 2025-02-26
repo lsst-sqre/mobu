@@ -6,6 +6,13 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-14.2.1'></a>
+## 14.2.1 (2025-02-26)
+
+### Other changes
+
+- Adopt rubin-nublado-client>=8.6.0
+
 <a id='changelog-14.2.0'></a>
 ## 14.2.0 (2025-02-26)
 
