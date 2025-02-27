@@ -345,9 +345,7 @@ class NotebookRunner(NubladoBusiness):
         self, session: JupyterLabSession, count: int, num_executions: int
     ) -> None:
         self._notebook = self.next_notebook()
-        relative_notebook = str(
-            self._notebook.relative_to(self._repo_path or "/")
-        )
+        relative_notebook = self._relative_notebook()
         iteration = f"{count + 1}/{num_executions}"
         msg = f"Notebook {self._notebook.name} iteration {iteration}"
         self.logger.info(msg)
@@ -407,13 +405,12 @@ class NotebookRunner(NubladoBusiness):
 
     def common_notebook_event_attrs(self) -> _CommonNotebookEventAttrs:
         """Return notebook event attrs with the other common attrs."""
-        notebook = self._notebook.name if self._notebook else "unknown"
         return {
             **self.common_event_attrs(),
             "repo": self.options.repo_url,
             "repo_ref": self.options.repo_ref,
             "repo_hash": self._repo_hash or "unknown",
-            "notebook": notebook,
+            "notebook": self._relative_notebook(),
         }
 
     async def execute_cell(
@@ -473,3 +470,9 @@ class NotebookRunner(NubladoBusiness):
             running_code=self._running_code,
             **super().dump().model_dump(),
         )
+
+    def _relative_notebook(self) -> str:
+        """Give the path of the current notebook relative to the repo root."""
+        if self._notebook is None or self._repo_path is None:
+            return "unknown"
+        return str(self._notebook.relative_to(self._repo_path))
