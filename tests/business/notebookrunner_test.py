@@ -344,16 +344,19 @@ async def test_run_recursive(
             item | common
             for item in [
                 {
-                    "notebook": AnySearch("test-some-other-dir.ipynb$"),
+                    "notebook": "some-other-dir/test-some-other-dir.ipynb",
                 },
                 {
-                    "notebook": AnySearch("test-some-dir-notebook.ipynb$"),
+                    "notebook": "some-dir/test-some-dir-notebook.ipynb",
                 },
                 {
-                    "notebook": AnySearch("test-notebook.ipynb$"),
+                    "notebook": "test-notebook.ipynb",
                 },
                 {
-                    "notebook": AnySearch("test-double-nested-dir.ipynb$"),
+                    "notebook": (
+                        "some-other-dir/nested-dir/double-nested-dir/"
+                        "test-double-nested-dir.ipynb"
+                    ),
                 },
             ]
         ],
