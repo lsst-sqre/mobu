@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from enum import Enum
 
-from httpx import AsyncClient, HTTPError
+from httpx import AsyncClient, HTTPError, Timeout
 from pydantic import BaseModel, Field, ValidationError
 from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
@@ -83,6 +82,14 @@ class GafaelfawrStorage:
         self._client = http_client
         self._logger = logger
         self._config = config_dependency.config
+        self._timeout: float | Timeout
+
+        # With very large numbers of users, like for scale testing, the default
+        # httpx timeouts from the safir http client may not be long enough.
+        if self._config.gafaelfawr_timeout:
+            self._timeout = self._config.gafaelfawr_timeout.total_seconds()
+        else:
+            self._timeout = self._client.timeout
 
         if not self._config.environment_url:
             raise RuntimeError("environment_url not set")
@@ -126,16 +133,13 @@ class GafaelfawrStorage:
             gid=user.gidnumber or user.uidnumber,
         )
         try:
-            # The awkward JSON generation ensures that datetime fields are
-            # properly serialized using the model rather than left as datetime
-            # objects, which httpx will not understand. Pydantic v2 will offer
-            # a better way to do this.
             r = await self._client.post(
                 self._token_url,
                 headers={
                     "Authorization": f"Bearer {self._config.gafaelfawr_token}"
                 },
-                json=json.loads(request.model_dump_json(exclude_none=True)),
+                json=request.model_dump(mode="json", exclude_none=True),
+                timeout=self._timeout,
             )
             r.raise_for_status()
             token = _NewToken.model_validate(r.json())
