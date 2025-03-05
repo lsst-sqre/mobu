@@ -13,9 +13,9 @@ from structlog.stdlib import BoundLogger
 
 from ..events import Events
 from ..exceptions import MonkeyNotFoundError
-from ..models.business.notebookrunner import (
-    NotebookRunnerConfig,
-    NotebookRunnerOptions,
+from ..models.business.notebookrunnercounting import (
+    NotebookRunnerCountingConfig,
+    NotebookRunnerCountingOptions,
 )
 from ..models.flock import FlockConfig, FlockData, FlockSummary
 from ..models.user import AuthenticatedUser, User, UserSpec
@@ -183,8 +183,8 @@ class Flock:
     def uses_repo(self, repo_url: str, repo_ref: str) -> bool:
         match self._config:
             case FlockConfig(
-                business=NotebookRunnerConfig(
-                    options=NotebookRunnerOptions(
+                business=NotebookRunnerCountingConfig(
+                    options=NotebookRunnerCountingOptions(
                         repo_url=url,
                         repo_ref=branch,
                     )
