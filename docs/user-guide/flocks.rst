@@ -114,7 +114,7 @@ Here is a more complex example that runs a set of notebooks as a test:
          - "read:image"
          - "read:tap"
        business:
-         type: "NotebookRunner"
+         type: "NotebookRunnerCounting"
          options:
            repo_url: "https://github.com/lsst-sqre/system-test.git"
            repo_ref: "prod"
@@ -148,7 +148,7 @@ Here is a different example that runs multiple monkeys in a flock:
          - "read:image"
          - "read:tap"
        business:
-         type: "NotebookRunner"
+         type: "NotebookRunnerCounting"
          options:
            repo_url: "https://github.com/lsst-sqre/system-test.git"
            repo_ref: "prod"
