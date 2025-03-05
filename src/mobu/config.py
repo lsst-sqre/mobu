@@ -12,6 +12,7 @@ from pydantic.alias_generators import to_camel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from safir.logging import LogLevel, Profile
 from safir.metrics import MetricsConfiguration, metrics_configuration_factory
+from safir.pydantic import HumanTimedelta
 
 from mobu.models.flock import FlockConfig
 
@@ -227,6 +228,17 @@ class Config(BaseSettings):
         validation_alias=AliasChoices(
             "MOBU_GAFAELFAWR_TOKEN", "gafaelfawrToken"
         ),
+    )
+
+    gafaelfawr_timeout: HumanTimedelta | None = Field(
+        None,
+        title="Gafaelfawr client timeout",
+        description=(
+            "The time to set for all httpx timeouts. If this None, then the"
+            " timeouts will be set to the default timeouts from the Safir"
+            " http client dependency."
+        ),
+        examples=["3m", 45, "45", "1.4s"],
     )
 
     available_services: set[str] = Field(
