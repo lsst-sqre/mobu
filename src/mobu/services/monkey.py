@@ -22,6 +22,9 @@ from ..models.business.gitlfs import GitLFSConfig
 from ..models.business.notebookrunnercounting import (
     NotebookRunnerCountingConfig,
 )
+from ..models.business.notebookrunnerinfinite import (
+    NotebookRunnerInfiniteConfig,
+)
 from ..models.business.notebookrunnerlist import NotebookRunnerListConfig
 from ..models.business.nubladopythonloop import NubladoPythonLoopConfig
 from ..models.business.siaquerysetrunner import SIAQuerySetRunnerConfig
@@ -30,6 +33,7 @@ from ..models.business.tapquerysetrunner import TAPQuerySetRunnerConfig
 from ..models.monkey import MonkeyData, MonkeyState
 from ..models.user import AuthenticatedUser
 from ..services.business.notebookrunnercounting import NotebookRunnerCounting
+from ..services.business.notebookrunnerinfinite import NotebookRunnerInfinite
 from ..services.business.notebookrunnerlist import NotebookRunnerList
 from ..services.repo import RepoManager
 from .business.base import Business
@@ -142,6 +146,15 @@ class Monkey:
             )
         elif isinstance(business_config, NotebookRunnerListConfig):
             self.business = NotebookRunnerList(
+                options=business_config.options,
+                user=user,
+                events=self._events,
+                repo_manager=self._repo_manager,
+                logger=self._logger,
+                flock=self._flock,
+            )
+        elif isinstance(business_config, NotebookRunnerInfiniteConfig):
+            self.business = NotebookRunnerInfinite(
                 options=business_config.options,
                 user=user,
                 events=self._events,
