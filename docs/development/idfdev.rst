@@ -47,7 +47,7 @@ You can run mobu locally while having all of the actual business run against ser
               scopes:
                 - "exec:notebook"
               business:
-                type: "NotebookRunner"
+                type: "NotebookRunnerCounting"
                 options:
                   repo_url: "https://github.com/lsst-sqre/dfuchs-test-mobu.git"
                   repo_ref: "dfuchs-test-pr"
@@ -60,7 +60,7 @@ You can run mobu locally while having all of the actual business run against ser
               scopes:
                 - "exec:notebook"
               business:
-                type: "NotebookRunner"
+                type: "NotebookRunnerCounting"
                 options:
                   repo_url: "https://github.com/lsst-sqre/dfuchs-test-mobu.git"
                   repo_ref: "main"

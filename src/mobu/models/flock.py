@@ -100,7 +100,7 @@ class FlockSummary(BaseModel):
     business: str = Field(
         ...,
         title="Name of the business the flock is running",
-        examples=["NotebookRunner"],
+        examples=["NotebookRunnerCounting"],
     )
 
     start_time: datetime | None = Field(

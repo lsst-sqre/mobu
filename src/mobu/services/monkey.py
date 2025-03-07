@@ -19,18 +19,22 @@ from ..events import Events
 from ..models.business.base import BusinessConfig
 from ..models.business.empty import EmptyLoopConfig
 from ..models.business.gitlfs import GitLFSConfig
-from ..models.business.notebookrunner import NotebookRunnerConfig
+from ..models.business.notebookrunnercounting import (
+    NotebookRunnerCountingConfig,
+)
+from ..models.business.notebookrunnerlist import NotebookRunnerListConfig
 from ..models.business.nubladopythonloop import NubladoPythonLoopConfig
 from ..models.business.siaquerysetrunner import SIAQuerySetRunnerConfig
 from ..models.business.tapqueryrunner import TAPQueryRunnerConfig
 from ..models.business.tapquerysetrunner import TAPQuerySetRunnerConfig
 from ..models.monkey import MonkeyData, MonkeyState
 from ..models.user import AuthenticatedUser
+from ..services.business.notebookrunnercounting import NotebookRunnerCounting
+from ..services.business.notebookrunnerlist import NotebookRunnerList
 from ..services.repo import RepoManager
 from .business.base import Business
 from .business.empty import EmptyLoop
 from .business.gitlfs import GitLFSBusiness
-from .business.notebookrunner import NotebookRunner
 from .business.nubladopythonloop import NubladoPythonLoop
 from .business.siaquerysetrunner import SIAQuerySetRunner
 from .business.tapqueryrunner import TAPQueryRunner
@@ -127,8 +131,17 @@ class Monkey:
                 logger=self._logger,
                 flock=self._flock,
             )
-        elif isinstance(business_config, NotebookRunnerConfig):
-            self.business = NotebookRunner(
+        elif isinstance(business_config, NotebookRunnerCountingConfig):
+            self.business = NotebookRunnerCounting(
+                options=business_config.options,
+                user=user,
+                events=self._events,
+                repo_manager=self._repo_manager,
+                logger=self._logger,
+                flock=self._flock,
+            )
+        elif isinstance(business_config, NotebookRunnerListConfig):
+            self.business = NotebookRunnerList(
                 options=business_config.options,
                 user=user,
                 events=self._events,

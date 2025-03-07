@@ -4,7 +4,8 @@ from typing import TypeAlias
 
 from .empty import EmptyLoopConfig
 from .gitlfs import GitLFSConfig
-from .notebookrunner import NotebookRunnerConfig
+from .notebookrunnercounting import NotebookRunnerCountingConfig
+from .notebookrunnerlist import NotebookRunnerListConfig
 from .nubladopythonloop import NubladoPythonLoopConfig
 from .siaquerysetrunner import SIAQuerySetRunnerConfig
 from .tapqueryrunner import TAPQueryRunnerConfig
@@ -13,7 +14,8 @@ from .tapquerysetrunner import TAPQuerySetRunnerConfig
 BusinessConfigType: TypeAlias = (
     TAPQueryRunnerConfig
     | GitLFSConfig
-    | NotebookRunnerConfig
+    | NotebookRunnerCountingConfig
+    | NotebookRunnerListConfig
     | NubladoPythonLoopConfig
     | TAPQuerySetRunnerConfig
     | SIAQuerySetRunnerConfig

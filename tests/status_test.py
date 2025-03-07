@@ -22,7 +22,7 @@ async def test_post_status(
         mock.return_value = [
             FlockSummary(
                 name="notebook",
-                business="NotebookRunner",
+                business="NotebookRunnerCounting",
                 start_time=datetime(2021, 8, 20, 17, 3, tzinfo=UTC),
                 monkey_count=5,
                 success_count=487,
