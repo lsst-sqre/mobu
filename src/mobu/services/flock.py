@@ -218,7 +218,16 @@ class Flock:
         coros = [
             self._gafaelfawr.create_service_token(u, scopes) for u in users
         ]
-        return await asyncio.gather(*coros)
+
+        # Gafaelfawr has to add database rows for each token to the same
+        # table, so the amount of effective parallelization is limited.
+        # Perform the user creation in a fixed-size batch so that we get some
+        # speed-up without just piling up Gafaelfawr tasks waiting for
+        # database transactions.
+        results = []
+        for batch in batched(coros, 10):
+            results.extend(await asyncio.gather(*batch))
+        return results
 
     def _users_from_spec(self, spec: UserSpec, count: int) -> list[User]:
         """Generate count Users from the provided spec."""
