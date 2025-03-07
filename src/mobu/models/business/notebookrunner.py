@@ -1,26 +1,24 @@
-"""Models for the NotebookRunner monkey business."""
-
-from __future__ import annotations
+"""Shared models for different notebook runners."""
 
 from pathlib import Path
-from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from ...constants import NOTEBOOK_REPO_BRANCH, NOTEBOOK_REPO_URL
-from .base import BusinessConfig
-from .nublado import NubladoBusinessData, NubladoBusinessOptions
+from ...models.business.nublado import (
+    NubladoBusinessData,
+    NubladoBusinessOptions,
+)
 
 __all__ = [
-    "ListNotebookRunnerOptions",
     "NotebookFilterResults",
-    "NotebookRunnerConfig",
+    "NotebookMetadata",
     "NotebookRunnerData",
     "NotebookRunnerOptions",
 ]
 
 
-class BaseNotebookRunnerOptions(NubladoBusinessOptions):
+class NotebookRunnerOptions(NubladoBusinessOptions):
     """Options for all types NotebookRunner monkey business."""
 
     repo_ref: str = Field(
@@ -45,49 +43,6 @@ class BaseNotebookRunnerOptions(NubladoBusinessOptions):
             " Only used by the NotebookRunner."
         ),
         examples=["some-dir", "some-dir/some-other-dir"],
-    )
-
-
-class NotebookRunnerOptions(BaseNotebookRunnerOptions):
-    """Options to specify a fixed number of notebooks to run per session."""
-
-    max_executions: int = Field(
-        25,
-        title="How much to execute in a given lab and session",
-        description=(
-            " NotebookRunner goes through the directory of notebooks"
-            " one-by-one, running the entirety of each one and starting"
-            " again at the beginning of the list when it runs out, until"
-            " it has executed a total of `max_executions` notebooks. It then"
-            " closes the session (and optionally deletes and recreates the"
-            " lab, controlled by `delete_lab`), and then picks up where it"
-            " left off."
-        ),
-        examples=[25],
-        ge=1,
-    )
-
-
-class ListNotebookRunnerOptions(BaseNotebookRunnerOptions):
-    """Options to specify a list of notebooks to run per session."""
-
-    notebooks_to_run: list[Path] = Field(
-        [],
-        title="Specific notebooks to run",
-        description=("Only these specific notebooks will be executed."),
-    )
-
-
-class NotebookRunnerConfig(BusinessConfig):
-    """Configuration specialization for NotebookRunner."""
-
-    type: Literal["NotebookRunner"] = Field(
-        ..., title="Type of business to run"
-    )
-
-    options: NotebookRunnerOptions | ListNotebookRunnerOptions = Field(
-        default_factory=NotebookRunnerOptions,
-        title="Options for the monkey business",
     )
 
 

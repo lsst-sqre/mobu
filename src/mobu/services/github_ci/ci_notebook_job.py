@@ -5,11 +5,12 @@ from pathlib import Path
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
-from ...events import Events
-from ...models.business.notebookrunner import (
-    ListNotebookRunnerOptions,
-    NotebookRunnerConfig,
+from mobu.models.business.notebookrunnerlist import (
+    NotebookRunnerListConfig,
+    NotebookRunnerListOptions,
 )
+
+from ...events import Events
 from ...models.ci_manager import CiJobSummary
 from ...models.solitary import SolitaryConfig
 from ...models.user import User
@@ -90,9 +91,9 @@ class CiNotebookJob:
         solitary_config = SolitaryConfig(
             user=user,
             scopes=[str(scope) for scope in scopes],
-            business=NotebookRunnerConfig(
-                type="NotebookRunner",
-                options=ListNotebookRunnerOptions(
+            business=NotebookRunnerListConfig(
+                type="NotebookRunnerList",
+                options=NotebookRunnerListOptions(
                     repo_ref=self._github.ref,
                     repo_url=f"https://github.com/{self._github.repo_owner}/{self._github.repo_name}.git",
                     notebooks_to_run=self._notebooks,

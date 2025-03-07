@@ -120,6 +120,8 @@ extend = "ruff-shared.toml"
     "ASYNC110", # TAP code could be rewritten to poll state differently
 ]
 "src/mobu/services/monkey.py" = [
+    "C901",   # we have a lot of business types, thus big conditionals
+    "PLR0912",   # we have a lot of business types, thus big conditionals
     "SIM115",   # we do want a NamedTemporaryFile not in a context manager
 ]
 "tests/data/**/*.ipynb" = [
