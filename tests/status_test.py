@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient
+from rubin.nublado.client.testing import MockJupyter
 from safir.testing.slack import MockSlackWebhook
 
 from mobu.models.flock import FlockSummary
@@ -16,7 +17,7 @@ from mobu.status import post_status
 
 @pytest.mark.asyncio
 async def test_post_status(
-    client: AsyncClient, slack: MockSlackWebhook
+    client: AsyncClient, slack: MockSlackWebhook, jupyter: MockJupyter
 ) -> None:
     with patch.object(FlockManager, "summarize_flocks") as mock:
         mock.return_value = [

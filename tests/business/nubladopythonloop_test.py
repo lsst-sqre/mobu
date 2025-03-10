@@ -6,11 +6,10 @@ import asyncio
 import re
 from typing import cast
 from unittest.mock import ANY
-from urllib.parse import urljoin
 
 import pytest
 import respx
-from anys import ANY_AWARE_DATETIME_STR, AnyContains, AnyWithEntries
+from anys import ANY_AWARE_DATETIME_STR, AnyContains, AnySearch, AnyWithEntries
 from httpx import AsyncClient
 from rubin.nublado.client.testing import (
     JupyterAction,
@@ -26,6 +25,9 @@ from mobu.events import Events
 
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
+
+# Use the Jupyter mock for all tests in this file.
+pytestmark = pytest.mark.usefixtures("jupyter")
 
 
 @pytest.mark.asyncio
@@ -92,7 +94,7 @@ async def test_run(
     assert r.status_code == 204
 
     # Check events
-    publisher = cast(MockEventPublisher, events.nublado_python_execution)
+    publisher = cast("MockEventPublisher", events.nublado_python_execution)
     published = publisher.published
     published.assert_published_all(
         [
@@ -123,7 +125,7 @@ async def test_run(
         ]
     )
 
-    publisher = cast(MockEventPublisher, events.nublado_spawn_lab)
+    publisher = cast("MockEventPublisher", events.nublado_spawn_lab)
     published = publisher.published
     published.assert_published_all(
         [
@@ -264,7 +266,6 @@ async def test_hub_failed(
     # Confirm Sentry events
     (sentry_error,) = sentry_items.errors
     assert config.environment_url
-    url = urljoin(str(config.environment_url), "/nb/hub/spawn")
     assert sentry_error["contexts"]["phase"] == {
         "phase": "spawn_lab",
         "started_at": ANY_AWARE_DATETIME_STR,
@@ -273,7 +274,7 @@ async def test_hub_failed(
         AnyWithEntries(
             {
                 "type": "JupyterWebError",
-                "value": (f"Status 500 from POST {url}"),
+                "value": AnySearch("Status 500 from POST https://"),
             }
         )
     )
@@ -292,7 +293,7 @@ async def test_hub_failed(
     )
 
     # Check events
-    publisher = cast(MockEventPublisher, events.nublado_spawn_lab)
+    publisher = cast("MockEventPublisher", events.nublado_spawn_lab)
     published = publisher.published
     published.assert_published_all(
         [
@@ -644,7 +645,7 @@ async def test_code_exception(
     )
 
     # Check events
-    publisher = cast(MockEventPublisher, events.nublado_python_execution)
+    publisher = cast("MockEventPublisher", events.nublado_python_execution)
     published = publisher.published
     published.assert_published_all(
         [

@@ -72,7 +72,7 @@ async def test_run(
         assert "Query finished after " in r.text
 
     # Confirm metrics events
-    published = cast(MockEventPublisher, events.tap_query).published
+    published = cast("MockEventPublisher", events.tap_query).published
     published.assert_published_all(
         [
             {
@@ -190,7 +190,7 @@ async def test_failure(
     assert sentry_transaction["transaction"] == "TAPQuerySetRunner - execute"
 
     # Confirm metrics events
-    published = cast(MockEventPublisher, events.tap_query).published
+    published = cast("MockEventPublisher", events.tap_query).published
     published.assert_published_all(
         [
             {
@@ -234,7 +234,7 @@ async def test_random_object(events: Events) -> None:
         parameters = runner._generate_parameters()
 
         assert parameters["object"] in objects
-        random_objects = cast(str, parameters["objects"]).split(", ")
+        random_objects = cast("str", parameters["objects"]).split(", ")
         assert len(random_objects) == 12
         for obj in random_objects:
             assert obj in objects

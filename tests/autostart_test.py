@@ -8,13 +8,15 @@ from unittest.mock import ANY
 import pytest
 import respx
 from httpx import AsyncClient
-from rubin.nublado.client.testing import MockJupyter
 
 from mobu.dependencies.config import config_dependency
 
 from .support.config import config_path
 from .support.gafaelfawr import mock_gafaelfawr
 from .support.util import wait_for_flock_start
+
+# Use the Jupyter mock for all tests in this file.
+pytestmark = pytest.mark.usefixtures("jupyter")
 
 
 @pytest.fixture(autouse=True)
@@ -27,7 +29,7 @@ def _configure_autostart(respx_mock: respx.Router) -> Iterator[None]:
 
 
 @pytest.mark.asyncio
-async def test_autostart(client: AsyncClient, jupyter: MockJupyter) -> None:
+async def test_autostart(client: AsyncClient) -> None:
     r = await client.get("/mobu/flocks/basic")
     assert r.status_code == 200
     expected_monkeys = [
