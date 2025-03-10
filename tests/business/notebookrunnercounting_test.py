@@ -23,6 +23,9 @@ from ..support.constants import TEST_DATA_DIR
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business, wait_for_log_message
 
+# Use the Jupyter mock for all tests in this file.
+pytestmark = pytest.mark.usefixtures("jupyter")
+
 
 async def setup_git_repo(repo_path: Path) -> str:
     """Initialize and populate a git repo at `repo_path`.
@@ -137,12 +140,12 @@ async def test_run(
         "username": "bot-mobu-testuser1",
     }
     pub_notebook = cast(
-        MockEventPublisher, events.notebook_execution
+        "MockEventPublisher", events.notebook_execution
     ).published
     pub_notebook.assert_published_all([common])
 
     pub_cell = cast(
-        MockEventPublisher,
+        "MockEventPublisher",
         events.notebook_cell_execution,
     ).published
     pub_cell.assert_published_all(
@@ -225,8 +228,9 @@ async def test_run_debug_log(
     # Get the log and check the cell output.
     r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1/log")
     assert r.status_code == 200
+
     # Only occurs in the debug log.
-    assert "Set _hub_xsrf" in r.text
+    assert "Found new _xsrf cookie" in r.text
 
 
 @pytest.mark.asyncio
@@ -338,7 +342,7 @@ async def test_run_recursive(
         "success": True,
         "username": "bot-mobu-testuser1",
     }
-    published = cast(MockEventPublisher, events.notebook_execution).published
+    published = cast("MockEventPublisher", events.notebook_execution).published
     published.assert_published_all(
         [
             item | common
@@ -701,7 +705,7 @@ async def test_invalid_repo_config(
         "repo_config_file": "PosixPath('mobu.yaml')",
         "repo_hash": ANY,
         "repo_ref": "main",
-        "repo_url": AnySearch("test_invalid_repo_config0/notebooks$"),
+        "repo_url": AnySearch("/notebooks$"),
     }
     assert sentry_error["exception"]["values"] == [
         AnyWithEntries(
@@ -867,12 +871,12 @@ async def test_alert(
         "username": "bot-mobu-testuser1",
     }
     pub_notebook = cast(
-        MockEventPublisher, events.notebook_execution
+        "MockEventPublisher", events.notebook_execution
     ).published
     pub_notebook.assert_published_all([{"success": False} | common])
 
     pub_cell = cast(
-        MockEventPublisher,
+        "MockEventPublisher",
         events.notebook_cell_execution,
     ).published
     pub_cell.assert_published_all(

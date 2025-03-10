@@ -58,7 +58,7 @@ async def test_run(
     }
 
     # Check events
-    published = cast(MockEventPublisher, events.empty_loop).published
+    published = cast("MockEventPublisher", events.empty_loop).published
     published.assert_published_all(
         [
             {

@@ -17,7 +17,6 @@ import websockets
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from rubin.nublado.client import NubladoClient
 from rubin.nublado.client.models import User
 from rubin.nublado.client.testing import (
     MockJupyter,
@@ -141,7 +140,7 @@ def _enable_github_refresh_app(
 
 
 @pytest_asyncio.fixture
-async def app(jupyter: MockJupyter) -> AsyncGenerator[FastAPI]:
+async def app() -> AsyncGenerator[FastAPI]:
     """Return a configured test application.
 
     Wraps the application in a lifespan manager so that startup and shutdown
@@ -167,31 +166,8 @@ def events(app: FastAPI) -> Events:
     return context_dependency.process_context.events
 
 
-@pytest.fixture
-def configured_nublado_client(
-    app: FastAPI,
-    environment_url: str,
-    configured_logger: BoundLogger,
-    test_user: User,
-    test_filesystem: Path,
-    jupyter: MockJupyter,
-) -> NubladoClient:
-    n_client = NubladoClient(
-        user=test_user, logger=configured_logger, base_url=environment_url
-    )
-    # For the test client, we also have to add the two headers that would
-    # be added by a GafaelfawrIngress in real life.
-    n_client._client.headers["X-Auth-Request-User"] = test_user.username
-    n_client._client.headers["X-Auth-Request-Token"] = test_user.token
-    return n_client
-
-
 @pytest_asyncio.fixture
-async def client(
-    app: FastAPI,
-    test_user: User,
-    jupyter: MockJupyter,
-) -> AsyncGenerator[AsyncClient]:
+async def client(app: FastAPI, test_user: User) -> AsyncGenerator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
     async with AsyncClient(
         transport=ASGITransport(app=app),
@@ -216,15 +192,19 @@ async def anon_client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
         yield client
 
 
-@pytest.fixture
+@pytest.fixture(ids=["shared", "subdomain"], params=[False, True])
 def jupyter(
     respx_mock: respx.Router,
     environment_url: str,
     test_filesystem: Path,
+    request: pytest.FixtureRequest,
 ) -> Iterator[MockJupyter]:
     """Mock out JupyterHub and Jupyter labs."""
     jupyter_mock = mock_jupyter(
-        respx_mock, base_url=environment_url, user_dir=test_filesystem
+        respx_mock,
+        base_url=environment_url,
+        user_dir=test_filesystem,
+        use_subdomains=request.param,
     )
 
     # respx has no mechanism to mock aconnect_ws, so we have to do it

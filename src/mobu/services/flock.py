@@ -135,7 +135,7 @@ class Flock:
         if self._config.start_batch_size and self._config.start_batch_wait:
             size = self._config.start_batch_size
             wait_secs = self._config.start_batch_wait.total_seconds()
-            batches = list(batched(self._monkeys.values(), size))
+            batches = list(batched(self._monkeys.values(), size, strict=False))
             num = len(batches)
             for i in range(num):
                 batch = batches[i]
@@ -225,7 +225,7 @@ class Flock:
         # speed-up without just piling up Gafaelfawr tasks waiting for
         # database transactions.
         results = []
-        for batch in batched(coros, 10):
+        for batch in batched(coros, 10, strict=False):
             results.extend(await asyncio.gather(*batch))
         return results
 

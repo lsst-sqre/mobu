@@ -55,7 +55,7 @@ async def test_run(
     assert "Running Git-LFS check..." in r.text
     assert "Git-LFS check finished after " in r.text
 
-    published = cast(MockEventPublisher, events.git_lfs_check).published
+    published = cast("MockEventPublisher", events.git_lfs_check).published
     published.assert_published_all(
         [
             {
@@ -109,7 +109,7 @@ async def test_fail(
     assert "Running Git-LFS check..." in r.text
     assert ("mobu.exceptions.SubprocessError") in r.text
 
-    published = cast(MockEventPublisher, events.git_lfs_check).published
+    published = cast("MockEventPublisher", events.git_lfs_check).published
     published.assert_published_all(
         [
             {
