@@ -107,7 +107,7 @@ async def test_handle_webhook(
             "user_spec": {"username_prefix": "bot-mobu-testuser-notebook"},
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "NotebookRunner",
+                "type": "NotebookRunnerCounting",
                 "options": {
                     "repo_url": "https://github.com/lsst-sqre/some-repo.git",
                     "repo_ref": "main",
@@ -122,7 +122,7 @@ async def test_handle_webhook(
             },
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "NotebookRunner",
+                "type": "NotebookRunnerCounting",
                 "options": {
                     "repo_url": "https://github.com/lsst-sqre/some-repo.git",
                     "repo_ref": "some-branch",
@@ -137,7 +137,7 @@ async def test_handle_webhook(
             },
             "scopes": ["exec:notebook"],
             "business": {
-                "type": "NotebookRunner",
+                "type": "NotebookRunnerCounting",
                 "options": {
                     "repo_url": "https://github.com/lsst-sqre/some-other-repo.git",
                     "repo_ref": "main",

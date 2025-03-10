@@ -9,8 +9,10 @@ from __future__ import annotations
 import contextlib
 import json
 import random
+from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator, Iterator
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, override
@@ -34,9 +36,7 @@ from ...exceptions import (
     RepositoryConfigError,
 )
 from ...models.business.notebookrunner import (
-    ListNotebookRunnerOptions,
     NotebookFilterResults,
-    NotebookMetadata,
     NotebookRunnerData,
     NotebookRunnerOptions,
 )
@@ -44,6 +44,7 @@ from ...models.repo import RepoConfig
 from ...models.user import AuthenticatedUser
 from ...sentry import capturing_start_span, start_transaction
 from ...services.business.base import CommonEventAttrs
+from ...services.notebook_finder import NotebookFinder
 from ...services.repo import RepoManager
 from .nublado import NubladoBusiness
 
@@ -59,7 +60,13 @@ class _CommonNotebookEventAttrs(CommonEventAttrs):
     repo_hash: str
 
 
-class NotebookRunner(NubladoBusiness):
+@dataclass(frozen=True)
+class ExecutionIteration:
+    iterator: Iterator[int]
+    size: int | str
+
+
+class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
     """Start a Jupyter lab and run a sequence of notebooks.
 
     Parameters
@@ -79,7 +86,7 @@ class NotebookRunner(NubladoBusiness):
     def __init__(
         self,
         *,
-        options: NotebookRunnerOptions | ListNotebookRunnerOptions,
+        options: T,
         user: AuthenticatedUser,
         repo_manager: RepoManager,
         events: Events,
@@ -100,15 +107,8 @@ class NotebookRunner(NubladoBusiness):
         self._repo_hash: str | None = None
         self._exclude_paths: set[Path] = set()
         self._running_code: str | None = None
-        self._max_executions: int | None = None
         self._notebooks_to_run: list[Path] | None = None
         self._repo_manager = repo_manager
-
-        match options:
-            case NotebookRunnerOptions(max_executions=max_executions):
-                self._max_executions = max_executions
-            case ListNotebookRunnerOptions(notebooks_to_run=notebooks_to_run):
-                self._notebooks_to_run = notebooks_to_run
 
     @override
     async def startup(self) -> None:
@@ -124,7 +124,6 @@ class NotebookRunner(NubladoBusiness):
             )
         self._repo_path = None
         self._repo_hash = None
-        self._notebook_filter_results = None
 
     async def initialize(self) -> None:
         """Prepare to run the business.
@@ -180,83 +179,20 @@ class NotebookRunner(NubladoBusiness):
         await self.initialize()
         self.refreshing = False
 
-    def is_excluded(self, notebook: Path) -> bool:
-        # A notebook is excluded if any of its parent directories are excluded
-        return bool(set(notebook.parents) & self._exclude_paths)
-
-    def missing_services(self, notebook: Path) -> bool:
-        """Return True if a notebook declares required services and they are
-        available.
-        """
-        metadata = self.read_notebook_metadata(notebook)
-        missing_services = (
-            metadata.required_services - self._config.available_services
-        )
-        if missing_services:
-            msg = "Environment does not provide required services for notebook"
-            self.logger.info(
-                msg,
-                notebook=notebook,
-                required_services=metadata.required_services,
-                missing_services=missing_services,
-            )
-            return True
-        return False
-
     def find_notebooks(self) -> NotebookFilterResults:
         with capturing_start_span(op="find_notebooks"):
             if self._repo_path is None:
                 raise NotebookRepositoryError(
                     "Repository directory must be set", self.user.username
                 )
-
-            all_notebooks = set(self._repo_path.glob("**/*.ipynb"))
-            if not all_notebooks:
-                msg = "No notebooks found in {self._repo_dir}"
-                raise NotebookRepositoryError(msg, self.user.username)
-
-            filter_results = NotebookFilterResults(all=all_notebooks)
-            filter_results.excluded_by_dir = {
-                n for n in filter_results.all if self.is_excluded(n)
-            }
-            filter_results.excluded_by_service = {
-                n for n in filter_results.all if self.missing_services(n)
-            }
-
-            if self._notebooks_to_run:
-                requested = {
-                    self._repo_path / notebook
-                    for notebook in self._notebooks_to_run
-                }
-                not_found = requested - filter_results.all
-                if not_found:
-                    msg = (
-                        "Requested notebooks do not exist in"
-                        f" {self._repo_path}: {not_found}"
-                    )
-                    raise NotebookRepositoryError(msg, self.user.username)
-                filter_results.excluded_by_requested = (
-                    filter_results.all - requested
-                )
-
-            filter_results.runnable = (
-                filter_results.all
-                - filter_results.excluded_by_service
-                - filter_results.excluded_by_dir
-                - filter_results.excluded_by_requested
+            finder = NotebookFinder(
+                repo_path=self._repo_path,
+                exclude_paths=self._exclude_paths,
+                notebooks_to_run=self._notebooks_to_run,
+                available_services=self._config.available_services,
+                logger=self.logger,
             )
-            if bool(filter_results.runnable):
-                self.logger.info(
-                    "Found notebooks to run",
-                    filter_results=filter_results.model_dump(),
-                )
-            else:
-                self.logger.warning(
-                    "No notebooks to run after filtering!",
-                    filter_results=filter_results.model_dump(),
-                )
-
-        return filter_results
+            return finder.find()
 
     def next_notebook(self) -> Path:
         if not self._notebooks:
@@ -265,18 +201,6 @@ class NotebookRunner(NubladoBusiness):
             self._notebook_paths = list(self._notebooks.runnable)
             random.shuffle(self._notebook_paths)
         return self._notebook_paths.pop()
-
-    def read_notebook_metadata(self, notebook: Path) -> NotebookMetadata:
-        """Extract mobu-specific metadata from a notebook."""
-        with capturing_start_span(op="read_notebook_metadata"):
-            try:
-                notebook_text = notebook.read_text()
-                notebook_json = json.loads(notebook_text)
-                metadata = notebook_json["metadata"].get("mobu", {})
-                return NotebookMetadata.model_validate(metadata)
-            except Exception as e:
-                msg = f"Invalid notebook metadata {notebook.name}: {e!s}"
-                raise NotebookRepositoryError(msg, self.user.username) from e
 
     def read_notebook(self, notebook: Path) -> list[dict[str, Any]]:
         with capturing_start_span(op="read_notebook"):
@@ -314,18 +238,20 @@ class NotebookRunner(NubladoBusiness):
     @override
     async def execute_code(self, session: JupyterLabSession) -> None:
         """Run a set number of notebooks (flocks), or all available (CI)."""
-        if self._max_executions:
-            num_executions = self._max_executions
-        else:
-            num_executions = len(self._notebooks.runnable)
-        for count in range(num_executions):
+        iterator = self.execution_iterator()
+        for count in iterator.iterator:
+            iteration = f"{count + 1}/{iterator.size}"
             if self.refreshing:
                 await self.refresh()
                 return
-            await self.execute_notebook(session, count, num_executions)
+            await self.execute_notebook(session, iteration)
 
             if self.stopping:
                 break
+
+    @abstractmethod
+    def execution_iterator(self) -> ExecutionIteration:
+        """Return an iterator to control sets of code executions."""
 
     @contextlib.contextmanager
     def trace_notebook(
@@ -342,11 +268,10 @@ class NotebookRunner(NubladoBusiness):
             yield span
 
     async def execute_notebook(
-        self, session: JupyterLabSession, count: int, num_executions: int
+        self, session: JupyterLabSession, iteration: str
     ) -> None:
         self._notebook = self.next_notebook()
         relative_notebook = self._relative_notebook()
-        iteration = f"{count + 1}/{num_executions}"
         msg = f"Notebook {self._notebook.name} iteration {iteration}"
         self.logger.info(msg)
 
