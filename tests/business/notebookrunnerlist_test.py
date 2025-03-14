@@ -17,6 +17,9 @@ from ..support.constants import TEST_DATA_DIR
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
 
+# Use the Jupyter mock for all tests in this file.
+pytestmark = pytest.mark.usefixtures("jupyter")
+
 
 async def setup_git_repo(repo_path: Path) -> str:
     """Initialize and populate a git repo at `repo_path`.
