@@ -25,8 +25,15 @@ async def post_status() -> None:
     if not slack:
         return
 
+    # Get the flock summaries.
     summaries = process_context.manager.summarize_flocks()
     flock_count = len(summaries)
+
+    # Skip the status report if there are no flocks.
+    if not flock_count:
+        return
+
+    # Construct the status report.
     flock_plural = "flock" if flock_count == 1 else "flocks"
     text = (
         f"Currently running {flock_count} {flock_plural} against"
@@ -55,4 +62,5 @@ async def post_status() -> None:
         )
         text += line
 
+    # Post the result to Slack.
     await slack.post(SlackMessage(message=text))

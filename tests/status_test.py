@@ -19,6 +19,13 @@ from mobu.status import post_status
 async def test_post_status(
     client: AsyncClient, slack: MockSlackWebhook, jupyter: MockJupyter
 ) -> None:
+    # If there are no flocks, no message should be posted.
+    with patch.object(FlockManager, "summarize_flocks") as mock:
+        mock.return_value = []
+        await post_status()
+        assert slack.messages == []
+
+    # Check with some actual flock data.
     with patch.object(FlockManager, "summarize_flocks") as mock:
         mock.return_value = [
             FlockSummary(
