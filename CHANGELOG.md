@@ -6,19 +6,35 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-15.0.0'></a>
+## 15.0.0 (2025-03-17)
+
+### Backwards-incompatible changes
+
+- The `NotebookRunner` buisiness has been split into two different businesses: `NotebookRunnerCounting` and `NotebookRunnerList`. The difference is that `NotebookRunnerCounting` takes the `max_executions` option that refreshes the lab after that number of notebook executions, and `NotebookRunnerList` takes the `notebooks_to_run` option, which runs all of the notebooks in that list before refreshing. Currently, `NotebookRunnerList` is only used by the GitHub CI functionality. Any references to `NotebookRunner` in any flock config need to be changed to to one of these new businesses, almost certainly `NotebookRunnerCounting`.
+
+### New features
+
+- Add support for running against Nublado configured with user subdomains.
+- Add a `gafaelfawr_timeout` config option. With very large numbers of users, like for scale testing, the default httpx timeouts from the [safir http client](https://safir.lsst.io/user-guide/http-client.html) may not be long enough.
+
+### Bug fixes
+
+- Batch Gafaelfawr token creations in groups of 10 instead of attempting to perform them all in parallel. Gafaelfawr has to serialize them on database transactions anyway, so running all token creations at once with a large flock causes problems with HTTP request timeouts.
+
 <a id='changelog-14.2.1'></a>
 ## 14.2.1 (2025-02-26)
 
-### Other changes
+### Bug fixes
 
-- Adopt rubin-nublado-client>=8.6.0
+- Avoid an unbound variable exception during a Nublado client error handling path.
 
 <a id='changelog-14.2.0'></a>
 ## 14.2.0 (2025-02-26)
 
 ### New features
 
-- Add SIAv2 QuerySet runner which uses pyvo.search to query the dp0.2 SIAv2 Service
+- Add SIAv2 QuerySet runner, which uses `pyvo.search` to query the DP0.2 SIAv2 service.
 
 ### Bug fixes
 
@@ -30,22 +46,18 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 ### New features
 
 - All time durations in business configurations can now be given as human-readable durations with suffixes such as `h`, `m`, and `s`. For example, `5m30s` indicates a duration of five minutes and thirty seconds, or 330 seconds.
-
 - Add `log_monkeys_to_file` config option to choose whether to write monkey logs to files or console.
-
-- Add `start_batch_size` and `start_batch_wait` flock config parameters to allow starting monkeys in a more slow and controlled way.
+- Add `start_batch_size` and `start_batch_wait` flock config parameters to allow starting monkeys in a slower and more controlled way.
 
 ### Bug fixes
 
 - When starting a flock, create user tokens simultaneously (up to the limit of the httpx connection pool size of 100) rather than serially.
-
 - Fix jitter calculations in Nublado businesses.
-
 - Notebook repos are only cloned once per process (and once per refresh request), instead of once per monkey. This should speed up how fast NotebookRunner flocks start, especially in load testing usecases.
 
 ### Other changes
 
-- Modify TAPBusiness to use pyvo run_async instead of using submit_job and polling
+- Modify TAPBusiness to use pyvo's `run_async` instead of using `submit_job` and polling.
 
 <a id='changelog-14.0.0'></a>
 ## 14.0.0 (2025-01-31)
@@ -56,53 +68,53 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 ### New features
 
-- Send an app metrics event for EmptyLoop iterations
+- Send an app metrics event for `EmptyLoop` business iterations.
 
 ### Other changes
 
-- Remove the limit from the autostart `aiojobs` `Scheduler`. Attempts to start a job past the limit resulted in jobs silently never starting. There are no cases where we would want to limit the autostart concurrency, so a limit is not needed.
+- Remove the limit from the autostart aiojobs `Scheduler`. Attempts to start a job past the limit resulted in jobs silently never starting. There are no cases where we would want to limit the autostart concurrency, so a limit is not needed.
 
 <a id='changelog-13.2.0'></a>
 ## 13.2.0 (2024-12-17)
 
 ### New features
 
-- Publish [application metrics](https://safir.lsst.io/user-guide/metrics/index.html)
+- Publish [application metrics](https://safir.lsst.io/user-guide/metrics/index.html).
 
 <a id='changelog-13.0.1'></a>
 ## 13.0.1 (2024-11-19)
 
 ### Bug fixes
 
-- Adopt Nublado client that should fix the XSRF issues.
+- Fix handling of Jupyter XSRF cookies.
 
 <a id='changelog-13.0.0'></a>
 ## 13.0.0 (2024-11-12)
 
 ### Backwards-incompatible changes
 
-- All app config, including autostart config (and excluding secrets, which still come from env vars) now comes from a single YAML file, provisioned by a single `ConfigMap` in Phalanx.
+- All app config, including autostart config (and excluding secrets, which still come from environment variables) now comes from a single YAML file, provisioned by a single `ConfigMap` in Phalanx.
 
 <a id='changelog-12.0.2'></a>
 ## 12.0.2 (2024-10-31)
 
 ### Bug fixes
 
-- Update to newer rubin-nublado-client that reports exceptions better
+- Improve exception reports from the Nublado client.
 
 <a id='changelog-12.0.1'></a>
 ## 12.0.1 (2024-10-29)
 
 ### Bug fixes
 
-- cell["id"] is not always set: be more cautious
+- Fix exceptions in the Nublado notebook runner caused by not having the cell ID.
 
 <a id='changelog-12.0.0'></a>
 ## 12.0.0 (2024-10-28)
 
 ### Other changes
 
-- Replace internal client with rubin-nublado-client from `nublado` repo.
+- Replace the internal Nublado client with the new client released to PyPI.
 
 <a id='changelog-11.0.0'></a>
 ## 11.0.0 (2024-08-06)
@@ -114,19 +126,18 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 ### New features
 
 - `NotebookRunner` business will skip notebooks in environments that do not have the services required for them to run. Required services ban be declared by adding [metadata](https://ipython.readthedocs.io/en/3.x/notebook/nbformat.html#metadata) to a notebook.
-
-- Allow specification of log level for individual flocks
+- Allow specification of the log level for individual flocks.
 
 ### Bug fixes
 
-- Follow redirections by hand for hub logins as well as lab ones to get XSRF
+- Inspect individual redirects for JupyterHub logins as well as JupyterLab to get updated XSRF cookies.
 
 <a id='changelog-10.1.0'></a>
 ## 10.1.0 (2024-07-12)
 
 ### Other changes
 
-- Use new safir with upstreamed GitHub model changes
+- Update to the latest Safir release with GitHub model changes.
 
 <a id='changelog-10.0.0'></a>
 ## 10.0.0 (2024-07-11)
@@ -146,10 +157,6 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 ### New features
 
 - A GitHub app integration to generate GitHub actions checks for commits pushed to notebook repo branches that are part of active PRs. These checks trigger and report on a solitary Mobu run of the changed notebooks in the commit.
-
-### Other changes
-
-- Python 3.12.3 -> 3.12.4
 
 <a id='changelog-8.1.0'></a>
 ## 8.1.0 (2024-05-30)
@@ -174,7 +181,7 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 ### Bug fixes
 
-- Correctly extract cookies from the middle of the redirect chain caused by initial authentication to a Nublado lab. This fixes failures seen with labs containing jupyterhub 4.1.3.
+- Correctly extract cookies from the middle of the redirect chain caused by initial authentication to a Nublado lab. This fixes failures seen with labs containing JupyterHub 4.1.3.
 
 <a id='changelog-7.1.0'></a>
 ## 7.1.0 (2024-03-21)
