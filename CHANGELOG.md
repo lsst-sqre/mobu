@@ -70,9 +70,6 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 ### New features
 
 - Send an app metrics event for `EmptyLoop` business iterations.
-
-### Other changes
-
 - Remove the limit from the autostart aiojobs `Scheduler`. Attempts to start a job past the limit resulted in jobs silently never starting. There are no cases where we would want to limit the autostart concurrency, so a limit is not needed.
 
 <a id='changelog-13.2.0'></a>
