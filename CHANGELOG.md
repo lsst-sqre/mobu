@@ -17,6 +17,7 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 - Add support for running against Nublado configured with user subdomains.
 - Add a `gafaelfawr_timeout` config option. With very large numbers of users, like for scale testing, the default httpx timeouts from the [safir http client](https://safir.lsst.io/user-guide/http-client.html) may not be long enough.
+- Add new `NotebookRunnerInfinite` business that does not interact further with JupyterHub after the notebook has been spawned, avoiding the pings mobu normally uses to refresh authentication credentials. This is a closer match to the typical access pattern for a regular user.
 
 ### Bug fixes
 
@@ -69,9 +70,6 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 ### New features
 
 - Send an app metrics event for `EmptyLoop` business iterations.
-
-### Other changes
-
 - Remove the limit from the autostart aiojobs `Scheduler`. Attempts to start a job past the limit resulted in jobs silently never starting. There are no cases where we would want to limit the autostart concurrency, so a limit is not needed.
 
 <a id='changelog-13.2.0'></a>
