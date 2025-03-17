@@ -74,7 +74,7 @@ async def test_run(
         assert found, "Ran one of the appropriate queries"
         assert "Query finished after " in r.text
 
-        published = cast(MockEventPublisher, events.tap_query).published
+        published = cast("MockEventPublisher", events.tap_query).published
         published.assert_published_all(
             [
                 {

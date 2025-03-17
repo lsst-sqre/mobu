@@ -69,7 +69,7 @@ async def test_run(
         assert "Query finished after " in r.text
 
     # Confirm metrics events
-    published = cast(MockEventPublisher, events.sia_query).published
+    published = cast("MockEventPublisher", events.sia_query).published
     published.assert_published_all(
         [
             {
@@ -186,7 +186,7 @@ async def test_failure(
     assert sentry_transaction["transaction"] == "SIAQuerySetRunner - execute"
 
     # Confirm metrics events
-    published = cast(MockEventPublisher, events.sia_query).published
+    published = cast("MockEventPublisher", events.sia_query).published
     published.assert_published_all(
         [
             {
