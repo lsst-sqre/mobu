@@ -6,5 +6,6 @@ User Guide
 
    flocks
    in-repo-config
+   multiple-replicas
    github/index
 

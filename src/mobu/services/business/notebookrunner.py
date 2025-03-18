@@ -272,14 +272,22 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
     ) -> None:
         self._notebook = self.next_notebook()
         relative_notebook = self._relative_notebook()
+        logger = self.logger.bind(notebook=relative_notebook)
         msg = f"Notebook {self._notebook.name} iteration {iteration}"
-        self.logger.info(msg)
+        logger.info(msg)
 
         with self.trace_notebook(
             notebook=relative_notebook, iteration=iteration
         ) as span:
             try:
-                for cell in self.read_notebook(self._notebook):
+                cells = self.read_notebook(self._notebook)
+
+                # We want to wait if the notebook is totally empty so we don't
+                # spin out of control on empty notebooks
+                logger.warning("empty notebook")
+                if not cells:
+                    await self.execution_idle()
+                for cell in cells:
                     code = "".join(cell["source"])
                     cell_id = cell.get("id") or cell["_index"]
                     ctx = CodeContext(
@@ -298,7 +306,7 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
                 )
                 raise
 
-        self.logger.info(f"Success running notebook {self._notebook.name}")
+        logger.info(f"Success running notebook {self._notebook.name}")
         await self._publish_notebook_event(
             duration=duration(span), success=True
         )

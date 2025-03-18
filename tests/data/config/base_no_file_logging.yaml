@@ -1,6 +1,8 @@
 slackAlerts: true
 environmentUrl: "https://example.com"
 sentryEnvironment: "pytest"
+replicaCount: 1
+instanceId: "1"
 availableServices:
   - some_service
   - some_other_service

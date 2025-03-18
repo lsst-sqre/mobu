@@ -1,6 +1,8 @@
 slackAlerts: true
 environmentUrl: "https://example.com"
 sentryEnvironment: "pytest"
+replicaCount: 1
+instanceId: "1"
 metrics:
   enabled: false
   mock: true

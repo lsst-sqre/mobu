@@ -292,6 +292,29 @@ class Config(BaseSettings):
         ),
     )
 
+    replica_count: int = Field(
+        ...,
+        title="Replica count",
+        description=(
+            "The number of instances of that this deployment will be running."
+            " If this is more than one, then only user_spec user definitions"
+            " will be allowed, and usernames will get further prefixed with a"
+            " unique id per instance."
+        ),
+        validation_alias=AliasChoices("MOBU_REPLICA_COUNT", "replicaCount"),
+    )
+
+    instance_id: str = Field(
+        ...,
+        title="Instance ID",
+        description=(
+            "A unique identifier for this running mobu instance. If more than"
+            " one instance of mobu is running in this environment, they should"
+            " have different values for this setting."
+        ),
+        validation_alias=AliasChoices("MOBU_INSTANCE_ID", "instanceId"),
+    )
+
     metrics: MetricsConfiguration = Field(
         default_factory=metrics_configuration_factory,
         title="Metrics configuration",
