@@ -224,6 +224,14 @@ class Flock:
         if not users:
             if not self._config.user_spec:
                 raise RuntimeError("Neither users nor user_spec set")
+            if self._replica_count > 1 and (
+                self._config.user_spec.uid_start is not None
+                or self._config.user_spec.gid_start is not None
+            ):
+                raise RuntimeError(
+                    "If replica_count > 1, then uid_start and gid_start must"
+                    " not be specified"
+                )
             count = self._config.count
             instance_id = self._instance_id
             replica_count = self._replica_count
