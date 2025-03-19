@@ -1,0 +1,12 @@
+slackAlerts: true
+environmentUrl: "https://example.com"
+sentryEnvironment: "pytest"
+replicaCount: 2
+instanceId: "2"
+availableServices:
+  - some_service
+  - some_other_service
+metrics:
+  enabled: false
+  mock: true
+  appName: mobu

@@ -124,6 +124,14 @@ def _disable_file_logging() -> None:
 
 
 @pytest.fixture
+def _base_multi_instance() -> Iterator[None]:
+    """Set config for multi-instance."""
+    config_dependency.set_path(config_path("base_multi_instance"))
+    yield
+    config_dependency.set_path(config_path("base"))
+
+
+@pytest.fixture
 def _enable_github_refresh_app(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[None]:
