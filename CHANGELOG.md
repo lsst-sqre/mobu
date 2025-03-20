@@ -6,6 +6,19 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-15.1.0'></a>
+## 15.1.0 (2025-03-20)
+
+### New features
+
+- Multiple replicas of mobu can be run in an environment. The number of monkeys specified in a flock's `count` will be spread evenly across all replicas. Note that this comes with certain restrictions, see [the docs](https://mobu.lsst.io/user-guide/multiple-replicas.html) for details.
+
+### Bug fixes
+
+- Do not send a summary message to Slack if there are no flocks running.
+
+- One period of `execution_idle_time` elapses after trying to execute a notebook with no code cells, instead of not waiting at all.
+
 <a id='changelog-15.0.0'></a>
 ## 15.0.0 (2025-03-17)
 
