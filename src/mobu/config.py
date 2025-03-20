@@ -292,6 +292,28 @@ class Config(BaseSettings):
         ),
     )
 
+    replica_count: int = Field(
+        ...,
+        title="Replica count",
+        description=(
+            "The number of instances of that this StatefulSet will be running."
+            " If this is more than one, then only user_spec user definitions"
+            " will be allowed."
+        ),
+        validation_alias=AliasChoices("MOBU_REPLICA_COUNT", "replicaCount"),
+    )
+
+    replica_index: int = Field(
+        ...,
+        title="Replica index",
+        description=(
+            "Mobu is deployed as a StatefulSet. Every replica is assigned an"
+            " integer index, starting with 0 and counting up. This value is"
+            " this instance's assigned index."
+        ),
+        validation_alias=AliasChoices("MOBU_REPLICA_INDEX", "replicaIndex"),
+    )
+
     metrics: MetricsConfiguration = Field(
         default_factory=metrics_configuration_factory,
         title="Metrics configuration",
