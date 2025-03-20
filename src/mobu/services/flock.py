@@ -34,9 +34,9 @@ class Flock:
     flock_config
         Configuration for this flock of monkeys.
     replica_count
-        The number of running mobu instances
-    instance_id
-        A unique identifier for this mobu instance
+        The number of running mobu instances.
+    replica_index
+        The index of this replica in the StatefulSet.
     scheduler
         Job scheduler used to manage the tasks for the monkeys.
     gafaelfawr_storage
@@ -56,7 +56,7 @@ class Flock:
         *,
         flock_config: FlockConfig,
         replica_count: int,
-        instance_id: str,
+        replica_index: int,
         scheduler: Scheduler,
         gafaelfawr_storage: GafaelfawrStorage,
         http_client: AsyncClient,
@@ -67,7 +67,7 @@ class Flock:
         self.name = flock_config.name
         self._config = flock_config
         self._replica_count = replica_count
-        self._instance_id = instance_id
+        self._replica_index = replica_index
         self._scheduler = scheduler
         self._gafaelfawr = gafaelfawr_storage
         self._http_client = http_client
@@ -141,7 +141,10 @@ class Flock:
 
         # Start in staggered batches
         if self._config.start_batch_size and self._config.start_batch_wait:
-            size = self._config.start_batch_size
+            # start_batch_size is the number of monkeys that should be started
+            # concurrently across ALL replicas, so we should only start our
+            # share of the batch.
+            size = int(self._config.start_batch_size / self._replica_count)
             wait_secs = self._config.start_batch_wait.total_seconds()
             batches = list(batched(self._monkeys.values(), size, strict=False))
             num = len(batches)
@@ -217,30 +220,23 @@ class Flock:
     async def _create_users(self) -> list[AuthenticatedUser]:
         """Create the authenticated users the monkeys will run as."""
         users = self._config.users
-        if users and self._replica_count > 1:
-            raise RuntimeError(
-                "Only user_spec users are allowed if replica_count > 1"
-            )
         if not users:
             if not self._config.user_spec:
                 raise RuntimeError("Neither users nor user_spec set")
-            if self._replica_count > 1 and (
-                self._config.user_spec.uid_start is not None
-                or self._config.user_spec.gid_start is not None
-            ):
-                raise RuntimeError(
-                    "If replica_count > 1, then uid_start and gid_start must"
-                    " not be specified"
-                )
             count = self._config.count
-            instance_id = self._instance_id
-            replica_count = self._replica_count
             users = self._users_from_spec(
-                spec=self._config.user_spec,
-                count=count,
-                replica_count=replica_count,
-                instance_id=instance_id,
+                spec=self._config.user_spec, count=count
             )
+
+        # We only want to run monkeys with our portion of the users, divided as
+        # equaly as possible among all replicas.
+        replica_index = self._replica_index
+        replica_count = self._replica_count
+        users = [
+            user
+            for i, user in enumerate(users)
+            if i % replica_count == replica_index
+        ]
         scopes = self._config.scopes
         coros = [
             self._gafaelfawr.create_service_token(u, scopes) for u in users
@@ -256,26 +252,13 @@ class Flock:
             results.extend(await asyncio.gather(*batch))
         return results
 
-    def _users_from_spec(
-        self,
-        *,
-        spec: UserSpec,
-        count: int,
-        replica_count: int,
-        instance_id: str,
-    ) -> list[User]:
+    def _users_from_spec(self, *, spec: UserSpec, count: int) -> list[User]:
         """Generate count Users from the provided spec."""
         padding = int(math.log10(count) + 1)
         users = []
 
-        instance_prefix = ""
-        if replica_count > 1:
-            instance_prefix = f"-instance-{instance_id}-"
-
         for i in range(1, count + 1):
-            username = (
-                spec.username_prefix + instance_prefix + str(i).zfill(padding)
-            )
+            username = spec.username_prefix + str(i).zfill(padding)
             if spec.uid_start is not None:
                 uid = spec.uid_start + i - 1
             else:

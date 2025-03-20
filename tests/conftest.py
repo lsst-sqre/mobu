@@ -47,7 +47,7 @@ from .support.constants import (
     TEST_GITHUB_CI_APP_SECRET,
     TEST_GITHUB_REFRESH_APP_SECRET,
 )
-from .support.gafaelfawr import make_gafaelfawr_token
+from .support.gafaelfawr import make_gafaelfawr_token, mock_gafaelfawr
 from .support.github import GitHubMocker
 from .support.gitlfs import (
     no_git_lfs_data,
@@ -124,11 +124,24 @@ def _disable_file_logging() -> None:
 
 
 @pytest.fixture
-def _base_multi_instance() -> Iterator[None]:
+def _multi_replica_0(respx_mock: respx.Router) -> None:
     """Set config for multi-instance."""
-    config_dependency.set_path(config_path("base_multi_instance"))
-    yield
-    config_dependency.set_path(config_path("base"))
+    mock_gafaelfawr(respx_mock, any_uid=True)
+    config_dependency.set_path(config_path("multi_replica_0"))
+
+
+@pytest.fixture
+def _multi_replica_1(respx_mock: respx.Router) -> None:
+    """Set config for multi-instance."""
+    mock_gafaelfawr(respx_mock, any_uid=True)
+    config_dependency.set_path(config_path("multi_replica_1"))
+
+
+@pytest.fixture
+def _multi_replica_2(respx_mock: respx.Router) -> None:
+    """Set config for multi-instance."""
+    mock_gafaelfawr(respx_mock, any_uid=True)
+    config_dependency.set_path(config_path("multi_replica_2"))
 
 
 @pytest.fixture

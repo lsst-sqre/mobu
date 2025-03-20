@@ -89,7 +89,7 @@ class FlockManager:
         flock = Flock(
             flock_config=flock_config,
             replica_count=self._config.replica_count,
-            instance_id=self._config.instance_id,
+            replica_index=self._config.replica_index,
             scheduler=self._scheduler,
             gafaelfawr_storage=self._gafaelfawr,
             http_client=self._http_client,

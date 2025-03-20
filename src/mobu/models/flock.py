@@ -20,14 +20,27 @@ class FlockConfig(BaseModel):
 
     name: str = Field(..., title="Name of the flock", examples=["autostart"])
 
-    count: int = Field(..., title="How many monkeys to run", examples=[100])
+    count: int = Field(
+        ...,
+        title="How many monkeys to run",
+        description=(
+            "The total number of monkeys to run, split as evenly as possible"
+            " among all replicas of this Mobu StatefulSet. If this value is"
+            " 100, and there are 4 replicas, then each replica will run 25"
+            " monkeys."
+        ),
+        examples=[100],
+    )
 
     start_batch_size: int | None = Field(
         None,
         title="Start batch size",
         description=(
             "The number of monkeys to start in each batch. If not provided,"
-            " all monkeys will be started at the same time."
+            " all monkeys will be started at the same time. This is the total"
+            " number of monkeys to start concurrently across all replicas, so"
+            " if there are multiple replicas, each replica will only start a"
+            " fraction of this batch."
         ),
     )
 

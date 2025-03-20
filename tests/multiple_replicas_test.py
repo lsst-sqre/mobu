@@ -1,119 +1,66 @@
-"""Tests for multi-instance logic."""
+"""Tests for autostarting flocks of monkeys."""
 
-from typing import cast
+from __future__ import annotations
+
 from unittest.mock import ANY
 
 import pytest
-import respx
 from httpx import AsyncClient
-from safir.metrics import MockEventPublisher
-
-from mobu.events import Events
-
-from .support.gafaelfawr import mock_gafaelfawr
-from .support.util import wait_for_business
 
 
-@pytest.mark.asyncio
-@pytest.mark.usefixtures("_base_multi_instance")
-async def test_good_user_config(
-    client: AsyncClient,
-    respx_mock: respx.Router,
-    events: Events,
-) -> None:
-    mock_gafaelfawr(respx_mock)
-
-    # Set up our mocked business
-    r = await client.put(
-        "/mobu/flocks",
-        json={
-            "name": "test",
-            "count": 1,
-            "user_spec": {"username_prefix": "bot-mobu-testuser"},
-            "scopes": ["exec:notebook"],
+async def assert_users(client: AsyncClient, users: list[int]) -> None:
+    r = await client.get("/mobu/flocks/basic")
+    assert r.status_code == 200
+    expected_monkeys = [
+        {
+            "name": f"bot-mobu-testuser{i:02d}",
             "business": {
-                "type": "EmptyLoop",
+                "failure_count": 0,
+                "name": "EmptyLoop",
+                "refreshing": False,
+                "success_count": ANY,
             },
-        },
-    )
-
-    assert r.status_code == 201
-
-    # Wait until we've finished at least one loop,
-    # then check the results.
-    data = await wait_for_business(client, "bot-mobu-testuser-instance-2-1")
-    assert data == {
-        "name": "bot-mobu-testuser-instance-2-1",
-        "business": {
-            "failure_count": 0,
-            "name": "EmptyLoop",
-            "refreshing": False,
-            "success_count": 1,
-        },
-        "state": "RUNNING",
-        "user": {
+            "state": ANY,
+            "user": {
+                "scopes": ["exec:notebook"],
+                "token": ANY,
+                "uidnumber": 1000 + i - 1,
+                "gidnumber": 2000 + i - 1,
+                "username": f"bot-mobu-testuser{i:02d}",
+            },
+        }
+        for i in users
+    ]
+    assert r.json() == {
+        "name": "basic",
+        "config": {
+            "name": "basic",
+            "count": 10,
+            "user_spec": {
+                "username_prefix": "bot-mobu-testuser",
+                "uid_start": 1000,
+                "gid_start": 2000,
+            },
             "scopes": ["exec:notebook"],
-            "token": ANY,
-            "username": "bot-mobu-testuser-instance-2-1",
+            "business": {"type": "EmptyLoop"},
         },
+        "monkeys": expected_monkeys,
     }
 
-    # Check events
-    published = cast("MockEventPublisher", events.empty_loop).published
-    published.assert_published_all(
-        [
-            {
-                "business": "EmptyLoop",
-                "flock": "test",
-                "success": True,
-                "username": "bot-mobu-testuser-instance-2-1",
-            }
-        ]
-    )
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_multi_replica_0")
+async def test_replica_0(client: AsyncClient) -> None:
+    await assert_users(client=client, users=[1, 4, 7, 10])
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("_base_multi_instance")
-async def test_bad_user_config(
-    client: AsyncClient,
-    respx_mock: respx.Router,
-    events: Events,
-) -> None:
-    mock_gafaelfawr(respx_mock)
+@pytest.mark.usefixtures("_multi_replica_1")
+async def test_replica_1(client: AsyncClient) -> None:
+    await assert_users(client=client, users=[2, 5, 8])
 
-    # No uid_start or gid_start allowed
-    with pytest.raises(RuntimeError, match="Only user_spec users"):
-        await client.put(
-            "/mobu/flocks",
-            json={
-                "name": "test",
-                "count": 1,
-                "users": [
-                    {
-                        "username": "bot-mobu-someuser",
-                    }
-                ],
-                "scopes": ["exec:notebook"],
-                "business": {
-                    "type": "EmptyLoop",
-                },
-            },
-        )
 
-    # No uid_start or gid_start allowed
-    with pytest.raises(RuntimeError, match="uid_start"):
-        await client.put(
-            "/mobu/flocks",
-            json={
-                "name": "test",
-                "count": 1,
-                "user_spec": {
-                    "username_prefix": "bot-mobu-testuser",
-                    "uid_start": 1000,
-                },
-                "scopes": ["exec:notebook"],
-                "business": {
-                    "type": "EmptyLoop",
-                },
-            },
-        )
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_multi_replica_2")
+async def test_replica_2(client: AsyncClient) -> None:
+    await assert_users(client=client, users=[3, 6, 9])
