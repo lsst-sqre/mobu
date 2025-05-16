@@ -312,6 +312,7 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
         )
         if not self._notebook_paths:
             self.logger.info("Done with this cycle of notebooks")
+        await self.notebook_idle()
 
     async def _publish_notebook_event(
         self, duration: timedelta, *, success: bool
@@ -395,6 +396,13 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
         await self._publish_cell_event(
             cell_id=cell_id, duration=duration(span), success=True
         )
+
+    async def notebook_idle(self) -> bool:
+        """Pause between each notebook execution."""
+        idle_time = self.options.notebook_idle_time
+        self.logger.debug("notebook_idle", idle_time=idle_time)
+        with capturing_start_span(op="notebook_idle"):
+            return await self.pause(idle_time)
 
     @override
     def dump(self) -> NotebookRunnerData:
