@@ -1,8 +1,10 @@
 """Shared models for different notebook runners."""
 
+from datetime import timedelta
 from pathlib import Path
 
 from pydantic import BaseModel, Field
+from safir.pydantic import HumanTimedelta
 
 from ...constants import NOTEBOOK_REPO_BRANCH, NOTEBOOK_REPO_URL
 from ...models.business.nublado import (
@@ -43,6 +45,13 @@ class NotebookRunnerOptions(NubladoBusinessOptions):
             " Only used by the NotebookRunner."
         ),
         examples=["some-dir", "some-dir/some-other-dir"],
+    )
+
+    notebook_idle_time: HumanTimedelta = Field(
+        timedelta(seconds=0),
+        title="How long to wait between notebook executions",
+        description="Used by NotebookRunner businesses",
+        examples=["30s"],
     )
 
 

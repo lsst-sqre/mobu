@@ -28,35 +28,35 @@ filelock==3.18.0 \
     #   -c requirements/dev.txt
     #   tox
     #   virtualenv
-packaging==24.2 \
-    --hash=sha256:09abb1bccd265c01f4a3aa3f7a7db064b36514d2cba19a2f694fe6150451a759 \
-    --hash=sha256:c228a6dc5e932d346bc5739379109d49e8853dd8223571c7c5b55260edc0b97f
+packaging==25.0 \
+    --hash=sha256:29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484 \
+    --hash=sha256:d443872c98d677bf60f6a1f2f8c1cb748e8fe762d2bf9d3148b5599295b0fc4f
     # via
     #   -c requirements/dev.txt
     #   -c requirements/main.txt
     #   pyproject-api
     #   tox
     #   tox-uv
-platformdirs==4.3.6 \
-    --hash=sha256:357fb2acbc885b0419afd3ce3ed34564c13c9b95c89360cd9563f73aa5e2b907 \
-    --hash=sha256:73e575e1408ab8103900836b97580d5307456908a03e92031bab39e4554cc3fb
+platformdirs==4.3.8 \
+    --hash=sha256:3d512d96e16bcb959a814c9f348431070822a6496326a4be0911c40b5a74c2bc \
+    --hash=sha256:ff7059bb7eb1179e2685604f4aaf157cfd9535242bd23742eadc3c13542139b4
     # via
     #   -c requirements/dev.txt
     #   tox
     #   virtualenv
-pluggy==1.5.0 \
-    --hash=sha256:2cffa88e94fdc978c4c574f15f9e59b7f4201d439195c3715ca9e2486f1d0cf1 \
-    --hash=sha256:44e1ad92c8ca002de6377e165f3e0f1be63266ab4d554740532335b9d75ea669
+pluggy==1.6.0 \
+    --hash=sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3 \
+    --hash=sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746
     # via
     #   -c requirements/dev.txt
     #   tox
-pyproject-api==1.9.0 \
-    --hash=sha256:326df9d68dea22d9d98b5243c46e3ca3161b07a1b9b18e213d1e24fd0e605766 \
-    --hash=sha256:7e8a9854b2dfb49454fae421cb86af43efbb2b2454e5646ffb7623540321ae6e
+pyproject-api==1.9.1 \
+    --hash=sha256:43c9918f49daab37e302038fc1aed54a8c7a91a9fa935d00b9a485f37e0f5335 \
+    --hash=sha256:7d6238d92f8962773dd75b5f0c4a6a27cce092a14b623b811dba656f3b628948
     # via tox
-tox==4.24.2 \
-    --hash=sha256:92e8290e76ad4e15748860a205865696409a2d014eedeb796a34a0f3b5e7336e \
-    --hash=sha256:d5948b350f76fae436d6545a5e87c2b676ab7a0d7d88c1308651245eadbe8aea
+tox==4.26.0 \
+    --hash=sha256:75f17aaf09face9b97bd41645028d9f722301e912be8b4c65a3f938024560224 \
+    --hash=sha256:a83b3b67b0159fa58e44e646505079e35a43317a62d2ae94725e0586266faeca
     # via
     #   -r requirements/tox.in
     #   tox-uv
@@ -64,29 +64,29 @@ tox-uv==1.25.0 \
     --hash=sha256:50cfe7795dcd49b2160d7d65b5ece8717f38cfedc242c852a40ec0a71e159bf7 \
     --hash=sha256:59ee5e694c41fef7bbcf058f22a5f9b6a8509698def2ea60c08554f4e36b9fcc
     # via -r requirements/tox.in
-uv==0.6.6 \
-    --hash=sha256:1d62a3fb6fdbb05518e5124950d252033908e8e2dd98e17c63fd9b0aa807da6f \
-    --hash=sha256:257b44eb43790c1cde59527f53efd1263528bf791959c94be40c3d32c8ac4e6d \
-    --hash=sha256:419e8cd84db545a0880223fd0a042c063a1412179903797a87f5bd0d1613cdbd \
-    --hash=sha256:5a6839ff6cdaa2fc7864ae893d725d04dd914e36fb20f64c6603edc4a17dfe78 \
-    --hash=sha256:61f13d8af0aad5b1f9332fee2cd7eeeec5cf93634c5071bbbcf5d338a0920098 \
-    --hash=sha256:7f0836ba3d9c979e744a0991b212934877b786541fd5c9ee7eff99a3f8c9dd6a \
-    --hash=sha256:8733355d21e325bb896bd2b7bc37bbcb888097d532ce14265efbb53beaf07ca0 \
-    --hash=sha256:8a6d2aca8794e72e2e68ebfae06b8697bb0ea8a8d016229109125d364f743b7a \
-    --hash=sha256:abf8be1e056f9d36ddda9c3c8c07510f6d4fe61915d4cd797374756f58249c81 \
-    --hash=sha256:af832fe366bc6174fe822b968bbeb1bb1f8aeb42418941281a696257a5669bb7 \
-    --hash=sha256:b804a7f8f37c109e714ce02084735cc39a96b7e3062e58420120fe4798a65ef1 \
-    --hash=sha256:c05f376f56a925d43304ee02d2915df002497fa1c3f51908252b868704131c32 \
-    --hash=sha256:c55f1ebc980bd4a2013999e0a22e2796deb08b56c7815942d74ba23abce8d4fc \
-    --hash=sha256:c9802cac1fb9cbff97d1adf2c2516f2f368eea60c7d6a8e3a474f2bca7b44c6c \
-    --hash=sha256:d4b41b3024ca55c17e7dfda1e907249e598379a8202d2a76e05018156a1c0501 \
-    --hash=sha256:f0f4934dbfff8ea30800aeda5e9336fc2dc06710f3a6216fac783bc63f98fc54 \
-    --hash=sha256:f8105a72d6502d5a5fbf404afa1124afe6501878ce6a05caeac29e457cea2785 \
-    --hash=sha256:fe1f84bced6d373a02d8b960efc3a4b65d63ab19e1fdc4f12a56a483d687f4db
+uv==0.7.4 \
+    --hash=sha256:06f259352d741f447a1fa4bb34348e251e3c0ee2dd43c9da6fdec6ab3ef9c80f \
+    --hash=sha256:0b4d60c9a350cc8f58097f550256d110c73d605857f2fefa6bb86c49992dec70 \
+    --hash=sha256:0cc0eee98197f3cd77a4cbf3fd22cebdcea9e77d3f21e74698548ed008ef54a1 \
+    --hash=sha256:22080e86f65d6ce2e7b349ccc31f36fd841bbc565c210edd839c13a967488ed8 \
+    --hash=sha256:40b73b40d9bdc95e6f04472bd4264ab12a2a8f379df99329c9f670d6647715b2 \
+    --hash=sha256:425a53513a89aefc3819adad7fc06c963220e700f997d86569b4be3ab00f0d5b \
+    --hash=sha256:5f077ef9e857321e6c585e7c97b4310b10edbd21de709449bbef26f932093bb2 \
+    --hash=sha256:62368eaf4ac1647bdbbf88fa503c24ccd1d41cde4345be9ecb003cb2dc468490 \
+    --hash=sha256:6555b82afa27e6061ea12405027bf3f72b02da59c706e82fb1ce36710b1c431f \
+    --hash=sha256:6a77cc279eda15e3ffe570b850a84bc574762aaf29e6aa04c897928ce8af11de \
+    --hash=sha256:6a93abb21b67b52de8f9a720b6f650cdc20b3b664623f7ab4881185b8bc36eb7 \
+    --hash=sha256:7e68a2412931f3d22d1bf115e3351baadb109a598f66ed97f3cc482382af595c \
+    --hash=sha256:81babf4715a2475bf8eadf5fa85971cd12401d13c98df83975e842f8eaff2573 \
+    --hash=sha256:9cd8efc3a42f88e88cdc8e69b3147b7cb39fac1fd933b465e1b07dc879506aae \
+    --hash=sha256:a8e841406af442ae104b569b0f420c915da51c853de14e8feaf503c9faedecb4 \
+    --hash=sha256:b2bfa5fb120d11d381ac69ab82dc67c9be7b10770243cc50a2739828dc230811 \
+    --hash=sha256:c73ad2342c50c8ee970af52ef96643bbc6109f5e969ae92c867f3e6876c3c1e5 \
+    --hash=sha256:f2f633b3a780db64b83dc472135154e2776e4e8a6583e3c2190aa30188a137b2
     # via tox-uv
-virtualenv==20.29.3 \
-    --hash=sha256:3e3d00f5807e83b234dfb6122bf37cfadf4be216c53a49ac059d02414f819170 \
-    --hash=sha256:95e39403fcf3940ac45bc717597dba16110b74506131845d9b687d5e73d947ac
+virtualenv==20.31.2 \
+    --hash=sha256:36efd0d9650ee985f0cad72065001e66d49a6f24eb44d98980f630686243cf11 \
+    --hash=sha256:e10c0a9d02835e592521be48b332b6caee6887f332c111aa79a09b9e79efc2af
     # via
     #   -c requirements/dev.txt
     #   tox
