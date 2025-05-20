@@ -6,6 +6,13 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-15.2.0'></a>
+## 15.2.0 (2025-05-20)
+
+### New features
+
+- Add a new `notebook_idle_time` config parameter to all `NotebookRunner`-based to configure how long to wait in between each notebook execution.
+
 <a id='changelog-15.1.0'></a>
 ## 15.1.0 (2025-03-20)
 
