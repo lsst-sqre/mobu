@@ -12,6 +12,8 @@ from .siaquerysetrunner import SIAQuerySetRunnerConfig
 from .tapqueryrunner import TAPQueryRunnerConfig
 from .tapquerysetrunner import TAPQuerySetRunnerConfig
 
+__all__ = ["BusinessConfigType"]
+
 BusinessConfigType: TypeAlias = (
     TAPQueryRunnerConfig
     | GitLFSConfig

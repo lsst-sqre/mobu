@@ -11,7 +11,6 @@ import pytest
 import respx
 from httpx import AsyncClient
 
-
 from ..support.constants import TEST_DATA_DIR
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import setup_git_repo, wait_for_business
