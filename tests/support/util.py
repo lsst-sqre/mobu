@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Any
 
 from httpx import AsyncClient
+
+from mobu.storage.git import Git
 
 __all__ = [
     "wait_for_business",
@@ -55,3 +58,22 @@ async def wait_for_flock_start(client: AsyncClient, flock: str) -> None:
                 good = False
         if good:
             break
+
+
+async def setup_git_repo(repo_path: Path) -> str:
+    """Initialize and populate a git repo at `repo_path`.
+
+    Returns
+    -------
+    str
+        Commit hash of the cloned repo
+    """
+    git = Git(repo=repo_path)
+    await git.init("--initial-branch=main")
+    await git.config("user.email", "gituser@example.com")
+    await git.config("user.name", "Git User")
+    for path in repo_path.iterdir():
+        if not path.name.startswith("."):
+            await git.add(str(path))
+    await git.commit("-m", "Initial commit")
+    return await git.repo_hash()
