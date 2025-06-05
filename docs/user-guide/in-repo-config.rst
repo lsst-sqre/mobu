@@ -4,19 +4,173 @@ Configuring notebooks run by mobu
 
 Some mobu behavior can be controlled by files within notebook repos that mobu clones and runs.
 
-Exclude notebooks in specific directories
-=========================================
+Specify which notebooks to run
+==============================
 
-You can tell mobu to exclude notebooks in specific directories by creating a ``mobu.yaml`` file at the root of your notebook repo that looks like this:
+.. warning::
+
+   This feature will not work correctly with notebooks that have ``*``, ``?``, ``[``, or ``]`` in their names.
+   The patterns are assumed to use the `Python pathlib glob pattern language`_.
+   These characters have special meaning and they will not be explicitly matched.
+
+You tell mobu to only run certain notebooks by creating a ``mobu.yaml`` file at the root of your notebook repo with ``collection_rules``:
 
 .. code-block:: yaml
 
-   exclude_dirs:
-     - "some-dir"
-     - "some-other-dir"
+   collection_rules:
+     - type: "exclude"
+       patterns:
+         - "not-these/**"
+         - "not/these/either/**"
+     - type: "include"
+       patterns:
+         - "this.ipynb"
+         - "these/**"
+         - "also/these**"
+     - type: "include"
+       patterns:
+         - "**/these-*"
 
-This prevents mobu from executing any notebooks in these directories or any descendant directories.
-These directories are relative to the repo root.
+Each entry is a pattern using the `Python pathlib glob pattern language`_.
+
+ * If no include rules are specified, start with all notebooks.
+ * For every include rule:
+   * Get the set of all of the notebooks matched by any pattern.
+ * Take the intersection of all of those sets.
+ * Subtract any notebook matched by an exclude pattern.
+ * Subtract any notebook that specifies required services that are missing.
+
+ .. _Python pathlib glob pattern language: https://docs.python.org/3/library/pathlib.html#pathlib-pattern-language
+
+Examples
+--------
+With this repo structure:
+
+.. code-block::
+
+  ├── dont
+  │   └── run
+  │       └── these
+  │           ├── nope_some_notebook.ipynb
+  │           ├── some_notebook.ipynb
+  │           └── some_other_notebook.ipynb
+  ├── nope_some_notebook.ipynb
+  ├── nor
+  │   └── these
+  │       └── some_notebook.ipynb
+  ├── some
+  │   └── directory
+  │       └── some_notebook.ipynb
+  ├── someother
+  │   └── directory
+  │       └── some_notebook.ipynb
+  └── some_notebook.ipynb
+
+Run specific notebooks:
+
+.. code-block:: yaml
+
+   collection_rules:
+     - type: include
+       patterns:
+       - "some/directory/some_notebook.ipynb"
+       - "some_notebook.ipynb"
+
+.. code-block::
+
+  ./some_notebook.ipynb
+  ./some/directory/some_notebook.ipynb
+
+Run every notebook except a single notebook:
+
+.. code-block:: yaml
+
+   collection_rules:
+     - type: exclude
+       patterns:
+         - "some/directory/some_notebook.ipynb"
+
+.. code-block::
+
+  ./dont/run/these/some_notebook.ipynb
+  ./dont/run/these/some_other_notebook.ipynb
+  ./dont/run/these/nope_some_notebook.ipynb
+  ./nor/these/some_notebook.ipynb
+  ./someother/directory/some_notebook.ipynb
+  ./some_notebook.ipynb
+  ./nope_some_notebook.ipynb
+
+Don't run notebooks in certain directories:
+
+.. code-block:: yaml
+
+   collection_rules:
+     - type: exclude
+       patterns:
+         - "dont/run/these/**"
+         - "nor/these/**"
+
+.. code-block::
+
+  ./some/directory/some_notebook.ipynb
+  ./some_notebook.ipynb
+  ./nope_some_notebook.ipynb
+
+Don't run any notebooks with a ``nope_`` prefix:
+
+.. code-block:: yaml
+
+   collection_rules:
+     - type: exclude
+       patterns:
+         - "**/nope_*.ipynb"
+
+.. code-block::
+
+  ./some/directory/some_notebook.ipynb
+  ./someother/directory/some_notebook.ipynb
+  ./dont/run/these/some_notebook.ipynb
+  ./dont/run/these/some_other_notebook.ipynb
+  ./nor/these/some_notebook.ipynb
+  ./some_notebook.ipynb
+
+Run only notebooks with a certain name, but not if they exists in certain directories:
+
+.. code-block:: yaml
+
+   collection_rules:
+     - type: include
+       patterns:
+         - "**/some_notebook.ipynb"
+     - type: exclude
+       patterns:
+         - "dont/run/these/**"
+         - "nor/these/**"
+
+.. code-block::
+
+  ./some/directory/some_notebook.ipynb
+  ./someother/directory/some_notebook.ipynb
+  ./dont/run/these/some_notebook.ipynb
+  ./some_notebook.ipynb
+
+ Run notebooks that match a prefix but only in certain directories:
+
+ .. code-block:: yaml
+
+    collection_rules:
+      - type: include
+        patterns:
+          - "some_directory/**"
+          - "someother/directory**"
+      - type: include
+        patterns:
+          - "**/some_*.ipynb"
+
+ .. code-block::
+
+   ./some/directory/some_notebook.ipynb
+   ./someother/directory/some_notebook.ipynb
 
 Service-specific notebooks
 ==========================

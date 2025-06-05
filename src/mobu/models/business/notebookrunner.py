@@ -161,12 +161,3 @@ class NotebookFilterResults(BaseModel):
             " are not available in this environment"
         ),
     )
-
-    excluded_by_requested: set[Path] = Field(
-        default=set(),
-        title="Excluded by explicit list",
-        description=(
-            "These notebooks won't be run because a list of explicitly"
-            " requested notebooks was provided, and they weren't in it."
-        ),
-    )
