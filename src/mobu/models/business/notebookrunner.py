@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field
 from safir.pydantic import HumanTimedelta
@@ -20,7 +21,56 @@ __all__ = [
 ]
 
 
-class NotebookRunnerOptions(NubladoBusinessOptions):
+class CollectionRule(BaseModel):
+    """A set of patterns to filter the list of notebooks to run in a repo."""
+
+    type: Literal["include", "exclude"] = Field(
+        title="Collection rule type",
+        description=(
+            "'include' will gather all notebooks matched by any pattern."
+            " 'exclude' will not run any notebook matched by any pattern"
+        ),
+    )
+
+    patterns: set[str] = Field(
+        title="patterns",
+        description=(
+            "A set of Python pathlib glob patterns:"
+            " https://docs.python.org/3/library/pathlib.html#pattern-language"
+            " This rule will gather all of the notebooks matched by any"
+            " pattern in this list to either include or exclude."
+        ),
+    )
+
+
+class Filterable(BaseModel):
+    """Mixin for config to specify patterns for which notebooks to run."""
+
+    exclude_dirs: set[Path] = Field(
+        set(),
+        title="Any notebooks in these directories will not be run",
+        description=(
+            "DEPRECATED: use collection_rules instead. If both exclude_dirs"
+            " and collection_rules are set, exclude_dirs will be added as"
+            " exclude rules to the collection_rules. These directories are"
+            " relative to the repo root. Any notebooks in child directories"
+            " of these directories will also be excluded. Only used by the"
+            " NotebookRunner businesses."
+        ),
+        examples=["some-dir", "some-dir/some-other-dir"],
+    )
+
+    collection_rules: list[CollectionRule] = Field(
+        [],
+        title="Collection rules",
+        description=(
+            "A set of rules describing which notebooks in a repo to run. Only"
+            " used by NotebookRunner businesses."
+        ),
+    )
+
+
+class NotebookRunnerOptions(NubladoBusinessOptions, Filterable):
     """Options for all types NotebookRunner monkey business."""
 
     repo_ref: str = Field(
@@ -34,17 +84,6 @@ class NotebookRunnerOptions(NubladoBusinessOptions):
         NOTEBOOK_REPO_URL,
         title="Git URL of notebook repository to execute",
         description="Only used by the NotebookRunner",
-    )
-
-    exclude_dirs: set[Path] = Field(
-        set(),
-        title="Any notebooks in these directories will not be run",
-        description=(
-            " These directories are relative to the repo root. Any notebooks"
-            " in child directories of these directories will also be excluded."
-            " Only used by the NotebookRunner."
-        ),
-        examples=["some-dir", "some-dir/some-other-dir"],
     )
 
     notebook_idle_time: HumanTimedelta = Field(
