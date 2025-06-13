@@ -9,27 +9,9 @@ import pytest
 
 from mobu.services.repo import RepoManager
 from mobu.storage.git import Git
+from tests.support.util import setup_git_repo
 
 from ..support.constants import TEST_DATA_DIR
-
-
-async def setup_git_repo(repo_path: Path) -> str:
-    """Initialize and populate a git repo at `repo_path`.
-
-    Returns
-    -------
-    str
-        Commit hash of the cloned repo
-    """
-    git = Git(repo=repo_path)
-    await git.init("--initial-branch=main")
-    await git.config("user.email", "gituser@example.com")
-    await git.config("user.name", "Git User")
-    for path in repo_path.iterdir():
-        if not path.name.startswith("."):
-            await git.add(str(path))
-    await git.commit("-m", "Initial commit")
-    return await git.repo_hash()
 
 
 @pytest.mark.asyncio
