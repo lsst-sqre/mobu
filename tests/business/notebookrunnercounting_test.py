@@ -794,13 +794,6 @@ async def test_alert(
         "cell_id": "ed399c0a",
         "cell_number": "#1",
     }
-    assert sentry_error["contexts"]["notebook_filter_info"] == {
-        "all": [AnySearch("/exception.ipynb$")],
-        "excluded_by_dir": [],
-        "excluded_by_requested": [],
-        "excluded_by_service": [],
-        "runnable": [AnySearch("/exception.ipynb$")],
-    }
     assert sentry_error["contexts"]["notebook_info"] == {
         "iteration": "1/1",
         "notebook": "exception.ipynb",

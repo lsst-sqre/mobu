@@ -42,8 +42,7 @@ async def test_run_all_notebooks(
     # runner will change working directories, which because working
     # directories are process-global may mess up future tests.
     try:
-        # Note `max_executions` is not declared here, `notebooks_to_run` is
-        # declared instead.
+        # Note `max_executions` is not declared here
         r = await client.put(
             "/mobu/flocks",
             json={
@@ -58,11 +57,14 @@ async def test_run_all_notebooks(
                         "execution_idle_time": 0,
                         "repo_url": str(repo_path),
                         "repo_ref": "main",
-                        "notebooks_to_run": [
+                        "include_patterns": [
                             "test-notebook-has-services.ipynb",
-                            # This shouldn't run because services are missing
+                            # This shouldn't run because services specefied in
+                            # the in-repo config file are missing, which takes
+                            # precedence
                             "test-notebook-missing-service.ipynb",
-                            # This shouldn't run because the dir is excluded
+                            # This shouldn't run because the dir is excluded in
+                            # the in-repo-config file, which takes precedence
                             "some-dir/test-other-notebook-has-services.ipynb",
                         ],
                         "working_directory": str(repo_path),

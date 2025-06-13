@@ -6,12 +6,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict
+
+from .business.notebookrunner import Filterable
 
 __all__ = ["ClonedRepoInfo", "RepoConfig"]
 
 
-class RepoConfig(BaseModel):
+class RepoConfig(Filterable):
     """In-repo configuration for mobu behavior.
 
     This can be placed into a yaml file in the root of a repo to configure
@@ -19,16 +21,6 @@ class RepoConfig(BaseModel):
     """
 
     model_config = ConfigDict(extra="forbid")
-
-    exclude_dirs: set[Path] = Field(
-        set(),
-        title="Any notebooks in these directories will not be run",
-        description=(
-            " These directories are relative to the repo root. Any notebooks"
-            " in child directories of these directories will also be excluded."
-        ),
-        examples=["some-dir", "some-dir/some-other-dir"],
-    )
 
 
 @dataclass(frozen=True)

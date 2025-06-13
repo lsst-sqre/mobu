@@ -20,7 +20,71 @@ __all__ = [
 ]
 
 
-class NotebookRunnerOptions(NubladoBusinessOptions):
+class Filterable(BaseModel):
+    """Mixin for config to specify patterns for which notebooks to run."""
+
+    exclude_dirs: set[Path] = Field(
+        set(),
+        title="Any notebooks in these directories will not be run",
+        description=(
+            "DEPRECATED: use include_patterns and exclude_patterns instead."
+            " If include_patterns or exclude_patterns is set, then"
+            " exclude_dirs can not be used. These directories are relative to"
+            " the repo root. Any notebooks in child directories of these"
+            " directories will also be excluded. Only used by the"
+            " NotebookRunner businesses."
+        ),
+        examples=["some-dir", "some-dir/some-other-dir"],
+    )
+
+    include_patterns: set[str] = Field(
+        set(),
+        title="Include patterns",
+        description=(
+            "Notebooks that match ANY of these will be considered, but exclude"
+            " patterns take precedence. If a notebook matches one of these"
+            " patterns but also matches an exclude pattern, then it will not"
+            " be run. Patterns are python pathlib glob patterns:"
+            " https://docs.python.org/3/library/pathlib.html#pathlib-pattern-language"
+            " Only used by NotebookRunner businesses."
+        ),
+        examples=[
+            {"some/dir/some_notebook.ipynb"},
+            {"some/dir/**", "**/some_prefix_*.ipynb"},
+        ],
+    )
+
+    exclude_patterns: set[str] = Field(
+        set(),
+        title="Include patterns",
+        description=(
+            "Notebooks that match ANY of these pattern will NOT be run."
+            " Patterns are python pathlib glob patterns:"
+            " https://docs.python.org/3/library/pathlib.html#pathlib-pattern-language"
+            " Only used by the NotebookRunner businesses."
+        ),
+        examples=[
+            {"some/dir/some_notebook.ipynb"},
+            {"dont/run/these/**", "**/dont_run_prefix_*.ipynb"},
+        ],
+    )
+
+    only_patterns: set[str] = Field(
+        set(),
+        title="Only patterns",
+        description=(
+            "Only Notebooks that match ALL of these pattern will be run."
+            " Patterns are python pathlib glob patterns:"
+            " https://docs.python.org/3/library/pathlib.html#pathlib-pattern-language"
+            " Only used by the NotebookRunner businesses."
+        ),
+        examples=[
+            {"run/only/in/these/dirs/**", "**/only_with_this_prefix_*.ipynb"},
+        ],
+    )
+
+
+class NotebookRunnerOptions(NubladoBusinessOptions, Filterable):
     """Options for all types NotebookRunner monkey business."""
 
     repo_ref: str = Field(
@@ -34,17 +98,6 @@ class NotebookRunnerOptions(NubladoBusinessOptions):
         NOTEBOOK_REPO_URL,
         title="Git URL of notebook repository to execute",
         description="Only used by the NotebookRunner",
-    )
-
-    exclude_dirs: set[Path] = Field(
-        set(),
-        title="Any notebooks in these directories will not be run",
-        description=(
-            " These directories are relative to the repo root. Any notebooks"
-            " in child directories of these directories will also be excluded."
-            " Only used by the NotebookRunner."
-        ),
-        examples=["some-dir", "some-dir/some-other-dir"],
     )
 
     notebook_idle_time: HumanTimedelta = Field(
@@ -120,14 +173,5 @@ class NotebookFilterResults(BaseModel):
         description=(
             "These notebooks won't be run because the depend on services which"
             " are not available in this environment"
-        ),
-    )
-
-    excluded_by_requested: set[Path] = Field(
-        default=set(),
-        title="Excluded by explicit list",
-        description=(
-            "These notebooks won't be run because a list of explicitly"
-            " requested notebooks was provided, and they weren't in it."
         ),
     )
