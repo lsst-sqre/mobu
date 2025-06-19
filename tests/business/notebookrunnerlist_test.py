@@ -59,7 +59,7 @@ async def test_run_all_notebooks(
                         "repo_ref": "main",
                         "collection_rules": [
                             {
-                                "type": "include",
+                                "type": "intersect_union_of",
                                 "patterns": [
                                     "test-notebook-has-services.ipynb",
                                     # This shouldn't run because services

@@ -57,55 +57,43 @@ class NotebookFinder:
             )
             converted = {str(path / "**") for path in exclude_dirs}
             collection_rules.append(
-                CollectionRule(type="exclude", patterns=converted)
+                CollectionRule(type="exclude_union_of", patterns=converted)
             )
 
-        self._exclude_patterns = [
-            rule.patterns
-            for rule in collection_rules
-            if rule.type == "exclude"
-        ]
-
-        self._include_patterns = [
-            rule.patterns
-            for rule in collection_rules
-            if rule.type == "include"
-        ]
-
+        self._collection_rules = collection_rules
         self._available_services = available_services or set()
         self._repo_path = repo_path
 
         self._logger = logger.bind(
             repo_path=self._repo_path,
-            include_patterns=self._include_patterns,
-            exclude_patterns=self._exclude_patterns,
+            collection_rules=self._collection_rules,
             available_services=self._available_services,
         )
 
     def find(self) -> set[Path]:
         """Return a list of notebooks to execute.
 
-        * If no include rules are specified, start with all notebooks.
-        * For every include rule:
-          * Get the set of all of the notebooks matched by any pattern.
-        * Take the intersection of all of those sets.
-        * Subtract any notebook matched by an exclude pattern.
-        * Subtract any notebook that specifies required services that are
-          missing.
+        * Start with all notebooks in the repo.
+        * For each collection rule, remove notebooks:
+          * Intersect rules will remove notebooks that are not in the
+            intersection of:
+              * The current set
+              * The union of the matched patterns.
+          * Exclude rules will remove notebooks from the current set that are
+            in the union of the matched patterns.
+        * Remove any remaining notebooks that require unavailable services.
         """
-        included = set(self._repo_path.glob("**/*.ipynb"))
-        for patterns in self._include_patterns:
-            collected = self._collect(patterns)
-            included = included.intersection(collected)
+        notebooks = set(self._repo_path.glob("**/*.ipynb"))
 
-        excluded: set[Path] = set()
-        for patterns in self._exclude_patterns:
-            collected = self._collect(patterns)
-            excluded = excluded.union(collected)
+        for rule in self._collection_rules:
+            collected = self._collect(rule.patterns)
+            match rule.type:
+                case "intersect_union_of":
+                    notebooks = notebooks.intersection(collected)
+                case "exclude_union_of":
+                    notebooks = notebooks.difference(collected)
 
-        excluded_by_service = self._excluded_by_service()
-
-        notebooks = included - excluded - excluded_by_service
+        notebooks = notebooks - self._excluded_by_service()
 
         if not notebooks:
             self._logger.warning("No notebooks to run after filtering!")

@@ -24,11 +24,14 @@ __all__ = [
 class CollectionRule(BaseModel):
     """A set of patterns to filter the list of notebooks to run in a repo."""
 
-    type: Literal["include", "exclude"] = Field(
+    type: Literal["intersect_union_of", "exclude_union_of"] = Field(
         title="Collection rule type",
         description=(
-            "'include' will gather all notebooks matched by any pattern."
-            " 'exclude' will not run any notebook matched by any pattern"
+            "intersect_union_of will evaluate the intersection of the current"
+            " collection in the rule evaluation chain with union of all of the"
+            " patterns in this rule. 'exclude_union_of' will subtract the"
+            " union of the notebooks found by any pattern in this rule from"
+            " the current current collection in the rule chain."
         ),
     )
 
@@ -38,7 +41,7 @@ class CollectionRule(BaseModel):
             "A set of Python pathlib glob patterns:"
             " https://docs.python.org/3/library/pathlib.html#pattern-language"
             " This rule will gather all of the notebooks matched by any"
-            " pattern in this list to either include or exclude."
+            " pattern in this list to either intersect or exclude."
         ),
     )
 

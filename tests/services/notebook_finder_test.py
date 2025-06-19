@@ -91,7 +91,9 @@ def test_exclude_rules(tmp_path: Path) -> None:
         repo_config=RepoConfig(),
         available_services={"some_service"},
         collection_rules=[
-            CollectionRule(type="exclude", patterns={"**/nested-dir/**"})
+            CollectionRule(
+                type="exclude_union_of", patterns={"**/nested-dir/**"}
+            )
         ],
         logger=get_logger(__file__),
     )
@@ -111,7 +113,7 @@ def test_exclude_rules(tmp_path: Path) -> None:
         available_services={"some_service"},
         collection_rules=[
             CollectionRule(
-                type="exclude",
+                type="exclude_union_of",
                 patterns={"**/nested-dir/**", "**/test-some-other-dir*"},
             )
         ],
@@ -135,7 +137,8 @@ def test_include_rules(tmp_path: Path) -> None:
         available_services={"some_service"},
         collection_rules=[
             CollectionRule(
-                type="include", patterns={"**/nested-dir/**", "some-dir/**"}
+                type="intersect_union_of",
+                patterns={"**/nested-dir/**", "some-dir/**"},
             )
         ],
         logger=get_logger(__file__),
@@ -157,9 +160,12 @@ def test_multiple_include_rules(tmp_path: Path) -> None:
         available_services={"some_service"},
         collection_rules=[
             CollectionRule(
-                type="include", patterns={"**/nested-dir/**", "some-dir/**"}
+                type="intersect_union_of",
+                patterns={"**/nested-dir/**", "some-dir/**"},
             ),
-            CollectionRule(type="include", patterns={"**/test-some-*"}),
+            CollectionRule(
+                type="intersect_union_of", patterns={"**/test-some-*"}
+            ),
         ],
         logger=get_logger(__file__),
     )
@@ -194,12 +200,16 @@ def test_collection_rules_merge(tmp_path: Path) -> None:
         repo_path=repo_path,
         repo_config=RepoConfig(
             collection_rules=[
-                CollectionRule(type="exclude", patterns={"**/nested-dir/**"})
+                CollectionRule(
+                    type="exclude_union_of", patterns={"**/nested-dir/**"}
+                )
             ],
         ),
         available_services={"some_service"},
         collection_rules=[
-            CollectionRule(type="exclude", patterns={"**/some-dir/**"})
+            CollectionRule(
+                type="exclude_union_of", patterns={"**/some-dir/**"}
+            )
         ],
         logger=get_logger(__file__),
     )

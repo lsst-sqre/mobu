@@ -95,7 +95,7 @@ class CiNotebookJob:
                     repo_url=f"https://github.com/{self._github.repo_owner}/{self._github.repo_name}.git",
                     collection_rules=[
                         CollectionRule(
-                            type="include",
+                            type="intersect_union_of",
                             patterns={str(notebook) for notebook in notebooks},
                         )
                     ],

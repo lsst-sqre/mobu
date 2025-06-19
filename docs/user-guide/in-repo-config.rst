@@ -18,27 +18,40 @@ You tell mobu to only run certain notebooks by creating a ``mobu.yaml`` file at 
 .. code-block:: yaml
 
    collection_rules:
-     - type: "exclude"
+     - type: "exclude_union_of"
        patterns:
          - "not-these/**"
          - "not/these/either/**"
-     - type: "include"
+     - type: "intersect_union_of"
        patterns:
          - "this.ipynb"
          - "these/**"
          - "also/these**"
-     - type: "include"
+     - type: "intersect_union_of"
        patterns:
          - "**/these-*"
 
 Each entry is a pattern using the `Python pathlib glob pattern language`_.
 
- * If no include rules are specified, start with all notebooks.
- * For every include rule:
-   * Get the set of all of the notebooks matched by any pattern.
- * Take the intersection of all of those sets.
- * Subtract any notebook matched by an exclude pattern.
- * Subtract any notebook that specifies required services that are missing.
+- Start with all notebooks in the repo.
+
+- For each collection rule, remove notebooks:
+
+  - Intersect rules will remove notebooks that are not in the
+    intersection of:
+
+      - The current set
+
+      - The union of the matched patterns.
+
+  - Exclude rules will remove notebooks from the current set that are
+    in the union of the matched patterns.
+
+- Remove any remaining notebooks that require unavailable services.
+
+.. note::
+
+   Each collection rule will only remove notebooks. A rule can never add notebooks back after another rule has already removed them.
 
  .. _Python pathlib glob pattern language: https://docs.python.org/3/library/pathlib.html#pathlib-pattern-language
 
@@ -71,7 +84,7 @@ Run specific notebooks:
 .. code-block:: yaml
 
    collection_rules:
-     - type: include
+     - type: intersect_union_of
        patterns:
        - "some/directory/some_notebook.ipynb"
        - "some_notebook.ipynb"
@@ -86,7 +99,7 @@ Run every notebook except a single notebook:
 .. code-block:: yaml
 
    collection_rules:
-     - type: exclude
+     - type: exclude_union_of
        patterns:
          - "some/directory/some_notebook.ipynb"
 
@@ -105,7 +118,7 @@ Don't run notebooks in certain directories:
 .. code-block:: yaml
 
    collection_rules:
-     - type: exclude
+     - type: exclude_union_of
        patterns:
          - "dont/run/these/**"
          - "nor/these/**"
@@ -121,7 +134,7 @@ Don't run any notebooks with a ``nope_`` prefix:
 .. code-block:: yaml
 
    collection_rules:
-     - type: exclude
+     - type: exclude_union_of
        patterns:
          - "**/nope_*.ipynb"
 
@@ -139,7 +152,7 @@ Run only notebooks with a certain name, but not if they exists in certain direct
 .. code-block:: yaml
 
    collection_rules:
-     - type: include
+     - type: intersect_union_of
        patterns:
          - "**/some_notebook.ipynb"
      - type: exclude
@@ -159,11 +172,11 @@ Run only notebooks with a certain name, but not if they exists in certain direct
  .. code-block:: yaml
 
     collection_rules:
-      - type: include
+      - type: intersect_union_of
         patterns:
           - "some_directory/**"
           - "someother/directory**"
-      - type: include
+      - type: intersect_union_of
         patterns:
           - "**/some_*.ipynb"
 
