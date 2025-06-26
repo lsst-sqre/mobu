@@ -1,16 +1,14 @@
 """GitHub CI checks for notebook repos."""
 
-from pathlib import Path
-
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
-from mobu.models.business.notebookrunnerlist import (
-    NotebookRunnerListConfig,
-    NotebookRunnerListOptions,
-)
-
 from ...events import Events
+from ...models.business.notebookrunner import (
+    CollectionRule,
+    NotebookRunnerOptions,
+)
+from ...models.business.notebookrunnerlist import NotebookRunnerListConfig
 from ...models.ci_manager import CiJobSummary
 from ...models.solitary import SolitaryConfig
 from ...models.user import User
@@ -57,7 +55,6 @@ class CiNotebookJob:
         self._repo_manager = repo_manager
         self._gafaelfawr = gafaelfawr_storage
         self._logger = logger.bind(ci_job_type="NotebookJob")
-        self._notebooks: list[Path] = []
 
     async def run(self, user: User, scopes: list[str]) -> None:
         """Run all relevant changed notebooks and report back to GitHub.
@@ -69,10 +66,10 @@ class CiNotebookJob:
         # Get changed notebook files
         files = await self._github.get_pr_files()
 
-        self._notebooks = [file for file in files if file.suffix == ".ipynb"]
+        notebooks = [file for file in files if file.suffix == ".ipynb"]
 
         # Don't do anything if there are no notebooks to run
-        if not bool(self._notebooks):
+        if not bool(notebooks):
             await self.check_run.succeed(
                 details="No changed notebooks to run.",
             )
@@ -80,7 +77,7 @@ class CiNotebookJob:
 
         # Run notebooks using a Solitary runner
         summary = "Running these notebooks via Mobu:\n" + "\n".join(
-            [f"* {notebook}" for notebook in self._notebooks]
+            [f"* {notebook}" for notebook in notebooks]
             + [
                 "Note that not all of these may run. Some may be exluded based"
                 " on config in the repo:"
@@ -93,10 +90,15 @@ class CiNotebookJob:
             scopes=[str(scope) for scope in scopes],
             business=NotebookRunnerListConfig(
                 type="NotebookRunnerList",
-                options=NotebookRunnerListOptions(
+                options=NotebookRunnerOptions(
                     repo_ref=self._github.ref,
                     repo_url=f"https://github.com/{self._github.repo_owner}/{self._github.repo_name}.git",
-                    notebooks_to_run=self._notebooks,
+                    collection_rules=[
+                        CollectionRule(
+                            type="intersect_union_of",
+                            patterns={str(notebook) for notebook in notebooks},
+                        )
+                    ],
                 ),
             ),
         )

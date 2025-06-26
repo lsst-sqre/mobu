@@ -5,7 +5,7 @@ from typing import override
 from structlog.stdlib import BoundLogger
 
 from ...events import Events
-from ...models.business.notebookrunnerlist import NotebookRunnerListOptions
+from ...models.business.notebookrunner import NotebookRunnerOptions
 from ...models.user import AuthenticatedUser
 from ...services.repo import RepoManager
 from .notebookrunner import ExecutionIteration, NotebookRunner
@@ -34,7 +34,7 @@ class NotebookRunnerList(NotebookRunner):
     def __init__(
         self,
         *,
-        options: NotebookRunnerListOptions,
+        options: NotebookRunnerOptions,
         user: AuthenticatedUser,
         repo_manager: RepoManager,
         events: Events,
@@ -49,12 +49,11 @@ class NotebookRunnerList(NotebookRunner):
             logger=logger,
             flock=flock,
         )
-        self._notebooks_to_run = options.notebooks_to_run
 
     @override
     def execution_iterator(self) -> ExecutionIteration:
         """Return an iterator counts the number of specified notebooks."""
-        size = len(self._notebooks.runnable)
+        size = len(self._notebooks)
         return ExecutionIteration(
             iterator=iter(range(size)),
             size=size,

@@ -36,7 +36,6 @@ from ...exceptions import (
     RepositoryConfigError,
 )
 from ...models.business.notebookrunner import (
-    NotebookFilterResults,
     NotebookRunnerData,
     NotebookRunnerOptions,
 )
@@ -105,10 +104,9 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
         self._notebook_paths: list[Path] | None = None
         self._repo_path: Path | None = None
         self._repo_hash: str | None = None
-        self._exclude_paths: set[Path] = set()
         self._running_code: str | None = None
-        self._notebooks_to_run: list[Path] | None = None
         self._repo_manager = repo_manager
+        self._repo_config: RepoConfig | None = None
 
     @override
     async def startup(self) -> None:
@@ -139,6 +137,7 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
         self._repo_hash = info.hash
 
         repo_config_path = self._repo_path / GITHUB_REPO_CONFIG_PATH
+
         set_context(
             "repo_info",
             {
@@ -148,6 +147,7 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
                 "repo_config_file": GITHUB_REPO_CONFIG_PATH,
             },
         )
+
         if repo_config_path.exists():
             try:
                 repo_config = RepoConfig.model_validate(
@@ -159,13 +159,9 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
                 ) from err
         else:
             repo_config = RepoConfig()
+        self._repo_config = repo_config
 
-        exclude_dirs = repo_config.exclude_dirs
-        self._exclude_paths = {self._repo_path / path for path in exclude_dirs}
         self._notebooks = self.find_notebooks()
-        set_context(
-            "notebook_filter_info", self._notebooks.model_dump(mode="json")
-        )
         self.logger.info("Repository cloned and ready")
 
     @override
@@ -179,16 +175,21 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
         await self.initialize()
         self.refreshing = False
 
-    def find_notebooks(self) -> NotebookFilterResults:
+    def find_notebooks(self) -> set[Path]:
         with capturing_start_span(op="find_notebooks"):
             if self._repo_path is None:
                 raise NotebookRepositoryError(
                     "Repository directory must be set", self.user.username
                 )
+            if self._repo_config is None:
+                raise NotebookRepositoryError(
+                    "Repo config must be parsed", self.user.username
+                )
             finder = NotebookFinder(
                 repo_path=self._repo_path,
-                exclude_paths=self._exclude_paths,
-                notebooks_to_run=self._notebooks_to_run,
+                repo_config=self._repo_config,
+                exclude_dirs=self.options.exclude_dirs,
+                collection_rules=self.options.collection_rules,
                 available_services=self._config.available_services,
                 logger=self.logger,
             )
@@ -198,7 +199,7 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
         if not self._notebooks:
             self._notebooks = self.find_notebooks()
         if not self._notebook_paths:
-            self._notebook_paths = list(self._notebooks.runnable)
+            self._notebook_paths = list(self._notebooks)
             random.shuffle(self._notebook_paths)
         return self._notebook_paths.pop()
 
