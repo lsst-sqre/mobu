@@ -443,7 +443,7 @@ async def test_refresh(
     cwd = Path.cwd()
 
     # Set up a notebook repository.
-    source_path = TEST_DATA_DIR / "notebooks"
+    source_path = TEST_DATA_DIR / "lotsa_notebooks"
     repo_path = tmp_path / "notebooks"
 
     shutil.copytree(str(source_path), str(repo_path))
@@ -485,8 +485,8 @@ async def test_refresh(
                 client, f"bot-mobu-testuser{i + 1}", msg="This is a test"
             )
 
-        # Change the notebook and git commit it
-        notebook = repo_path / "test-notebook.ipynb"
+        # Change a notebook and git commit it
+        notebook = repo_path / "test-notebook1.ipynb"
         contents = notebook.read_text()
         new_contents = contents.replace("This is a test", "This is a NEW test")
         notebook.write_text(new_contents)
@@ -494,9 +494,6 @@ async def test_refresh(
         git = Git(repo=repo_path)
         await git.add(str(notebook))
         await git.commit("-m", "Updating notebook")
-
-        jupyter.expected_session_name = "test-notebook.ipynb"
-        jupyter.expected_session_type = "notebook"
 
         # Refresh the flock
         r = await client.post("/mobu/flocks/test/refresh")
@@ -513,6 +510,7 @@ async def test_refresh(
             assert await wait_for_log_message(
                 client, f"bot-mobu-testuser{i + 1}", msg="This is a NEW test"
             )
+
     finally:
         os.chdir(cwd)
 
