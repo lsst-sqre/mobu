@@ -119,9 +119,13 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
                 url=self.options.repo_url,
                 ref=self.options.repo_ref,
                 repo_hash=self._repo_hash,
+                username=self.user.username,
             )
         self._repo_path = None
         self._repo_hash = None
+        self._notebook = None
+        self._notebook_paths = None
+        self._running_code = None
 
     async def initialize(self) -> None:
         """Prepare to run the business.
@@ -131,7 +135,9 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
         * Filter the notebooks
         """
         info = await self._repo_manager.clone(
-            url=self.options.repo_url, ref=self.options.repo_ref
+            url=self.options.repo_url,
+            ref=self.options.repo_ref,
+            username=self.user.username,
         )
         self._repo_path = info.path
         self._repo_hash = info.hash
