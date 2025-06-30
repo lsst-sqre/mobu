@@ -71,7 +71,7 @@ class RepoManager:
         # This is just for testing
         self._cloned: list[_Key] = []
 
-    async def clone(self, url: str, ref: str) -> ClonedRepoInfo:
+    async def clone(self, url: str, ref: str, username: str) -> ClonedRepoInfo:
         """Clone a git repo or return cached info by url + ref.
 
         Increase the reference count for the url + ref + hash combo.
@@ -82,21 +82,30 @@ class RepoManager:
             The URL of the repo to clone
         ref
             The git ref to checkout after the repo is cloned
+        username
+            The user trying to clone the repo
         """
-        logger = self._logger.bind(url=url, ref=ref)
+        logger = self._logger.bind(
+            url=url, ref=ref, username=username, operation="clone_repo"
+        )
         key = _Key(url=url, ref=ref)
 
         async with self._lock:
             # If the notebook repo has already been cloned, return the info
             if info := self._cache.get(key):
-                logger.info("Notebook repo cached")
                 reference = _Reference(url=url, ref=ref, hash=info.hash)
                 count = self._references[reference]
                 count.count += 1
+                logger.info(
+                    "Returning repo from cache",
+                    cached_hash=info.hash,
+                    cached_path=info.path,
+                    reference_count=count.count,
+                )
                 return info
 
             # If not, clone the repo
-            logger.info("Cloning notebook repo")
+            logger.info("Cloning repo")
             repo_dir = TemporaryDirectory(delete=False, dir=self._dir.name)
             with capturing_start_span(op="clone_repo"):
                 git = Git(logger=self._logger)
@@ -123,9 +132,16 @@ class RepoManager:
             self._references[reference] = _ReferenceCount(
                 count=1, dir=info.dir
             )
+            logger.info(
+                "Cloned and cached repo",
+                cached_path=info.path,
+                cached_hash=info.hash,
+            )
             return info
 
-    async def invalidate(self, url: str, ref: str, repo_hash: str) -> None:
+    async def invalidate(
+        self, url: str, ref: str, repo_hash: str, username: str
+    ) -> None:
         """Invalidate a git repo in the cache by url + ref.
 
         Decrease the url + ref + hash reference count. If it drops to zero,
@@ -139,8 +155,16 @@ class RepoManager:
             The git ref to checkout after the repo is cloned
         hash
             The hash of the cloned repo to remove
+        username
+            The user trying to remove the repo
         """
-        logger = self._logger.bind(url=url, ref=ref, hash=repo_hash)
+        logger = self._logger.bind(
+            url=url,
+            ref=ref,
+            hash=repo_hash,
+            username=username,
+            operation="invalidate_repo",
+        )
         key = _Key(url=url, ref=ref)
         reference = _Reference(url=url, ref=ref, hash=repo_hash)
 
@@ -150,21 +174,40 @@ class RepoManager:
         async with self._lock:
             info = self._cache.get(key)
             if info:
-                logger.info("Invalidating repo")
-
                 # Note that this could force an unnecessary clone if any monkey
                 # is calling invalidate in its shutdown method. This would
                 # force reclone for other monkeys that are using the same repo
                 # at the same hash.
-                del self._cache[key]
+                if info.hash == repo_hash:
+                    del self._cache[key]
+                    logger.info(
+                        "Invalidated repo",
+                        cached_dir=info.dir,
+                        cached_path=info.path,
+                        cached_hash=info.hash,
+                    )
+                else:
+                    logger.info(
+                        "Not invalidating repo",
+                        cached_dir=info.dir,
+                        cached_path=info.path,
+                        cached_hash=info.hash,
+                    )
 
             count = self._references.get(reference)
             if count:
                 count.count -= 1
+                logger.info(
+                    "Decremented reference count",
+                    dir=count.dir,
+                    refernece_count=count.count,
+                )
                 if count.count == 0:
                     logger.info(f"0 references, deleting: {count.dir.name}")
                     count.dir.cleanup()
                     del self._references[reference]
+            else:
+                logger.info("No references to repo")
 
     def close(self) -> None:
         """Delete all cloned repos and containing directory."""

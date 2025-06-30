@@ -31,7 +31,8 @@ async def test_cache(
 
     # Clone the same repo and ref a bunch of times concurrently
     clone_tasks = [
-        manager.clone(url=str(repo_path), ref=repo_ref) for _ in range(100)
+        manager.clone(url=str(repo_path), ref=repo_ref, username="whatever")
+        for _ in range(100)
     ]
     infos = await gather(*clone_tasks)
 
@@ -59,7 +60,9 @@ async def test_cache(
     await git.commit("-m", "Updating notebook")
 
     # The repo should be cached (this makes the reference count 101)
-    cached_info = await manager.clone(url=str(repo_path), ref=repo_ref)
+    cached_info = await manager.clone(
+        url=str(repo_path), ref=repo_ref, username="whatever"
+    )
     assert cached_info == original_info
     contents = (cached_info.path / "test-notebook.ipynb").read_text()
     assert "This is a test" in contents
@@ -69,15 +72,35 @@ async def test_cache(
     # the repo again, but it should not delete the directory of the old
     # checkout because there are still 100 references to it.
     await manager.invalidate(
-        url=str(repo_path), ref=repo_ref, repo_hash=original_info.hash
+        url=str(repo_path),
+        ref=repo_ref,
+        repo_hash=original_info.hash,
+        username="whatever",
+    )
+
+    # Clone it again and make sure we actually cloned
+    await manager.clone(url=str(repo_path), ref=repo_ref, username="whatever")
+    assert len(manager._cloned) == 1
+
+    # Invalidate the original hash. This shouldn't invalidate the cache since
+    # we're trying to invalidate an old hash, so we shouldn't actually clone
+    # the repo again on the following clone calls
+    await manager.invalidate(
+        url=str(repo_path),
+        ref=repo_ref,
+        repo_hash=original_info.hash,
+        username="whatever",
     )
 
     # Clone it again and verify stuff
     clone_tasks = [
-        manager.clone(url=str(repo_path), ref=repo_ref) for _ in range(100)
+        manager.clone(url=str(repo_path), ref=repo_ref, username="whatever")
+        for _ in range(100)
     ]
     infos = await gather(*clone_tasks)
     assert len(set(infos)) == 1
+
+    # We should clone once even after we invalidated the old hash again
     assert len(manager._cloned) == 1
     updated_info = infos[0]
 
@@ -95,7 +118,10 @@ async def test_cache(
     # invalidate the other references
     remove_tasks = [
         manager.invalidate(
-            url=str(repo_path), ref=repo_ref, repo_hash=original_info.hash
+            url=str(repo_path),
+            ref=repo_ref,
+            repo_hash=original_info.hash,
+            username="whatever",
         )
         for _ in range(100)
     ]
