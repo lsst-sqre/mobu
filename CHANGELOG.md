@@ -6,6 +6,14 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-15.3.1'></a>
+## 15.3.1 (2025-06-30)
+
+### Bug fixes
+
+- Notebook cache now only re-clones once after invalidation. Previously, it could get into a re-clone loop.
+- GitHub refresh doesn't break now for flocks with multiple monkeys running repos with multiple notebooks.
+
 <a id='changelog-15.3.0'></a>
 ## 15.3.0 (2025-06-26)
 
