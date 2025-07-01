@@ -72,15 +72,13 @@ async def test_run(
 
 @pytest.mark.asyncio
 async def test_fail(
-    client: AsyncClient, respx_mock: respx.Router, events: Events
+    client: AsyncClient,
+    respx_mock: respx.Router,
+    events: Events,
+    gitlfs_fail_mock: None,
 ) -> None:
     mock_gafaelfawr(respx_mock)
-
-    # Because we are not mocking the LFS calls, this will fail because there
-    # is no Git LFS provider to connect to.
-
     r = await client.put("/mobu/flocks", json=flock_message)
-
     assert r.status_code == 201
 
     # Wait until we've finished at least one loop; check the results.

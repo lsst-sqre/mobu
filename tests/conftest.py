@@ -36,6 +36,7 @@ from mobu import main
 from mobu.dependencies.config import config_dependency
 from mobu.dependencies.context import context_dependency
 from mobu.events import Events
+from mobu.exceptions import SubprocessError
 from mobu.sentry import before_send, send_all_error_transactions
 from mobu.services.business.gitlfs import GitLFSBusiness
 from mobu.services.business.nublado import _GET_IMAGE, _GET_NODE
@@ -261,6 +262,29 @@ def slack(
     monkeypatch.setenv("MOBU_ALERT_HOOK", alert_hook)
     config_dependency.set_path(config_path("base"))
     return mock_slack_webhook(alert_hook, respx_mock)
+
+
+@pytest.fixture
+def gitlfs_fail_mock() -> Iterator[None]:
+    with patch.object(
+        GitLFSBusiness,
+        "_install_git_lfs",
+        side_effect=uninstall_git_lfs,
+        autospec=True,
+    ):
+        with patch.object(
+            GitLFSBusiness,
+            "_check_uuid_pointer",
+            side_effect=verify_uuid_contents,
+            autospec=True,
+        ):
+            with patch.object(
+                GitLFSBusiness,
+                "_add_git_lfs_data",
+                side_effect=SubprocessError("No git-lfs"),
+                autospec=True,
+            ):
+                yield None
 
 
 @pytest.fixture
