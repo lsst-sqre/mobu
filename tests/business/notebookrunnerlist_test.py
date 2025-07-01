@@ -69,7 +69,10 @@ async def test_run_all_notebooks(
                                     # This shouldn't run because the dir is
                                     # excluded in the in-repo-config file,
                                     # which takes precedence
-                                    "some-dir/test-other-notebook-has-services.ipynb",
+                                    (
+                                        "some-dir/test-other-notebook-has"
+                                        "-services.ipynb"
+                                    ),
                                 ],
                             }
                         ],
@@ -96,6 +99,7 @@ async def test_run_all_notebooks(
                 "scopes": ["exec:notebook"],
                 "token": ANY,
                 "username": "bot-mobu-testuser1",
+                "groups": [],
             },
         }
     finally:

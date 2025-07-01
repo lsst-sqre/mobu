@@ -267,6 +267,11 @@ class Flock:
                 gid = spec.gid_start + i - 1
             else:
                 gid = None
-            user = User(username=username, uidnumber=uid, gidnumber=gid)
+            user = User(
+                username=username,
+                uidnumber=uid,
+                gidnumber=gid,
+                groups=spec.groups,
+            )
             users.append(user)
         return users

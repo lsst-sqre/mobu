@@ -13,6 +13,7 @@ from httpx import Request, Response
 from safir.datetime import current_datetime
 
 from mobu.dependencies.config import config_dependency
+from mobu.models.user import Group
 
 __all__ = ["make_gafaelfawr_token", "mock_gafaelfawr"]
 
@@ -41,6 +42,7 @@ def mock_gafaelfawr(
     *,
     any_uid: bool = False,
     scopes: list[str] | None = None,
+    groups: list[Group] | None = None,
 ) -> None:
     """Mock out the call to Gafaelfawr to create a user token.
 
@@ -50,6 +52,7 @@ def mock_gafaelfawr(
     config = config_dependency.config
     scopes = scopes or ["exec:notebook"]
     admin_token = config.gafaelfawr_token
+    groups_json = [g.model_dump(mode="json") for g in groups or []]
     assert admin_token
     assert admin_token.startswith("gt-")
 
@@ -61,6 +64,7 @@ def mock_gafaelfawr(
             "scopes": scopes,
             "expires": ANY,
             "name": "Mobu Test User",
+            "groups": groups_json,
         }
         if uid:
             expected["uid"] = uid

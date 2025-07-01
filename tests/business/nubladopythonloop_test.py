@@ -22,6 +22,7 @@ from safir.testing.slack import MockSlackWebhook
 
 from mobu.dependencies.config import config_dependency
 from mobu.events import Events
+from mobu.models.user import Group
 
 from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
@@ -75,6 +76,7 @@ async def test_run(
             "token": ANY,
             "uidnumber": 1000,
             "gidnumber": 1000,
+            "groups": [],
             "username": "bot-mobu-testuser1",
         },
     }
@@ -903,3 +905,59 @@ async def test_ansi_error(
     assert sentry_transaction["transaction"] == (
         "NubladoPythonLoop - Execute Python"
     )
+
+
+@pytest.mark.asyncio
+async def test_user_spec_groups(
+    client: AsyncClient,
+    jupyter: MockJupyter,
+    respx_mock: respx.Router,
+    events: Events,
+) -> None:
+    mock_gafaelfawr(
+        respx_mock,
+        username="bot-mobu-testuser1",
+        uid=1000,
+        gid=1000,
+        groups=[Group(name="g_users", id=2000)],
+    )
+
+    r = await client.put(
+        "/mobu/flocks",
+        json={
+            "name": "test",
+            "count": 1,
+            "user_spec": {
+                "username_prefix": "bot-mobu-testuser",
+                "uid_start": 1000,
+                "groups": [{"name": "g_users", "id": 2000}],
+            },
+            "scopes": ["exec:notebook"],
+            "business": {
+                "type": "NubladoPythonLoop",
+                "options": {"spawn_settle_time": 0, "max_executions": 3},
+            },
+        },
+    )
+    assert r.status_code == 201
+
+    # Wait until we've finished one loop.  Make sure nothing fails.
+    data = await wait_for_business(client, "bot-mobu-testuser1")
+    assert data == {
+        "name": "bot-mobu-testuser1",
+        "business": {
+            "failure_count": 0,
+            "name": "NubladoPythonLoop",
+            "refreshing": False,
+            "success_count": 1,
+        },
+        "state": "RUNNING",
+        "user": {
+            "scopes": ["exec:notebook"],
+            "token": ANY,
+            "uidnumber": 1000,
+            "gidnumber": 1000,
+            "groups": [{"name": "g_users", "id": 2000}],
+            "username": "bot-mobu-testuser1",
+        },
+    }

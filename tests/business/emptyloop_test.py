@@ -54,6 +54,7 @@ async def test_run(
             "scopes": ["exec:notebook"],
             "token": ANY,
             "username": "bot-mobu-testuser1",
+            "groups": [],
         },
     }
 

@@ -7,9 +7,28 @@ from rubin.nublado.client.models import User as ClientUser
 
 __all__ = [
     "AuthenticatedUser",
+    "Group",
     "User",
     "UserSpec",
 ]
+
+
+class Group(BaseModel):
+    """Configuration for the group memberships of a user."""
+
+    name: str = Field(
+        ...,
+        title="Name of the group",
+        examples=["g_special_users"],
+        min_length=1,
+        pattern=r"^g_",
+    )
+
+    id: int = Field(
+        ...,
+        title="Numeric GID of the group",
+        examples=[123181],
+    )
 
 
 class User(BaseModel):
@@ -45,6 +64,12 @@ class User(BaseModel):
         examples=[60001],
     )
 
+    groups: list[Group] = Field(
+        [],
+        title="Groups",
+        description="Groups of which the user is a member",
+    )
+
 
 class UserSpec(BaseModel):
     """Configuration to generate a set of users."""
@@ -78,6 +103,12 @@ class UserSpec(BaseModel):
             " be configured)."
         ),
         examples=[60000],
+    )
+
+    groups: list[Group] = Field(
+        [],
+        title="Groups",
+        description="Groups of which each user is a member",
     )
 
 

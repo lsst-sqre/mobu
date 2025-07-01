@@ -26,6 +26,7 @@ async def assert_users(client: AsyncClient, users: list[int]) -> None:
                 "token": ANY,
                 "uidnumber": 1000 + i - 1,
                 "gidnumber": 2000 + i - 1,
+                "groups": [],
                 "username": f"bot-mobu-testuser{i:02d}",
             },
         }
