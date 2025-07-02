@@ -6,6 +6,17 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-15.4.0'></a>
+## 15.4.0 (2025-07-02)
+
+### New features
+
+- Support setting supplemental groups for users, allowing mobu to test services that use group membership for access control.
+
+### Other changes
+
+- Use [uv](https://github.com/astral-sh/uv) to maintain frozen dependencies and set up a development environment.
+
 <a id='changelog-15.3.1'></a>
 ## 15.3.1 (2025-06-30)
 
