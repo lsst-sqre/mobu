@@ -25,9 +25,5 @@ apt-get update
 apt-get -y upgrade
 
 # Install dependencies required at runtime. git is used to check out notebook
-# repositories.  git-lfs is required to check the Git LFS service.
+# repositories. git-lfs is required to check the Git LFS service.
 apt-get -y install --no-install-recommends git git-lfs
-
-# Delete cached files we don't need anymore.
-apt-get clean
-rm -rf /var/lib/apt/lists/*
