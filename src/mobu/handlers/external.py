@@ -55,10 +55,7 @@ class FormattedJSONResponse(JSONResponse):
 async def get_index(
     config: Annotated[Config, Depends(config_dependency)],
 ) -> Index:
-    metadata = get_metadata(
-        package_name="mobu",
-        application_name=config.name,
-    )
+    metadata = get_metadata(package_name="mobu", application_name=config.name)
     return Index(metadata=metadata)
 
 

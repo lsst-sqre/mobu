@@ -2,19 +2,19 @@
 # https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
 name = "mobu"
 description = "Simulate user load for Science Platform testing"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 readme = "README.md"
 keywords = ["rubin", "lsst"]
 # https://pypi.org/classifiers/
 classifiers = [
     "Development Status :: 5 - Production/Stable",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.13",
-    "Intended Audience :: Developers",
     "Natural Language :: English",
     "Operating System :: POSIX",
+    "Private :: Do Not Upload",
     "Typing :: Typed",
 ]
 requires-python = ">=3.13"
@@ -22,19 +22,18 @@ dependencies = [
     "aiojobs>=1.3",
     "click>=8.1.6",
     "fastapi>=0.100",
-    "gidgethub",
+    "gidgethub>=5.4",
     "httpx>=0.27",
-    "httpx-sse",
-    "jinja2",
-    "pydantic>=2",
-    "pydantic-settings>=2.6.1",
+    "jinja2>=3.1",
+    "pydantic>=2.11",
+    "pydantic-settings>=2.8",
     "pyvo<1.6",
-    "pyyaml",
+    "pyyaml>=6",
     "rubin-nublado-client>=8.7.0",
     "safir>=10.0.0",
-    "sentry-sdk",
-    "shortuuid",
-    "structlog",
+    "sentry-sdk>=2.32",
+    "shortuuid>=1",
+    "structlog>=25",
     "uvicorn[standard]>=0.34",
 ]
 dynamic = ["version"]
