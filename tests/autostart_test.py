@@ -48,6 +48,7 @@ async def test_autostart(client: AsyncClient) -> None:
                 "uidnumber": 1000 + i - 1,
                 "gidnumber": 2000 + i - 1,
                 "username": f"bot-mobu-testuser{i:02d}",
+                "groups": [],
             },
         }
         for i in range(1, 11)
@@ -119,6 +120,7 @@ async def test_autostart(client: AsyncClient) -> None:
                     "username": "bot-mobu-python",
                     "uidnumber": 60000,
                     "gidnumber": 60000,
+                    "groups": [],
                 },
             },
             {
@@ -140,6 +142,7 @@ async def test_autostart(client: AsyncClient) -> None:
                     "username": "bot-mobu-otherpython",
                     "uidnumber": 70000,
                     "gidnumber": 70000,
+                    "groups": [],
                 },
             },
         ],
@@ -170,6 +173,7 @@ async def test_batched_autostart(client: AsyncClient) -> None:
                 "token": ANY,
                 "uidnumber": 1000 + i - 1,
                 "gidnumber": 2000 + i - 1,
+                "groups": [],
                 "username": f"bot-mobu-testuser{i:02d}",
             },
         }
@@ -242,6 +246,7 @@ async def test_batched_autostart(client: AsyncClient) -> None:
                     "username": "bot-mobu-python",
                     "uidnumber": 60000,
                     "gidnumber": 60000,
+                    "groups": [],
                 },
             },
             {
@@ -263,6 +268,7 @@ async def test_batched_autostart(client: AsyncClient) -> None:
                     "username": "bot-mobu-otherpython",
                     "uidnumber": 70000,
                     "gidnumber": 70000,
+                    "groups": [],
                 },
             },
         ],

@@ -13,7 +13,7 @@ from structlog.stdlib import BoundLogger
 from ..constants import TOKEN_LIFETIME, USERNAME_REGEX
 from ..dependencies.config import config_dependency
 from ..exceptions import GafaelfawrParseError, GafaelfawrWebError
-from ..models.user import AuthenticatedUser, User
+from ..models.user import AuthenticatedUser, Group, User
 
 __all__ = ["GafaelfawrStorage"]
 
@@ -48,6 +48,7 @@ class _AdminTokenRequest(BaseModel):
     name: str | None = Field(None, min_length=1)
     uid: int | None = Field(None, ge=1)
     gid: int | None = Field(None, ge=1)
+    groups: list[Group] = Field([])
 
 
 class _NewToken(BaseModel):
@@ -131,6 +132,7 @@ class GafaelfawrStorage:
             name="Mobu Test User",
             uid=user.uidnumber,
             gid=user.gidnumber or user.uidnumber,
+            groups=user.groups,
         )
         try:
             r = await self._client.post(
@@ -149,6 +151,7 @@ class GafaelfawrStorage:
                 gidnumber=request.gid,
                 token=token.token,
                 scopes=scopes,
+                groups=request.groups,
             )
         except HTTPError as e:
             raise GafaelfawrWebError.from_exception(e, user.username) from e

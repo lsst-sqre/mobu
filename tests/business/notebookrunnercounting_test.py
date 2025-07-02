@@ -92,6 +92,7 @@ async def test_run(
                 "scopes": ["exec:notebook"],
                 "token": ANY,
                 "username": "bot-mobu-testuser1",
+                "groups": [],
             },
         }
     finally:
@@ -205,6 +206,7 @@ async def test_run_debug_log(
                 "scopes": ["exec:notebook"],
                 "token": ANY,
                 "username": "bot-mobu-testuser1",
+                "groups": [],
             },
         }
     finally:
@@ -281,6 +283,7 @@ async def test_run_recursive(
                 "scopes": ["exec:notebook"],
                 "token": ANY,
                 "username": "bot-mobu-testuser1",
+                "groups": [],
             },
         }
     finally:
@@ -411,6 +414,7 @@ async def test_run_required_services(
                 "scopes": ["exec:notebook"],
                 "token": ANY,
                 "username": "bot-mobu-testuser1",
+                "groups": [],
             },
         }
     finally:
@@ -578,6 +582,7 @@ async def test_exclude_dirs(
                 "scopes": ["exec:notebook"],
                 "token": ANY,
                 "username": "bot-mobu-testuser1",
+                "groups": [],
             },
         }
     finally:
@@ -677,6 +682,7 @@ async def test_invalid_repo_config(
                 "scopes": ["exec:notebook"],
                 "token": ANY,
                 "username": "bot-mobu-testuser1",
+                "groups": [],
             },
         }
     finally:
@@ -782,6 +788,7 @@ async def test_alert(
             "scopes": ["exec:notebook"],
             "token": ANY,
             "username": "bot-mobu-testuser1",
+            "groups": [],
         },
     }
     # Confirm Sentry errors
