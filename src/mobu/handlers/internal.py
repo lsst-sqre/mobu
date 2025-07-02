@@ -35,7 +35,4 @@ __all__ = ["internal_router"]
 async def get_index(
     config: Annotated[Config, Depends(config_dependency)],
 ) -> Metadata:
-    return get_metadata(
-        package_name="mobu",
-        application_name=config.name,
-    )
+    return get_metadata(package_name="mobu", application_name=config.name)
