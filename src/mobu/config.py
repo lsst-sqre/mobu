@@ -29,7 +29,7 @@ class GitHubCiAppConfig(BaseSettings):
     """Configuration for GitHub CI app functionality if it is enabled."""
 
     model_config = SettingsConfigDict(
-        alias_generator=to_camel, extra="forbid", populate_by_name=True
+        alias_generator=to_camel, extra="forbid", validate_by_name=True
     )
 
     id: int = Field(
@@ -116,7 +116,7 @@ class GitHubRefreshAppConfig(BaseSettings):
     """Configuration for GitHub refresh app functionality."""
 
     model_config = SettingsConfigDict(
-        alias_generator=to_camel, extra="forbid", populate_by_name=True
+        alias_generator=to_camel, extra="forbid", validate_by_name=True
     )
 
     webhook_secret: str = Field(
@@ -145,7 +145,7 @@ class Config(BaseSettings):
     """Configuration for mobu."""
 
     model_config = SettingsConfigDict(
-        alias_generator=to_camel, extra="forbid", populate_by_name=True
+        alias_generator=to_camel, extra="forbid", validate_by_name=True
     )
 
     slack_alerts: bool = Field(
