@@ -1,11 +1,10 @@
 name: CI
 
 env:
-  # Current supported Python version. For applications, there is generally no
-  # reason to support multiple Python versions, so all actions are run with
-  # this version. Quote the version to avoid interpretation as a floating
-  # point number.
-  PYTHON_VERSION: "3.13"
+  # Current supported uv version. The uv documentation recommends pinning
+  # this. The version should match the version used in .pre-commit-config.yaml
+  # and frozen in uv.lock. It is updated by make update-deps.
+  UV_VERSION: "0.7.19"
 
 "on":
   merge_group: {}
@@ -25,21 +24,6 @@ env:
       - "*"
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
-
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -47,50 +31,75 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run tox
-        uses: lsst-sqre/run-tox@v1
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          tox-envs: "py,coverage-report,typing"
-          tox-requirements: requirements/tox.txt
+          python-version-file: ".python-version"
 
-  docs:
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Run tox
+        run: uv run --only-group=tox tox run -e lint,typing,py,coverage-report
+
+  changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      pull-requests: read
+    outputs:
+      docs: ${{ steps.filter.outputs.docs }}
+      docs-specific: ${{ steps.filter.outputs.docs-specific }}
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Filter paths
-        uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
             docs:
               - "docs/**"
               - "src/mobu/**"
-            docsSpecific:
+            docs-specific:
               - "docs/**"
 
-      - name: Install graphviz
-        if: steps.filter.outputs.docs == 'true' || github.event_name == 'workflow_dispatch'
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    needs: changes
+    if: ${{ needs.changes.outputs.docs == 'true' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+
+      - name: Install extra packages
         run: |
           sudo apt-get update
           sudo apt-get install -y graphviz
-        shell: bash
 
-      - name: Build docs
-        if: steps.filter.outputs.docs == 'true' || github.event_name == 'workflow_dispatch'
-        uses: lsst-sqre/run-tox@v1
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          tox-envs: docs
-          tox-requirements: requirements/tox.txt
+      - name: Run tox
+        run: uv run --only-group=tox tox run -e docs
 
       # Upload docs:
       # - on pushes to main if *any* documentation content might have changed
-      # - on workflow dispatches if any documentation content might have changed
+      # - on workflow dispatches
       # - on pushes to tickets/ branches if docs/ directory content changed
       - name: Upload to LSST the Docs
         uses: lsst-sqre/ltd-upload@v1
@@ -100,47 +109,44 @@ jobs:
           username: ${{ secrets.LTD_USERNAME }}
           password: ${{ secrets.LTD_PASSWORD }}
         if: >-
-          (github.event_name == 'push' && github.ref_name == 'main' && steps.filter.outputs.docs == 'true')
-          || (github.event_name == 'merge_group' && steps.filter.outputs.docs == 'true')
+          (github.event_name == 'push' && github.ref_name == 'main')
+          || (github.event_name == 'merge_group')
           || (github.event_name == 'workflow_dispatch')
-          || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'tickets/') && steps.filter.outputs.docsSpecific == 'true')
+          || (github.event_name == 'pull_request'
+              && startsWith(github.head_ref, 'tickets/')
+              && steps.filter.outputs.docs-specific == 'true')
 
   linkcheck:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    needs: changes
+    if: ${{ needs.changes.outputs.docs == 'true' }}
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Filter paths
-        uses: dorny/paths-filter@v3
-        id: filter
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          filters: |
-            docs:
-              - "docs/**"
-              - "src/mobu/**"
-            docsSpecific:
-              - "docs/**"
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
 
       - name: Install extra packages
-        if: steps.filter.outputs.docs == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           sudo apt-get update
           sudo apt-get install -y graphviz
-        shell: bash
 
-      - name: Check links
-        if: steps.filter.outputs.docs == 'true' || github.event_name == 'workflow_dispatch'
-        uses: lsst-sqre/run-tox@v1
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          tox-envs: docs-linkcheck
-          tox-requirements: "requirements/tox.txt"
+      - name: Run tox
+        run: uv run --only-group=tox tox run -e docs-linkcheck
 
   build:
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    needs: [test]
     timeout-minutes: 10
 
     # Only do Docker builds of tagged releases and pull requests from ticket
