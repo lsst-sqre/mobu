@@ -6,9 +6,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Self
-from urllib.parse import urlencode
 
-from gidgethub import HTTPException
 from gidgethub.httpx import GitHubAPI
 from pydantic import (
     AwareDatetime,
@@ -19,8 +17,6 @@ from pydantic import (
 )
 from safir.github import GitHubAppClientFactory
 from safir.github.models import GitHubCheckRunConclusion, GitHubCheckRunStatus
-
-from ..exceptions import GitHubFileNotFoundError
 
 __all__ = ["CheckRun", "GitHubStorage"]
 
@@ -164,33 +160,6 @@ class GitHubStorage:
                 _FileStatus.added,
             )
         ]
-
-    async def get_file_content(self, path: Path) -> str:
-        """Get the contents of a file in a GitHub repo.
-
-        Raises ``GitHubFileNotFoundError`` if the file doesn't exist.
-
-        Parameters
-        ----------
-        path
-            Path of the file relative to the repo root.
-
-        Returns
-        -------
-        str
-            The contents of the file
-        """
-        qs = urlencode({"ref": self.ref})
-        api_path = f"{self._api_path}/contents/{path}?{qs}"
-        try:
-            res = await self.client.getitem(
-                api_path, url_vars={"ref": self.ref}
-            )
-        except HTTPException as exc:
-            if exc.status_code == 404:
-                raise GitHubFileNotFoundError from None
-        file = _FileContentsResponse.model_validate(res)
-        return file.content
 
     async def create_check_run(
         self,
