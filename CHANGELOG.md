@@ -6,6 +6,23 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-16.0.0'></a>
+## 16.0.0 (2025-07-10)
+
+### Backwards-incompatible changes
+
+- The GitHub Mobu CI app now listens to `pull_request` events instead of `check_suite` and `check_run` events. When this version of mobu is deployed to an environment, the app permissions and subscribed events  in the `Permission & Events` tab of the Developer Settings for the app need to be modified.
+
+  The permissions in the `Repository permissions` accordian section need to be changed:
+  - In the `Pull requests` row, change the `Access` drop-down to `Read-only`
+
+  The events in `Subscribe to events` section of the `Permissions & Events` tab have to be changed:
+  - Uncheck the `Check run` box
+  - Uncheck the `Check suite` box
+  - Check the `Pull request` box
+
+  This fixes a bug where a Mobu CI job would never run when a PR was opened.
+
 <a id='changelog-15.4.0'></a>
 ## 15.4.0 (2025-07-02)
 
