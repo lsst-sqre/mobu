@@ -6,10 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from gidgethub import routing
 from gidgethub.sansio import Event
-from safir.github.webhooks import (
-    GitHubCheckRunEventModel,
-    GitHubCheckSuiteEventModel,
-)
+from safir.github.webhooks import GitHubPullRequestEventModel
 from safir.slack.webhook import SlackRouteErrorHandler
 
 from ..config import Config
@@ -80,88 +77,45 @@ async def post_webhook(
     )
 
 
-@gidgethub_router.register("check_suite", action="requested")
-async def handle_check_suite_requested(
+@gidgethub_router.register("pull_request", action="opened")
+async def handle_pull_request_opened(
     event: Event, context: RequestContext, ci_manager: CiManager
 ) -> None:
-    """Start a run for any check suite request with an associated PR."""
+    """Start a run when a PR is opened."""
     context.rebind_logger(
-        github_webhook_event_type="check_suite",
-        github_webhook_action="requested",
+        github_webhook_event_type="pull_request",
+        github_webhook_action="opened",
     )
-    em = GitHubCheckSuiteEventModel.model_validate(event.data)
-    if not bool(em.check_suite.pull_requests):
-        context.logger.debug("Ignoring; no associated pull requests")
-        return
-
-    # This check could be involved in multiple PRs, but we're going to assume
-    # that is a rare case and just pick the first one.
-    pull_number = em.check_suite.pull_requests[0].number
+    em = GitHubPullRequestEventModel.model_validate(event.data)
 
     await ci_manager.enqueue(
         installation_id=em.installation.id,
         repo_name=em.repository.name,
         repo_owner=em.repository.owner.login,
-        ref=em.check_suite.head_sha,
-        pull_number=pull_number,
+        ref=em.pull_request.head.sha,
+        pull_number=em.number,
     )
 
     context.logger.info("github ci webhook handled")
 
 
-@gidgethub_router.register("check_suite", action="rerequested")
-async def handle_check_suite_rerequested(
+@gidgethub_router.register("pull_request", action="synchronize")
+async def handle_pull_request_synchronize(
     event: Event, context: RequestContext, ci_manager: CiManager
 ) -> None:
-    """Start a run for any check suite re-request with an associated PR."""
+    """Start a run for any change to the head branch of a PR."""
     context.rebind_logger(
-        github_webhook_event_type="check_suite",
-        github_webhook_action="rerequested",
+        github_webhook_event_type="pull_request",
+        github_webhook_action="synchronize",
     )
-    em = GitHubCheckSuiteEventModel.model_validate(event.data)
-    if not bool(em.check_suite.pull_requests):
-        context.logger.debug("Ignoring; no associated pull requests")
-        return
-
-    # This check could be involved in multiple PRs, but we're going to assume
-    # that is a rare case and just pick the first one.
-    pull_number = em.check_suite.pull_requests[0].number
+    em = GitHubPullRequestEventModel.model_validate(event.data)
 
     await ci_manager.enqueue(
         installation_id=em.installation.id,
         repo_name=em.repository.name,
         repo_owner=em.repository.owner.login,
-        ref=em.check_suite.head_sha,
-        pull_number=pull_number,
-    )
-
-    context.logger.info("github ci webhook handled")
-
-
-@gidgethub_router.register("check_run", action="rerequested")
-async def handle_check_run_rerequested(
-    event: Event, context: RequestContext, ci_manager: CiManager
-) -> None:
-    """Start a run for any check run re-request with an associated PR."""
-    context.rebind_logger(
-        github_webhook_event_type="check_run",
-        github_webhook_action="rerequested",
-    )
-    em = GitHubCheckRunEventModel.model_validate(event.data)
-    if not bool(em.check_run.pull_requests):
-        context.logger.debug("Ignoring; no associated pull requests")
-        return
-
-    # This check could be involved in multiple PRs, but we're going to assume
-    # that is a rare case and just pick the first one.
-    pull_number = em.check_run.pull_requests[0].number
-
-    await ci_manager.enqueue(
-        installation_id=em.installation.id,
-        repo_name=em.repository.name,
-        repo_owner=em.repository.owner.login,
-        ref=em.check_run.head_sha,
-        pull_number=pull_number,
+        ref=em.pull_request.head.sha,
+        pull_number=em.number,
     )
 
     context.logger.info("github ci webhook handled")
