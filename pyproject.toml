@@ -30,7 +30,7 @@ dependencies = [
     "pyvo<1.6",
     "pyyaml>=6",
     "rubin-nublado-client>=8.7.0",
-    "safir>=11.1.0",
+    "safir",
     "sentry-sdk>=2.32",
     "shortuuid>=1",
     "structlog>=25",
@@ -38,6 +38,8 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[tool.uv.sources]
+safir = { git = "https://github.com/lsst-sqre/safir", subdirectory = "safir", rev = "tickets/DM-48229/app-metrics-dont-blow-up" }
 [project.scripts]
 monkeyflocker = "monkeyflocker.cli:main"
 
