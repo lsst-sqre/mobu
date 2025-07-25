@@ -56,7 +56,7 @@ dev = [
     "anys",
     "asgi-lifespan",
     "coverage[toml]",
-    "documenteer[guide]",
+    "documenteer[guide]>=2",
     "pytest",
     "pytest-asyncio",
     "pytest-cov",

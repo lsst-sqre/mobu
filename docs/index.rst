@@ -4,7 +4,7 @@
 
    user-guide/index
    operations/index
-   development/index
+   dev/index
    api
 
 .. toctree::
@@ -39,7 +39,7 @@ mobu is on github at https://github.com/lsst-sqre/mobu.
       Learn how to add mobu to new environments and add new integrations to mobu.
 
    .. grid-item-card:: Development
-      :link: operations/index
+      :link: dev/index
       :link-type: doc
 
       Learn how to add contribute to the mobu codebase.

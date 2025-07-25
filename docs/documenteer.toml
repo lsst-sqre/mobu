@@ -1,6 +1,6 @@
 [project]
 title = "Mobu"
-copyright = "2015-2024 Association of Universities for Research in Astronomy, Inc. (AURA)"
+copyright = "2015-2025 Association of Universities for Research in Astronomy, Inc. (AURA)"
 
 [project.python]
 package = "mobu"
@@ -11,9 +11,19 @@ openapi_path = "_static/openapi.json"
 [project.openapi.generator]
 function = "mobu.main:create_openapi"
 
+[sphinx]
+rst_epilog_file = "_rst_epilog.rst"
+
 [sphinx.linkcheck]
 ignore = [
     # Authenticated
     '^https://data\.lsst\.cloud/mobu',
     '^https://github\.com/organizations/lsst-sqre/settings',
+    '^https://github\.com/.*/issues/new$',
 ]
+
+[sphinx.redirects]
+"development/github" = "dev/github"
+"development/idfdev" = "dev/idfdev"
+"development/index" = "dev/index"
+"development/sentry" = "dev/sentry"
