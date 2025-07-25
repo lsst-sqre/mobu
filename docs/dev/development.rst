@@ -135,7 +135,7 @@ The development virtualenv in :file:`.venv` will have all of these dependency gr
 A frozen version of all of these dependencies is managed by uv_ in the file :file:`uv.lock`.
 This is used to pin all dependencies so that they only change when a developer intends to update them and is prepared to run tests to ensure nothing broke.
 
-After changing any dependency, run :command:`make update-deps` to rebuild the :file:`uv.lock` file and update any JavaScript dependencies.
+After changing any dependency, run :command:`make update-deps` to rebuild the :file:`uv.lock` file.
 To also update the development virtualenv, run :command:`make update` instead.
 
 Temporary Git dependencies
