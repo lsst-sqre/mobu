@@ -38,6 +38,9 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[tool.uv.sources]
+safir = { git = "https://github.com/lsst-sqre/safir", branch = "tickets/DM-52087/disable-app-metrics-compatibility-checks", subdirectory = "safir" }
+
 [project.scripts]
 monkeyflocker = "monkeyflocker.cli:main"
 
