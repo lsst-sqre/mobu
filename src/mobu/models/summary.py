@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 from .ci_manager import CiManagerSummary
 from .flock import FlockSummary
 
+__all__ = ["CombinedSummary"]
+
 
 class CombinedSummary(BaseModel):
     """Summary of all app state."""

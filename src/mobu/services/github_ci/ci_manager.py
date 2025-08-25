@@ -21,7 +21,7 @@ from ...storage.gafaelfawr import GafaelfawrStorage
 from ...storage.github import GitHubStorage
 from .ci_notebook_job import CiNotebookJob
 
-__all__ = ["CiManager"]
+__all__ = ["CiManager", "JobLifecycle"]
 
 
 @dataclass
@@ -31,6 +31,8 @@ class CiManagerLifecycle:
 
 @dataclass
 class JobLifecycle:
+    """States that a CI job can be in."""
+
     processing: asyncio.Event = field(default_factory=asyncio.Event)
     processed: asyncio.Event = field(default_factory=asyncio.Event)
 
@@ -49,16 +51,16 @@ class CiManager:
 
     This should be a process singleton. It is responsible for:
     * Creating background workers to process GitHub CI events
-    * Ensuring they run at the appropriate level of concurrency given the
+    * Ensuring they run at the appropriate level of concurrency given the \
       number of available users
-    * Ensuring GitHub CI checks are not left in a forever-in-progress state
+    * Ensuring GitHub CI checks are not left in a forever-in-progress state \
       when mobu shuts down
 
     Parameters
     ----------
     users
-        A list of static users that are available to run jobs. Each of these
-        users will get assigned to a worker, and will process one job at a
+        A list of static users that are available to run jobs. Each of these \
+        users will get assigned to a worker, and will process one job at a \
         time.
     http_client
         Shared HTTP client.
@@ -136,7 +138,7 @@ class CiManager:
         We'd rather have false-negative GitHub checks than forever-in-progress
         checks, because:
         * There is no way to re-run in-progress checks from the GitHub UI
-        * There is no way to know for sure from the GitHub UI that a check
+        * There is no way to know for sure from the GitHub UI that a check \
           will never be concluded.
 
         A failed check can easily be re-run by any user, so this is an
@@ -152,8 +154,8 @@ class CiManager:
         4. Mobu tells GitHub that job is successful
         5. Mobu is SIGKILLed or exits cleanly
 
-        Result: GitHub check run displays success, which is corrcect.
-                An incorrect failure status will have been displayed for a
+        Result: GitHub check run displays success, which is corrcect. \
+                An incorrect failure status will have been displayed for a \
                 brief period of time.
         User action needed: None
 

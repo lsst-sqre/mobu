@@ -9,6 +9,8 @@ from ..exceptions import NotebookRepositoryError
 from ..models.business.notebookrunner import CollectionRule, NotebookMetadata
 from ..models.repo import RepoConfig
 
+__all__ = ["NotebookFinder"]
+
 
 class NotebookFinder:
     """A helper to select which notebooks to execute based on config.
@@ -75,12 +77,16 @@ class NotebookFinder:
 
         * Start with all notebooks in the repo.
         * For each collection rule, remove notebooks:
-          * Intersect rules will remove notebooks that are not in the
+
+          * Intersect rules will remove notebooks that are not in the \
             intersection of:
+
               * The current set
               * The union of the matched patterns.
-          * Exclude rules will remove notebooks from the current set that are
+
+          * Exclude rules will remove notebooks from the current set that are \
             in the union of the matched patterns.
+
         * Remove any remaining notebooks that require unavailable services.
         """
         notebooks = set(self._repo_path.glob("**/*.ipynb"))

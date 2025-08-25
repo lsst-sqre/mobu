@@ -94,7 +94,7 @@ class Factory:
 
         Returns
         -------
-        SlackWebhookClient or None
+        safir.slack.webhook.SlackWebhookClient or None
             Newly-created Slack client, or `None` if Slack alerting is not
             configured.
         """

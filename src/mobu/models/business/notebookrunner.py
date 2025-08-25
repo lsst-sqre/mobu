@@ -14,6 +14,8 @@ from ...models.business.nublado import (
 )
 
 __all__ = [
+    "CollectionRule",
+    "Filterable",
     "NotebookFilterResults",
     "NotebookMetadata",
     "NotebookRunnerData",

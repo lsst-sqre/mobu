@@ -142,7 +142,7 @@ class GitHubStorage:
 
         Returns
         -------
-        list[Path]
+        list[pathlib.Path]
             List of paths relative to the repo root.
         """
         path = f"{self._api_path}/pulls/{self._pull_number}/files"

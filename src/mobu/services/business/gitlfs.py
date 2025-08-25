@@ -19,6 +19,8 @@ from ...sentry import capturing_start_span, start_transaction
 from ...storage.git import Git
 from .base import Business
 
+__all__ = ["GitLFSBusiness"]
+
 
 class GitLFSBusiness(Business):
     """Test a Git-LFS service.

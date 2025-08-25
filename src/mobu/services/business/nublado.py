@@ -1,7 +1,5 @@
 """Base class for executing code in a Nublado notebook."""
 
-from __future__ import annotations
-
 import re
 from abc import ABCMeta, abstractmethod
 from collections.abc import AsyncGenerator
@@ -80,9 +78,9 @@ class NubladoBusiness[T: NubladoBusinessOptions](
 ):
     """Base class for business that executes Python code in a Nublado notebook.
 
-    This class modifies the core `~mobu.business.base.Business` loop by
-    providing `startup`, `execute`, and `shutdown` methods. It will log on to
-    JupyterHub, ensure no lab currently exists, create a lab, call
+    This class modifies the core `~mobu.services.business.base.Business` loop
+    by providing `startup`, `execute`, and `shutdown` methods. It will log on
+    to JupyterHub, ensure no lab currently exists, create a lab, call
     `execute_code`, and then optionally shut down the lab before starting
     another iteration.
 
@@ -146,7 +144,7 @@ class NubladoBusiness[T: NubladoBusinessOptions](
 
         Must be overridden by subclasses to use the provided lab session to
         perform whatever operations are desired inside the lab. If multiple
-        blocks of code are being executed, call `execution_idle` between each
+        blocks of code are being executed, call ``execution_idle`` between each
         one.
 
         Parameters

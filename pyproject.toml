@@ -56,7 +56,7 @@ dev = [
     "anys",
     "asgi-lifespan",
     "coverage[toml]",
-    "documenteer[guide]>=2",
+    "documenteer[guide]>=2.3.0",
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
@@ -67,6 +67,7 @@ dev = [
     "starlette",
     "websockets",
 ]
+
 lint = [
     "pre-commit",
     "pre-commit-uv",

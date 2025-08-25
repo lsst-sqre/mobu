@@ -90,7 +90,7 @@ class NubladoBusinessOptions(BusinessOptions):
         description=(
             "This has to be large enough to hold HTML and image output from"
             " executing notebook cells, even though we discard that data."
-            " Set to `null` for no limit."
+            " Set to ``null`` for no limit."
         ),
     )
 

@@ -4,6 +4,8 @@ from ..models.user import User
 from ..services.github_ci.ci_manager import CiManager
 from .context import ContextDependency
 
+__all__ = ["CiManagerDependency", "MaybeCiManagerDependency"]
+
 
 class CiManagerDependency:
     """A process-global object to manage background CI workers.

@@ -15,6 +15,8 @@ from structlog.stdlib import BoundLogger
 
 from ..exceptions import SubprocessError
 
+__all__ = ["Git", "Output"]
+
 
 @dataclass
 class Output:
@@ -59,7 +61,7 @@ class Git:
 
         We need this to make the git commands behave correctly in an
         async environment.  The reason why is a little subtle.  Most git
-        commands let you specify arbitrary paths, but not `git add`.  To
+        commands let you specify arbitrary paths, but not ``git add``.  To
         run a git add, you have to have a working tree, and that means that
         the current working directory has to be inside that working tree.
 
@@ -143,7 +145,7 @@ class Git:
         return await self._exec("git", *args, cwd=self.repo, env=env)
 
     async def init(self, *args: str) -> None:
-        """Run `git init` with arbitrary arguments.
+        """Run ``git init`` with arbitrary arguments.
 
         If self.repo is None, and this is run, it will set self.repo
         from the last argument as a side effect.  If there are no
@@ -162,7 +164,7 @@ class Git:
                 self.repo = Path(args[-1])
 
     async def add(self, *args: str) -> None:
-        """Run `git add` with arbitrary arguments.
+        """Run ``git add`` with arbitrary arguments.
 
         Parameters
         ----------
@@ -172,7 +174,7 @@ class Git:
         await self.git("add", *args)
 
     async def commit(self, *args: str) -> None:
-        """Run `git commit` with arbitrary arguments.
+        """Run ``git commit`` with arbitrary arguments.
 
         Parameters
         ----------
@@ -182,7 +184,7 @@ class Git:
         await self.git("commit", *args)
 
     async def push(self, *args: str) -> None:
-        """Run `git commit` with arbitrary arguments.
+        """Run ``git commit`` with arbitrary arguments.
 
         Parameters
         ----------
@@ -192,7 +194,7 @@ class Git:
         await self.git("push", *args)
 
     async def config(self, *args: str) -> None:
-        """Run `git config` with arbitrary arguments.
+        """Run ``git config`` with arbitrary arguments.
 
         Parameters
         ----------
@@ -202,7 +204,7 @@ class Git:
         await self.git("config", *args)
 
     async def pull(self, *args: str) -> None:
-        """Run `git pull` with arbitrary arguments.
+        """Run ``git pull`` with arbitrary arguments.
 
         Parameters
         ----------
@@ -212,7 +214,7 @@ class Git:
         await self.git("pull", *args)
 
     async def fetch(self, *args: str) -> None:
-        """Run `git fetch` with arbitrary arguments.
+        """Run ``git fetch`` with arbitrary arguments.
 
         Parameters
         ----------
@@ -222,7 +224,7 @@ class Git:
         await self.git("fetch", *args)
 
     async def branch(self, *args: str) -> None:
-        """Run `git branch` with arbitrary arguments.
+        """Run ``git branch`` with arbitrary arguments.
 
         Parameters
         ----------
@@ -232,7 +234,7 @@ class Git:
         await self.git("branch", *args)
 
     async def clone(self, *args: str) -> None:
-        """Run `git clone` with arbitrary arguments.
+        """Run ``git clone`` with arbitrary arguments.
 
         Parameters
         ----------
@@ -242,7 +244,7 @@ class Git:
         await self.git("clone", *args)
 
     async def lfs(self, *args: str) -> None:
-        """Run `git lfs` with arbitrary arguments.
+        """Run ``git lfs`` with arbitrary arguments.
 
         Parameters
         ----------
@@ -252,7 +254,7 @@ class Git:
         await self.git("lfs", *args)
 
     async def checkout(self, *args: str) -> None:
-        """Run `git checkout` with arbitrary arguments.
+        """Run ``git checkout`` with arbitrary arguments.
 
         Parameters
         ----------
@@ -262,7 +264,7 @@ class Git:
         await self.git("checkout", *args)
 
     async def reset(self, *args: str) -> None:
-        """Run `git reset` with arbitrary arguments.
+        """Run ``git reset`` with arbitrary arguments.
 
         Parameters
         ----------

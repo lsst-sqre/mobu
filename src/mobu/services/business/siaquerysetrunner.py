@@ -88,8 +88,8 @@ class SIAQuerySetRunner(Business):
 
         Returns
         -------
-        SIA2SearchParameters
-            SIA query as an SIASearchParameters object.
+        mobu.models.business.siaquerysetrunner.SIAQuery
+            SIA query as an SIAQuery object.
         """
         return self._generate_sia_params()
 

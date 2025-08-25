@@ -343,7 +343,7 @@ class Config(BaseSettings):
         Returns
         -------
         Config
-            The corresponding `Configuration` object.
+            The corresponding `Config` object.
         """
         with path.open("r") as f:
             return cls.model_validate(yaml.safe_load(f))
