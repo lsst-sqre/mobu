@@ -20,3 +20,9 @@ Here are some guides on developing and testing mobu.
    :caption: Architecture
 
    sentry
+
+.. toctree::
+   :caption: Reference
+   :maxdepth: 2
+
+   internals

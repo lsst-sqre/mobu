@@ -35,6 +35,7 @@ dependencies = [
     "shortuuid>=1",
     "structlog>=25",
     "uvicorn[standard]>=0.34",
+    "requests==2.32.4"
 ]
 dynamic = ["version"]
 
@@ -67,6 +68,7 @@ dev = [
     "starlette",
     "websockets",
 ]
+
 lint = [
     "pre-commit",
     "pre-commit-uv",
