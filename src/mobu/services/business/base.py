@@ -1,7 +1,5 @@
 """Base class for business logic for mobu."""
 
-from __future__ import annotations
-
 import asyncio
 from abc import ABCMeta, abstractmethod
 from asyncio import Queue, QueueEmpty
@@ -18,10 +16,12 @@ from ...models.business.base import BusinessData, BusinessOptions
 from ...models.user import AuthenticatedUser
 from ...sentry import capturing_start_span, start_transaction
 
-__all__ = ["Business"]
+__all__ = ["Business", "BusinessCommand", "CommonEventAttrs"]
 
 
 class CommonEventAttrs(TypedDict):
+    """Attributes on every event."""
+
     flock: str | None
     username: str
     business: str
@@ -281,8 +281,8 @@ class Business[T: BusinessOptions](metaclass=ABCMeta):
         Raises
         ------
         StopIteration
-            Raised when the iterable is exhausted, a timeout occurs, or the
-            business was signaled to stop by calling `stop`.
+             Raised when the iterable is exhausted, a timeout occurs, or the \
+             business was signaled to stop by calling `stop`.
 
         Notes
         -----

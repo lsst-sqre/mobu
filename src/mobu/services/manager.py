@@ -148,7 +148,7 @@ class FlockManager:
 
         Returns
         -------
-        list of FlockSumary
+        list of mobu.models.flock.FlockSummary
             Flock summary data sorted by flock name.
         """
         return [f.summary() for _, f in sorted(self._flocks.items())]

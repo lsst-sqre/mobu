@@ -12,7 +12,39 @@ openapi_path = "_static/openapi.json"
 function = "mobu.main:create_openapi"
 
 [sphinx]
+extensions = [
+    "sphinxcontrib.autodoc_pydantic",
+]
+python_api_dir = "dev/internals"
+nitpick_ignore = [
+    # Ignore missing cross-references for modules that don't provide
+    # intersphinx. The documentation itself should use double-quotes instead
+    # of single-quotes to not generate a reference, but automatic references
+    # are generated from the type signatures and can't be avoided.
+    #
+    # These are listed specifically rather than with regexesbecause Russ has
+    # caught documentation bugs by having Sphinx complain about a new symbol.
+    ["py:class", "pydantic.main.BaseModel"],
+    ["py:class", "pydantic_core._pydantic_core.ValidationError"],
+    ["py:class", "pydantic_settings.main.BaseSettings"],
+    ["py:class", "pydantic_settings.sources.providers.cli.CliSettingsSource"],
+    ["py:class", "aiojobs._scheduler.Scheduler"]
+]
+
+nitpick_ignore_regex = [
+    # No intersphinx
+    ['py:.*', 'dataclasses_avroschema.*'],
+    ['py:.*', 'rubin.nublado.client.*'],
+]
 rst_epilog_file = "_rst_epilog.rst"
+
+[sphinx.intersphinx.projects]
+aiohttp = "https://docs.aiohttp.org/en/stable/"
+gidgethub = "https://gidgethub.readthedocs.io/en/latest/"
+python = "https://docs.python.org/3"
+safir = "https://safir.lsst.io"
+sentry_sdk = "https://getsentry.github.io/sentry-python/"
+structlog = "https://www.structlog.org/en/stable"
 
 [sphinx.linkcheck]
 ignore = [
@@ -21,6 +53,7 @@ ignore = [
     '^https://github\.com/organizations/lsst-sqre/settings',
     '^https://github\.com/.*/issues/new$',
 ]
+
 
 [sphinx.redirects]
 "development/github" = "dev/github"

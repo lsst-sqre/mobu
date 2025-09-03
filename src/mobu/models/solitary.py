@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 from .business.business_config_type import BusinessConfigType
 from .user import User
 
+__all__ = ["SolitaryConfig", "SolitaryResult"]
+
 
 class SolitaryConfig(BaseModel):
     """Configuration for a solitary monkey.

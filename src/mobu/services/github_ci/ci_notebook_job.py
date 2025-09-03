@@ -17,6 +17,8 @@ from ...services.solitary import Solitary
 from ...storage.gafaelfawr import GafaelfawrStorage
 from ...storage.github import CheckRun, GitHubStorage
 
+__all__ = ["CiNotebookJob"]
+
 
 class CiNotebookJob:
     """Runs changed notebooks and updates a GitHub CI check.

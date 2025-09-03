@@ -59,7 +59,8 @@ class SIAQuery(BaseModel):
 
         Returns
         -------
-            dict: The query as a dictionary.
+        dict
+            The query as a dictionary.
         """
         times = [Time(str(t), format="mjd").to_datetime() for t in self.time]
         return {"pos": self.pos, "time": times}

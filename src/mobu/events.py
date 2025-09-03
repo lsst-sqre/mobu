@@ -6,6 +6,21 @@ from typing import override
 from safir.dependencies.metrics import EventMaker
 from safir.metrics import EventManager, EventPayload
 
+__all__ = [
+    "EmptyLoopExecution",
+    "EventBase",
+    "Events",
+    "GitLfsCheck",
+    "NotebookBase",
+    "NotebookCellExecution",
+    "NotebookExecution",
+    "NubladoDeleteLab",
+    "NubladoPythonExecution",
+    "NubladoSpawnLab",
+    "SIAQuery",
+    "TapQuery",
+]
+
 
 class EventBase(EventPayload):
     """Attributes on every mobu event."""

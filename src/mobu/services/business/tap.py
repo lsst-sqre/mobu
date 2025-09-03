@@ -1,7 +1,5 @@
 """Base class for executing TAP queries."""
 
-from __future__ import annotations
-
 import asyncio
 from abc import ABCMeta, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
@@ -27,9 +25,9 @@ __all__ = ["TAPBusiness"]
 class TAPBusiness[T: TAPBusinessOptions](Business[T], metaclass=ABCMeta):
     """Base class for business that executes TAP query.
 
-    This class modifies the core `~mobu.business.base.Business` loop by
-    providing `startup`, `execute`, and `shutdown` methods that know how to
-    execute TAP queries. Subclasses must override `get_next_query` to return
+    This class modifies the core `~mobu.services.business.base.Business` loop
+    by providing `startup`, `execute`, and ``shutdown`` methods that know how
+    to execute TAP queries. Subclasses must override `get_next_query` to return
     the next query they want to execute.
 
     Parameters

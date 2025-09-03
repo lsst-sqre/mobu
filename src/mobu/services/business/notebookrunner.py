@@ -4,8 +4,6 @@ This business pattern will clone a Git repo full of notebooks, iterate through
 the notebooks, and run them on the remote Nublado lab.
 """
 
-from __future__ import annotations
-
 import contextlib
 import json
 import random
@@ -47,7 +45,7 @@ from ...services.notebook_finder import NotebookFinder
 from ...services.repo import RepoManager
 from .nublado import NubladoBusiness
 
-__all__ = ["NotebookRunner"]
+__all__ = ["ExecutionIteration", "NotebookRunner"]
 
 
 class _CommonNotebookEventAttrs(CommonEventAttrs):
@@ -61,6 +59,8 @@ class _CommonNotebookEventAttrs(CommonEventAttrs):
 
 @dataclass(frozen=True)
 class ExecutionIteration:
+    """Properties of a set of notebook executions."""
+
     iterator: Iterator[int]
     size: int | str
 
