@@ -6,6 +6,7 @@ import base64
 import json
 import os
 from datetime import datetime
+from typing import Any
 from unittest.mock import ANY
 
 import respx
@@ -58,7 +59,7 @@ def mock_gafaelfawr(
 
     def handler(request: Request) -> Response:
         assert request.headers["Authorization"] == f"Bearer {admin_token}"
-        expected = {
+        expected: dict[str, Any] = {
             "username": username if username else ANY,
             "token_type": "service",
             "scopes": scopes,

@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Self
+from typing import Self, override
 
 from fastapi import status
 from pydantic import ValidationError
 from safir.fastapi import ClientRequestError
 from safir.models import ErrorLocation
-from safir.sentry import SentryException, SentryWebException
+from safir.slack.blockkit import SlackException, SlackWebException
+from safir.slack.sentry import SentryEventInfo
 
 __all__ = [
     "ComparisonError",
@@ -24,7 +25,7 @@ __all__ = [
 ]
 
 
-class GafaelfawrParseError(SentryException):
+class GafaelfawrParseError(SlackException):
     """Unable to parse the reply from Gafaelfawr.
 
     Parameters
@@ -61,14 +62,16 @@ class GafaelfawrParseError(SentryException):
     def __init__(
         self, message: str, error: str, user: str | None = None
     ) -> None:
-        super().__init__(message)
-        if user:
-            self.contexts["validation_info"] = {"error": error}
-
+        super().__init__(message, user)
         self.error = error
 
+    def to_sentry(self) -> SentryEventInfo:
+        info = super().to_sentry()
+        info.contexts["validation_info"] = {"error": self.error}
+        return info
 
-class GafaelfawrWebError(SentryWebException):
+
+class GafaelfawrWebError(SlackWebException):
     """An API call to Gafaelfawr failed."""
 
 
@@ -121,7 +124,7 @@ class GitHubFileNotFoundError(Exception):
     """
 
 
-class SubprocessError(SentryException):
+class SubprocessError(SlackException):
     """Running a subprocess failed."""
 
     def __init__(
@@ -142,14 +145,6 @@ class SubprocessError(SentryException):
         self.cwd = cwd
         self.env = env
 
-        self.contexts["subprocess_info"] = {
-            "return_code": str(self.returncode),
-            "stdout": self.stdout,
-            "stderr": self.stderr,
-            "directory": str(self.cwd),
-            "env": self.env,
-        }
-
     def __str__(self) -> str:
         return (
             f"{self.msg} with rc={self.returncode};"
@@ -157,8 +152,20 @@ class SubprocessError(SentryException):
             f" cwd='{self.cwd}'; env='{self.env}'"
         )
 
+    @override
+    def to_sentry(self) -> SentryEventInfo:
+        info = super().to_sentry()
+        info.contexts["subprocess_info"] = {
+            "return_code": str(self.returncode),
+            "stdout": self.stdout,
+            "stderr": self.stderr,
+            "directory": str(self.cwd),
+            "env": self.env,
+        }
+        return info
 
-class ComparisonError(SentryException):
+
+class ComparisonError(SlackException):
     """Comparing two strings failed."""
 
     def __init__(
@@ -171,16 +178,20 @@ class ComparisonError(SentryException):
         self.expected = expected
         self.received = received
 
-        self.contexts["comparison_info"] = {
-            "expected": self.expected,
-            "received": self.received,
-        }
-
     def __str__(self) -> str:
         return (
             f"Comparison failed: expected '{self.expected}', but"
             f" received '{self.received}'"
         )
+
+    @override
+    def to_sentry(self) -> SentryEventInfo:
+        info = super().to_sentry()
+        info.contexts["comparison_info"] = {
+            "expected": self.expected,
+            "received": self.received,
+        }
+        return info
 
 
 class JupyterSpawnTimeoutError(Exception):
