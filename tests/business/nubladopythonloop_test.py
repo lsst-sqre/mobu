@@ -283,6 +283,8 @@ async def test_hub_failed(
     assert sentry_error["tags"] == {
         "business": "NubladoPythonLoop",
         "flock": "test",
+        "httpx_request_method": "POST",
+        "httpx_request_url": ANY,
         "image_reference": None,
         "image_description": None,
         "phase": "spawn_lab",
@@ -363,6 +365,8 @@ async def test_redirect_loop(
     assert sentry_error["tags"] == {
         "business": "NubladoPythonLoop",
         "flock": "test",
+        "httpx_request_method": "GET",
+        "httpx_request_url": ANY,
         "image_reference": None,
         "image_description": None,
         "phase": "spawn_lab",
