@@ -151,6 +151,7 @@ jobs:
     needs: [test]
     with:
       images: ghcr.io/${{ github.repository }}
+      cache: false
     secrets: inherit
     # Only do Docker builds of tagged releases and pull requests from ticket
     # branches. This will still trigger on pull requests from untrusted
