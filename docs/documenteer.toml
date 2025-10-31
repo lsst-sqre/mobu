@@ -41,7 +41,10 @@ rst_epilog_file = "_rst_epilog.rst"
 [sphinx.intersphinx.projects]
 aiohttp = "https://docs.aiohttp.org/en/stable/"
 gidgethub = "https://gidgethub.readthedocs.io/en/latest/"
-python = "https://docs.python.org/3"
+
+# /3 points to 3.14 now, and docs won't build with python 3.13, so point
+# explicitly at 3.13 until we build the docs with 3.14.
+python = "https://docs.python.org/3.13"
 safir = "https://safir.lsst.io"
 sentry_sdk = "https://getsentry.github.io/sentry-python/"
 structlog = "https://www.structlog.org/en/stable"
@@ -60,3 +63,9 @@ ignore = [
 "development/idfdev" = "dev/idfdev"
 "development/index" = "dev/index"
 "development/sentry" = "dev/sentry"
+"user_guide/flocks" = "user-guide/flocks"
+"user_guide/github/ci" = "user-guide/github/ci"
+"user_guide/github/index" = "user-guide/github/index"
+"user_guide/github/refresh" = "user-guide/github/refresh"
+"user_guide/in_repo_config" = "user-guide/in-repo-config"
+"user_guide/index" = "user-guide/index"
