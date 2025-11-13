@@ -719,14 +719,17 @@ async def test_long_error(
     }
     assert sentry_error["contexts"]["code_info"] == {"code": code}
 
-    # Check that an appropriate error attachment was captured. Sentry doesn't
-    # truncate the error despite it being quite long, since it can be added as
-    # an attachment.
-    sentry_attachment = next(
-        a for a in sentry_items.attachments if a.filename == "nublado_error"
-    )
-    text = sentry_attachment.bytes.decode()
-    assert error in text
+    # Check that the code and error are attached. These should be complete
+    # even though they are long, unlike the Slack serialization.
+    for sentry_attachment in sentry_items.attachments:
+        assert sentry_attachment.filename in (
+            "nublado_error.txt",
+            "nublado_code.txt",
+        )
+        if sentry_attachment.filename == "nublado_error.txt":
+            assert error in sentry_attachment.bytes.decode()
+        elif sentry_attachment.filename == "nublado_code.txt":
+            assert sentry_attachment.bytes.decode() == code
 
     (sentry_transaction,) = sentry_items.transactions
     assert sentry_transaction["transaction"] == (
@@ -840,6 +843,7 @@ async def test_ansi_error(
 ) -> None:
     mock_gafaelfawr(respx_mock)
 
+    code = 'raise ValueError("\\033[38;5;28;01mFoo\\033[39;00m")'
     r = await client.put(
         "/mobu/flocks",
         json={
@@ -850,9 +854,7 @@ async def test_ansi_error(
             "business": {
                 "type": "NubladoPythonLoop",
                 "options": {
-                    "code": (
-                        'raise ValueError("\\033[38;5;28;01mFoo\\033[39;00m")'
-                    ),
+                    "code": code,
                     "image": {
                         "class": "by-reference",
                         "reference": (
@@ -873,12 +875,17 @@ async def test_ansi_error(
     assert data["business"]["failure_count"] == 1
 
     # Check that an appropriate error was posted.
-    sentry_attachment = next(
-        a for a in sentry_items.attachments if a.filename == "nublado_error"
-    )
-    error = sentry_attachment.bytes.decode()
-    assert "ValueError: Foo" in error
-    assert "\033" not in error
+    for sentry_attachment in sentry_items.attachments:
+        assert sentry_attachment.filename in (
+            "nublado_error.txt",
+            "nublado_code.txt",
+        )
+        if sentry_attachment.filename == "nublado_error.txt":
+            error = sentry_attachment.bytes.decode()
+            assert "ValueError: Foo" in error
+            assert "\033" not in error
+        elif sentry_attachment.filename == "nublado_code.txt":
+            assert sentry_attachment.bytes.decode() == code
 
     (sentry_error,) = sentry_items.errors
     assert sentry_error["contexts"]["code_info"] == {
