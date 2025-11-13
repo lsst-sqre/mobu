@@ -2,37 +2,20 @@
 
 from __future__ import annotations
 
-import base64
 import json
-import os
 from datetime import datetime
 from typing import Any
 from unittest.mock import ANY
 
 import respx
 from httpx import Request, Response
+from rubin.nublado.client import MockJupyter
 from safir.datetime import current_datetime
 
 from mobu.dependencies.config import config_dependency
 from mobu.models.user import Group
 
-__all__ = ["make_gafaelfawr_token", "mock_gafaelfawr"]
-
-
-def make_gafaelfawr_token(user: str | None = None) -> str:
-    """Create a random or user Gafaelfawr token.
-
-    If a user is given, embed the username in the key portion of the token so
-    that we can extract it later.  This means the token no longer follows the
-    format of a valid Gafaelfawr token, but it lets the mock JupyterHub know
-    what user is being authenticated.
-    """
-    if user:
-        key = base64.urlsafe_b64encode(user.encode()).decode()
-    else:
-        key = base64.urlsafe_b64encode(os.urandom(16)).decode().rstrip("=")
-    secret = base64.urlsafe_b64encode(os.urandom(16)).decode().rstrip("=")
-    return f"gt-{key}.{secret}"
+__all__ = ["mock_gafaelfawr"]
 
 
 def mock_gafaelfawr(
@@ -77,7 +60,7 @@ def mock_gafaelfawr(
         body = json.loads(request.content)
         assert body == expected
         assert datetime.fromisoformat(body["expires"]) > current_datetime()
-        response = {"token": make_gafaelfawr_token(body["username"])}
+        response = {"token": MockJupyter.create_mock_token(body["username"])}
         return Response(200, json=response)
 
     base_url = str(config.environment_url).rstrip("/")

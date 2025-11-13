@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from datetime import timedelta
 from typing import cast
 from unittest.mock import ANY
 
@@ -11,10 +12,10 @@ import pytest
 import respx
 from anys import ANY_AWARE_DATETIME_STR, AnyContains, AnySearch, AnyWithEntries
 from httpx import AsyncClient
-from rubin.nublado.client.testing import (
-    JupyterAction,
-    JupyterState,
+from rubin.nublado.client import (
     MockJupyter,
+    MockJupyterAction,
+    MockJupyterState,
 )
 from safir.metrics import NOT_NONE, MockEventPublisher
 from safir.testing.sentry import Captured
@@ -28,13 +29,13 @@ from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
 
 # Use the Jupyter mock for all tests in this file.
-pytestmark = pytest.mark.usefixtures("jupyter")
+pytestmark = pytest.mark.usefixtures("mock_jupyter")
 
 
 @pytest.mark.asyncio
 async def test_run(
     client: AsyncClient,
-    jupyter: MockJupyter,
+    mock_jupyter: MockJupyter,
     respx_mock: respx.Router,
     events: Events,
 ) -> None:
@@ -82,7 +83,8 @@ async def test_run(
     }
 
     # Check that the lab is shut down properly between iterations.
-    assert jupyter.state["bot-mobu-testuser1"] == JupyterState.LOGGED_IN
+    state = mock_jupyter.get_state("bot-mobu-testuser1")
+    assert state == MockJupyterState.LOGGED_IN
 
     r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1/log")
     assert r.status_code == 200
@@ -144,7 +146,7 @@ async def test_run(
 
 @pytest.mark.asyncio
 async def test_reuse_lab(
-    client: AsyncClient, jupyter: MockJupyter, respx_mock: respx.Router
+    client: AsyncClient, mock_jupyter: MockJupyter, respx_mock: respx.Router
 ) -> None:
     mock_gafaelfawr(respx_mock)
 
@@ -173,7 +175,8 @@ async def test_reuse_lab(
     assert data["business"]["failure_count"] == 0
 
     # Check that the lab is still running between iterations.
-    assert jupyter.state["bot-mobu-testuser1"] == JupyterState.LAB_RUNNING
+    state = mock_jupyter.get_state("bot-mobu-testuser1")
+    assert state == MockJupyterState.LAB_RUNNING
 
 
 @pytest.mark.asyncio
@@ -206,7 +209,7 @@ async def test_server_shutdown(
 
 @pytest.mark.asyncio
 async def test_delayed_delete(
-    client: AsyncClient, jupyter: MockJupyter, respx_mock: respx.Router
+    client: AsyncClient, mock_jupyter: MockJupyter, respx_mock: respx.Router
 ) -> None:
     mock_gafaelfawr(respx_mock)
 
@@ -226,24 +229,24 @@ async def test_delayed_delete(
     assert r.status_code == 201
 
     # End the test without shutting anything down and telling the mock
-    # JupyterHub to take a while to shut down.  The test asgi-lifespan wrapper
+    # JupyterHub to take a while to shut down. The test asgi-lifespan wrapper
     # has a shutdown timeout of ten seconds and delete will take five seconds,
     # so the test is that everything shuts down cleanly without throwing
     # exceptions.
-    jupyter.delete_immediate = False
+    mock_jupyter.set_delete_delay(timedelta(seconds=5))
 
 
 @pytest.mark.asyncio
 async def test_hub_failed(
     client: AsyncClient,
-    jupyter: MockJupyter,
+    mock_jupyter: MockJupyter,
     respx_mock: respx.Router,
     events: Events,
     sentry_items: Captured,
 ) -> None:
     config = config_dependency.config
     mock_gafaelfawr(respx_mock)
-    jupyter.fail("bot-mobu-testuser2", JupyterAction.SPAWN)
+    mock_jupyter.fail_on("bot-mobu-testuser2", MockJupyterAction.SPAWN)
 
     r = await client.put(
         "/mobu/flocks",
@@ -275,7 +278,7 @@ async def test_hub_failed(
     assert sentry_error["exception"]["values"] == AnyContains(
         AnyWithEntries(
             {
-                "type": "JupyterWebError",
+                "type": "NubladoWebError",
                 "value": AnySearch("Status 500 from POST https://"),
             }
         )
@@ -322,12 +325,12 @@ async def test_hub_failed(
 @pytest.mark.asyncio
 async def test_redirect_loop(
     client: AsyncClient,
-    jupyter: MockJupyter,
+    mock_jupyter: MockJupyter,
     respx_mock: respx.Router,
     sentry_items: Captured,
 ) -> None:
     mock_gafaelfawr(respx_mock)
-    jupyter.redirect_loop = True
+    mock_jupyter.set_redirect_loop(enabled=True)
 
     r = await client.put(
         "/mobu/flocks",
@@ -352,14 +355,7 @@ async def test_redirect_loop(
     # Check that an appropriate error was posted.
     (sentry_error,) = sentry_items.errors
     assert sentry_error["exception"]["values"] == AnyContains(
-        AnyWithEntries(
-            {
-                "type": "JupyterWebError",
-                "value": (
-                    "TooManyRedirects: Exceeded maximum allowed redirects."
-                ),
-            }
-        )
+        AnyWithEntries({"type": "NubladoRedirectError", "value": ANY})
     )
     assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
     assert sentry_error["tags"] == {
@@ -367,34 +363,26 @@ async def test_redirect_loop(
         "flock": "test",
         "httpx_request_method": "GET",
         "httpx_request_url": ANY,
-        "image_reference": None,
-        "image_description": None,
-        "phase": "spawn_lab",
+        "phase": "hub_login",
     }
     assert sentry_error["contexts"]["phase"] == {
-        "phase": "spawn_lab",
+        "phase": "hub_login",
         "started_at": ANY_AWARE_DATETIME_STR,
     }
 
-    (sentry_attachment,) = sentry_items.attachments
-    assert sentry_attachment.filename == "spawn_log.txt"
-    assert sentry_attachment.bytes.decode() == ""
-
     (sentry_transaction,) = sentry_items.transactions
-    assert sentry_transaction["transaction"] == (
-        "NubladoPythonLoop - pre execute code"
-    )
+    assert sentry_transaction["transaction"] == ("NubladoPythonLoop - startup")
 
 
 @pytest.mark.asyncio
 async def test_spawn_timeout(
     client: AsyncClient,
-    jupyter: MockJupyter,
+    mock_jupyter: MockJupyter,
     respx_mock: respx.Router,
     sentry_items: Captured,
 ) -> None:
     mock_gafaelfawr(respx_mock)
-    jupyter.spawn_timeout = True
+    mock_jupyter.set_spawn_delay(timedelta(seconds=60))
 
     r = await client.put(
         "/mobu/flocks",
@@ -452,12 +440,12 @@ async def test_spawn_timeout(
 @pytest.mark.asyncio
 async def test_spawn_failed(
     client: AsyncClient,
-    jupyter: MockJupyter,
+    mock_jupyter: MockJupyter,
     respx_mock: respx.Router,
     sentry_items: Captured,
 ) -> None:
     mock_gafaelfawr(respx_mock)
-    jupyter.fail("bot-mobu-testuser1", JupyterAction.PROGRESS)
+    mock_jupyter.fail_on("bot-mobu-testuser1", MockJupyterAction.PROGRESS)
 
     r = await client.put(
         "/mobu/flocks",
@@ -526,12 +514,12 @@ async def test_spawn_failed(
 @pytest.mark.asyncio
 async def test_delete_timeout(
     client: AsyncClient,
-    jupyter: MockJupyter,
+    mock_jupyter: MockJupyter,
     respx_mock: respx.Router,
     sentry_items: Captured,
 ) -> None:
     mock_gafaelfawr(respx_mock)
-    jupyter.delete_immediate = False
+    mock_jupyter.set_delete_delay(timedelta(seconds=5))
 
     # Set delete_timeout to 1s even though we pause in increments of 2s since
     # this increases the chances we won't go slightly over to 4s.
@@ -631,7 +619,7 @@ async def test_code_exception(
     assert sentry_error["exception"]["values"] == AnyContains(
         AnyWithEntries(
             {
-                "type": "CodeExecutionError",
+                "type": "NubladoExecutionError",
                 "value": "Code execution failed",
             }
         )
@@ -670,13 +658,18 @@ async def test_code_exception(
 @pytest.mark.asyncio
 async def test_long_error(
     client: AsyncClient,
-    jupyter: MockJupyter,
+    mock_jupyter: MockJupyter,
     slack: MockSlackWebhook,
     respx_mock: respx.Router,
     sentry_items: Captured,
 ) -> None:
     mock_gafaelfawr(respx_mock)
 
+    error = ""
+    line = "this is a single line of output to test trimming errors"
+    for i in range(int(3000 / len(line))):
+        error += f"{line} #{i}\n"
+    code = f'msg = """{error}"""; raise ValueError(msg)'
     r = await client.put(
         "/mobu/flocks",
         json={
@@ -687,7 +680,7 @@ async def test_long_error(
             "business": {
                 "type": "NubladoPythonLoop",
                 "options": {
-                    "code": "long_error_for_test()",
+                    "code": code,
                     "spawn_settle_time": 0,
                     "max_executions": 1,
                 },
@@ -701,7 +694,7 @@ async def test_long_error(
     assert data["business"]["failure_count"] == 1
 
     # Check the lab form.
-    assert jupyter.lab_form["bot-mobu-testuser1"] == {
+    assert mock_jupyter.get_last_spawn_form("bot-mobu-testuser1") == {
         "image_class": "recommended",
         "size": "Large",
     }
@@ -711,7 +704,7 @@ async def test_long_error(
     assert sentry_error["exception"]["values"] == AnyContains(
         AnyWithEntries(
             {
-                "type": "CodeExecutionError",
+                "type": "NubladoExecutionError",
                 "value": "Code execution failed",
             }
         )
@@ -724,18 +717,16 @@ async def test_long_error(
         "image_reference": "lighthouse.ceres/library/sketchbook:recommended",
         "node": "Node1",
     }
-    assert sentry_error["contexts"]["code_info"] == {
-        "code": "long_error_for_test()"
-    }
+    assert sentry_error["contexts"]["code_info"] == {"code": code}
 
-    # Check that an appropriate error attachment was captured.
-    (sentry_attachment,) = sentry_items.attachments
+    # Check that an appropriate error attachment was captured. Sentry doesn't
+    # truncate the error despite it being quite long, since it can be added as
+    # an attachment.
+    sentry_attachment = next(
+        a for a in sentry_items.attachments if a.filename == "nublado_error"
+    )
     text = sentry_attachment.bytes.decode()
-    error = ""
-    line = "this is a single line of output to test trimming errors"
-    for i in range(54):
-        error += f"{line} #{i}\n"
-    assert text == error
+    assert error in text
 
     (sentry_transaction,) = sentry_items.transactions
     assert sentry_transaction["transaction"] == (
@@ -745,7 +736,7 @@ async def test_long_error(
 
 @pytest.mark.asyncio
 async def test_lab_controller(
-    client: AsyncClient, jupyter: MockJupyter, respx_mock: respx.Router
+    client: AsyncClient, mock_jupyter: MockJupyter, respx_mock: respx.Router
 ) -> None:
     mock_gafaelfawr(respx_mock)
 
@@ -761,7 +752,7 @@ async def test_lab_controller(
                 "type": "NubladoPythonLoop",
                 "options": {
                     "image": {
-                        "image_class": "by-reference",
+                        "class": "by-reference",
                         "reference": (
                             "registry.hub.docker.com/lsstsqre/sciplat-lab"
                             ":d_2021_08_30"
@@ -773,7 +764,7 @@ async def test_lab_controller(
     )
     assert r.status_code == 201
     await asyncio.sleep(0)
-    assert jupyter.lab_form["bot-mobu-testuser"] == {
+    assert mock_jupyter.get_last_spawn_form("bot-mobu-testuser") == {
         "image_list": (
             "registry.hub.docker.com/lsstsqre/sciplat-lab:d_2021_08_30"
         ),
@@ -794,7 +785,7 @@ async def test_lab_controller(
                 "type": "NubladoPythonLoop",
                 "options": {
                     "image": {
-                        "image_class": "latest-daily",
+                        "class": "latest-daily",
                         "size": "Medium",
                         "debug": True,
                     },
@@ -804,7 +795,7 @@ async def test_lab_controller(
     )
     assert r.status_code == 201
     await asyncio.sleep(0)
-    assert jupyter.lab_form["bot-mobu-testuser"] == {
+    assert mock_jupyter.get_last_spawn_form("bot-mobu-testuser") == {
         "enable_debug": "true",
         "image_class": "latest-daily",
         "size": "Medium",
@@ -824,7 +815,7 @@ async def test_lab_controller(
                 "type": "NubladoPythonLoop",
                 "options": {
                     "image": {
-                        "image_class": "by-tag",
+                        "class": "by-tag",
                         "tag": "w_2077_44",
                         "size": "Small",
                     },
@@ -834,7 +825,7 @@ async def test_lab_controller(
     )
     assert r.status_code == 201
     await asyncio.sleep(0)
-    assert jupyter.lab_form["bot-mobu-testuser"] == {
+    assert mock_jupyter.get_last_spawn_form("bot-mobu-testuser") == {
         "image_tag": "w_2077_44",
         "size": "Small",
     }
@@ -843,7 +834,7 @@ async def test_lab_controller(
 @pytest.mark.asyncio
 async def test_ansi_error(
     client: AsyncClient,
-    jupyter: MockJupyter,
+    mock_jupyter: MockJupyter,
     respx_mock: respx.Router,
     sentry_items: Captured,
 ) -> None:
@@ -863,7 +854,7 @@ async def test_ansi_error(
                         'raise ValueError("\\033[38;5;28;01mFoo\\033[39;00m")'
                     ),
                     "image": {
-                        "image_class": "by-reference",
+                        "class": "by-reference",
                         "reference": (
                             "registry.hub.docker.com/lsstsqre/sciplat-lab"
                             ":d_2021_08_30"
@@ -882,7 +873,9 @@ async def test_ansi_error(
     assert data["business"]["failure_count"] == 1
 
     # Check that an appropriate error was posted.
-    (sentry_attachment,) = sentry_items.attachments
+    sentry_attachment = next(
+        a for a in sentry_items.attachments if a.filename == "nublado_error"
+    )
     error = sentry_attachment.bytes.decode()
     assert "ValueError: Foo" in error
     assert "\033" not in error
@@ -893,7 +886,7 @@ async def test_ansi_error(
     }
     assert sentry_error["exception"]["values"] == AnyContains(
         AnyWithEntries(
-            {"type": "CodeExecutionError", "value": "Code execution failed"}
+            {"type": "NubladoExecutionError", "value": "Code execution failed"}
         )
     )
     assert sentry_error["tags"] == {
@@ -914,7 +907,7 @@ async def test_ansi_error(
 @pytest.mark.asyncio
 async def test_user_spec_groups(
     client: AsyncClient,
-    jupyter: MockJupyter,
+    mock_jupyter: MockJupyter,
     respx_mock: respx.Router,
     events: Events,
 ) -> None:

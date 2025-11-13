@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from pydantic import BaseModel, Field
-from rubin.nublado.client.models import (
+from rubin.nublado.client import (
     NubladoImageByClass,
     NubladoImageByReference,
     NubladoImageByTag,

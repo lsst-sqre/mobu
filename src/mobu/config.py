@@ -165,15 +165,10 @@ class Config(BaseSettings):
         validation_alias=AliasChoices("MOBU_ALERT_HOOK", "alertHook"),
     )
 
-    environment_url: HttpUrl | None = Field(
-        None,
+    environment_url: HttpUrl = Field(
+        ...,
         title="Base URL of the Science Platform environment",
-        description=(
-            "Used to create URLs to other services, such as Gafaelfawr and"
-            " JupyterHub. This is only optional to make writing the test"
-            " suite easier. If it is not set to a valid URL, mobu will abort"
-            " during startup."
-        ),
+        description="Used to create URLs to other services such as Gafaelfawr",
         examples=["https://data.example.org/"],
         validation_alias=AliasChoices(
             "MOBU_ENVIRONMENT_URL", "environmentUrl"
@@ -216,13 +211,12 @@ class Config(BaseSettings):
         ),
     )
 
-    gafaelfawr_token: str | None = Field(
-        None,
+    gafaelfawr_token: str = Field(
+        ...,
         title="Gafaelfawr admin token",
         description=(
             "This token is used to make an admin API call to Gafaelfawr to"
-            " get a token for the user. This is only optional to make writing"
-            " tests easier. mobu will abort during startup if it is not set."
+            " get a token for the user"
         ),
         examples=["gt-vilSCi1ifK_MyuaQgMD2dQ.d6SIJhowv5Hs3GvujOyUig"],
         validation_alias=AliasChoices(

@@ -17,9 +17,11 @@ from typing import Any, override
 
 import sentry_sdk
 import yaml
-from rubin.nublado.client import JupyterLabSession
-from rubin.nublado.client.exceptions import CodeExecutionError
-from rubin.nublado.client.models import CodeContext
+from rubin.nublado.client import (
+    CodeContext,
+    JupyterLabSession,
+    NubladoExecutionError,
+)
 from safir.sentry import duration
 from sentry_sdk import set_context, set_tag
 from sentry_sdk.tracing import Span, Transaction
@@ -299,10 +301,8 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
                     cell_id = cell.get("id") or cell["_index"]
                     ctx = CodeContext(
                         notebook=relative_notebook,
-                        path=str(self._notebook),
                         cell=cell_id,
                         cell_number=f"#{cell['_index']}",
-                        cell_source=code,
                     )
                     await self.execute_cell(session, code, cell_id, ctx)
                     if not await self.execution_idle():
@@ -383,7 +383,7 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
             try:
                 reply = await session.run_python(code, context=context)
             except Exception as e:
-                if isinstance(e, CodeExecutionError) and e.error:
+                if isinstance(e, NubladoExecutionError) and e.error:
                     sentry_sdk.get_current_scope().add_attachment(
                         filename="nublado_error.txt",
                         bytes=self.remove_ansi_escapes(e.error).encode(),

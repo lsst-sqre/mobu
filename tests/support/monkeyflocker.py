@@ -2,27 +2,30 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import override
 
 import respx
 from fastapi import FastAPI, Request, Response
-from rubin.nublado.client.testing import mock_jupyter
+from rubin.nublado.client import register_mock_jupyter
+from rubin.repertoire import register_mock_discovery
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from mobu.main import create_app as main_create_app
 
-from .constants import TEST_BASE_URL
 from .gafaelfawr import mock_gafaelfawr
+
+__all__ = ["AddAuthHeaderMiddleware", "create_app"]
 
 
 class AddAuthHeaderMiddleware(BaseHTTPMiddleware):
     """Mock running behind a Gafaelfawr-aware ingress.
 
-    Pretend Gafaelfawr is doing authentication in front of mobu.  This is a
+    Pretend Gafaelfawr is doing authentication in front of mobu. This is a
     total hack based on https://github.com/tiangolo/fastapi/issues/2727 that
-    adds the header that would have been added by Gafaelfawr.  Unfortunately,
+    adds the header that would have been added by Gafaelfawr. Unfortunately,
     there's no documented way to modify request headers in middleware, so we
     have to muck about with internals.
     """
@@ -39,14 +42,22 @@ class AddAuthHeaderMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+async def _startup() -> None:
+    """Additional startup actions to take."""
+    respx.start()
+    mock_gafaelfawr(respx.mock)
+    os.environ["REPERTOIRE_BASE_URL"] = "https://example.com/repertoire"
+    path = Path(__file__).parent.parent / "data" / "discovery.json"
+    register_mock_discovery(respx.mock, path)
+    await register_mock_jupyter(respx.mock).__aenter__()
+
+
 def create_app() -> FastAPI:
     """Configure the FastAPI app for monkeyflocker testing.
 
-    This cannot have any arguments, so we pick arbitrary ones for mock_jupyter.
+    This cannot have any arguments. It is run in an isolated process, and
+    therefore doesn't need to clean up after its mocking.
     """
-    respx.start()
-    mock_gafaelfawr(respx.mock)
-    mock_jupyter(respx.mock, base_url=TEST_BASE_URL, user_dir=Path())
-    app = main_create_app()
+    app = main_create_app(startup=_startup())
     app.add_middleware(AddAuthHeaderMiddleware)
     return app

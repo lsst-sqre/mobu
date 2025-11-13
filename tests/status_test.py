@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient
-from rubin.nublado.client.testing import MockJupyter
+from rubin.nublado.client import MockJupyter
 from safir.testing.slack import MockSlackWebhook
 
 from mobu.models.flock import FlockSummary
@@ -17,7 +17,7 @@ from mobu.status import post_status
 
 @pytest.mark.asyncio
 async def test_post_status(
-    client: AsyncClient, slack: MockSlackWebhook, jupyter: MockJupyter
+    client: AsyncClient, slack: MockSlackWebhook, mock_jupyter: MockJupyter
 ) -> None:
     # If there are no flocks, no message should be posted.
     with patch.object(FlockManager, "summarize_flocks") as mock:

@@ -16,7 +16,7 @@ from .support.gafaelfawr import mock_gafaelfawr
 from .support.util import wait_for_flock_start
 
 # Use the Jupyter mock for all tests in this file.
-pytestmark = pytest.mark.usefixtures("jupyter")
+pytestmark = pytest.mark.usefixtures("mock_jupyter")
 
 
 @pytest.fixture(autouse=True)
@@ -93,7 +93,7 @@ async def test_autostart(client: AsyncClient) -> None:
                 "restart": True,
                 "options": {
                     "image": {
-                        "image_class": "latest-weekly",
+                        "class": "latest-weekly",
                         "size": "Large",
                     },
                     "spawn_settle_time": 0,
@@ -219,7 +219,7 @@ async def test_batched_autostart(client: AsyncClient) -> None:
                 "restart": True,
                 "options": {
                     "image": {
-                        "image_class": "latest-weekly",
+                        "class": "latest-weekly",
                         "size": "Large",
                     },
                     "spawn_settle_time": 0,

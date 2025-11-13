@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from importlib.metadata import metadata, version
@@ -30,45 +30,12 @@ from .handlers.github_refresh_app import (
 from .handlers.internal import internal_router
 from .status import post_status
 
-__all__ = ["create_app", "lifespan"]
+__all__ = ["create_app"]
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
-    """Set up and tear down the the base application."""
-    config = config_dependency.config
-    if not config.environment_url:
-        raise RuntimeError("MOBU_ENVIRONMENT_URL was not set")
-    if not config.gafaelfawr_token:
-        raise RuntimeError("MOBU_GAFAELFAWR_TOKEN was not set")
-
-    event_manager = config.metrics.make_manager()
-    await event_manager.initialize()
-    await context_dependency.initialize(event_manager)
-
-    await context_dependency.process_context.manager.autostart()
-
-    status_interval = timedelta(days=1)
-    app.state.periodic_status = schedule_periodic(post_status, status_interval)
-
-    if config.github_ci_app:
-        ci_manager_dependency.initialize(
-            base_context=context_dependency,
-            github_app_id=config.github_ci_app.id,
-            github_private_key=config.github_ci_app.private_key,
-            scopes=config.github_ci_app.scopes,
-            users=config.github_ci_app.users,
-        )
-        await ci_manager_dependency.ci_manager.start()
-
-    yield
-
-    await ci_manager_dependency.aclose()
-    await context_dependency.aclose()
-    app.state.periodic_status.cancel()
-
-
-def create_app(*, load_config: bool = True) -> FastAPI:
+def create_app(
+    *, load_config: bool = True, startup: Awaitable[None] | None = None
+) -> FastAPI:
     """Create the FastAPI application.
 
     This is in a function rather than using a global variable (as is more
@@ -81,6 +48,9 @@ def create_app(*, load_config: bool = True) -> FastAPI:
         If set to `False`, do not try to load the configuration. This is used
         primarily for OpenAPI schema generation, where constructing the app is
         required but the configuration won't matter.
+    startup
+        Additional code to run during application startup, used by the test
+        suite when running mobu in a separate process to test monkeyflocker.
     """
     if load_config:
         config = config_dependency.config
@@ -114,6 +84,40 @@ def create_app(*, load_config: bool = True) -> FastAPI:
         path_prefix = "/mobu"
         github_ci_app = None
         github_refresh_app = None
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+        if startup:
+            await startup
+
+        config = config_dependency.config
+
+        event_manager = config.metrics.make_manager()
+        await event_manager.initialize()
+        await context_dependency.initialize(event_manager)
+
+        await context_dependency.process_context.manager.autostart()
+
+        status_interval = timedelta(days=1)
+        app.state.periodic_status = schedule_periodic(
+            post_status, status_interval
+        )
+
+        if config.github_ci_app:
+            ci_manager_dependency.initialize(
+                base_context=context_dependency,
+                github_app_id=config.github_ci_app.id,
+                github_private_key=config.github_ci_app.private_key,
+                scopes=config.github_ci_app.scopes,
+                users=config.github_ci_app.users,
+            )
+            await ci_manager_dependency.ci_manager.start()
+
+        yield
+
+        await ci_manager_dependency.aclose()
+        await context_dependency.aclose()
+        app.state.periodic_status.cancel()
 
     app = FastAPI(
         title="mobu",
