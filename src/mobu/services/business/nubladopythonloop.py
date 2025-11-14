@@ -10,7 +10,6 @@ from datetime import timedelta
 
 import sentry_sdk
 from rubin.nublado.client import JupyterLabSession
-from rubin.nublado.client.exceptions import CodeExecutionError
 from safir.sentry import duration
 from structlog.stdlib import BoundLogger
 
@@ -65,12 +64,7 @@ class NubladoPythonLoop(NubladoBusiness):
             ) as span:
                 try:
                     reply = await session.run_python(code)
-                except Exception as e:
-                    if isinstance(e, CodeExecutionError) and e.error:
-                        sentry_sdk.get_current_scope().add_attachment(
-                            filename="nublado_error.txt",
-                            bytes=self.remove_ansi_escapes(e.error).encode(),
-                        )
+                except Exception:
                     await self._publish_failure(code=code)
                     raise
             self.logger.info(f"{code} -> {reply}")

@@ -12,7 +12,7 @@ import pytest
 import respx
 from anys import ANY_AWARE_DATETIME_STR, AnyContains, AnySearch, AnyWithEntries
 from httpx import AsyncClient
-from rubin.nublado.client.testing import MockJupyter
+from rubin.nublado.client import MockJupyter
 from safir.metrics import NOT_NONE, MockEventPublisher
 from safir.testing.sentry import Captured
 
@@ -28,7 +28,7 @@ from ..support.util import (
 )
 
 # Use the Jupyter mock for all tests in this file.
-pytestmark = pytest.mark.usefixtures("jupyter")
+pytestmark = pytest.mark.usefixtures("mock_jupyter")
 
 
 @pytest.mark.asyncio
@@ -439,7 +439,7 @@ async def test_run_required_services(
 @pytest.mark.asyncio
 async def test_refresh(
     client: AsyncClient,
-    jupyter: MockJupyter,
+    mock_jupyter: MockJupyter,
     respx_mock: respx.Router,
     tmp_path: Path,
 ) -> None:

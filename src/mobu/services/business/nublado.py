@@ -123,10 +123,9 @@ class NubladoBusiness[T: NubladoBusinessOptions](
         config = config_dependency.config
         if not config.environment_url:
             raise RuntimeError("environment_url not set")
-        environment_url = str(config.environment_url).rstrip("/")
         self._client = NubladoClient(
-            user=user.to_client_user(),
-            base_url=environment_url + options.url_prefix,
+            user.username,
+            user.token,
             logger=logger,
             timeout=options.jupyter_timeout,
         )
@@ -155,7 +154,7 @@ class NubladoBusiness[T: NubladoBusinessOptions](
 
     @override
     async def close(self) -> None:
-        await self._client.close()
+        await self._client.aclose()
 
     @override
     async def startup(self) -> None:
@@ -312,7 +311,7 @@ class NubladoBusiness[T: NubladoBusinessOptions](
         }
         create_session_cm = capturing_start_span(op="create_session")
         create_session_cm.__enter__()
-        async with self._client.open_lab_session(notebook, **opts) as session:
+        async with self._client.lab_session(notebook, **opts) as session:
             create_session_cm.__exit__(None, None, None)
             with capturing_start_span(op="execute_setup"):
                 await self.setup_session(session)

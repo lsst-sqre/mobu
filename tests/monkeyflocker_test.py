@@ -11,6 +11,7 @@ from unittest.mock import ANY
 
 import httpx
 import pytest
+import respx
 from click.testing import CliRunner
 from safir.testing.uvicorn import UvicornProcess, spawn_uvicorn
 
@@ -49,8 +50,9 @@ def monkeyflocker_app(tmp_path: Path) -> Iterator[UvicornProcess]:
 
 
 def test_start_report_refresh_stop(
-    tmp_path: Path, monkeyflocker_app: UvicornProcess
+    tmp_path: Path, monkeyflocker_app: UvicornProcess, respx_mock: respx.Router
 ) -> None:
+    respx_mock.route(url__startswith=monkeyflocker_app.url).pass_through()
     config = config_dependency.config
     runner = CliRunner()
     spec_path = tmp_path / "spec.yaml"

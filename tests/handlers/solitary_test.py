@@ -7,7 +7,7 @@ from unittest.mock import ANY
 import pytest
 import respx
 from httpx import AsyncClient
-from rubin.nublado.client.testing import MockJupyter
+from rubin.nublado.client import MockJupyter
 from safir.testing.slack import MockSlackWebhook
 
 from ..support.gafaelfawr import mock_gafaelfawr
@@ -37,7 +37,7 @@ async def test_error(
     client: AsyncClient,
     slack: MockSlackWebhook,
     respx_mock: respx.Router,
-    jupyter: MockJupyter,
+    mock_jupyter: MockJupyter,
 ) -> None:
     mock_gafaelfawr(respx_mock)
 

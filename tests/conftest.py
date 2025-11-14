@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Generator, Iterator
-from contextlib import asynccontextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import DEFAULT, patch
@@ -13,17 +12,11 @@ import pytest_asyncio
 import respx
 import safir.logging
 import structlog
-import websockets
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from rubin.nublado.client.models import User
-from rubin.nublado.client.testing import (
-    MockJupyter,
-    MockJupyterWebSocket,
-    mock_jupyter,
-    mock_jupyter_websocket,
-)
+from rubin.nublado.client import MockJupyter, register_mock_jupyter
+from rubin.repertoire import Discovery, register_mock_discovery
 from safir.testing.sentry import (
     Captured,
     capture_events_fixture,
@@ -48,7 +41,7 @@ from .support.constants import (
     TEST_GITHUB_CI_APP_SECRET,
     TEST_GITHUB_REFRESH_APP_SECRET,
 )
-from .support.gafaelfawr import make_gafaelfawr_token, mock_gafaelfawr
+from .support.gafaelfawr import mock_gafaelfawr
 from .support.github import GitHubMocker
 from .support.gitlfs import (
     no_git_lfs_data,
@@ -60,12 +53,6 @@ from .support.gitlfs import (
 @pytest.fixture(autouse=True)
 def environment_url() -> str:
     return TEST_BASE_URL
-
-
-@pytest.fixture
-def test_user() -> User:
-    uname = "someuser"
-    return User(username=uname, token=make_gafaelfawr_token(uname))
 
 
 @pytest.fixture
@@ -89,7 +76,8 @@ def _configure(environment_url: str, monkeypatch: pytest.MonkeyPatch) -> None:
     minimal test configuration and a unique admin token that is replaced after
     the test runs.
     """
-    monkeypatch.setenv("MOBU_GAFAELFAWR_TOKEN", make_gafaelfawr_token())
+    token = MockJupyter.create_mock_token("bot-someuser")
+    monkeypatch.setenv("MOBU_GAFAELFAWR_TOKEN", token)
     config_dependency.set_path(config_path("base"))
 
 
@@ -189,14 +177,14 @@ def events(app: FastAPI) -> Events:
 
 
 @pytest_asyncio.fixture
-async def client(app: FastAPI, test_user: User) -> AsyncGenerator[AsyncClient]:
+async def client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url=TEST_BASE_URL,
         headers={
-            "X-Auth-Request-User": test_user.username,
-            "X-Auth-Request-Token": test_user.token,
+            "X-Auth-Request-User": "someuser",
+            "X-Auth-Request-Token": MockJupyter.create_mock_token("someuser"),
         },
     ) as client:
         yield client
@@ -214,44 +202,29 @@ async def anon_client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
         yield client
 
 
-@pytest.fixture(ids=["shared", "subdomain"], params=[False, True])
-def jupyter(
-    respx_mock: respx.Router,
-    environment_url: str,
-    test_filesystem: Path,
-    request: pytest.FixtureRequest,
-) -> Iterator[MockJupyter]:
-    """Mock out JupyterHub and Jupyter labs."""
-    jupyter_mock = mock_jupyter(
-        respx_mock,
-        base_url=environment_url,
-        user_dir=test_filesystem,
-        use_subdomains=request.param,
-    )
+@pytest.fixture(autouse=True)
+def mock_discovery(
+    respx_mock: respx.Router, monkeypatch: pytest.MonkeyPatch
+) -> Discovery:
+    monkeypatch.setenv("REPERTOIRE_BASE_URL", "https://example.com/repertoire")
+    path = Path(__file__).parent / "data" / "discovery.json"
+    return register_mock_discovery(respx_mock, path)
 
-    # respx has no mechanism to mock aconnect_ws, so we have to do it
-    # ourselves.
-    @asynccontextmanager
-    async def mock_connect(
-        url: str,
-        additional_headers: dict[str, str],
-        max_size: int | None,
-        open_timeout: int,
-    ) -> AsyncGenerator[MockJupyterWebSocket]:
-        yield mock_jupyter_websocket(url, additional_headers, jupyter_mock)
 
-    with patch.object(websockets, "connect") as mock:
-        mock.side_effect = mock_connect
+@pytest_asyncio.fixture
+async def mock_jupyter(
+    respx_mock: respx.Router, mock_discovery: Discovery
+) -> AsyncGenerator[MockJupyter]:
+    """Mock out JupyterHub and JupyterLab."""
+    async with register_mock_jupyter(respx_mock) as mock:
         # Register some code we call over and over and over...
-        jupyter_mock.register_python_result(_GET_NODE, "Node1")
-        jupyter_mock.register_python_result(
-            _GET_IMAGE,
-            (
-                "lighthouse.ceres/library/sketchbook:recommended\n"
-                "Recommended (Weekly 2077_43)\n"
-            ),
+        mock.register_python_result(_GET_NODE, "Node1")
+        get_image_result = (
+            "lighthouse.ceres/library/sketchbook:recommended\n"
+            "Recommended (Weekly 2077_43)\n"
         )
-        yield jupyter_mock
+        mock.register_python_result(_GET_IMAGE, get_image_result)
+        yield mock
 
 
 @pytest.fixture

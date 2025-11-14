@@ -16,7 +16,7 @@ from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import setup_git_repo, wait_for_business
 
 # Use the Jupyter mock for all tests in this file.
-pytestmark = pytest.mark.usefixtures("jupyter")
+pytestmark = pytest.mark.usefixtures("mock_jupyter")
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,9 @@
+{
+  "services": {
+    "ui": {
+      "nublado": {
+        "url": "https://nb.data.example.org/nb"
+      }
+    }
+  }
+}
