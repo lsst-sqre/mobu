@@ -6,6 +6,13 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-16.1.0'></a>
+## 16.1.0 (2025-11-13)
+
+### New features
+
+- Use service discovery via [Repertoire](https://repertoire.lsst.io/) to locate the Nublado API.
+
 <a id='changelog-16.0.0'></a>
 ## 16.0.0 (2025-07-10)
 
