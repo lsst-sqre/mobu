@@ -12,6 +12,7 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 ### New features
 
 - Use service discovery via [Repertoire](https://repertoire.lsst.io/) to locate the Nublado API.
+- Publish multi-platform images that support both linux/amd64 and linux/arm64.
 
 <a id='changelog-16.0.0'></a>
 ## 16.0.0 (2025-07-10)
