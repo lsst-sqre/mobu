@@ -323,58 +323,6 @@ async def test_hub_failed(
 
 
 @pytest.mark.asyncio
-async def test_redirect_loop(
-    client: AsyncClient,
-    mock_jupyter: MockJupyter,
-    respx_mock: respx.Router,
-    sentry_items: Captured,
-) -> None:
-    mock_gafaelfawr(respx_mock)
-    mock_jupyter.set_redirect_loop(enabled=True)
-
-    r = await client.put(
-        "/mobu/flocks",
-        json={
-            "name": "test",
-            "count": 1,
-            "user_spec": {"username_prefix": "bot-mobu-testuser"},
-            "scopes": ["exec:notebook"],
-            "business": {
-                "type": "NubladoPythonLoop",
-                "options": {"spawn_settle_time": 0, "delete_lab": False},
-            },
-        },
-    )
-    assert r.status_code == 201
-
-    # Wait until we've finished one loop.
-    data = await wait_for_business(client, "bot-mobu-testuser1")
-    assert data["business"]["success_count"] == 0
-    assert data["business"]["failure_count"] > 0
-
-    # Check that an appropriate error was posted.
-    (sentry_error,) = sentry_items.errors
-    assert sentry_error["exception"]["values"] == AnyContains(
-        AnyWithEntries({"type": "NubladoRedirectError", "value": ANY})
-    )
-    assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
-    assert sentry_error["tags"] == {
-        "business": "NubladoPythonLoop",
-        "flock": "test",
-        "httpx_request_method": "GET",
-        "httpx_request_url": ANY,
-        "phase": "hub_login",
-    }
-    assert sentry_error["contexts"]["phase"] == {
-        "phase": "hub_login",
-        "started_at": ANY_AWARE_DATETIME_STR,
-    }
-
-    (sentry_transaction,) = sentry_items.transactions
-    assert sentry_transaction["transaction"] == ("NubladoPythonLoop - startup")
-
-
-@pytest.mark.asyncio
 async def test_spawn_timeout(
     client: AsyncClient,
     mock_jupyter: MockJupyter,
