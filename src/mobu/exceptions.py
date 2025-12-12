@@ -3,76 +3,23 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Self, override
+from typing import override
 
 from fastapi import status
-from pydantic import ValidationError
 from safir.fastapi import ClientRequestError
 from safir.models import ErrorLocation
-from safir.slack.blockkit import SlackException, SlackWebException
+from safir.slack.blockkit import SlackException
 from safir.slack.sentry import SentryEventInfo
 
 __all__ = [
     "ComparisonError",
     "FlockNotFoundError",
-    "GafaelfawrParseError",
-    "GafaelfawrWebError",
     "GitHubFileNotFoundError",
     "MonkeyNotFoundError",
     "NotRetainingLogsError",
     "SIAClientError",
     "SubprocessError",
 ]
-
-
-class GafaelfawrParseError(SlackException):
-    """Unable to parse the reply from Gafaelfawr.
-
-    Parameters
-    ----------
-    message
-        Summary error message.
-    error
-        Detailed error message, possibly multi-line.
-    user
-        Username of the user involved.
-    """
-
-    @classmethod
-    def from_exception(
-        cls, exc: ValidationError, user: str | None = None
-    ) -> Self:
-        """Create an exception from a Pydantic parse failure.
-
-        Parameters
-        ----------
-        exc
-            Pydantic exception.
-        user
-            Username of the user involved.
-
-        Returns
-        -------
-        GafaelfawrParseError
-            Constructed exception.
-        """
-        error = f"{type(exc).__name__}: {exc!s}"
-        return cls("Unable to parse reply from Gafalefawr", error, user)
-
-    def __init__(
-        self, message: str, error: str, user: str | None = None
-    ) -> None:
-        super().__init__(message, user)
-        self.error = error
-
-    def to_sentry(self) -> SentryEventInfo:
-        info = super().to_sentry()
-        info.contexts["validation_info"] = {"error": self.error}
-        return info
-
-
-class GafaelfawrWebError(SlackWebException):
-    """An API call to Gafaelfawr failed."""
 
 
 class FlockNotFoundError(ClientRequestError):

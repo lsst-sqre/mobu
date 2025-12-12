@@ -190,7 +190,7 @@ class Config(BaseSettings):
         title="Sentry traces sample config",
         description=(
             "Set the Sentry sampling strategy for traces. If this is a float,"
-            " it will be passed as the traces_sample_rate: https://docs.sentry.io/platforms/python/configuration/sampling/#configuring-the-transaction-sample-rate"
+            " it will be passed as the traces_sample_rate: https://docs.sentry.io/platforms/python/sampling/#configuring-the-transaction-sample-rate"
             ' If this is set to "errors", then all transactions during which'
             " an error occurred will be sent."
         ),

@@ -7,21 +7,16 @@ from unittest.mock import ANY, patch
 
 import pytest
 import pyvo
-import respx
 from httpx import AsyncClient
 from safir.metrics import NOT_NONE, MockEventPublisher
 
 from mobu.events import Events
 
-from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
 
 
 @pytest.mark.asyncio
-async def test_run(
-    client: AsyncClient, respx_mock: respx.Router, events: Events
-) -> None:
-    mock_gafaelfawr(respx_mock)
+async def test_run(client: AsyncClient, events: Events) -> None:
     queries = [
         "SELECT TOP 10 * FROM TAP_SCHEMA.tables",
         "SELECT TOP 10 * FROM TAP_SCHEMA.columns",
