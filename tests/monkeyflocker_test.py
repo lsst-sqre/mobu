@@ -40,10 +40,7 @@ def monkeyflocker_app(tmp_path: Path) -> Iterator[UvicornProcess]:
     uvicorn = spawn_uvicorn(
         working_directory=tmp_path,
         factory="tests.support.monkeyflocker:create_app",
-        env={
-            "MOBU_GAFAELFAWR_TOKEN": config.gafaelfawr_token,
-            "MOBU_CONFIG_PATH": str(config_path("base")),
-        },
+        env={"MOBU_CONFIG_PATH": str(config_path("base"))},
     )
     yield uvicorn
     uvicorn.process.terminate()

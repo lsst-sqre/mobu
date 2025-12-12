@@ -9,13 +9,13 @@ from typing import override
 
 import respx
 from fastapi import FastAPI, Request, Response
+from rubin.gafaelfawr import register_mock_gafaelfawr
 from rubin.nublado.client import register_mock_jupyter
 from rubin.repertoire import register_mock_discovery
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from mobu.dependencies.config import config_dependency
 from mobu.main import create_app as main_create_app
-
-from .gafaelfawr import mock_gafaelfawr
 
 __all__ = ["AddAuthHeaderMiddleware", "create_app"]
 
@@ -45,10 +45,13 @@ class AddAuthHeaderMiddleware(BaseHTTPMiddleware):
 async def _startup() -> None:
     """Additional startup actions to take."""
     respx.start()
-    mock_gafaelfawr(respx.mock)
     os.environ["REPERTOIRE_BASE_URL"] = "https://example.com/repertoire"
     path = Path(__file__).parent.parent / "data" / "discovery.json"
     register_mock_discovery(respx.mock, path)
+    mock_gafaelfawr = await register_mock_gafaelfawr(respx.mock)
+    token = mock_gafaelfawr.create_token("bot-mobu", scopes=["admin:token"])
+    os.environ["MOBU_GAFAELFAWR_TOKEN"] = token
+    config_dependency.config.gafaelfawr_token = token
     await register_mock_jupyter(respx.mock).__aenter__()
 
 

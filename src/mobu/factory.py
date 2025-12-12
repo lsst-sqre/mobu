@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import structlog
 from httpx import AsyncClient
+from rubin.gafaelfawr import GafaelfawrClient
 from safir.slack.webhook import SlackWebhookClient
 from structlog.stdlib import BoundLogger
 
@@ -35,6 +36,8 @@ class ProcessContext:
     ----------
     http_client
         Shared HTTP client.
+    gafaelfawr
+        Shared Gafaelfawr client.
     manager
         Manager for all running flocks.
     events
@@ -49,12 +52,19 @@ class ProcessContext:
         events: Events,
     ) -> None:
         self.http_client = http_client
-        self.logger = structlog.get_logger("mobu")
-        self.gafaelfawr = GafaelfawrStorage(self.http_client, self.logger)
         self.events = events
+
+        config = config_dependency.config
+        self.logger = structlog.get_logger("mobu")
+        self.gafaelfawr = GafaelfawrClient(
+            http_client, logger=self.logger, timeout=config.gafaelfawr_timeout
+        )
+        gafaelfawr_storage = GafaelfawrStorage(
+            config, self.gafaelfawr, self.logger
+        )
         self.repo_manager = RepoManager(self.logger)
         self.manager = FlockManager(
-            gafaelfawr_storage=self.gafaelfawr,
+            gafaelfawr_storage=gafaelfawr_storage,
             http_client=self.http_client,
             logger=self.logger,
             repo_manager=self.repo_manager,
@@ -117,11 +127,12 @@ class Factory:
         Solitary
             Newly-created solitary manager.
         """
+        gafaelfawr_storage = GafaelfawrStorage(
+            self._config, self._context.gafaelfawr, self._logger
+        )
         return Solitary(
             solitary_config=solitary_config,
-            gafaelfawr_storage=GafaelfawrStorage(
-                self._context.http_client, self._logger
-            ),
+            gafaelfawr_storage=gafaelfawr_storage,
             http_client=self._context.http_client,
             events=self._context.events,
             repo_manager=self._context.repo_manager,

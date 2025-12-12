@@ -2,6 +2,8 @@
 
 from ..models.user import User
 from ..services.github_ci.ci_manager import CiManager
+from ..storage.gafaelfawr import GafaelfawrStorage
+from .config import config_dependency
 from .context import ContextDependency
 
 __all__ = ["CiManagerDependency", "MaybeCiManagerDependency"]
@@ -36,6 +38,11 @@ class CiManagerDependency:
         github_private_key: str,
         scopes: list[str],
     ) -> None:
+        gafaelfawr_storage = GafaelfawrStorage(
+            config_dependency.config,
+            base_context.process_context.gafaelfawr,
+            base_context.process_context.logger,
+        )
         self._ci_manager = CiManager(
             users=users,
             github_app_id=github_app_id,
@@ -44,7 +51,7 @@ class CiManagerDependency:
             http_client=base_context.process_context.http_client,
             events=base_context.process_context.events,
             repo_manager=base_context.process_context.repo_manager,
-            gafaelfawr_storage=base_context.process_context.gafaelfawr,
+            gafaelfawr_storage=gafaelfawr_storage,
             logger=base_context.process_context.logger,
         )
 

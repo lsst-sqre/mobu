@@ -10,11 +10,10 @@ from unittest.mock import DEFAULT, patch
 import pytest
 import pytest_asyncio
 import respx
-import safir.logging
-import structlog
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from rubin.gafaelfawr import MockGafaelfawr, register_mock_gafaelfawr
 from rubin.nublado.client import MockJupyter, register_mock_jupyter
 from rubin.repertoire import Discovery, register_mock_discovery
 from safir.testing.sentry import (
@@ -23,7 +22,6 @@ from safir.testing.sentry import (
     sentry_init_fixture,
 )
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
-from structlog.stdlib import BoundLogger
 
 from mobu import main
 from mobu.dependencies.config import config_dependency
@@ -41,7 +39,6 @@ from .support.constants import (
     TEST_GITHUB_CI_APP_SECRET,
     TEST_GITHUB_REFRESH_APP_SECRET,
 )
-from .support.gafaelfawr import mock_gafaelfawr
 from .support.github import GitHubMocker
 from .support.gitlfs import (
     no_git_lfs_data,
@@ -51,32 +48,20 @@ from .support.gitlfs import (
 
 
 @pytest.fixture(autouse=True)
-def environment_url() -> str:
-    return TEST_BASE_URL
-
-
-@pytest.fixture
-def configured_logger() -> BoundLogger:
-    safir.logging.configure_logging(
-        name="nublado-client",
-        profile=safir.logging.Profile.development,
-        log_level=safir.logging.LogLevel.DEBUG,
-    )
-    return structlog.get_logger("nublado-client")
-
-
-@pytest.fixture(autouse=True)
-def _configure(environment_url: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def _configure(
+    mock_gafaelfawr: MockGafaelfawr, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Set minimal configuration settings.
 
-    Add an environment URL for testing purposes and create a Gafaelfawr admin
-    token and add it to the configuration.
+    Create a Gafaelfawr admin token and add it to the configuration.
 
     This is an autouse fixture, so it will ensure that each test gets the
     minimal test configuration and a unique admin token that is replaced after
     the test runs.
     """
-    token = MockJupyter.create_mock_token("bot-someuser")
+    token = mock_gafaelfawr.create_token(
+        "bot-mobu", scopes=["admin:token", "admin:userinfo"]
+    )
     monkeypatch.setenv("MOBU_GAFAELFAWR_TOKEN", token)
     config_dependency.set_path(config_path("base"))
 
@@ -115,21 +100,18 @@ def _disable_file_logging() -> None:
 @pytest.fixture
 def _multi_replica_0(respx_mock: respx.Router) -> None:
     """Set config for multi-instance."""
-    mock_gafaelfawr(respx_mock, any_uid=True)
     config_dependency.set_path(config_path("multi_replica_0"))
 
 
 @pytest.fixture
 def _multi_replica_1(respx_mock: respx.Router) -> None:
     """Set config for multi-instance."""
-    mock_gafaelfawr(respx_mock, any_uid=True)
     config_dependency.set_path(config_path("multi_replica_1"))
 
 
 @pytest.fixture
 def _multi_replica_2(respx_mock: respx.Router) -> None:
     """Set config for multi-instance."""
-    mock_gafaelfawr(respx_mock, any_uid=True)
     config_dependency.set_path(config_path("multi_replica_2"))
 
 
@@ -144,6 +126,7 @@ def _enable_github_refresh_app(
         TEST_GITHUB_REFRESH_APP_SECRET,
     )
     config_dependency.set_path(config_path("github_refresh_app"))
+
     yield
 
     config_dependency.set_path(config_path("base"))
@@ -177,14 +160,17 @@ def events(app: FastAPI) -> Events:
 
 
 @pytest_asyncio.fixture
-async def client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
+async def client(
+    app: FastAPI, mock_gafaelfawr: MockGafaelfawr
+) -> AsyncGenerator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
+    token = mock_gafaelfawr.create_token("someuser")
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url=TEST_BASE_URL,
         headers={
             "X-Auth-Request-User": "someuser",
-            "X-Auth-Request-Token": MockJupyter.create_mock_token("someuser"),
+            "X-Auth-Request-Token": token,
         },
     ) as client:
         yield client
@@ -196,8 +182,7 @@ async def anon_client(app: FastAPI) -> AsyncGenerator[AsyncClient]:
     app.
     """
     async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url=TEST_BASE_URL,
+        transport=ASGITransport(app=app), base_url=TEST_BASE_URL
     ) as client:
         yield client
 
@@ -209,6 +194,13 @@ def mock_discovery(
     monkeypatch.setenv("REPERTOIRE_BASE_URL", "https://example.com/repertoire")
     path = Path(__file__).parent / "data" / "discovery.json"
     return register_mock_discovery(respx_mock, path)
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def mock_gafaelfawr(
+    mock_discovery: Discovery, respx_mock: respx.Router
+) -> MockGafaelfawr:
+    return await register_mock_gafaelfawr(respx_mock)
 
 
 @pytest_asyncio.fixture
