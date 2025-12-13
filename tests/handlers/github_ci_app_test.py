@@ -6,14 +6,12 @@ from dataclasses import dataclass
 from string import Template
 
 import pytest
-import respx
 from httpx import AsyncClient
 from pytest_mock import MockerFixture
 
 from mobu.services.github_ci.ci_manager import CiManager
 
 from ..support.constants import TEST_DATA_DIR, TEST_GITHUB_CI_APP_SECRET
-from ..support.gafaelfawr import mock_gafaelfawr
 
 
 @dataclass
@@ -64,11 +62,7 @@ def webhook_request(
 
 
 @pytest.mark.asyncio
-async def test_not_enabled(
-    anon_client: AsyncClient,
-    respx_mock: respx.Router,
-) -> None:
-    mock_gafaelfawr(respx_mock)
+async def test_not_enabled(anon_client: AsyncClient) -> None:
     request = webhook_request(
         event="pull_request",
         action="synchronize",
@@ -85,11 +79,8 @@ async def test_not_enabled(
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("_enable_github_ci_app")
 async def test_unacceptable_org(
-    anon_client: AsyncClient,
-    respx_mock: respx.Router,
-    mocker: MockerFixture,
+    anon_client: AsyncClient, mocker: MockerFixture
 ) -> None:
-    mock_gafaelfawr(respx_mock)
     request = webhook_request(
         event="pull_request",
         action="synchronize",
@@ -126,17 +117,9 @@ async def test_unacceptable_org(
     ],
 )
 async def test_should_enqueue(
-    anon_client: AsyncClient,
-    respx_mock: respx.Router,
-    mocker: MockerFixture,
-    gh_request: GitHubRequest,
+    anon_client: AsyncClient, mocker: MockerFixture, gh_request: GitHubRequest
 ) -> None:
-    mock_gafaelfawr(respx_mock)
-
-    mock_func = mocker.patch.object(
-        CiManager,
-        "enqueue",
-    )
+    mock_func = mocker.patch.object(CiManager, "enqueue")
 
     response = await anon_client.post(
         "/mobu/github/ci/webhook",

@@ -29,6 +29,7 @@ dependencies = [
     "pydantic-settings>=2.8",
     "pyvo<1.6",
     "pyyaml>=6",
+    "rubin-gafaelfawr",
     "rubin-nublado-client>=9",
     "safir[kafka]>=13",
     "sentry-sdk>=2.32",
@@ -178,3 +179,7 @@ new_fragment_template = "file:changelog.d/_template.md.jinja"
 skip_fragments = "_template.md.jinja"
 
 [tool.setuptools_scm]
+
+[tool.uv.sources]
+rubin-gafaelfawr = { git = "https://github.com/lsst-sqre/gafaelfawr", subdirectory = "client" }
+rubin-nublado-client = { git = "https://github.com/lsst-sqre/nublado", subdirectory = "client", branch = "tickets/DM-53547" }

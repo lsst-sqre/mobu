@@ -3,19 +3,11 @@
 from time import perf_counter
 
 import pytest
-import respx
 from httpx import AsyncClient
-
-from ..support.gafaelfawr import mock_gafaelfawr
 
 
 @pytest.mark.asyncio
-async def test_batched_start(
-    client: AsyncClient,
-    respx_mock: respx.Router,
-) -> None:
-    mock_gafaelfawr(respx_mock)
-
+async def test_batched_start(client: AsyncClient) -> None:
     # Set up our mocked business. This will wait for all batches to have
     # attempted to start.
     start = perf_counter()

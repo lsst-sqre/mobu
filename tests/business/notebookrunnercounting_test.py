@@ -9,7 +9,6 @@ from typing import cast
 from unittest.mock import ANY
 
 import pytest
-import respx
 from anys import ANY_AWARE_DATETIME_STR, AnyContains, AnySearch, AnyWithEntries
 from httpx import AsyncClient
 from rubin.nublado.client import MockJupyter
@@ -20,7 +19,6 @@ from mobu.events import Events
 from mobu.storage.git import Git
 
 from ..support.constants import TEST_DATA_DIR
-from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import (
     setup_git_repo,
     wait_for_business,
@@ -33,12 +31,8 @@ pytestmark = pytest.mark.usefixtures("mock_jupyter")
 
 @pytest.mark.asyncio
 async def test_run(
-    client: AsyncClient,
-    respx_mock: respx.Router,
-    tmp_path: Path,
-    events: Events,
+    client: AsyncClient, tmp_path: Path, events: Events
 ) -> None:
-    mock_gafaelfawr(respx_mock)
     cwd = Path.cwd()
 
     # Set up a notebook repository.
@@ -148,10 +142,7 @@ async def test_run(
 
 
 @pytest.mark.asyncio
-async def test_run_debug_log(
-    client: AsyncClient, respx_mock: respx.Router, tmp_path: Path
-) -> None:
-    mock_gafaelfawr(respx_mock)
+async def test_run_debug_log(client: AsyncClient, tmp_path: Path) -> None:
     cwd = Path.cwd()
 
     # Set up a notebook repository.
@@ -222,12 +213,8 @@ async def test_run_debug_log(
 
 @pytest.mark.asyncio
 async def test_run_recursive(
-    client: AsyncClient,
-    respx_mock: respx.Router,
-    tmp_path: Path,
-    events: Events,
+    client: AsyncClient, tmp_path: Path, events: Events
 ) -> None:
-    mock_gafaelfawr(respx_mock)
     cwd = Path.cwd()
 
     # Set up a notebook repository.
@@ -358,9 +345,8 @@ async def test_run_recursive(
 
 @pytest.mark.asyncio
 async def test_run_required_services(
-    client: AsyncClient, respx_mock: respx.Router, tmp_path: Path
+    client: AsyncClient, tmp_path: Path
 ) -> None:
-    mock_gafaelfawr(respx_mock)
     cwd = Path.cwd()
 
     # Set up a notebook repository.
@@ -438,12 +424,8 @@ async def test_run_required_services(
 
 @pytest.mark.asyncio
 async def test_refresh(
-    client: AsyncClient,
-    mock_jupyter: MockJupyter,
-    respx_mock: respx.Router,
-    tmp_path: Path,
+    client: AsyncClient, mock_jupyter: MockJupyter, tmp_path: Path
 ) -> None:
-    mock_gafaelfawr(respx_mock)
     cwd = Path.cwd()
 
     # Set up a notebook repository.
@@ -520,10 +502,7 @@ async def test_refresh(
 
 
 @pytest.mark.asyncio
-async def test_exclude_dirs(
-    client: AsyncClient, respx_mock: respx.Router, tmp_path: Path
-) -> None:
-    mock_gafaelfawr(respx_mock)
+async def test_exclude_dirs(client: AsyncClient, tmp_path: Path) -> None:
     cwd = Path.cwd()
 
     # Set up a notebook repository.
@@ -617,12 +596,8 @@ async def test_exclude_dirs(
 
 @pytest.mark.asyncio
 async def test_invalid_repo_config(
-    client: AsyncClient,
-    respx_mock: respx.Router,
-    tmp_path: Path,
-    sentry_items: Captured,
+    client: AsyncClient, tmp_path: Path, sentry_items: Captured
 ) -> None:
-    mock_gafaelfawr(respx_mock)
     cwd = Path.cwd()
 
     # Set up a notebook repository.
@@ -724,14 +699,8 @@ async def test_invalid_repo_config(
 
 @pytest.mark.asyncio
 async def test_alert(
-    client: AsyncClient,
-    respx_mock: respx.Router,
-    tmp_path: Path,
-    events: Events,
-    sentry_items: Captured,
+    client: AsyncClient, tmp_path: Path, events: Events, sentry_items: Captured
 ) -> None:
-    mock_gafaelfawr(respx_mock)
-
     # Set up a notebook repository with the exception notebook.
     source_path = TEST_DATA_DIR / "notebooks_recursive"
     repo_path = tmp_path / "notebooks"

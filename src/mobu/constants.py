@@ -12,7 +12,6 @@ __all__ = [
     "NOTEBOOK_REPO_BRANCH",
     "NOTEBOOK_REPO_URL",
     "TOKEN_LIFETIME",
-    "USERNAME_REGEX",
     "WEBSOCKET_OPEN_TIMEOUT",
 ]
 
@@ -42,13 +41,6 @@ forever.
 
 WEBSOCKET_OPEN_TIMEOUT = 60
 """How long to wait for a WebSocket connection to open (in seconds)."""
-
-# This must be kept in sync with Gafaelfawr until we can import the models
-# from Gafaelfawr directly.
-USERNAME_REGEX = (
-    "^[a-z0-9](?:[a-z0-9]|-[a-z0-9])*[a-z](?:[a-z0-9]|-[a-z0-9])*$"
-)
-"""Regex matching all valid usernames."""
 
 SENTRY_ERRORED_KEY = "errored"
 """Tag name to set on transactions that had exceptions."""

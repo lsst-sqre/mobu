@@ -12,7 +12,6 @@ from httpx import AsyncClient
 from mobu.dependencies.config import config_dependency
 
 from .support.config import config_path
-from .support.gafaelfawr import mock_gafaelfawr
 from .support.util import wait_for_flock_start
 
 # Use the Jupyter mock for all tests in this file.
@@ -23,7 +22,6 @@ pytestmark = pytest.mark.usefixtures("mock_jupyter")
 def _configure_autostart(respx_mock: respx.Router) -> Iterator[None]:
     """Set up the autostart configuration."""
     config_dependency.set_path(config_path("autostart"))
-    mock_gafaelfawr(respx_mock, any_uid=True)
     yield
     config_dependency.set_path(config_path("base"))
 

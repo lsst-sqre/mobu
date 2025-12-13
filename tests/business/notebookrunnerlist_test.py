@@ -8,11 +8,9 @@ from pathlib import Path
 from unittest.mock import ANY
 
 import pytest
-import respx
 from httpx import AsyncClient
 
 from ..support.constants import TEST_DATA_DIR
-from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import setup_git_repo, wait_for_business
 
 # Use the Jupyter mock for all tests in this file.
@@ -20,10 +18,7 @@ pytestmark = pytest.mark.usefixtures("mock_jupyter")
 
 
 @pytest.mark.asyncio
-async def test_run_all_notebooks(
-    client: AsyncClient, respx_mock: respx.Router, tmp_path: Path
-) -> None:
-    mock_gafaelfawr(respx_mock)
+async def test_run_all_notebooks(client: AsyncClient, tmp_path: Path) -> None:
     cwd = Path.cwd()
 
     # Set up a notebook repository.

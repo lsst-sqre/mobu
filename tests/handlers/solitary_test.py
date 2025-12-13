@@ -5,18 +5,13 @@ from __future__ import annotations
 from unittest.mock import ANY
 
 import pytest
-import respx
 from httpx import AsyncClient
 from rubin.nublado.client import MockJupyter
 from safir.testing.slack import MockSlackWebhook
 
-from ..support.gafaelfawr import mock_gafaelfawr
-
 
 @pytest.mark.asyncio
-async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
-    mock_gafaelfawr(respx_mock)
-
+async def test_run(client: AsyncClient) -> None:
     r = await client.post(
         "/mobu/run",
         json={
@@ -36,11 +31,8 @@ async def test_run(client: AsyncClient, respx_mock: respx.Router) -> None:
 async def test_error(
     client: AsyncClient,
     slack: MockSlackWebhook,
-    respx_mock: respx.Router,
     mock_jupyter: MockJupyter,
 ) -> None:
-    mock_gafaelfawr(respx_mock)
-
     r = await client.post(
         "/mobu/run",
         json={

@@ -6,12 +6,10 @@ from dataclasses import dataclass
 from string import Template
 
 import pytest
-import respx
 from httpx import AsyncClient
 from pytest_mock import MockerFixture
 
 from ..support.constants import TEST_DATA_DIR, TEST_GITHUB_REFRESH_APP_SECRET
-from ..support.gafaelfawr import mock_gafaelfawr
 
 
 @dataclass(frozen=True)
@@ -51,11 +49,7 @@ def webhook_request(org: str, repo: str, ref: str) -> GithubRequest:
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("_no_monkey_business")
-async def test_not_enabled(
-    anon_client: AsyncClient,
-    respx_mock: respx.Router,
-) -> None:
-    mock_gafaelfawr(respx_mock)
+async def test_not_enabled(anon_client: AsyncClient) -> None:
     request = webhook_request(
         org="lsst-sqre",
         repo="some-repo",
@@ -73,11 +67,8 @@ async def test_not_enabled(
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("_enable_github_refresh_app")
 async def test_unacceptable_org(
-    anon_client: AsyncClient,
-    respx_mock: respx.Router,
-    mocker: MockerFixture,
+    anon_client: AsyncClient, mocker: MockerFixture
 ) -> None:
-    mock_gafaelfawr(respx_mock)
     request = webhook_request(
         org="nope",
         repo="some-repo",
@@ -96,9 +87,7 @@ async def test_unacceptable_org(
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("_no_monkey_business", "_enable_github_refresh_app")
 async def test_handle_webhook(
-    client: AsyncClient,
-    anon_client: AsyncClient,
-    respx_mock: respx.Router,
+    client: AsyncClient, anon_client: AsyncClient
 ) -> None:
     configs = [
         {
@@ -152,8 +141,6 @@ async def test_handle_webhook(
             "business": {"type": "EmptyLoop"},
         },
     ]
-
-    mock_gafaelfawr(respx_mock)
 
     # Start the flocks
     for config in configs:

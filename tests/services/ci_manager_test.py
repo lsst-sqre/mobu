@@ -3,12 +3,13 @@
 import asyncio
 
 import pytest
-import respx
 import structlog
 from httpx import AsyncClient
 from pydantic import HttpUrl
 from pytest_mock import MockerFixture
+from rubin.gafaelfawr import GafaelfawrClient
 
+from mobu.dependencies.config import config_dependency
 from mobu.events import Events
 from mobu.models.ci_manager import (
     CiJobSummary,
@@ -22,30 +23,26 @@ from mobu.services.repo import RepoManager
 from mobu.storage.gafaelfawr import GafaelfawrStorage
 from tests.support.constants import TEST_GITHUB_CI_APP_PRIVATE_KEY
 
-from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.github import GitHubMocker, MockJob
 
 
-def create_ci_manager(respx_mock: respx.Router, events: Events) -> CiManager:
+def create_ci_manager(events: Events) -> CiManager:
     """Create a CiManger with appropriately mocked dependencies."""
+    config = config_dependency.config
     scopes = [
-        "exec_notebook",
-        "exec_portal",
-        "read_image",
-        "read_tap",
+        "exec:notebook",
+        "exec:portal",
+        "read:image",
+        "read:tap",
     ]
 
-    mock_gafaelfawr(
-        respx_mock,
-        scopes=[str(scope) for scope in scopes],
-    )
-    http_client = AsyncClient()
+    client = GafaelfawrClient()
     logger = structlog.get_logger()
-    gafaelfawr = GafaelfawrStorage(http_client=http_client, logger=logger)
+    gafaelfawr = GafaelfawrStorage(config, client, logger)
     repo_manager = RepoManager(logger=logger)
 
     return CiManager(
-        http_client=http_client,
+        http_client=AsyncClient(),
         gafaelfawr_storage=gafaelfawr,
         events=events,
         repo_manager=repo_manager,
@@ -63,7 +60,6 @@ def create_ci_manager(respx_mock: respx.Router, events: Events) -> CiManager:
 async def setup_and_run_jobs(
     jobs: list[MockJob],
     github_mocker: GitHubMocker,
-    respx_mock: respx.Router,
     mocker: MockerFixture,
     events: Events,
 ) -> None:
@@ -74,7 +70,7 @@ async def setup_and_run_jobs(
         Business, "run_once", new=github_mocker.get_mock_run_function()
     )
 
-    ci_manager = create_ci_manager(respx_mock, events)
+    ci_manager = create_ci_manager(events)
     await ci_manager.start()
     aioevents: list[asyncio.Event] = []
     for job in jobs:
@@ -91,13 +87,9 @@ async def setup_and_run_jobs(
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures(
-    "_enable_github_ci_app",
-)
-async def test_stops_on_empty_queue(
-    respx_mock: respx.Router, events: Events
-) -> None:
-    ci_manager = create_ci_manager(respx_mock, events)
+@pytest.mark.usefixtures("_enable_github_ci_app")
+async def test_stops_on_empty_queue(events: Events) -> None:
+    ci_manager = create_ci_manager(events)
     await ci_manager.start()
     expected_summary = CiManagerSummary(
         workers=[
@@ -123,11 +115,8 @@ async def test_stops_on_empty_queue(
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures(
-    "_enable_github_ci_app",
-)
+@pytest.mark.usefixtures("_enable_github_ci_app")
 async def test_no_changed_files(
-    respx_mock: respx.Router,
     github_mocker: GitHubMocker,
     mocker: MockerFixture,
     events: Events,
@@ -140,17 +129,13 @@ async def test_no_changed_files(
         jobs=jobs,
         github_mocker=github_mocker,
         mocker=mocker,
-        respx_mock=respx_mock,
         events=events,
     )
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures(
-    "_enable_github_ci_app",
-)
+@pytest.mark.usefixtures("_enable_github_ci_app")
 async def test_runs_jobs(
-    respx_mock: respx.Router,
     github_mocker: GitHubMocker,
     mocker: MockerFixture,
     events: Events,
@@ -170,20 +155,14 @@ async def test_runs_jobs(
         jobs=jobs,
         github_mocker=github_mocker,
         mocker=mocker,
-        respx_mock=respx_mock,
         events=events,
     )
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures(
-    "_enable_github_ci_app",
-)
+@pytest.mark.usefixtures("_enable_github_ci_app")
 async def test_shutdown(
-    respx_mock: respx.Router,
-    github_mocker: GitHubMocker,
-    mocker: MockerFixture,
-    events: Events,
+    github_mocker: GitHubMocker, mocker: MockerFixture, events: Events
 ) -> None:
     """Test that all queued jobs conclude in GitHub during shutdown."""
     completed_jobs = [
@@ -213,7 +192,7 @@ async def test_shutdown(
         new=github_mocker.get_mock_run_function(blocking_jobs=True),
     )
 
-    ci_manager = create_ci_manager(respx_mock, events)
+    ci_manager = create_ci_manager(events)
     await ci_manager.start()
 
     completed_lifecycles = [

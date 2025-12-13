@@ -9,9 +9,14 @@ from typing import cast
 from unittest.mock import ANY
 
 import pytest
-import respx
 from anys import ANY_AWARE_DATETIME_STR, AnyContains, AnySearch, AnyWithEntries
 from httpx import AsyncClient
+from rubin.gafaelfawr import (
+    GafaelfawrClient,
+    GafaelfawrGroup,
+    GafaelfawrUserInfo,
+    MockGafaelfawr,
+)
 from rubin.nublado.client import (
     MockJupyter,
     MockJupyterAction,
@@ -23,9 +28,7 @@ from safir.testing.slack import MockSlackWebhook
 
 from mobu.dependencies.config import config_dependency
 from mobu.events import Events
-from mobu.models.user import Group
 
-from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
 
 # Use the Jupyter mock for all tests in this file.
@@ -34,14 +37,10 @@ pytestmark = pytest.mark.usefixtures("mock_jupyter")
 
 @pytest.mark.asyncio
 async def test_run(
-    client: AsyncClient,
-    mock_jupyter: MockJupyter,
-    respx_mock: respx.Router,
-    events: Events,
+    client: AsyncClient, mock_jupyter: MockJupyter, events: Events
 ) -> None:
-    mock_gafaelfawr(
-        respx_mock, username="bot-mobu-testuser1", uid=1000, gid=1000
-    )
+    token = config_dependency.config.gafaelfawr_token
+    gafaelfawr = GafaelfawrClient()
 
     r = await client.put(
         "/mobu/flocks",
@@ -60,6 +59,15 @@ async def test_run(
         },
     )
     assert r.status_code == 201
+
+    # Check that the user was created with the correct parameters.
+    userinfo = await gafaelfawr.get_user_info(token, "bot-mobu-testuser1")
+    assert userinfo == GafaelfawrUserInfo(
+        username="bot-mobu-testuser1",
+        name="Mobu Test User",
+        uid=1000,
+        gid=1000,
+    )
 
     # Wait until we've finished one loop.  Make sure nothing fails.
     data = await wait_for_business(client, "bot-mobu-testuser1")
@@ -146,10 +154,8 @@ async def test_run(
 
 @pytest.mark.asyncio
 async def test_reuse_lab(
-    client: AsyncClient, mock_jupyter: MockJupyter, respx_mock: respx.Router
+    client: AsyncClient, mock_jupyter: MockJupyter
 ) -> None:
-    mock_gafaelfawr(respx_mock)
-
     r = await client.put(
         "/mobu/flocks",
         json={
@@ -180,11 +186,7 @@ async def test_reuse_lab(
 
 
 @pytest.mark.asyncio
-async def test_server_shutdown(
-    client: AsyncClient, respx_mock: respx.Router
-) -> None:
-    mock_gafaelfawr(respx_mock)
-
+async def test_server_shutdown(client: AsyncClient) -> None:
     r = await client.put(
         "/mobu/flocks",
         json={
@@ -209,10 +211,8 @@ async def test_server_shutdown(
 
 @pytest.mark.asyncio
 async def test_delayed_delete(
-    client: AsyncClient, mock_jupyter: MockJupyter, respx_mock: respx.Router
+    client: AsyncClient, mock_jupyter: MockJupyter
 ) -> None:
-    mock_gafaelfawr(respx_mock)
-
     r = await client.put(
         "/mobu/flocks",
         json={
@@ -240,12 +240,10 @@ async def test_delayed_delete(
 async def test_hub_failed(
     client: AsyncClient,
     mock_jupyter: MockJupyter,
-    respx_mock: respx.Router,
     events: Events,
     sentry_items: Captured,
 ) -> None:
     config = config_dependency.config
-    mock_gafaelfawr(respx_mock)
     mock_jupyter.fail_on("bot-mobu-testuser2", MockJupyterAction.SPAWN)
 
     r = await client.put(
@@ -324,12 +322,8 @@ async def test_hub_failed(
 
 @pytest.mark.asyncio
 async def test_spawn_timeout(
-    client: AsyncClient,
-    mock_jupyter: MockJupyter,
-    respx_mock: respx.Router,
-    sentry_items: Captured,
+    client: AsyncClient, mock_jupyter: MockJupyter, sentry_items: Captured
 ) -> None:
-    mock_gafaelfawr(respx_mock)
     mock_jupyter.set_spawn_delay(timedelta(seconds=60))
 
     r = await client.put(
@@ -387,12 +381,8 @@ async def test_spawn_timeout(
 
 @pytest.mark.asyncio
 async def test_spawn_failed(
-    client: AsyncClient,
-    mock_jupyter: MockJupyter,
-    respx_mock: respx.Router,
-    sentry_items: Captured,
+    client: AsyncClient, mock_jupyter: MockJupyter, sentry_items: Captured
 ) -> None:
-    mock_gafaelfawr(respx_mock)
     mock_jupyter.fail_on("bot-mobu-testuser1", MockJupyterAction.PROGRESS)
 
     r = await client.put(
@@ -461,12 +451,8 @@ async def test_spawn_failed(
 
 @pytest.mark.asyncio
 async def test_delete_timeout(
-    client: AsyncClient,
-    mock_jupyter: MockJupyter,
-    respx_mock: respx.Router,
-    sentry_items: Captured,
+    client: AsyncClient, mock_jupyter: MockJupyter, sentry_items: Captured
 ) -> None:
-    mock_gafaelfawr(respx_mock)
     mock_jupyter.set_delete_delay(timedelta(seconds=5))
 
     # Set delete_timeout to 1s even though we pause in increments of 2s since
@@ -530,12 +516,9 @@ async def test_delete_timeout(
 @pytest.mark.asyncio
 async def test_code_exception(
     client: AsyncClient,
-    respx_mock: respx.Router,
     events: Events,
     sentry_items: Captured,
 ) -> None:
-    mock_gafaelfawr(respx_mock)
-
     r = await client.put(
         "/mobu/flocks",
         json={
@@ -608,11 +591,8 @@ async def test_long_error(
     client: AsyncClient,
     mock_jupyter: MockJupyter,
     slack: MockSlackWebhook,
-    respx_mock: respx.Router,
     sentry_items: Captured,
 ) -> None:
-    mock_gafaelfawr(respx_mock)
-
     error = ""
     line = "this is a single line of output to test trimming errors"
     for i in range(int(3000 / len(line))):
@@ -687,10 +667,8 @@ async def test_long_error(
 
 @pytest.mark.asyncio
 async def test_lab_controller(
-    client: AsyncClient, mock_jupyter: MockJupyter, respx_mock: respx.Router
+    client: AsyncClient, mock_jupyter: MockJupyter
 ) -> None:
-    mock_gafaelfawr(respx_mock)
-
     # Image by reference.
     r = await client.put(
         "/mobu/flocks",
@@ -784,13 +762,8 @@ async def test_lab_controller(
 
 @pytest.mark.asyncio
 async def test_ansi_error(
-    client: AsyncClient,
-    mock_jupyter: MockJupyter,
-    respx_mock: respx.Router,
-    sentry_items: Captured,
+    client: AsyncClient, mock_jupyter: MockJupyter, sentry_items: Captured
 ) -> None:
-    mock_gafaelfawr(respx_mock)
-
     code = 'raise ValueError("\\033[38;5;28;01mFoo\\033[39;00m")'
     r = await client.put(
         "/mobu/flocks",
@@ -863,16 +836,11 @@ async def test_ansi_error(
 async def test_user_spec_groups(
     client: AsyncClient,
     mock_jupyter: MockJupyter,
-    respx_mock: respx.Router,
+    mock_gafaelfawr: MockGafaelfawr,
     events: Events,
 ) -> None:
-    mock_gafaelfawr(
-        respx_mock,
-        username="bot-mobu-testuser1",
-        uid=1000,
-        gid=1000,
-        groups=[Group(name="g_users", id=2000)],
-    )
+    gafaelfawr = GafaelfawrClient()
+    token = config_dependency.config.gafaelfawr_token
 
     r = await client.put(
         "/mobu/flocks",
@@ -892,6 +860,16 @@ async def test_user_spec_groups(
         },
     )
     assert r.status_code == 201
+
+    # Check that the user was created with the correct parameters.
+    userinfo = await gafaelfawr.get_user_info(token, "bot-mobu-testuser1")
+    assert userinfo == GafaelfawrUserInfo(
+        username="bot-mobu-testuser1",
+        name="Mobu Test User",
+        uid=1000,
+        gid=1000,
+        groups=[GafaelfawrGroup(name="g_users", id=2000)],
+    )
 
     # Wait until we've finished one loop.  Make sure nothing fails.
     data = await wait_for_business(client, "bot-mobu-testuser1")
