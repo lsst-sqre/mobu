@@ -6,6 +6,17 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-17.0.0'></a>
+## 17.0.0 (2025-12-16)
+
+### Backwards-incompatible changes
+
+- Rename `config.profile` to `config.logProfile` in the Helm configuration to make it clearer what this field controls.
+
+### New features
+
+- Use [Repertoire](https://repertoire.lsst.io/) service discovery to locate the Gafaelfawr API for managing service tokens for monkeys.
+
 <a id='changelog-16.1.1'></a>
 ## 16.1.1 (2025-12-03)
 
