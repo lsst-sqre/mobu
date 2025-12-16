@@ -45,7 +45,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Install the application itself.
 ADD . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --no-deps --compile-bytecode .
+    uv sync --frozen --no-default-groups --compile-bytecode --no-editable
 
 FROM base-image AS runtime-image
 
@@ -53,7 +53,7 @@ FROM base-image AS runtime-image
 RUN useradd --create-home appuser
 
 # Copy the virtualenv.
-COPY --from=install-image /app /app
+COPY --from=install-image /app/.venv /app/.venv
 
 # Switch to the non-root user.
 USER appuser
