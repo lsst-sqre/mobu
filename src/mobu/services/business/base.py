@@ -3,14 +3,15 @@
 import asyncio
 from abc import ABCMeta, abstractmethod
 from asyncio import Queue, QueueEmpty
-from collections.abc import AsyncGenerator, AsyncIterable
+from collections.abc import AsyncGenerator
+from contextlib import aclosing
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import TypedDict
 
 from structlog.stdlib import BoundLogger
 
-from ...asyncio import aclosing_iter, wait_first
+from ...asyncio import wait_first
 from ...events import Events
 from ...models.business.base import BusinessData, BusinessOptions
 from ...models.user import AuthenticatedUser
@@ -258,63 +259,64 @@ class Business[T: BusinessOptions](metaclass=ABCMeta):
             return True
 
     async def iter_with_timeout[U](
-        self, iterable: AsyncIterable[U], timeout: timedelta
+        self, generator: AsyncGenerator[U], timeout: timedelta
     ) -> AsyncGenerator[U]:
-        """Run an iterator with a timeout.
+        """Run a generator with a timeout.
 
-        Returns the next element of the iterator on success and ends the
-        iterator on timeout or if the business was told to shut down.  (The
-        latter two can be distinguished by checking ``self.stopping``.)
+        Wraps the provided generator, ending it ontimeout or if the business
+        was told to shut down. (The latter two can be distinguished by
+        checking ``self.stopping``.)
 
         Parameters
         ----------
-        iterable
-            Any object that supports the async iterable protocol.
+        generator
+            Any object that supports the async generator protocol.
         timeout
-            How long to wait for each new iterator result.
+            How long to wait for each new generator result.
 
-        Yields
-        ------
-        typing.Any
-            The next result of the iterable passed as ``iterable``.
+        Returns
+        -------
+        AsyncGenerator
+            Wrapped generator that yields the same as the ``generator``
+            argument, but raises `StopIteration` on timeout or if the business
+            was signaled to stop.
 
         Raises
         ------
         StopIteration
-             Raised when the iterable is exhausted, a timeout occurs, or the \
+             Raised when the generator is exhausted, a timeout occurs, or the
              business was signaled to stop by calling `stop`.
 
         Notes
         -----
         This is unfortunately somewhat complex because we want to read from an
-        iterator of messages (progress for spawn or WebSocket messages for
+        generator of messages (progress for spawn or WebSocket messages for
         code execution) while simultaneously checking our control queue for a
         shutdown message and imposing a timeout.
 
         Do this by creating two awaitables, one pause that handles the control
-        queue and the timeout and the other that waits on the progress
-        iterator, and then use the ``wait_first`` utility function to wait for
+        queue and the timeout and the other that waits on the generator, and
+        then use the `~mobu.asyncio.wait_first` utility function to wait for
         the first one that finishes and abort the other one.
         """
-        iterator = iterable.__aiter__()
 
-        # While it works for our current code to pass the results of __anext__
+        # While it works for our current code to pass the results of anext()
         # directly into wait_first and thus into asyncio.create_task, mypy
-        # complains because technically the return value of __anext__ can be
-        # any Awaitable and does not need to be a Coroutine (which is required
-        # for asyncio.create_task). Turn it into an explicit Coroutine to
+        # complains because technically the return value of anext() can be any
+        # Awaitable and does not need to be a Coroutine (which is required for
+        # asyncio.create_task). Turn it into an explicit Coroutine to
         # guarantee this will always work correctly.
-        async def iter_next() -> U:
-            return await iterator.__anext__()
+        async def gen_next() -> U:
+            return await anext(generator)
 
         start = datetime.now(tz=UTC)
-        async with aclosing_iter(iterator):
+        async with aclosing(generator):
             while True:
                 remaining = timeout - (datetime.now(tz=UTC) - start)
                 if remaining < timedelta(seconds=0):
                     break
                 pause = self._pause_no_return(timeout)
-                result = await wait_first(iter_next(), pause)
+                result = await wait_first(gen_next(), pause)
                 if result is None or self.stopping:
                     break
                 yield result
