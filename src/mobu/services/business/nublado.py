@@ -68,6 +68,7 @@ class ProgressLogMessage:
     timestamp: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
     """When the event was received."""
 
+    @override
     def __str__(self) -> str:
         timestamp = format_datetime_for_logging(self.timestamp)
         return f"{timestamp} - {self.message}"
@@ -213,6 +214,7 @@ class NubladoBusiness[T: NubladoBusinessOptions](
         await self.hub_login()
         await self.delete_lab()
 
+    @override
     async def idle(self) -> None:
         if self.options.jitter:
             self.logger.info("Idling...")

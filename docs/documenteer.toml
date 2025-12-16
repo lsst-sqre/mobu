@@ -22,7 +22,7 @@ nitpick_ignore = [
     # of single-quotes to not generate a reference, but automatic references
     # are generated from the type signatures and can't be avoided.
     #
-    # These are listed specifically rather than with regexesbecause Russ has
+    # These are listed specifically rather than with regexes because Russ has
     # caught documentation bugs by having Sphinx complain about a new symbol.
     ["py:class", "pydantic.main.BaseModel"],
     ["py:class", "pydantic_core._pydantic_core.ValidationError"],

@@ -49,7 +49,7 @@ Source = "https://github.com/lsst-sqre/mobu"
 "Issue tracker" = "https://github.com/lsst-sqre/mobu/issues"
 
 [build-system]
-requires = ["setuptools>=61", "wheel", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=61", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [dependency-groups]
@@ -111,8 +111,18 @@ exclude_lines = [
 ]
 
 [tool.mypy]
-disallow_untyped_defs = true
 disallow_incomplete_defs = true
+disallow_untyped_defs = true
+enable_error_code = [
+    "deprecated",
+    "exhaustive-match",
+    "explicit-override",
+    "ignore-without-code",
+    "redundant-expr",
+    "redundant-self",
+    "truthy-iterable",
+    "unused-awaitable",
+]
 ignore_missing_imports = true
 local_partial_types = true
 plugins = ["pydantic.mypy"]

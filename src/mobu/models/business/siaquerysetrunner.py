@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, override
 
 from astropy.time import Time
 from pydantic import BaseModel, Field
@@ -65,6 +65,7 @@ class SIAQuery(BaseModel):
         times = [Time(str(t), format="mjd").to_datetime() for t in self.time]
         return {"pos": self.pos, "time": times}
 
+    @override
     def __str__(self) -> str:
         """Return a string representation of the query."""
         times = ", ".join([str(t) for t in self.time])
