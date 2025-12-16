@@ -7,7 +7,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine
 from contextlib import AbstractAsyncContextManager
 from datetime import timedelta
 from types import TracebackType
-from typing import Literal
+from typing import Literal, override
 
 __all__ = [
     "aclosing_iter",
@@ -42,9 +42,11 @@ class aclosing_iter[T: AsyncIterator](AbstractAsyncContextManager):  # noqa: N80
     def __init__(self, thing: T) -> None:
         self.thing = thing
 
+    @override
     async def __aenter__(self) -> T:
         return self.thing
 
+    @override
     async def __aexit__(
         self,
         exc_type: type[BaseException] | None,

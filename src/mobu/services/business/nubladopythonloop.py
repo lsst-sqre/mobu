@@ -7,6 +7,7 @@ over again.
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import override
 
 import sentry_sdk
 from rubin.nublado.client import JupyterLabSession
@@ -54,6 +55,7 @@ class NubladoPythonLoop(NubladoBusiness):
             flock=flock,
         )
 
+    @override
     async def execute_code(self, session: JupyterLabSession) -> None:
         code = self.options.code
         sentry_sdk.set_context("code_info", {"code": code})

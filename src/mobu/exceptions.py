@@ -92,6 +92,7 @@ class SubprocessError(SlackException):
         self.cwd = cwd
         self.env = env
 
+    @override
     def __str__(self) -> str:
         return (
             f"{self.msg} with rc={self.returncode};"
@@ -125,6 +126,7 @@ class ComparisonError(SlackException):
         self.expected = expected
         self.received = received
 
+    @override
     def __str__(self) -> str:
         return (
             f"Comparison failed: expected '{self.expected}', but"
