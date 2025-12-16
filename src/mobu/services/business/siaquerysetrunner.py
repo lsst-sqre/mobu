@@ -172,7 +172,7 @@ class SIAQuerySetRunner(Business):
                 auth.add_security_method_for_url(
                     sia_url + "/query", "lsst-token"
                 )
-                return pyvo.dal.SIA2Service(sia_url, auth)
+                return pyvo.dal.SIA2Service(sia_url, session=auth)
             except Exception as e:
                 raise SIAClientError(e) from e
 

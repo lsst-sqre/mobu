@@ -170,6 +170,6 @@ class TAPBusiness[T: TAPBusinessOptions](Business[T], metaclass=ABCMeta):
                 auth.add_security_method_for_url(
                     tap_url + "/tables", "lsst-token"
                 )
-                return pyvo.dal.TAPService(tap_url, auth)
+                return pyvo.dal.TAPService(tap_url, session=auth)
             except Exception as e:
                 raise TAPClientError(e) from e
