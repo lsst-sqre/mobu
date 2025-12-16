@@ -28,7 +28,9 @@ nitpick_ignore = [
     ["py:class", "pydantic_core._pydantic_core.ValidationError"],
     ["py:class", "pydantic_settings.main.BaseSettings"],
     ["py:class", "pydantic_settings.sources.providers.cli.CliSettingsSource"],
-    ["py:class", "aiojobs._scheduler.Scheduler"]
+    ["py:class", "aiojobs._scheduler.Scheduler"],
+    # Bug in Sphinx with Python 3.14
+    ["py:data", "typing.Union"]
 ]
 
 nitpick_ignore_regex = [
@@ -41,10 +43,8 @@ rst_epilog_file = "_rst_epilog.rst"
 [sphinx.intersphinx.projects]
 aiohttp = "https://docs.aiohttp.org/en/stable/"
 gidgethub = "https://gidgethub.readthedocs.io/en/latest/"
-
-# /3 points to 3.14 now, and docs won't build with python 3.13, so point
-# explicitly at 3.13 until we build the docs with 3.14.
-python = "https://docs.python.org/3.13"
+python = "https://docs.python.org/3"
+rubin-gafaelfawr = "https://gafaelfawr.lsst.io"
 safir = "https://safir.lsst.io"
 sentry_sdk = "https://getsentry.github.io/sentry-python/"
 structlog = "https://www.structlog.org/en/stable"

@@ -3,45 +3,46 @@
 from __future__ import annotations
 
 import pytest
-import respx
 import structlog
-from safir.dependencies.http_client import http_client_dependency
+from rubin.gafaelfawr import (
+    GafaelfawrClient,
+    GafaelfawrGroup,
+    GafaelfawrUserInfo,
+)
 
+from mobu.dependencies.config import config_dependency
 from mobu.models.user import Group, User
 from mobu.storage.gafaelfawr import GafaelfawrStorage
 
-from ..support.gafaelfawr import mock_gafaelfawr
-
 
 @pytest.mark.asyncio
-async def test_generate_token(respx_mock: respx.Router) -> None:
-    mock_gafaelfawr(respx_mock, "bot-mobu-someuser", 1234, 1234)
-    config = User(username="bot-mobu-someuser", uidnumber=1234)
+async def test_generate_token() -> None:
+    config = config_dependency.config
+    user = User(username="bot-mobu-someuser", uidnumber=1234)
     scopes = ["exec:notebook"]
 
-    client = await http_client_dependency()
+    client = GafaelfawrClient()
     logger = structlog.get_logger(__file__)
-    gafaelfawr = GafaelfawrStorage(client, logger)
+    gafaelfawr = GafaelfawrStorage(config, client, logger)
 
-    user = await gafaelfawr.create_service_token(config, scopes)
-    assert user.username == "bot-mobu-someuser"
-    assert user.uidnumber == 1234
-    assert user.gidnumber == 1234
-    assert user.scopes == ["exec:notebook"]
-    assert user.token.startswith("gt-")
+    auth_user = await gafaelfawr.create_service_token(user, scopes)
+    assert auth_user.username == "bot-mobu-someuser"
+    assert auth_user.uidnumber == 1234
+    assert auth_user.gidnumber == 1234
+    assert auth_user.scopes == ["exec:notebook"]
+    assert auth_user.token.startswith("gt-")
+
+    userinfo = await client.get_user_info(auth_user.token)
+    assert userinfo == GafaelfawrUserInfo(
+        username="bot-mobu-someuser", name="Mobu Test User", uid=1234, gid=1234
+    )
 
 
 @pytest.mark.asyncio
-async def test_groups(respx_mock: respx.Router) -> None:
+async def test_groups() -> None:
+    config = config_dependency.config
     groups = [Group(name="g_users", id=10000)]
-    mock_gafaelfawr(
-        respx_mock,
-        "bot-mobu-someuser",
-        1234,
-        1234,
-        groups=[Group(name="g_users", id=10000)],
-    )
-    config = User(
+    user = User(
         username="bot-mobu-someuser",
         uidnumber=1234,
         gidnumber=1234,
@@ -49,14 +50,23 @@ async def test_groups(respx_mock: respx.Router) -> None:
     )
     scopes = ["exec:notebook"]
 
-    client = await http_client_dependency()
+    client = GafaelfawrClient()
     logger = structlog.get_logger(__file__)
-    gafaelfawr = GafaelfawrStorage(client, logger)
+    gafaelfawr = GafaelfawrStorage(config, client, logger)
 
-    user = await gafaelfawr.create_service_token(config, scopes)
-    assert user.username == "bot-mobu-someuser"
-    assert user.uidnumber == 1234
-    assert user.gidnumber == 1234
-    assert user.scopes == ["exec:notebook"]
-    assert user.groups == groups
-    assert user.token.startswith("gt-")
+    auth_user = await gafaelfawr.create_service_token(user, scopes)
+    assert auth_user.username == "bot-mobu-someuser"
+    assert auth_user.uidnumber == 1234
+    assert auth_user.gidnumber == 1234
+    assert auth_user.scopes == ["exec:notebook"]
+    assert auth_user.groups == groups
+    assert auth_user.token.startswith("gt-")
+
+    userinfo = await client.get_user_info(auth_user.token)
+    assert userinfo == GafaelfawrUserInfo(
+        username="bot-mobu-someuser",
+        name="Mobu Test User",
+        uid=1234,
+        gid=1234,
+        groups=[GafaelfawrGroup(name="g_users", id=10000)],
+    )

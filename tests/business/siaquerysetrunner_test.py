@@ -7,7 +7,6 @@ from unittest.mock import ANY, patch
 
 import pytest
 import pyvo
-import respx
 import structlog
 from anys import ANY_AWARE_DATETIME_STR, AnyContains, AnySearch, AnyWithEntries
 from httpx import AsyncClient
@@ -19,16 +18,11 @@ from mobu.models.business.siaquerysetrunner import SIAQuerySetRunnerOptions
 from mobu.models.user import AuthenticatedUser
 from mobu.services.business.siaquerysetrunner import SIAQuerySetRunner
 
-from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
 
 
 @pytest.mark.asyncio
-async def test_run(
-    client: AsyncClient, respx_mock: respx.Router, events: Events
-) -> None:
-    mock_gafaelfawr(respx_mock)
-
+async def test_run(client: AsyncClient, events: Events) -> None:
     with patch.object(pyvo.dal, "SIA2Service"):
         r = await client.put(
             "/mobu/flocks",
@@ -86,17 +80,13 @@ async def test_run(
 
 @pytest.mark.asyncio
 async def test_setup_error(
-    client: AsyncClient,
-    respx_mock: respx.Router,
-    sentry_items: Captured,
+    client: AsyncClient, sentry_items: Captured
 ) -> None:
     """Test that client creation is deferred to setup.
 
     This also doubles as a test that failures during setup are recorded as a
     failed test execution and result in a Slack alert.
     """
-    mock_gafaelfawr(respx_mock)
-
     r = await client.put(
         "/mobu/flocks",
         json={
@@ -141,12 +131,8 @@ async def test_setup_error(
 
 @pytest.mark.asyncio
 async def test_failure(
-    client: AsyncClient,
-    respx_mock: respx.Router,
-    events: Events,
-    sentry_items: Captured,
+    client: AsyncClient, events: Events, sentry_items: Captured
 ) -> None:
-    mock_gafaelfawr(respx_mock)
     with patch.object(pyvo.dal, "SIA2Service") as mock:
         mock.return_value.search.side_effect = [Exception("some error")]
 

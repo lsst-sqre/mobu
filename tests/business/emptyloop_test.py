@@ -4,24 +4,16 @@ from typing import cast
 from unittest.mock import ANY
 
 import pytest
-import respx
 from httpx import AsyncClient
 from safir.metrics import MockEventPublisher
 
 from mobu.events import Events
 
-from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
 
 
 @pytest.mark.asyncio
-async def test_run(
-    client: AsyncClient,
-    respx_mock: respx.Router,
-    events: Events,
-) -> None:
-    mock_gafaelfawr(respx_mock)
-
+async def test_run(client: AsyncClient, events: Events) -> None:
     # Set up our mocked business
     r = await client.put(
         "/mobu/flocks",

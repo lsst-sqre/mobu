@@ -4,26 +4,19 @@ from typing import cast
 from unittest.mock import ANY
 
 import pytest
-import respx
 from httpx import AsyncClient
 from safir.metrics import NOT_NONE, MockEventPublisher
 
 from mobu.events import Events
 
-from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.gitlfs import flock_message
 from ..support.util import wait_for_business
 
 
 @pytest.mark.asyncio
 async def test_run(
-    client: AsyncClient,
-    respx_mock: respx.Router,
-    gitlfs_mock: None,
-    events: Events,
+    client: AsyncClient, gitlfs_mock: None, events: Events
 ) -> None:
-    mock_gafaelfawr(respx_mock)
-
     # Set up our mocked business
     r = await client.put("/mobu/flocks", json=flock_message)
 
@@ -73,11 +66,9 @@ async def test_run(
 @pytest.mark.asyncio
 async def test_fail(
     client: AsyncClient,
-    respx_mock: respx.Router,
     events: Events,
     gitlfs_fail_mock: None,
 ) -> None:
-    mock_gafaelfawr(respx_mock)
     r = await client.put("/mobu/flocks", json=flock_message)
     assert r.status_code == 201
 

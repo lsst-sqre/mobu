@@ -6,11 +6,9 @@ from typing import Any
 from unittest.mock import ANY
 
 import pytest
-import respx
 from httpx import AsyncClient
 
 from ..support.constants import TEST_BASE_URL
-from ..support.gafaelfawr import mock_gafaelfawr
 from ..support.util import wait_for_business
 
 
@@ -22,11 +20,7 @@ async def test_empty(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_start_stop_refresh(
-    client: AsyncClient, respx_mock: respx.Router
-) -> None:
-    mock_gafaelfawr(respx_mock)
-
+async def test_start_stop_refresh(client: AsyncClient) -> None:
     config = {
         "name": "test",
         "count": 1,
@@ -143,11 +137,7 @@ async def test_start_stop_refresh(
 
 
 @pytest.mark.asyncio
-async def test_user_list(
-    client: AsyncClient, respx_mock: respx.Router
-) -> None:
-    mock_gafaelfawr(respx_mock, any_uid=True)
-
+async def test_user_list(client: AsyncClient) -> None:
     config = {
         "name": "test",
         "count": 2,
@@ -223,9 +213,7 @@ async def test_user_list(
 
 
 @pytest.mark.asyncio
-async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
-    mock_gafaelfawr(respx_mock)
-
+async def test_errors(client: AsyncClient) -> None:
     # Both users and user_spec given.
     r = await client.put(
         "/mobu/flocks",
@@ -361,11 +349,7 @@ async def test_errors(client: AsyncClient, respx_mock: respx.Router) -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("_disable_file_logging")
-async def test_file_logging_disabled(
-    client: AsyncClient, respx_mock: respx.Router
-) -> None:
-    mock_gafaelfawr(respx_mock)
-
+async def test_file_logging_disabled(client: AsyncClient) -> None:
     config = {
         "name": "test",
         "count": 1,
