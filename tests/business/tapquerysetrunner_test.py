@@ -114,7 +114,7 @@ async def test_setup_error(
         AnyWithEntries(
             {
                 "type": "DALServiceError",
-                "value": "No working capabilities endpoint provided",
+                "value": AnyContains("Cannot find TAP service"),
             }
         )
     )

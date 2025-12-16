@@ -11,13 +11,13 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Natural Language :: English",
     "Operating System :: POSIX",
     "Private :: Do Not Upload",
     "Typing :: Typed",
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "aiojobs>=1.3",
     "click>=8.1.6",
@@ -27,7 +27,7 @@ dependencies = [
     "jinja2>=3.1",
     "pydantic>=2.11",
     "pydantic-settings>=2.8",
-    "pyvo<1.6",
+    "pyvo",
     "pyyaml>=6",
     "rubin-gafaelfawr",
     "rubin-nublado-client>=10",
@@ -87,7 +87,6 @@ typing = [
 
 [tool.black]
 line-length = 79
-target-version = ["py313"]
 
 [tool.coverage.run]
 parallel = true
@@ -133,6 +132,13 @@ warn_untyped_fields = true
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "strict"
+filterwarnings = [
+    # dataclases-avroschema hasn't been fully updated for Python 3.14
+    "ignore:.*Core Pydantic V1 functionality.*:UserWarning",
+    "ignore:.*'_UnionGenericAlias' is deprecated.*:DeprecationWarning",
+    # Bug in Sentry with Python 3.14 and later
+    "ignore:.*asyncio.iscoroutinefunction' is deprecated.*:DeprecationWarning",
+]
 # The python_files setting is not for test detection (pytest will pick up any
 # test files named *_test.py without this setting) but to enable special
 # assert processing in any non-test supporting files under tests.  We

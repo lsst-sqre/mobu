@@ -110,7 +110,9 @@ async def test_setup_error(
         AnyWithEntries(
             {
                 "type": "DALServiceError",
-                "value": "No working capabilities endpoint provided",
+                "value": AnyContains(
+                    "Unable to access the capabilities endpoint"
+                ),
             }
         )
     )
