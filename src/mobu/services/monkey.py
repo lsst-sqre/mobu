@@ -328,7 +328,7 @@ class Monkey:
         logger.setLevel(self._log_level.value)
         logger.addHandler(file_handler)
         logger.propagate = False
-        if self._config.profile == Profile.development:
+        if self._config.log_profile == Profile.development:
             stream_handler = logging.StreamHandler(stream=sys.stdout)
             stream_handler.setFormatter(formatter)
             logger.addHandler(stream_handler)

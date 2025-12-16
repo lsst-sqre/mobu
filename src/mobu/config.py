@@ -148,21 +148,33 @@ class Config(BaseSettings):
         alias_generator=to_camel, extra="forbid", validate_by_name=True
     )
 
-    slack_alerts: bool = Field(
-        False,
-        title="Enable Slack alerts",
-        description=(
-            "Whether to enable Slack alerts. If true, ``alert_hook`` must"
-            " also be set."
-        ),
-    )
-
     alert_hook: SecretStr | None = Field(
         None,
         title="Slack alert webhook URL",
         description="Slack incoming webhook to which to send alerts",
         examples=["https://slack.example.com/ADFAW1452DAF41/"],
         validation_alias=AliasChoices("MOBU_ALERT_HOOK", "alertHook"),
+    )
+
+    autostart: list[FlockConfig] = Field(
+        default=[],
+        title="Autostart config",
+        description=(
+            "Configuration of flocks of monkeys that will run businesses"
+            " repeatedly as long as Mobu is running."
+        ),
+    )
+
+    available_services: set[str] = Field(
+        set(),
+        title="Available platform services",
+        description=(
+            "Names of services available in the current environment. For now,"
+            " this list is manually maintained in the mobu config in Phalanx."
+            " When we have a service discovery mechanism in place, it should"
+            " be used here."
+        ),
+        examples=[{"tap", "ssotap", "butler"}],
     )
 
     environment_url: HttpUrl = Field(
@@ -172,42 +184,6 @@ class Config(BaseSettings):
         examples=["https://data.example.org/"],
         validation_alias=AliasChoices(
             "MOBU_ENVIRONMENT_URL", "environmentUrl"
-        ),
-    )
-
-    sentry_dsn: str | None = Field(
-        None,
-        title="Sentry DSN",
-        description="The Sentry DSN: https://docs.sentry.io/platforms/python/#configure",
-        examples=[
-            "https://foo@bar.ingest.us.sentry.io/123456",
-        ],
-        validation_alias=AliasChoices("MOBU_SENTRY_DSN", "mobuSentryDsn"),
-    )
-
-    sentry_traces_sample_config: float | Literal["errors"] = Field(
-        0,
-        title="Sentry traces sample config",
-        description=(
-            "Set the Sentry sampling strategy for traces. If this is a float,"
-            " it will be passed as the traces_sample_rate: https://docs.sentry.io/platforms/python/sampling/#configuring-the-transaction-sample-rate"
-            ' If this is set to "errors", then all transactions during which'
-            " an error occurred will be sent."
-        ),
-        examples=[0, 0.5, "errors"],
-        validation_alias=AliasChoices(
-            "MOBU_SENTRY_TRACES_SAMPLE_CONFIG", "sentryTracesSampleConfig"
-        ),
-    )
-
-    sentry_environment: str = Field(
-        ...,
-        title="Sentry environment",
-        description=(
-            "The Sentry environment: https://docs.sentry.io/concepts/key-terms/environments/"
-        ),
-        validation_alias=AliasChoices(
-            "MOBU_SENTRY_ENVIRONMENT", "sentryEnvironment"
         ),
     )
 
@@ -235,41 +211,16 @@ class Config(BaseSettings):
         examples=["3m", 45, "45", "1.4s"],
     )
 
-    available_services: set[str] = Field(
-        set(),
-        title="Available platform services",
-        description=(
-            "Names of services available in the current environment. For now,"
-            " this list is manually maintained in the mobu config in Phalanx."
-            " When we have a service discovery mechanism in place, it should"
-            " be used here."
-        ),
-        examples=[{"tap", "ssotap", "butler"}],
+    github_ci_app: GitHubCiAppConfig | None = Field(
+        None,
+        title="GitHub CI app config",
+        description=("Configuration for GitHub CI app functionality"),
     )
 
-    name: str = Field(
-        "mobu",
-        title="Name of application",
-        description="Doubles as the root HTTP endpoint path.",
-    )
-
-    autostart: list[FlockConfig] = Field(
-        default=[],
-        title="Autostart config",
-        description=(
-            "Configuration of flocks of monkeys that will run businesses"
-            " repeatedly as long as Mobu is running."
-        ),
-    )
-
-    path_prefix: str = Field(
-        "/mobu",
-        title="URL prefix for application API",
-    )
-
-    profile: Profile = Field(
-        Profile.development,
-        title="Application logging profile",
+    github_refresh_app: GitHubRefreshAppConfig | None = Field(
+        None,
+        title="GitHub refresh app config",
+        description=("Configuration for GitHub refresh app functionality"),
     )
 
     log_level: LogLevel = Field(
@@ -284,6 +235,27 @@ class Config(BaseSettings):
             "Log monkey messages to a file instead of doing whatever the"
             " normal global logger does"
         ),
+    )
+
+    log_profile: Profile = Field(
+        Profile.development,
+        title="Application logging profile",
+    )
+
+    metrics: MetricsConfiguration = Field(
+        default_factory=metrics_configuration_factory,
+        title="Metrics configuration",
+    )
+
+    name: str = Field(
+        "mobu",
+        title="Name of application",
+        description="Doubles as the root HTTP endpoint path.",
+    )
+
+    path_prefix: str = Field(
+        "/mobu",
+        title="URL prefix for application API",
     )
 
     replica_count: int = Field(
@@ -308,21 +280,49 @@ class Config(BaseSettings):
         validation_alias=AliasChoices("MOBU_REPLICA_INDEX", "replicaIndex"),
     )
 
-    metrics: MetricsConfiguration = Field(
-        default_factory=metrics_configuration_factory,
-        title="Metrics configuration",
+    sentry_dsn: str | None = Field(
+        None,
+        title="Sentry DSN",
+        description="The Sentry DSN: https://docs.sentry.io/platforms/python/#configure",
+        examples=[
+            "https://foo@bar.ingest.us.sentry.io/123456",
+        ],
+        validation_alias=AliasChoices("MOBU_SENTRY_DSN", "mobuSentryDsn"),
     )
 
-    github_ci_app: GitHubCiAppConfig | None = Field(
-        None,
-        title="GitHub CI app config",
-        description=("Configuration for GitHub CI app functionality"),
+    sentry_environment: str = Field(
+        ...,
+        title="Sentry environment",
+        description=(
+            "The Sentry environment: https://docs.sentry.io/concepts/key-terms/environments/"
+        ),
+        validation_alias=AliasChoices(
+            "MOBU_SENTRY_ENVIRONMENT", "sentryEnvironment"
+        ),
     )
 
-    github_refresh_app: GitHubRefreshAppConfig | None = Field(
-        None,
-        title="GitHub refresh app config",
-        description=("Configuration for GitHub refresh app functionality"),
+    sentry_traces_sample_config: float | Literal["errors"] = Field(
+        0,
+        title="Sentry traces sample config",
+        description=(
+            "Set the Sentry sampling strategy for traces. If this is a float,"
+            " it will be passed as the traces_sample_rate: https://docs.sentry.io/platforms/python/sampling/#configuring-the-transaction-sample-rate"
+            ' If this is set to "errors", then all transactions during which'
+            " an error occurred will be sent."
+        ),
+        examples=[0, 0.5, "errors"],
+        validation_alias=AliasChoices(
+            "MOBU_SENTRY_TRACES_SAMPLE_CONFIG", "sentryTracesSampleConfig"
+        ),
+    )
+
+    slack_alerts: bool = Field(
+        False,
+        title="Enable Slack alerts",
+        description=(
+            "Whether to enable Slack alerts. If true, ``alert_hook`` must"
+            " also be set."
+        ),
     )
 
     @classmethod

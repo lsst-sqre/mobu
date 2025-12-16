@@ -64,9 +64,9 @@ def create_app(
 
         # Configure logging.
         configure_logging(
-            name="mobu", profile=config.profile, log_level=config.log_level
+            name="mobu", profile=config.log_profile, log_level=config.log_level
         )
-        if config.profile == Profile.production:
+        if config.log_profile == Profile.production:
             configure_uvicorn_logging(config.log_level)
 
         # Enable Slack alerting for uncaught exceptions.
