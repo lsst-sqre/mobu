@@ -53,11 +53,11 @@ structlog = "https://www.structlog.org/en/stable"
 [sphinx.linkcheck]
 ignore = [
     # Authenticated
+    '^https://data-dev\.lsst\.cloud/settings/tokens/',
     '^https://data\.lsst\.cloud/mobu',
     '^https://github\.com/organizations/lsst-sqre/settings',
     '^https://github\.com/.*/issues/new$',
 ]
-
 
 [sphinx.redirects]
 "development/github" = "dev/github"
