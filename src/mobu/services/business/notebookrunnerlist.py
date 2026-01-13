@@ -2,6 +2,7 @@
 
 from typing import override
 
+from rubin.repertoire import DiscoveryClient
 from structlog.stdlib import BoundLogger
 
 from ...events import Events
@@ -23,6 +24,8 @@ class NotebookRunnerList(NotebookRunner):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+    discovery_client
+        Service discovery client.
     events
         Event publishers.
     logger
@@ -36,6 +39,7 @@ class NotebookRunnerList(NotebookRunner):
         *,
         options: NotebookRunnerOptions,
         user: AuthenticatedUser,
+        discovery_client: DiscoveryClient,
         repo_manager: RepoManager,
         events: Events,
         logger: BoundLogger,
@@ -45,6 +49,7 @@ class NotebookRunnerList(NotebookRunner):
             options=options,
             user=user,
             repo_manager=repo_manager,
+            discovery_client=discovery_client,
             events=events,
             logger=logger,
             flock=flock,

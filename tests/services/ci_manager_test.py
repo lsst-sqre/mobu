@@ -8,6 +8,7 @@ from httpx import AsyncClient
 from pydantic import HttpUrl
 from pytest_mock import MockerFixture
 from rubin.gafaelfawr import GafaelfawrClient
+from rubin.repertoire import DiscoveryClient
 
 from mobu.dependencies.config import config_dependency
 from mobu.events import Events
@@ -42,6 +43,7 @@ def create_ci_manager(events: Events) -> CiManager:
     repo_manager = RepoManager(logger=logger)
 
     return CiManager(
+        discovery_client=DiscoveryClient(),
         http_client=AsyncClient(),
         gafaelfawr_storage=gafaelfawr,
         events=events,

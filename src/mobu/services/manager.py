@@ -6,6 +6,7 @@ import asyncio
 
 from aiojobs import Scheduler
 from httpx import AsyncClient
+from rubin.repertoire import DiscoveryClient
 from structlog.stdlib import BoundLogger
 
 from ..dependencies.config import config_dependency
@@ -30,6 +31,8 @@ class FlockManager:
     ----------
     gafaelfawr_storage
         Gafaelfawr storage client.
+    discovery_client
+        Shared service discovery client.
     http_client
         Shared HTTP client.
     events
@@ -44,6 +47,7 @@ class FlockManager:
         self,
         *,
         gafaelfawr_storage: GafaelfawrStorage,
+        discovery_client: DiscoveryClient,
         http_client: AsyncClient,
         events: Events,
         repo_manager: RepoManager,
@@ -51,6 +55,7 @@ class FlockManager:
     ) -> None:
         self._config = config_dependency.config
         self._gafaelfawr = gafaelfawr_storage
+        self._discovery = discovery_client
         self._http_client = http_client
         self._events = events
         self._repo_manager = repo_manager
@@ -92,6 +97,7 @@ class FlockManager:
             replica_index=self._config.replica_index,
             scheduler=self._scheduler,
             gafaelfawr_storage=self._gafaelfawr,
+            discovery_client=self._discovery,
             http_client=self._http_client,
             events=self._events,
             repo_manager=self._repo_manager,

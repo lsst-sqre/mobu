@@ -11,6 +11,7 @@ from typing import override
 
 import sentry_sdk
 from rubin.nublado.client import JupyterLabSession
+from rubin.repertoire import DiscoveryClient
 from safir.sentry import duration
 from structlog.stdlib import BoundLogger
 
@@ -32,6 +33,8 @@ class NubladoPythonLoop(NubladoBusiness):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+    discovery_client
+        Service discovery client.
     logger
         Logger to use to report the results of business.
     flock
@@ -43,6 +46,7 @@ class NubladoPythonLoop(NubladoBusiness):
         *,
         options: NubladoPythonLoopOptions,
         user: AuthenticatedUser,
+        discovery_client: DiscoveryClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
@@ -50,6 +54,7 @@ class NubladoPythonLoop(NubladoBusiness):
         super().__init__(
             options=options,
             user=user,
+            discovery_client=discovery_client,
             events=events,
             logger=logger,
             flock=flock,

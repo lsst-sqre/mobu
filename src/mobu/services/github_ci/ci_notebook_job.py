@@ -1,6 +1,7 @@
 """GitHub CI checks for notebook repos."""
 
 from httpx import AsyncClient
+from rubin.repertoire import DiscoveryClient
 from structlog.stdlib import BoundLogger
 
 from ...events import Events
@@ -29,6 +30,8 @@ class CiNotebookJob:
         GitHub storage client.
     check_run:
         A GitHub storage check run.
+    discovery_client
+        Shared service discovery client.
     http_client:
         Shared HTTP client.
     events:
@@ -44,6 +47,7 @@ class CiNotebookJob:
         self,
         github_storage: GitHubStorage,
         check_run: CheckRun,
+        discovery_client: DiscoveryClient,
         http_client: AsyncClient,
         events: Events,
         repo_manager: RepoManager,
@@ -52,6 +56,7 @@ class CiNotebookJob:
     ) -> None:
         self._github = github_storage
         self.check_run = check_run
+        self._discovery = discovery_client
         self._http_client = http_client
         self._events = events
         self._repo_manager = repo_manager
@@ -107,6 +112,7 @@ class CiNotebookJob:
         solitary = Solitary(
             solitary_config=solitary_config,
             gafaelfawr_storage=self._gafaelfawr,
+            discovery_client=self._discovery,
             http_client=self._http_client,
             events=self._events,
             repo_manager=self._repo_manager,

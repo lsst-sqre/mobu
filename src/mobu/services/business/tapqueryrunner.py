@@ -5,6 +5,7 @@ from __future__ import annotations
 from random import SystemRandom
 from typing import override
 
+from rubin.repertoire import DiscoveryClient
 from structlog.stdlib import BoundLogger
 
 from ...events import Events
@@ -24,6 +25,8 @@ class TAPQueryRunner(TAPBusiness):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+    discovery_client
+        Service discovery client.
     events
         Event publishers.
     logger
@@ -37,6 +40,7 @@ class TAPQueryRunner(TAPBusiness):
         *,
         options: TAPQueryRunnerOptions,
         user: AuthenticatedUser,
+        discovery_client: DiscoveryClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
@@ -44,6 +48,7 @@ class TAPQueryRunner(TAPBusiness):
         super().__init__(
             options=options,
             user=user,
+            discovery_client=discovery_client,
             events=events,
             logger=logger,
             flock=flock,

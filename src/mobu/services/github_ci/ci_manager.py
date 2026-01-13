@@ -9,6 +9,7 @@ from typing import Literal, TypeAlias
 
 from aiojobs import Job, Scheduler
 from httpx import AsyncClient
+from rubin.repertoire import DiscoveryClient
 from safir.github import GitHubAppClientFactory
 from structlog.stdlib import BoundLogger
 
@@ -62,6 +63,8 @@ class CiManager:
         A list of static users that are available to run jobs. Each of these \
         users will get assigned to a worker, and will process one job at a \
         time.
+    discovery_client
+        Shared service discovery client.
     http_client
         Shared HTTP client.
     gafaelfawr_storage
@@ -80,6 +83,7 @@ class CiManager:
         github_private_key: str,
         scopes: list[str],
         users: list[User],
+        discovery_client: DiscoveryClient,
         http_client: AsyncClient,
         events: Events,
         repo_manager: RepoManager,
@@ -90,6 +94,7 @@ class CiManager:
         self._scopes = scopes
         self._users = users
         self._gafaelfawr = gafaelfawr_storage
+        self._discovery = discovery_client
         self._http_client = http_client
         self._events = events
         self._repo_manager = repo_manager
@@ -264,6 +269,7 @@ class CiManager:
         job = CiNotebookJob(
             github_storage=storage,
             check_run=check_run,
+            discovery_client=self._discovery,
             http_client=self._http_client,
             events=self._events,
             repo_manager=self._repo_manager,

@@ -10,6 +10,7 @@ from typing import override
 import jinja2
 import shortuuid
 import yaml
+from rubin.repertoire import DiscoveryClient
 from structlog.stdlib import BoundLogger
 
 from ...events import Events
@@ -29,6 +30,8 @@ class TAPQuerySetRunner(TAPBusiness):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+    discovery_client
+        Service discovery client.
     events
         Event publishers.
     logger
@@ -42,6 +45,7 @@ class TAPQuerySetRunner(TAPBusiness):
         *,
         options: TAPQuerySetRunnerOptions,
         user: AuthenticatedUser,
+        discovery_client: DiscoveryClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
@@ -49,6 +53,7 @@ class TAPQuerySetRunner(TAPBusiness):
         super().__init__(
             options=options,
             user=user,
+            discovery_client=discovery_client,
             events=events,
             logger=logger,
             flock=flock,

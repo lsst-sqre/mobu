@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from httpx import AsyncClient
+from rubin.repertoire import DiscoveryClient
 from structlog.stdlib import BoundLogger
 
 from ..events import Events
@@ -25,6 +26,8 @@ class Solitary:
         Configuration for the monkey.
     gafaelfawr_storage
         Gafaelfawr storage client.
+    discovery_client
+        Shared service discovery client.
     http_client
         Shared HTTP client.
     events
@@ -40,6 +43,7 @@ class Solitary:
         *,
         solitary_config: SolitaryConfig,
         gafaelfawr_storage: GafaelfawrStorage,
+        discovery_client: DiscoveryClient,
         http_client: AsyncClient,
         events: Events,
         repo_manager: RepoManager,
@@ -47,6 +51,7 @@ class Solitary:
     ) -> None:
         self._config = solitary_config
         self._gafaelfawr = gafaelfawr_storage
+        self._discovery = discovery_client
         self._http_client = http_client
         self._events = events
         self._repo_manager = repo_manager
@@ -67,6 +72,7 @@ class Solitary:
             name=f"solitary-{user.username}",
             business_config=self._config.business,
             user=user,
+            discovery_client=self._discovery,
             http_client=self._http_client,
             events=self._events,
             repo_manager=self._repo_manager,

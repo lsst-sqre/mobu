@@ -5,6 +5,7 @@ from __future__ import annotations
 import structlog
 from httpx import AsyncClient
 from rubin.gafaelfawr import GafaelfawrClient
+from rubin.repertoire import DiscoveryClient
 from safir.slack.webhook import SlackWebhookClient
 from structlog.stdlib import BoundLogger
 
@@ -34,6 +35,8 @@ class ProcessContext:
 
     Attributes
     ----------
+    discovery_client
+        Shared service discovery client.
     http_client
         Shared HTTP client.
     gafaelfawr
@@ -56,8 +59,12 @@ class ProcessContext:
 
         config = config_dependency.config
         self.logger = structlog.get_logger("mobu")
+        self.discovery_client = DiscoveryClient(http_client)
         self.gafaelfawr = GafaelfawrClient(
-            http_client, logger=self.logger, timeout=config.gafaelfawr_timeout
+            http_client,
+            discovery_client=self.discovery_client,
+            logger=self.logger,
+            timeout=config.gafaelfawr_timeout,
         )
         gafaelfawr_storage = GafaelfawrStorage(
             config, self.gafaelfawr, self.logger
@@ -65,6 +72,7 @@ class ProcessContext:
         self.repo_manager = RepoManager(self.logger)
         self.manager = FlockManager(
             gafaelfawr_storage=gafaelfawr_storage,
+            discovery_client=self.discovery_client,
             http_client=self.http_client,
             logger=self.logger,
             repo_manager=self.repo_manager,
@@ -133,6 +141,7 @@ class Factory:
         return Solitary(
             solitary_config=solitary_config,
             gafaelfawr_storage=gafaelfawr_storage,
+            discovery_client=self._context.discovery_client,
             http_client=self._context.http_client,
             events=self._context.events,
             repo_manager=self._context.repo_manager,

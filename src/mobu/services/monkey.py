@@ -10,6 +10,7 @@ import sentry_sdk
 import structlog
 from aiojobs import Job, Scheduler
 from httpx import AsyncClient
+from rubin.repertoire import DiscoveryClient
 from safir.logging import Profile
 from safir.slack.webhook import SlackWebhookClient
 from structlog.stdlib import BoundLogger
@@ -63,6 +64,8 @@ class Monkey:
         Configuration for the business it should run.
     user
         User the monkey should run as.
+    discovery_client
+        Shared service discovery client.
     http_client
         Shared HTTP client.
     events
@@ -80,6 +83,7 @@ class Monkey:
         flock: str | None = None,
         business_config: BusinessConfig,
         user: AuthenticatedUser,
+        discovery_client: DiscoveryClient,
         http_client: AsyncClient,
         events: Events,
         repo_manager: RepoManager,
@@ -91,6 +95,7 @@ class Monkey:
         self._restart = business_config.restart
         self._log_level = business_config.options.log_level
         self._http_client = http_client
+        self._discovery = discovery_client
         self._events = events
         self._repo_manager = repo_manager
         self._user = user
@@ -115,6 +120,7 @@ class Monkey:
             self.business = EmptyLoop(
                 options=business_config.options,
                 user=user,
+                discovery_client=self._discovery,
                 events=self._events,
                 logger=self._logger,
                 flock=self._flock,
@@ -123,6 +129,7 @@ class Monkey:
             self.business = GitLFSBusiness(
                 options=business_config.options,
                 user=user,
+                discovery_client=self._discovery,
                 events=self._events,
                 logger=self._logger,
                 flock=self._flock,
@@ -131,6 +138,7 @@ class Monkey:
             self.business = NubladoPythonLoop(
                 options=business_config.options,
                 user=user,
+                discovery_client=self._discovery,
                 events=self._events,
                 logger=self._logger,
                 flock=self._flock,
@@ -139,6 +147,7 @@ class Monkey:
             self.business = NotebookRunnerCounting(
                 options=business_config.options,
                 user=user,
+                discovery_client=self._discovery,
                 events=self._events,
                 repo_manager=self._repo_manager,
                 logger=self._logger,
@@ -148,6 +157,7 @@ class Monkey:
             self.business = NotebookRunnerList(
                 options=business_config.options,
                 user=user,
+                discovery_client=self._discovery,
                 events=self._events,
                 repo_manager=self._repo_manager,
                 logger=self._logger,
@@ -157,6 +167,7 @@ class Monkey:
             self.business = NotebookRunnerInfinite(
                 options=business_config.options,
                 user=user,
+                discovery_client=self._discovery,
                 events=self._events,
                 repo_manager=self._repo_manager,
                 logger=self._logger,
@@ -166,6 +177,7 @@ class Monkey:
             self.business = TAPQueryRunner(
                 options=business_config.options,
                 user=user,
+                discovery_client=self._discovery,
                 events=self._events,
                 logger=self._logger,
                 flock=self._flock,
@@ -174,6 +186,7 @@ class Monkey:
             self.business = TAPQuerySetRunner(
                 options=business_config.options,
                 user=user,
+                discovery_client=self._discovery,
                 events=self._events,
                 logger=self._logger,
                 flock=self._flock,
@@ -182,6 +195,7 @@ class Monkey:
             self.business = SIAQuerySetRunner(
                 options=business_config.options,
                 user=user,
+                discovery_client=self._discovery,
                 events=self._events,
                 logger=self._logger,
                 flock=self._flock,

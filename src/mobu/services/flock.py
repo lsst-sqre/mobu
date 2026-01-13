@@ -9,6 +9,7 @@ from itertools import batched
 
 from aiojobs import Scheduler
 from httpx import AsyncClient
+from rubin.repertoire import DiscoveryClient
 from structlog.stdlib import BoundLogger
 
 from ..events import Events
@@ -41,6 +42,8 @@ class Flock:
         Job scheduler used to manage the tasks for the monkeys.
     gafaelfawr_storage
         Gafaelfawr storage client.
+    discovery_client
+        Shared service discovery client.
     http_client
         Shared HTTP client.
     events
@@ -59,6 +62,7 @@ class Flock:
         replica_index: int,
         scheduler: Scheduler,
         gafaelfawr_storage: GafaelfawrStorage,
+        discovery_client: DiscoveryClient,
         http_client: AsyncClient,
         events: Events,
         repo_manager: RepoManager,
@@ -70,6 +74,7 @@ class Flock:
         self._replica_index = replica_index
         self._scheduler = scheduler
         self._gafaelfawr = gafaelfawr_storage
+        self._discovery = discovery_client
         self._http_client = http_client
         self._events = events
         self._repo_manager = repo_manager
@@ -211,6 +216,7 @@ class Flock:
             flock=self.name,
             business_config=self._config.business,
             user=user,
+            discovery_client=self._discovery,
             http_client=self._http_client,
             events=self._events,
             repo_manager=self._repo_manager,

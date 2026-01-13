@@ -7,6 +7,7 @@ from typing import override
 
 import pyvo
 import requests
+from rubin.repertoire import DiscoveryClient
 from safir.sentry import duration
 from sentry_sdk import set_context
 from structlog.stdlib import BoundLogger
@@ -36,6 +37,8 @@ class TAPBusiness[T: TAPBusinessOptions](Business[T], metaclass=ABCMeta):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+    discovery_client
+        Service discovery client.
     events
         Event publishers.
     logger
@@ -47,6 +50,7 @@ class TAPBusiness[T: TAPBusinessOptions](Business[T], metaclass=ABCMeta):
         *,
         options: T,
         user: AuthenticatedUser,
+        discovery_client: DiscoveryClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
@@ -54,6 +58,7 @@ class TAPBusiness[T: TAPBusinessOptions](Business[T], metaclass=ABCMeta):
         super().__init__(
             options=options,
             user=user,
+            discovery_client=discovery_client,
             events=events,
             logger=logger,
             flock=flock,

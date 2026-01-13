@@ -21,18 +21,18 @@ class NotebookFinder:
     Parameters
     ----------
     repo_path
-        The local path on disk of a cloned repository of notebooks
+        The local path on disk of a cloned repository of notebooks.
     repo_config
-        Config from a config file in the notebook repo
+        Config from a config file in the notebook repo.
     exclude_dirs
         DEPRECATED: A set of paths relative to the repo root in which any
-        descendant notebooks will not be executed
+        descendant notebooks will not be executed.
     collection_rules
-        A set of rules describing which notebooks in a repo to run
-    available_services
-        A list of Phalanx services that are available in the environment
+        A set of rules describing which notebooks in a repo to run.
+    applications
+        A list of Phalanx applications that are available in the environment.
     logger
-        A structlog logger
+        A structlog logger.
     """
 
     def __init__(
@@ -42,7 +42,7 @@ class NotebookFinder:
         repo_config: RepoConfig,
         exclude_dirs: set[Path] | None = None,
         collection_rules: list[CollectionRule] | None = None,
-        available_services: set[str] | None = None,
+        applications: list[str] | None = None,
         logger: BoundLogger,
     ) -> None:
         # Merge in-repo config
@@ -63,13 +63,13 @@ class NotebookFinder:
             )
 
         self._collection_rules = collection_rules
-        self._available_services = available_services or set()
+        self._applications = set(applications or [])
         self._repo_path = repo_path
 
         self._logger = logger.bind(
             repo_path=self._repo_path,
             collection_rules=self._collection_rules,
-            available_services=self._available_services,
+            applications=self._applications,
         )
 
     def find(self) -> set[Path]:
@@ -120,9 +120,7 @@ class NotebookFinder:
         excluded: set[Path] = set()
         for notebook in notebooks:
             metadata = self._read_notebook_metadata(notebook)
-            missing_services = (
-                metadata.required_services - self._available_services
-            )
+            missing_services = metadata.required_services - self._applications
             if missing_services:
                 msg = "Environment does not provide required services"
                 self._logger.info(

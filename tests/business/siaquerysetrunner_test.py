@@ -10,6 +10,7 @@ import pyvo
 import structlog
 from anys import ANY_AWARE_DATETIME_STR, AnyContains, AnySearch, AnyWithEntries
 from httpx import AsyncClient
+from rubin.repertoire import DiscoveryClient
 from safir.metrics import NOT_NONE, MockEventPublisher
 from safir.testing.sentry import Captured
 
@@ -202,6 +203,7 @@ async def test_random_object(events: Events) -> None:
         runner = SIAQuerySetRunner(
             options=options,
             user=user,
+            discovery_client=DiscoveryClient(),
             events=events,
             logger=logger,
             flock=None,
