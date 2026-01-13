@@ -16,10 +16,9 @@ from safir.sentry import duration
 from sentry_sdk import set_context
 from structlog.stdlib import BoundLogger
 
-from ...dependencies.config import config_dependency
 from ...events import Events
 from ...events import SIAQuery as SIAQueryEvent
-from ...exceptions import SIAClientError
+from ...exceptions import ServiceDiscoveryError, SIAClientError
 from ...models.business.siaquerysetrunner import (
     SIABusinessData,
     SIAQuery,
@@ -85,7 +84,7 @@ class SIAQuerySetRunner(Business):
 
     @override
     async def startup(self) -> None:
-        self._client = self._make_client(self.user.token)
+        self._client = await self._make_client(self.user.token)
         self.logger.info("Starting SIA Query Set Runner")
 
     def get_next_query(self) -> SIAQuery:
@@ -147,7 +146,7 @@ class SIAQuerySetRunner(Business):
             running_query=self._running_query, **super().dump().model_dump()
         )
 
-    def _make_client(self, token: str) -> pyvo.dal.SIA2Service:
+    async def _make_client(self, token: str) -> pyvo.dal.SIA2Service:
         """Create a SIA client.
 
         Parameters
@@ -160,24 +159,19 @@ class SIAQuerySetRunner(Business):
         pyvo.dal.SIA2Service
             SIA2Service client object.
         """
+        dataset = self.options.dataset
         with capturing_start_span(op="make_client"):
-            config = config_dependency.config
-            if not config.environment_url:
-                raise RuntimeError("environment_url not set")
-            sia_url = (
-                f"{str(config.environment_url).rstrip('/')}/api/sia/"
-                f"{self.query_set}"
-            )
-
+            url = await self.discovery.url_for_data("sia", dataset)
+            if not url:
+                msg = f"SIA for {dataset} not found in service discovery"
+                raise ServiceDiscoveryError(msg)
             try:
-                s = requests.Session()
-                s.headers["Authorization"] = "Bearer " + token
+                session = requests.Session()
+                session.headers["Authorization"] = "Bearer " + token
                 auth = pyvo.auth.AuthSession()
-                auth.credentials.set("lsst-token", s)
-                auth.add_security_method_for_url(
-                    sia_url + "/query", "lsst-token"
-                )
-                return pyvo.dal.SIA2Service(sia_url, session=auth)
+                auth.credentials.set("lsst-token", session)
+                auth.add_security_method_for_url(url + "/query", "lsst-token")
+                return pyvo.dal.SIA2Service(url, session=auth)
             except Exception as e:
                 raise SIAClientError(e) from e
 

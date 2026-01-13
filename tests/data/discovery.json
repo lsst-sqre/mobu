@@ -3,6 +3,22 @@
     "some_service",
     "some_other_service"
   ],
+  "datasets": {
+    "dp02": {
+      "services": {
+        "sia": {
+          "url": "https://data.example.com/api/sia/dp02",
+          "openapi": "https://data.example.com/api/sia/openapi.json",
+          "versions": {
+            "sia-query-2.0": {
+              "url": "https://data.example.com/api/sia/dp02/query",
+              "ivoa_standard_id": "ivo://ivoa.net/std/SIA#query-2.0"
+            }
+          }
+        }
+      }
+    }
+  },
   "services": {
     "internal": {
       "gafaelfawr": {
