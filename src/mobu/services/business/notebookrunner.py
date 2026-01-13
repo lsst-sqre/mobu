@@ -22,6 +22,7 @@ from rubin.nublado.client import (
     JupyterLabSession,
     NubladoExecutionError,
 )
+from rubin.repertoire import DiscoveryClient
 from safir.sentry import duration
 from sentry_sdk import set_context, set_tag
 from sentry_sdk.tracing import Span, Transaction
@@ -76,6 +77,8 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+    discovery_client
+        Service discovery client.
     events
         Event publishers.
     logger
@@ -90,6 +93,7 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
         options: T,
         user: AuthenticatedUser,
         repo_manager: RepoManager,
+        discovery_client: DiscoveryClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
@@ -97,6 +101,7 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
         super().__init__(
             options=options,
             user=user,
+            discovery_client=discovery_client,
             events=events,
             logger=logger,
             flock=flock,
@@ -169,7 +174,7 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
             repo_config = RepoConfig()
         self._repo_config = repo_config
 
-        self._notebooks = self.find_notebooks()
+        self._notebooks = await self.find_notebooks()
         self.logger.info("Repository cloned and ready")
 
     @override
@@ -183,7 +188,7 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
         await self.initialize()
         self.refreshing = False
 
-    def find_notebooks(self) -> set[Path]:
+    async def find_notebooks(self) -> set[Path]:
         with capturing_start_span(op="find_notebooks"):
             if self._repo_path is None:
                 raise NotebookRepositoryError(
@@ -198,14 +203,14 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
                 repo_config=self._repo_config,
                 exclude_dirs=self.options.exclude_dirs,
                 collection_rules=self.options.collection_rules,
-                available_services=self._config.available_services,
+                applications=await self.discovery.applications(),
                 logger=self.logger,
             )
             return finder.find()
 
-    def next_notebook(self) -> Path:
+    async def next_notebook(self) -> Path:
         if not self._notebooks:
-            self._notebooks = self.find_notebooks()
+            self._notebooks = await self.find_notebooks()
         if not self._notebook_paths:
             self._notebook_paths = list(self._notebooks)
             random.shuffle(self._notebook_paths)
@@ -279,7 +284,7 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
     async def execute_notebook(
         self, session: JupyterLabSession, iteration: str
     ) -> None:
-        self._notebook = self.next_notebook()
+        self._notebook = await self.next_notebook()
         relative_notebook = self._relative_notebook()
         logger = self.logger.bind(notebook=relative_notebook)
         msg = f"Notebook {self._notebook.name} iteration {iteration}"

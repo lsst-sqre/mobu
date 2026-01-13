@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import override
 from urllib.parse import urlparse
 
+from rubin.repertoire import DiscoveryClient
 from safir.sentry import duration
 from structlog.stdlib import BoundLogger
 
@@ -34,6 +35,7 @@ class GitLFSBusiness(Business):
         *,
         options: GitLFSBusinessOptions,
         user: AuthenticatedUser,
+        discovery_client: DiscoveryClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
@@ -41,6 +43,7 @@ class GitLFSBusiness(Business):
         super().__init__(
             options=options,
             user=user,
+            discovery_client=discovery_client,
             events=events,
             logger=logger,
             flock=flock,

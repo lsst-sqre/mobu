@@ -165,18 +165,6 @@ class Config(BaseSettings):
         ),
     )
 
-    available_services: set[str] = Field(
-        set(),
-        title="Available platform services",
-        description=(
-            "Names of services available in the current environment. For now,"
-            " this list is manually maintained in the mobu config in Phalanx."
-            " When we have a service discovery mechanism in place, it should"
-            " be used here."
-        ),
-        examples=[{"tap", "ssotap", "butler"}],
-    )
-
     environment_url: HttpUrl = Field(
         ...,
         title="Base URL of the Science Platform environment",

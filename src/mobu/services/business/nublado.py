@@ -11,6 +11,7 @@ from typing import Any, override
 
 import sentry_sdk
 from rubin.nublado.client import JupyterLabSession, NubladoClient
+from rubin.repertoire import DiscoveryClient
 from safir.datetime import format_datetime_for_logging
 from safir.sentry import duration
 from sentry_sdk import set_tag
@@ -98,6 +99,8 @@ class NubladoBusiness[T: NubladoBusinessOptions](
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+    discovery_client
+        Service discovery client.
     events
         Event publishers.
     logger
@@ -109,6 +112,7 @@ class NubladoBusiness[T: NubladoBusinessOptions](
         *,
         options: T,
         user: AuthenticatedUser,
+        discovery_client: DiscoveryClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
@@ -116,6 +120,7 @@ class NubladoBusiness[T: NubladoBusinessOptions](
         super().__init__(
             options=options,
             user=user,
+            discovery_client=discovery_client,
             events=events,
             logger=logger,
             flock=flock,
@@ -127,6 +132,7 @@ class NubladoBusiness[T: NubladoBusinessOptions](
         self._client = NubladoClient(
             user.username,
             user.token,
+            discovery_client=discovery_client,
             logger=logger,
             timeout=options.jupyter_timeout,
         )

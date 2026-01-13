@@ -7,9 +7,6 @@ metrics:
   enabled: false
   mock: true
   appName: mobu
-availableServices:
-  - some_service
-  - some_other_service
 autostart:
   - name: basic
     count: 10

@@ -48,6 +48,7 @@ class CiManagerDependency:
             github_app_id=github_app_id,
             github_private_key=github_private_key,
             scopes=scopes,
+            discovery_client=base_context.process_context.discovery_client,
             http_client=base_context.process_context.http_client,
             events=base_context.process_context.events,
             repo_manager=base_context.process_context.repo_manager,

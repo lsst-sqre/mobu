@@ -1,4 +1,8 @@
 {
+  "applications": [
+    "some_service",
+    "some_other_service"
+  ],
   "services": {
     "internal": {
       "gafaelfawr": {

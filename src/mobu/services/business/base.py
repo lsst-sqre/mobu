@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import TypedDict
 
+from rubin.repertoire import DiscoveryClient
 from structlog.stdlib import BoundLogger
 
 from ...asyncio import wait_first
@@ -58,6 +59,8 @@ class Business[T: BusinessOptions](metaclass=ABCMeta):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+    discovery_client
+        Service discovery client.
     events
         Event publishers.
     logger
@@ -71,6 +74,8 @@ class Business[T: BusinessOptions](metaclass=ABCMeta):
         Configuration options for the business.
     user
         User with their authentication token to use to run the business.
+    discovery
+        Service discovery client.
     events
         Event publishers.
     logger
@@ -93,12 +98,14 @@ class Business[T: BusinessOptions](metaclass=ABCMeta):
         *,
         options: T,
         user: AuthenticatedUser,
+        discovery_client: DiscoveryClient,
         events: Events,
         logger: BoundLogger,
         flock: str | None,
     ) -> None:
         self.options = options
         self.user = user
+        self.discovery = discovery_client
         self.events = events
         self.logger = logger
         self.success_count = 0
