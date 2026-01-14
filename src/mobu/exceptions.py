@@ -15,10 +15,18 @@ __all__ = [
     "ComparisonError",
     "FlockNotFoundError",
     "GitHubFileNotFoundError",
+    "JupyterDeleteTimeoutError",
+    "JupyterSpawnError",
+    "JupyterSpawnTimeoutError",
     "MonkeyNotFoundError",
     "NotRetainingLogsError",
+    "NotebookCellExecutionError",
+    "NotebookRepositoryError",
+    "RepositoryConfigError",
     "SIAClientError",
+    "ServiceDiscoveryError",
     "SubprocessError",
+    "TAPClientError",
 ]
 
 
@@ -157,6 +165,10 @@ class JupyterSpawnError(Exception):
 
 class NotebookCellExecutionError(Exception):
     """Error when executing a notebook cell."""
+
+
+class ServiceDiscoveryError(Exception):
+    """Service not found in service discovery."""
 
 
 class SIAClientError(Exception):

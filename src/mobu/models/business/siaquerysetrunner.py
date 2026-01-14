@@ -20,6 +20,8 @@ __all__ = [
 class SIAQuerySetRunnerOptions(BusinessOptions):
     """Options for SIAQuerySetRunner monkey business."""
 
+    dataset: str = Field("dp02", title="Data set to query", examples=["dp02"])
+
     query_set: str = Field(
         "dp02",
         title="Which query template set to use for a SIAQuerySetRunner",
