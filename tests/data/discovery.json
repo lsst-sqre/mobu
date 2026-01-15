@@ -15,6 +15,9 @@
               "ivoa_standard_id": "ivo://ivoa.net/std/SIA#query-2.0"
             }
           }
+        },
+        "tap": {
+          "url": "https://data.example.com/api/tap"
         }
       }
     }
