@@ -12,9 +12,8 @@ from safir.sentry import duration
 from sentry_sdk import set_context
 from structlog.stdlib import BoundLogger
 
-from ...dependencies.config import config_dependency
 from ...events import Events, TapQuery
-from ...exceptions import TAPClientError
+from ...exceptions import ServiceDiscoveryError, TAPClientError
 from ...models.business.tap import TAPBusinessData, TAPBusinessOptions
 from ...models.user import AuthenticatedUser
 from ...sentry import capturing_start_span, start_transaction
@@ -69,7 +68,7 @@ class TAPBusiness[T: TAPBusinessOptions](Business[T], metaclass=ABCMeta):
 
     @override
     async def startup(self) -> None:
-        self._client = self._make_client(self.user.token)
+        self._client = await self._make_client(self.user.token)
 
     @abstractmethod
     def get_next_query(self) -> str:
@@ -142,7 +141,7 @@ class TAPBusiness[T: TAPBusinessOptions](Business[T], metaclass=ABCMeta):
             running_query=self._running_query, **super().dump().model_dump()
         )
 
-    def _make_client(self, token: str) -> pyvo.dal.TAPService:
+    async def _make_client(self, token: str) -> pyvo.dal.TAPService:
         """Create a TAP client.
 
         Parameters
@@ -155,26 +154,21 @@ class TAPBusiness[T: TAPBusinessOptions](Business[T], metaclass=ABCMeta):
         pyvo.dal.TAPService
             TAP client object.
         """
+        dataset = self.options.dataset
         with capturing_start_span(op="make_client"):
-            config = config_dependency.config
-            if not config.environment_url:
-                raise RuntimeError("environment_url not set")
-            tap_url = str(config.environment_url).rstrip("/") + "/api/tap"
+            url = await self.discovery.url_for_data("tap", dataset)
+            if not url:
+                msg = f"TAP for {dataset} not found in service discovery"
+                raise ServiceDiscoveryError(msg)
             try:
-                s = requests.Session()
-                s.headers["Authorization"] = "Bearer " + token
+                session = requests.Session()
+                session.headers["Authorization"] = "Bearer " + token
                 auth = pyvo.auth.AuthSession()
-                auth.credentials.set("lsst-token", s)
-                auth.add_security_method_for_url(tap_url, "lsst-token")
-                auth.add_security_method_for_url(
-                    tap_url + "/sync", "lsst-token"
-                )
-                auth.add_security_method_for_url(
-                    tap_url + "/async", "lsst-token"
-                )
-                auth.add_security_method_for_url(
-                    tap_url + "/tables", "lsst-token"
-                )
-                return pyvo.dal.TAPService(tap_url, session=auth)
+                auth.credentials.set("lsst-token", session)
+                auth.add_security_method_for_url(url, "lsst-token")
+                auth.add_security_method_for_url(url + "/sync", "lsst-token")
+                auth.add_security_method_for_url(url + "/async", "lsst-token")
+                auth.add_security_method_for_url(url + "/tables", "lsst-token")
+                return pyvo.dal.TAPService(url, session=auth)
             except Exception as e:
                 raise TAPClientError(e) from e

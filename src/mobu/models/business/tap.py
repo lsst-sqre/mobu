@@ -15,6 +15,8 @@ __all__ = [
 class TAPBusinessOptions(BusinessOptions):
     """Options for any business that runs TAP queries."""
 
+    dataset: str = Field("dp02", title="Data set to query", examples=["dp1"])
+
     sync: bool = Field(
         True,
         title="Whether to run TAP queries as sync or async",
