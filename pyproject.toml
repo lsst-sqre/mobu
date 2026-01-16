@@ -31,6 +31,7 @@ dependencies = [
     "pyyaml>=6",
     "rubin-gafaelfawr",
     "rubin-nublado-client>=10",
+    "rubin-repertoire",
     "safir[kafka]>=13",
     "sentry-sdk>=2.32",
     "shortuuid>=1",
@@ -195,3 +196,6 @@ new_fragment_template = "file:changelog.d/_template.md.jinja"
 skip_fragments = "_template.md.jinja"
 
 [tool.setuptools_scm]
+
+[tool.uv.sources]
+rubin-repertoire = { git = "https://github.com/lsst-sqre/repertoire", subdirectory = "client" }

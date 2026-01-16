@@ -7,7 +7,7 @@ from textwrap import dedent
 from typing import Literal, Self
 
 import yaml
-from pydantic import AliasChoices, Field, HttpUrl, SecretStr
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic.alias_generators import to_camel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from safir.logging import LogLevel, Profile
@@ -162,16 +162,6 @@ class Config(BaseSettings):
         description=(
             "Configuration of flocks of monkeys that will run businesses"
             " repeatedly as long as Mobu is running."
-        ),
-    )
-
-    environment_url: HttpUrl = Field(
-        ...,
-        title="Base URL of the Science Platform environment",
-        description="Used to create URLs to other services such as Gafaelfawr",
-        examples=["https://data.example.org/"],
-        validation_alias=AliasChoices(
-            "MOBU_ENVIRONMENT_URL", "environmentUrl"
         ),
     )
 

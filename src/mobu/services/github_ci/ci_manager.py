@@ -261,9 +261,10 @@ class CiManager:
             pull_number=pull_number,
         )
 
+        environment_name = await self._discovery.environment_name()
+        name = f"Mobu ({environment_name})" if environment_name else "Mobu"
         check_run = await storage.create_check_run(
-            name=f"Mobu ({self._config.environment_url})",
-            summary="Waiting for Mobu to run...",
+            name=name, summary="Waiting for Mobu to run..."
         )
 
         job = CiNotebookJob(
