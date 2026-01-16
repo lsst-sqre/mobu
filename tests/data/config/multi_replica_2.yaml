@@ -1,5 +1,4 @@
 slackAlerts: true
-environmentUrl: "https://example.com"
 sentryEnvironment: "pytest"
 replicaCount: 3
 replicaIndex: 2

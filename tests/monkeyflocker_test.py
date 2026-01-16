@@ -36,7 +36,6 @@ def monkeyflocker_app(tmp_path: Path) -> Iterator[UvicornProcess]:
     """Run the application as a separate process for monkeyflocker access."""
     config = config_dependency.config
     assert config.gafaelfawr_token
-    assert config.environment_url
     uvicorn = spawn_uvicorn(
         working_directory=tmp_path,
         factory="tests.support.monkeyflocker:create_app",

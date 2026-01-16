@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from safir.slack.blockkit import SlackMessage
 
-from .dependencies.config import config_dependency
 from .dependencies.context import context_dependency
 from .factory import Factory
 
@@ -18,7 +17,6 @@ async def post_status() -> None:
     clear that mobu is alive, but a secondary benefit is to provide some
     summary statistics.
     """
-    config = config_dependency.config
     process_context = context_dependency.process_context
     factory = Factory(process_context)
     slack = factory.create_slack_webhook_client()
@@ -35,10 +33,11 @@ async def post_status() -> None:
 
     # Construct the status report.
     flock_plural = "flock" if flock_count == 1 else "flocks"
-    text = (
-        f"Currently running {flock_count} {flock_plural} against"
-        f" {str(config.environment_url).rstrip('/')}:\n"
-    )
+    text = f"Currently running {flock_count} {flock_plural}"
+    environment = await process_context.discovery_client.environment_name()
+    if environment:
+        text += f" against {environment}"
+    text += ":\n"
     for summary in summaries:
         if summary.start_time:
             start_time = f"started {summary.start_time.strftime('%Y-%m-%d')}"

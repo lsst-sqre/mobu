@@ -243,7 +243,6 @@ async def test_hub_failed(
     events: Events,
     sentry_items: Captured,
 ) -> None:
-    config = config_dependency.config
     mock_jupyter.fail_on("bot-mobu-testuser2", MockJupyterAction.SPAWN)
 
     r = await client.put(
@@ -268,7 +267,6 @@ async def test_hub_failed(
 
     # Confirm Sentry events
     (sentry_error,) = sentry_items.errors
-    assert config.environment_url
     assert sentry_error["contexts"]["phase"] == {
         "phase": "spawn_lab",
         "started_at": ANY_AWARE_DATETIME_STR,

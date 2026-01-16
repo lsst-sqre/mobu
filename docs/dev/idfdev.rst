@@ -90,12 +90,12 @@ You can run mobu locally while having all of the actual business run against ser
       END
 
       export MOBU_CONFIG_PATH="$config_path"
-      export MOBU_ENVIRONMENT_URL=https://data-dev.lsst.cloud
       export MOBU_GAFAELFAWR_TOKEN=$(op read "op://Employee/data-dev.lsst.cloud personal token/credential")
       export MOBU_GITHUB_REFRESH_APP_WEBHOOK_SECRET=$(op read "op://RSP data-dev.lsst.cloud/mobu/github-refresh-app-webhook-secret")
       export MOBU_GITHUB_CI_APP_WEBHOOK_SECRET=$(op read "op://RSP data-dev.lsst.cloud/mobu/github-ci-app-webhook-secret")
       export MOBU_GITHUB_CI_APP_ID=$(op read "op://RSP data-dev.lsst.cloud/mobu/github-ci-app-id")
       export MOBU_GITHUB_CI_APP_PRIVATE_KEY=$(op read "op://RSP data-dev.lsst.cloud/mobu/github-ci-app-private-key" | base64 -d)
+      export REPERTOIRE_BASE_URL=https://data-dev.lsst.cloud/repertoire
       export UVICORN_PORT=8001
 
       uvicorn mobu.main:create_app 2>&1

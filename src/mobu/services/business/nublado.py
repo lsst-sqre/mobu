@@ -18,7 +18,6 @@ from sentry_sdk import set_tag
 from sentry_sdk.tracing import Span
 from structlog.stdlib import BoundLogger
 
-from ...dependencies.config import config_dependency
 from ...events import Events, NubladoDeleteLab, NubladoSpawnLab
 from ...exceptions import (
     JupyterDeleteTimeoutError,
@@ -125,10 +124,6 @@ class NubladoBusiness[T: NubladoBusinessOptions](
             logger=logger,
             flock=flock,
         )
-
-        config = config_dependency.config
-        if not config.environment_url:
-            raise RuntimeError("environment_url not set")
         self._client = NubladoClient(
             user.username,
             user.token,
