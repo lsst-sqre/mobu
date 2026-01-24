@@ -8,7 +8,7 @@ from typing import override
 from fastapi import status
 from safir.fastapi import ClientRequestError
 from safir.models import ErrorLocation
-from safir.slack.blockkit import SlackException
+from safir.slack.blockkit import SlackException, SlackWebException
 from safir.slack.sentry import SentryEventInfo
 
 __all__ = [
@@ -19,6 +19,8 @@ __all__ = [
     "JupyterSpawnError",
     "JupyterSpawnTimeoutError",
     "MonkeyNotFoundError",
+    "MusterError",
+    "MusterWebError",
     "NotRetainingLogsError",
     "NotebookCellExecutionError",
     "NotebookRepositoryError",
@@ -149,6 +151,14 @@ class ComparisonError(SlackException):
             "received": self.received,
         }
         return info
+
+
+class MusterError(SlackException):
+    """Detected a problem with the Muster results."""
+
+
+class MusterWebError(SlackWebException, MusterError):
+    """Detected a problem with the Muster results."""
 
 
 class JupyterSpawnTimeoutError(Exception):

@@ -4,6 +4,7 @@ from typing import TypeAlias
 
 from .empty import EmptyLoopConfig
 from .gitlfs import GitLFSConfig
+from .muster import MusterConfig
 from .notebookrunnercounting import NotebookRunnerCountingConfig
 from .notebookrunnerinfinite import NotebookRunnerInfiniteConfig
 from .notebookrunnerlist import NotebookRunnerListConfig
@@ -17,6 +18,7 @@ __all__ = ["BusinessConfigType"]
 BusinessConfigType: TypeAlias = (
     TAPQueryRunnerConfig
     | GitLFSConfig
+    | MusterConfig
     | NotebookRunnerCountingConfig
     | NotebookRunnerListConfig
     | NotebookRunnerInfiniteConfig

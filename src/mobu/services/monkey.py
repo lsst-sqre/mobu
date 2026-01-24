@@ -17,9 +17,10 @@ from structlog.stdlib import BoundLogger
 
 from ..dependencies.config import config_dependency
 from ..events import Events
-from ..models.business.base import BusinessConfig
+from ..models.business.business_config_type import BusinessConfigType
 from ..models.business.empty import EmptyLoopConfig
 from ..models.business.gitlfs import GitLFSConfig
+from ..models.business.muster import MusterConfig
 from ..models.business.notebookrunnercounting import (
     NotebookRunnerCountingConfig,
 )
@@ -40,6 +41,7 @@ from ..services.repo import RepoManager
 from .business.base import Business
 from .business.empty import EmptyLoop
 from .business.gitlfs import GitLFSBusiness
+from .business.muster import MusterRunner
 from .business.nubladopythonloop import NubladoPythonLoop
 from .business.siaquerysetrunner import SIAQuerySetRunner
 from .business.tapqueryrunner import TAPQueryRunner
@@ -81,7 +83,7 @@ class Monkey:
         *,
         name: str,
         flock: str | None = None,
-        business_config: BusinessConfig,
+        business_config: BusinessConfigType,
         user: AuthenticatedUser,
         discovery_client: DiscoveryClient,
         http_client: AsyncClient,
@@ -116,93 +118,100 @@ class Monkey:
         # which in turn will be based on Pydantic validation of the value of
         # the type field.
         self.business: Business
-        if isinstance(business_config, EmptyLoopConfig):
-            self.business = EmptyLoop(
-                options=business_config.options,
-                user=user,
-                discovery_client=self._discovery,
-                events=self._events,
-                logger=self._logger,
-                flock=self._flock,
-            )
-        elif isinstance(business_config, GitLFSConfig):
-            self.business = GitLFSBusiness(
-                options=business_config.options,
-                user=user,
-                discovery_client=self._discovery,
-                events=self._events,
-                logger=self._logger,
-                flock=self._flock,
-            )
-        elif isinstance(business_config, NubladoPythonLoopConfig):
-            self.business = NubladoPythonLoop(
-                options=business_config.options,
-                user=user,
-                discovery_client=self._discovery,
-                events=self._events,
-                logger=self._logger,
-                flock=self._flock,
-            )
-        elif isinstance(business_config, NotebookRunnerCountingConfig):
-            self.business = NotebookRunnerCounting(
-                options=business_config.options,
-                user=user,
-                discovery_client=self._discovery,
-                events=self._events,
-                repo_manager=self._repo_manager,
-                logger=self._logger,
-                flock=self._flock,
-            )
-        elif isinstance(business_config, NotebookRunnerListConfig):
-            self.business = NotebookRunnerList(
-                options=business_config.options,
-                user=user,
-                discovery_client=self._discovery,
-                events=self._events,
-                repo_manager=self._repo_manager,
-                logger=self._logger,
-                flock=self._flock,
-            )
-        elif isinstance(business_config, NotebookRunnerInfiniteConfig):
-            self.business = NotebookRunnerInfinite(
-                options=business_config.options,
-                user=user,
-                discovery_client=self._discovery,
-                events=self._events,
-                repo_manager=self._repo_manager,
-                logger=self._logger,
-                flock=self._flock,
-            )
-        elif isinstance(business_config, TAPQueryRunnerConfig):
-            self.business = TAPQueryRunner(
-                options=business_config.options,
-                user=user,
-                discovery_client=self._discovery,
-                events=self._events,
-                logger=self._logger,
-                flock=self._flock,
-            )
-        elif isinstance(business_config, TAPQuerySetRunnerConfig):
-            self.business = TAPQuerySetRunner(
-                options=business_config.options,
-                user=user,
-                discovery_client=self._discovery,
-                events=self._events,
-                logger=self._logger,
-                flock=self._flock,
-            )
-        elif isinstance(business_config, SIAQuerySetRunnerConfig):
-            self.business = SIAQuerySetRunner(
-                options=business_config.options,
-                user=user,
-                discovery_client=self._discovery,
-                events=self._events,
-                logger=self._logger,
-                flock=self._flock,
-            )
-        else:
-            msg = f"Unknown business config {business_config}"
-            raise TypeError(msg)
+        match business_config:
+            case EmptyLoopConfig():
+                self.business = EmptyLoop(
+                    options=business_config.options,
+                    user=user,
+                    discovery_client=self._discovery,
+                    events=self._events,
+                    logger=self._logger,
+                    flock=self._flock,
+                )
+            case GitLFSConfig():
+                self.business = GitLFSBusiness(
+                    options=business_config.options,
+                    user=user,
+                    discovery_client=self._discovery,
+                    events=self._events,
+                    logger=self._logger,
+                    flock=self._flock,
+                )
+            case MusterConfig():
+                self.business = MusterRunner(
+                    options=business_config.options,
+                    user=user,
+                    discovery_client=self._discovery,
+                    events=self._events,
+                    logger=self._logger,
+                    flock=self._flock,
+                )
+            case NubladoPythonLoopConfig():
+                self.business = NubladoPythonLoop(
+                    options=business_config.options,
+                    user=user,
+                    discovery_client=self._discovery,
+                    events=self._events,
+                    logger=self._logger,
+                    flock=self._flock,
+                )
+            case NotebookRunnerCountingConfig():
+                self.business = NotebookRunnerCounting(
+                    options=business_config.options,
+                    user=user,
+                    discovery_client=self._discovery,
+                    events=self._events,
+                    repo_manager=self._repo_manager,
+                    logger=self._logger,
+                    flock=self._flock,
+                )
+            case NotebookRunnerListConfig():
+                self.business = NotebookRunnerList(
+                    options=business_config.options,
+                    user=user,
+                    discovery_client=self._discovery,
+                    events=self._events,
+                    repo_manager=self._repo_manager,
+                    logger=self._logger,
+                    flock=self._flock,
+                )
+            case NotebookRunnerInfiniteConfig():
+                self.business = NotebookRunnerInfinite(
+                    options=business_config.options,
+                    user=user,
+                    discovery_client=self._discovery,
+                    events=self._events,
+                    repo_manager=self._repo_manager,
+                    logger=self._logger,
+                    flock=self._flock,
+                )
+            case TAPQueryRunnerConfig():
+                self.business = TAPQueryRunner(
+                    options=business_config.options,
+                    user=user,
+                    discovery_client=self._discovery,
+                    events=self._events,
+                    logger=self._logger,
+                    flock=self._flock,
+                )
+            case TAPQuerySetRunnerConfig():
+                self.business = TAPQuerySetRunner(
+                    options=business_config.options,
+                    user=user,
+                    discovery_client=self._discovery,
+                    events=self._events,
+                    logger=self._logger,
+                    flock=self._flock,
+                )
+            case SIAQuerySetRunnerConfig():
+                self.business = SIAQuerySetRunner(
+                    options=business_config.options,
+                    user=user,
+                    discovery_client=self._discovery,
+                    events=self._events,
+                    logger=self._logger,
+                    flock=self._flock,
+                )
 
         self._slack = None
         if self._config.slack_alerts and self._config.alert_hook:
