@@ -661,7 +661,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ae/fb/011c7c717213182caf78084a9bea51c8590b0afda98001f69d9f853a495b/greenlet-3.3.1-cp314-cp314-macosx_11_0_universal2.whl", hash = "sha256:bd59acd8529b372775cd0fcbc5f420ae20681c5b045ce25bd453ed8455ab99b5", size = 275737, upload-time = "2026-01-23T15:32:16.889Z" },
     { url = "https://files.pythonhosted.org/packages/41/2e/a3a417d620363fdbb08a48b1dd582956a46a61bf8fd27ee8164f9dfe87c2/greenlet-3.3.1-cp314-cp314-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:b31c05dd84ef6871dd47120386aed35323c944d86c3d91a17c4b8d23df62f15b", size = 646422, upload-time = "2026-01-23T16:01:00.354Z" },
     { url = "https://files.pythonhosted.org/packages/b4/09/c6c4a0db47defafd2d6bab8ddfe47ad19963b4e30f5bed84d75328059f8c/greenlet-3.3.1-cp314-cp314-manylinux_2_24_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:02925a0bfffc41e542c70aa14c7eda3593e4d7e274bfcccca1827e6c0875902e", size = 658219, upload-time = "2026-01-23T16:05:30.956Z" },
-    { url = "https://files.pythonhosted.org/packages/e2/89/b95f2ddcc5f3c2bc09c8ee8d77be312df7f9e7175703ab780f2014a0e781/greenlet-3.3.1-cp314-cp314-manylinux_2_24_s390x.manylinux_2_28_s390x.whl", hash = "sha256:3e0f3878ca3a3ff63ab4ea478585942b53df66ddde327b59ecb191b19dbbd62d", size = 671455, upload-time = "2026-01-23T16:15:57.232Z" },
     { url = "https://files.pythonhosted.org/packages/80/38/9d42d60dffb04b45f03dbab9430898352dba277758640751dc5cc316c521/greenlet-3.3.1-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:34a729e2e4e4ffe9ae2408d5ecaf12f944853f40ad724929b7585bca808a9d6f", size = 660237, upload-time = "2026-01-23T15:32:53.967Z" },
     { url = "https://files.pythonhosted.org/packages/96/61/373c30b7197f9e756e4c81ae90a8d55dc3598c17673f91f4d31c3c689c3f/greenlet-3.3.1-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:aec9ab04e82918e623415947921dea15851b152b822661cce3f8e4393c3df683", size = 1615261, upload-time = "2026-01-23T16:04:25.066Z" },
     { url = "https://files.pythonhosted.org/packages/fd/d3/ca534310343f5945316f9451e953dcd89b36fe7a19de652a1dc5a0eeef3f/greenlet-3.3.1-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:71c767cf281a80d02b6c1bdc41c9468e1f5a494fb11bc8688c360524e273d7b1", size = 1683719, upload-time = "2026-01-23T15:33:50.61Z" },
@@ -670,7 +669,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/28/24/cbbec49bacdcc9ec652a81d3efef7b59f326697e7edf6ed775a5e08e54c2/greenlet-3.3.1-cp314-cp314t-macosx_11_0_universal2.whl", hash = "sha256:3e63252943c921b90abb035ebe9de832c436401d9c45f262d80e2d06cc659242", size = 282706, upload-time = "2026-01-23T15:33:05.525Z" },
     { url = "https://files.pythonhosted.org/packages/86/2e/4f2b9323c144c4fe8842a4e0d92121465485c3c2c5b9e9b30a52e80f523f/greenlet-3.3.1-cp314-cp314t-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:76e39058e68eb125de10c92524573924e827927df5d3891fbc97bd55764a8774", size = 651209, upload-time = "2026-01-23T16:01:01.517Z" },
     { url = "https://files.pythonhosted.org/packages/d9/87/50ca60e515f5bb55a2fbc5f0c9b5b156de7d2fc51a0a69abc9d23914a237/greenlet-3.3.1-cp314-cp314t-manylinux_2_24_ppc64le.manylinux_2_28_ppc64le.whl", hash = "sha256:c9f9d5e7a9310b7a2f416dd13d2e3fd8b42d803968ea580b7c0f322ccb389b97", size = 654300, upload-time = "2026-01-23T16:05:32.199Z" },
-    { url = "https://files.pythonhosted.org/packages/7c/25/c51a63f3f463171e09cb586eb64db0861eb06667ab01a7968371a24c4f3b/greenlet-3.3.1-cp314-cp314t-manylinux_2_24_s390x.manylinux_2_28_s390x.whl", hash = "sha256:4b9721549a95db96689458a1e0ae32412ca18776ed004463df3a9299c1b257ab", size = 662574, upload-time = "2026-01-23T16:15:58.364Z" },
     { url = "https://files.pythonhosted.org/packages/1d/94/74310866dfa2b73dd08659a3d18762f83985ad3281901ba0ee9a815194fb/greenlet-3.3.1-cp314-cp314t-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:92497c78adf3ac703b57f1e3813c2d874f27f71a178f9ea5887855da413cd6d2", size = 653842, upload-time = "2026-01-23T15:32:55.671Z" },
     { url = "https://files.pythonhosted.org/packages/97/43/8bf0ffa3d498eeee4c58c212a3905dd6146c01c8dc0b0a046481ca29b18c/greenlet-3.3.1-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:ed6b402bc74d6557a705e197d47f9063733091ed6357b3de33619d8a8d93ac53", size = 1614917, upload-time = "2026-01-23T16:04:26.276Z" },
     { url = "https://files.pythonhosted.org/packages/89/90/a3be7a5f378fc6e84abe4dcfb2ba32b07786861172e502388b4c90000d1b/greenlet-3.3.1-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:59913f1e5ada20fde795ba906916aea25d442abcc0593fba7e26c92b7ad76249", size = 1676092, upload-time = "2026-01-23T15:33:52.176Z" },
@@ -1152,7 +1150,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6" },
     { name = "rubin-gafaelfawr" },
     { name = "rubin-nublado-client", specifier = ">=10" },
-    { name = "rubin-repertoire", git = "https://github.com/lsst-sqre/repertoire?subdirectory=client" },
+    { name = "rubin-repertoire" },
     { name = "safir", extras = ["kafka"], specifier = ">=13" },
     { name = "sentry-sdk", specifier = ">=2.32" },
     { name = "shortuuid", specifier = ">=1" },
@@ -1172,7 +1170,7 @@ dev = [
     { name = "pytest-mock" },
     { name = "pytest-sugar" },
     { name = "respx" },
-    { name = "rubin-repertoire", git = "https://github.com/lsst-sqre/repertoire?subdirectory=client" },
+    { name = "rubin-repertoire", specifier = ">=0.6" },
     { name = "scriv", extras = ["toml"] },
     { name = "starlette" },
     { name = "websockets" },
@@ -1946,7 +1944,7 @@ wheels = [
 [[package]]
 name = "rubin-repertoire"
 version = "0.9.0"
-source = { git = "https://github.com/lsst-sqre/repertoire?subdirectory=client#9d9c769718b1b3efd6194b568bf0fe4f29e5712f" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
@@ -1955,6 +1953,10 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "pyyaml" },
     { name = "safir" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f3/ae/0f179d0393ce7b15e081851f887f329fa71ba4cf1e8691e0899c45ef7258/rubin_repertoire-0.9.0.tar.gz", hash = "sha256:e50e3c05599f95004e274df63839ace8e061a0907f750be1b4fb7863fc9f9a5e", size = 15834, upload-time = "2026-01-28T23:10:01.234Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8c/b5/3ffd951c8a93f8a356f80428503ccd7a5a62d3f50b28c759a2bcee02053e/rubin_repertoire-0.9.0-py3-none-any.whl", hash = "sha256:acdea962f46a16130a31f184fcaf60e3a0900413488a6ad9bcff20c2bcb788c0", size = 18668, upload-time = "2026-01-28T23:10:02.387Z" },
 ]
 
 [[package]]
@@ -1985,7 +1987,7 @@ wheels = [
 
 [[package]]
 name = "safir"
-version = "14.1.3"
+version = "14.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -2001,9 +2003,9 @@ dependencies = [
     { name = "starlette" },
     { name = "structlog" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/66/ab/900e1a0211eb70d511f69504437e00f8a66cce60625bb1dbb4b120a864ae/safir-14.1.3.tar.gz", hash = "sha256:8a0ed5688bad7f9d405a1a60ed0eec8d602ec883be170d90edf4799fc2862ae0", size = 532388, upload-time = "2026-01-21T16:17:37.579Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ec/28/5e4dd34009122e6aec18c4dafb4c4cb72eaab9e0303efd830c099f39d7ac/safir-14.2.0.tar.gz", hash = "sha256:99aea5818393d51b25571392229d10f2dc868dbd394776307728df2ab2ff25f1", size = 547841, upload-time = "2026-01-30T22:13:28.442Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/33/42/49a20c5037f7ec2837d23a010d2ce46d6fa8df8543a2e35e4b920fd63490/safir-14.1.3-py3-none-any.whl", hash = "sha256:22d43376405357ea58673752c475459c6f9be5cea49032a77fcd1f153d8f9c48", size = 177789, upload-time = "2026-01-21T16:17:31.007Z" },
+    { url = "https://files.pythonhosted.org/packages/9d/28/4f509ed6576193a36175b4898eac739d247789a67bdf76e9e799208edc9a/safir-14.2.0-py3-none-any.whl", hash = "sha256:ac58f12b48d7eadede0efe1ef5022f663a4df16c224478400ff1135f4c39b55f", size = 181458, upload-time = "2026-01-30T22:13:23.975Z" },
 ]
 
 [package.optional-dependencies]
@@ -2016,14 +2018,14 @@ kafka = [
 
 [[package]]
 name = "safir-logging"
-version = "14.1.3"
+version = "14.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "structlog" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fe/84/1d3c098990bd677870c4f4d90b8cd07152482c26fedaa171b854df95fb7d/safir_logging-14.1.3.tar.gz", hash = "sha256:8caebf094e00d32440de25eec5edcf6df726a5b3d09211b4f382fa5195c44e9d", size = 8421, upload-time = "2026-01-21T16:17:36.88Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/15/82/6a24b382ab059e1a63b872319393c00fdf717b98f757231aa5934fa957e2/safir_logging-14.2.0.tar.gz", hash = "sha256:443856aeeec7fc1ad53b7c8b19c5a471e759e148849f82962352fb633d639e6f", size = 8451, upload-time = "2026-01-30T22:13:27.74Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9c/4e/16151f1fa22f054f20c291dd4c06cede6ec4115cd5bd89ee8516d790149c/safir_logging-14.1.3-py3-none-any.whl", hash = "sha256:54c6db6509967530347592c84b30136b3f67a821404d6d0a60d39e7017f7e63a", size = 10469, upload-time = "2026-01-21T16:17:32.191Z" },
+    { url = "https://files.pythonhosted.org/packages/8a/f4/c0c36af7f44d7ef58acf89fede63cc94dbb5a17c741a74d4efa8f9c1c68b/safir_logging-14.2.0-py3-none-any.whl", hash = "sha256:0823ae78200db751ceb8a44272bd37bbc44afd923f3b201577985bc5b8648c65", size = 10467, upload-time = "2026-01-30T22:13:26.896Z" },
 ]
 
 [[package]]
