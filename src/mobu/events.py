@@ -11,6 +11,7 @@ __all__ = [
     "EventBase",
     "Events",
     "GitLfsCheck",
+    "MusterExecution",
     "NotebookBase",
     "NotebookCellExecution",
     "NotebookExecution",
@@ -28,6 +29,19 @@ class EventBase(EventPayload):
     flock: str | None
     business: str
     username: str
+
+
+class EmptyLoopExecution(EventBase):
+    """Reported when an empty loop... loops."""
+
+    success: bool
+
+
+class MusterExecution(EventBase):
+    """Repoerted when a Muster business loops."""
+
+    duration: timedelta
+    success: bool
 
 
 class NotebookBase(EventBase):
@@ -98,20 +112,15 @@ class SIAQuery(EventBase):
     duration: timedelta | None
 
 
-class EmptyLoopExecution(EventBase):
-    """Reported when an empty loop... loops."""
-
-    success: bool
-
-
 class Events(EventMaker):
     """Container for app metrics event publishers."""
 
     @override
     async def initialize(self, manager: EventManager) -> None:
         self.empty_loop = await manager.create_publisher(
-            "EmptyLoop", EmptyLoopExecution
+            "empty_loop", EmptyLoopExecution
         )
+        self.muster = await manager.create_publisher("muster", MusterExecution)
         self.tap_query = await manager.create_publisher("tap_query", TapQuery)
         self.sia_query = await manager.create_publisher("sia_query", SIAQuery)
         self.git_lfs_check = await manager.create_publisher(
@@ -129,7 +138,6 @@ class Events(EventMaker):
         self.nublado_spawn_lab = await manager.create_publisher(
             "nublado_spawn_lab", NubladoSpawnLab
         )
-
         self.nublado_delete_lab = await manager.create_publisher(
             "nublado_delete_", NubladoDeleteLab
         )

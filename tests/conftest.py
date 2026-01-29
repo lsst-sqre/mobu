@@ -16,6 +16,7 @@ from httpx import ASGITransport, AsyncClient
 from rubin.gafaelfawr import MockGafaelfawr, register_mock_gafaelfawr
 from rubin.nublado.client import MockJupyter, register_mock_jupyter
 from rubin.repertoire import Discovery, register_mock_discovery
+from safir.testing.data import Data
 from safir.testing.sentry import (
     Captured,
     capture_events_fixture,
@@ -45,6 +46,16 @@ from .support.gitlfs import (
     uninstall_git_lfs,
     verify_uuid_contents,
 )
+from .support.muster import MockMuster, register_mock_muster
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--update-test-data",
+        action="store_true",
+        default=False,
+        help="Overwrite expected test output with current results",
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -154,6 +165,12 @@ async def app() -> AsyncGenerator[FastAPI]:
 
 
 @pytest.fixture
+def data(request: pytest.FixtureRequest) -> Data:
+    update = request.config.getoption("--update-test-data")
+    return Data(Path(__file__).parent / "data", update_test_data=update)
+
+
+@pytest.fixture
 def events(app: FastAPI) -> Events:
     """Event publishers from a configured test application."""
     return context_dependency.process_context.events
@@ -207,9 +224,7 @@ async def mock_gafaelfawr(
 async def mock_jupyter(
     respx_mock: respx.Router, mock_discovery: Discovery
 ) -> AsyncGenerator[MockJupyter]:
-    """Mock out JupyterHub and JupyterLab."""
     async with register_mock_jupyter(respx_mock) as mock:
-        # Register some code we call over and over and over...
         mock.register_python_result(_GET_NODE, "Node1")
         get_image_result = (
             "lighthouse.ceres/library/sketchbook:recommended\n"
@@ -217,6 +232,13 @@ async def mock_jupyter(
         )
         mock.register_python_result(_GET_IMAGE, get_image_result)
         yield mock
+
+
+@pytest_asyncio.fixture
+async def mock_muster(
+    mock_discovery: Discovery, respx_mock: respx.Router
+) -> MockMuster:
+    return await register_mock_muster(respx_mock)
 
 
 @pytest.fixture
