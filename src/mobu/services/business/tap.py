@@ -1,6 +1,7 @@
 """Base class for executing TAP queries."""
 
 import asyncio
+import contextlib
 from abc import ABCMeta, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from typing import override
@@ -124,16 +125,50 @@ class TAPBusiness[T: TAPBusinessOptions](Business[T], metaclass=ABCMeta):
         if not self._client:
             raise RuntimeError("TAPBusiness startup never ran")
 
-        if self.options.sync:
-            mode = "(sync)"
-            method = self._client.search
-        else:
-            mode = "(async)"
-            method = self._client.run_async
-
-        self.logger.info(f"Running {mode}: {query}")
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(self._pool, method, query)
+
+        if self.options.sync:
+            self.logger.info(f"Running (sync): {query}")
+            await loop.run_in_executor(self._pool, self._client.search, query)
+        else:
+            self.logger.info(f"Running (async): {query}")
+            await loop.run_in_executor(self._pool, self._run_async_job, query)
+
+    def _run_async_job(self, query: str) -> None:
+        """Run an async TAP job with optional timeout.
+
+        This method submits a job, waits for completion with an optional
+        timeout and then cleans up the job. If a timeout occurs the job is
+        aborted and we raise an Exception.
+
+        Parameters
+        ----------
+        query
+            Query string to execute.
+        """
+        if not self._client:
+            raise RuntimeError("TAPBusiness startup never ran")
+
+        job = self._client.submit_job(query)
+        try:
+            job.run()
+            if self.options.query_timeout is not None:
+                job.wait(
+                    phases=["COMPLETED", "ERROR", "ABORTED"],
+                    timeout=self.options.query_timeout,
+                )
+            else:
+                job.wait(phases=["COMPLETED", "ERROR", "ABORTED"])
+            job.raise_if_error()
+            job.fetch_result()
+        except Exception:
+            if job.phase in ("QUEUED", "EXECUTING"):
+                with contextlib.suppress(Exception):
+                    job.abort()
+            raise
+        finally:
+            with contextlib.suppress(Exception):
+                job.delete()
 
     @override
     def dump(self) -> TAPBusinessData:
