@@ -27,6 +27,16 @@ class TAPBusinessOptions(BusinessOptions):
         examples=[True],
     )
 
+    query_timeout: float | None = Field(
+        None,
+        title="Query timeout in seconds",
+        description=(
+            "Maximum time to wait for a query to complete. If not set, queries"
+            " will run until completion with no timeout."
+        ),
+        examples=[300],
+    )
+
 
 class TAPBusinessData(BusinessData):
     """Status of a running TAPQueryRunner business."""
