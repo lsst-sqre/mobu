@@ -33,7 +33,7 @@ def test_default(tmp_path: Path) -> None:
     finder = NotebookFinder(
         repo_path=repo_path,
         repo_config=RepoConfig(),
-        applications=["some_service"],
+        applications=["some_application"],
         logger=get_logger(__file__),
     )
     found = _normalize(repo_path, finder.find())
@@ -53,7 +53,7 @@ def test_exclude_dirs(tmp_path: Path) -> None:
     finder = NotebookFinder(
         repo_path=repo_path,
         repo_config=RepoConfig(),
-        applications=["some_service"],
+        applications=["some_application"],
         exclude_dirs={Path("some-other-dir/nested-dir/")},
         logger=get_logger(__file__),
     )
@@ -70,7 +70,7 @@ def test_exclude_dirs(tmp_path: Path) -> None:
     finder = NotebookFinder(
         repo_path=repo_path,
         repo_config=RepoConfig(),
-        applications=["some_service"],
+        applications=["some_application"],
         exclude_dirs={Path("some-other-dir/nested-dir/"), Path("some-dir")},
         logger=get_logger(__file__),
     )
@@ -89,7 +89,7 @@ def test_exclude_rules(tmp_path: Path) -> None:
     finder = NotebookFinder(
         repo_path=repo_path,
         repo_config=RepoConfig(),
-        applications=["some_service"],
+        applications=["some_application"],
         collection_rules=[
             CollectionRule(
                 type="exclude_union_of", patterns={"**/nested-dir/**"}
@@ -110,7 +110,7 @@ def test_exclude_rules(tmp_path: Path) -> None:
     finder = NotebookFinder(
         repo_path=repo_path,
         repo_config=RepoConfig(),
-        applications=["some_service"],
+        applications=["some_application"],
         collection_rules=[
             CollectionRule(
                 type="exclude_union_of",
@@ -134,7 +134,7 @@ def test_include_rules(tmp_path: Path) -> None:
     finder = NotebookFinder(
         repo_path=repo_path,
         repo_config=RepoConfig(),
-        applications=["some_service"],
+        applications=["some_application"],
         collection_rules=[
             CollectionRule(
                 type="intersect_union_of",
@@ -157,7 +157,7 @@ def test_multiple_include_rules(tmp_path: Path) -> None:
     finder = NotebookFinder(
         repo_path=repo_path,
         repo_config=RepoConfig(),
-        applications=["some_service"],
+        applications=["some_application"],
         collection_rules=[
             CollectionRule(
                 type="intersect_union_of",
@@ -178,17 +178,17 @@ def test_multiple_include_rules(tmp_path: Path) -> None:
 
 
 def test_excludes_applications(tmp_path: Path) -> None:
-    repo_path = _get_repo_path(tmp_path, "notebooks_services")
+    repo_path = _get_repo_path(tmp_path, "notebooks_applications")
     finder = NotebookFinder(
         repo_path=repo_path,
         repo_config=RepoConfig(),
-        applications=["some_service"],
+        applications=["some_application"],
         logger=get_logger(__file__),
     )
     found = _normalize(repo_path, finder.find())
     expected = {
-        "some-dir/test-other-notebook-has-services.ipynb",
-        "test-notebook-has-services.ipynb",
+        "some-dir/test-other-notebook-has-applications.ipynb",
+        "test-notebook-has-applications.ipynb",
     }
 
     assert found == expected
@@ -205,7 +205,7 @@ def test_collection_rules_merge(tmp_path: Path) -> None:
                 )
             ],
         ),
-        applications=["some_service"],
+        applications=["some_application"],
         collection_rules=[
             CollectionRule(
                 type="exclude_union_of", patterns={"**/some-dir/**"}

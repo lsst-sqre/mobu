@@ -1,7 +1,7 @@
 {
   "applications": [
-    "some_service",
-    "some_other_service"
+    "some_application",
+    "some_other_application"
   ],
   "datasets": {
     "dp02": {

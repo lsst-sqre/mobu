@@ -87,7 +87,7 @@ class NotebookFinder:
           * Exclude rules will remove notebooks from the current set that are \
             in the union of the matched patterns.
 
-        * Remove any remaining notebooks that require unavailable services.
+        * Remove any remaining notebooks that require unavailable applications.
         """
         notebooks = set(self._repo_path.glob("**/*.ipynb"))
 
@@ -99,7 +99,7 @@ class NotebookFinder:
                 case "exclude_union_of":
                     notebooks = notebooks.difference(collected)
 
-        notebooks = notebooks - self._excluded_by_service()
+        notebooks = notebooks - self._excluded_by_application()
 
         if not notebooks:
             self._logger.warning("No notebooks to run after filtering!")
@@ -114,20 +114,22 @@ class NotebookFinder:
             collected = collected.union(matched)
         return collected
 
-    def _excluded_by_service(self) -> set[Path]:
-        """Return notebooks that require unavailable services."""
+    def _excluded_by_application(self) -> set[Path]:
+        """Return notebooks that require unavailable applications."""
         notebooks = self._repo_path.glob("**/*.ipynb")
         excluded: set[Path] = set()
         for notebook in notebooks:
             metadata = self._read_notebook_metadata(notebook)
-            missing_services = metadata.required_services - self._applications
-            if missing_services:
-                msg = "Environment does not provide required services"
+            missing_applications = (
+                metadata.required_applications - self._applications
+            )
+            if missing_applications:
+                msg = "Environment does not provide required applications"
                 self._logger.info(
                     msg,
                     notebook=notebook,
-                    required_services=metadata.required_services,
-                    missing_services=missing_services,
+                    required_applications=metadata.required_applications,
+                    missing_applications=missing_applications,
                 )
                 excluded.add(notebook)
         return excluded

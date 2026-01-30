@@ -344,13 +344,11 @@ async def test_run_recursive(
 
 
 @pytest.mark.asyncio
-async def test_run_required_services(
-    client: AsyncClient, tmp_path: Path
-) -> None:
+async def test_run_applications(client: AsyncClient, tmp_path: Path) -> None:
     cwd = Path.cwd()
 
     # Set up a notebook repository.
-    source_path = TEST_DATA_DIR / "notebooks_services"
+    source_path = TEST_DATA_DIR / "notebooks_applications"
     repo_path = tmp_path / "notebooks"
 
     shutil.copytree(str(source_path), str(repo_path))
@@ -410,13 +408,13 @@ async def test_run_required_services(
     r = await client.get("/mobu/flocks/test/monkeys/bot-mobu-testuser1/log")
     assert r.status_code == 200
 
-    # Notebooks with all services available
-    assert "Required services are available" in r.text
-    assert "Required services are available - some-dir" in r.text
+    # Notebooks with all applications available
+    assert "Required applications are available" in r.text
+    assert "Required applications are available - some-dir" in r.text
     assert "Final test" in r.text
 
-    # Notebook with missing services
-    assert "Required services are NOT available" not in r.text
+    # Notebook with missing applications
+    assert "Required applications are NOT available" not in r.text
 
     # Make sure mobu ran all of the notebooks it thinks it should have
     assert "Done with this cycle of notebooks" in r.text
