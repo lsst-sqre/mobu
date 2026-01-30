@@ -1,0 +1,11 @@
+{
+  "name": "test",
+  "count": 1,
+  "user": {
+    "username": "bot-mobu-solitary"
+  },
+  "scopes": [],
+  "business": {
+    "type": "Muster"
+  }
+}

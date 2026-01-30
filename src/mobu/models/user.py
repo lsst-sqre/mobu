@@ -20,14 +20,9 @@ class Group(BaseModel):
         title="Name of the group",
         examples=["g_special_users"],
         min_length=1,
-        pattern=r"^g_",
     )
 
-    id: int = Field(
-        ...,
-        title="Numeric GID of the group",
-        examples=[123181],
-    )
+    id: int = Field(..., title="Numeric GID of the group", examples=[123181])
 
 
 class User(BaseModel):
@@ -124,4 +119,11 @@ class AuthenticatedUser(User):
         ...,
         title="Authentication token for user",
         examples=["gt-1PhgAeB-9Fsa-N1NhuTu_w.oRvMvAQp1bWfx8KCJKNohg"],
+    )
+
+    name: str | None = Field(
+        None,
+        title="Full name of user",
+        examples=["Mobu Test User"],
+        exclude=True,
     )

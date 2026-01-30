@@ -86,6 +86,9 @@ Python internal API
 .. automodapi:: mobu.models.business.gitlfs
    :include-all-objects:
 
+.. automodapi:: mobu.models.business.muster
+   :include-all-objects:
+
 .. automodapi:: mobu.models.business.notebookrunner
    :include-all-objects:
 
@@ -141,6 +144,9 @@ Python internal API
    :include-all-objects:
 
 .. automodapi:: mobu.services.business.gitlfs
+   :include-all-objects:
+
+.. automodapi:: mobu.services.business.muster
    :include-all-objects:
 
 .. automodapi:: mobu.services.business.notebookrunner

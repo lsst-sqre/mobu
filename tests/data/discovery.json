@@ -32,6 +32,9 @@
             "url": "https://data.example.com/auth/api/v1"
           }
         }
+      },
+      "muster": {
+        "url": "https://data.example.com/muster"
       }
     },
     "ui": {

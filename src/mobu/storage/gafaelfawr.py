@@ -8,7 +8,7 @@ from structlog.stdlib import BoundLogger
 
 from ..config import Config
 from ..constants import TOKEN_LIFETIME
-from ..models.user import AuthenticatedUser, User
+from ..models.user import AuthenticatedUser, Group, User
 
 __all__ = ["GafaelfawrStorage"]
 
@@ -79,11 +79,19 @@ class GafaelfawrStorage:
                 GafaelfawrGroup(name=g.name, id=g.id) for g in user.groups
             ],
         )
+
+        # In environments using LDAP, the UID, GID, and group membership will
+        # be resolved after the token is created when getting user
+        # information. Since some businesses need the resolved information,
+        # immediately retrieve the user information and store the actual
+        # information in the AuthenticatedUser model.
+        user_info = await self._gafaelfawr.get_user_info(token)
         return AuthenticatedUser(
             token=token,
             scopes=scopes,
-            username=user.username,
-            uidnumber=user.uidnumber,
-            gidnumber=user.gidnumber or user.uidnumber,
-            groups=user.groups,
+            username=user_info.username,
+            name=user_info.name,
+            uidnumber=user_info.uid,
+            gidnumber=user_info.gid,
+            groups=[Group(name=g.name, id=g.id) for g in user_info.groups],
         )
