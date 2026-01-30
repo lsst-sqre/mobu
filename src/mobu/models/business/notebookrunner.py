@@ -120,13 +120,13 @@ class NotebookRunnerData(NubladoBusinessData):
 class NotebookMetadata(BaseModel):
     """Notebook metadata that we care about."""
 
-    required_services: set[str] = Field(
+    required_applications: set[str] = Field(
         set(),
-        title="Required services",
+        title="Required applications",
         description=(
-            "The names of services that the platform is required to provide in"
-            " order for the notebook to run correctly. Not all environments"
-            " provide all services."
+            "The names of Phalanx applications that the platform is required"
+            " to provide in order for the notebook to run correctly. Not all"
+            " environments provide all applications."
         ),
         examples=[{"tap", "ssotap", "butler"}],
     )
@@ -162,7 +162,7 @@ class NotebookFilterResults(BaseModel):
         default=set(),
         title="Excluded by service availability",
         description=(
-            "These notebooks won't be run because the depend on services which"
-            " are not available in this environment"
+            "These notebooks won't be run because the depend on applications"
+            " that are not available in this environment"
         ),
     )
