@@ -6,6 +6,21 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-18.0.0'></a>
+## 18.0.0 (2026-01-30)
+
+### Backwards-incompatible changes
+
+- The ipynb JSON metadata key to list the Phalanx applications required to be in the environment for the notebook to run has been changed from `required_services` to `required_applications`. Now that we have Repertoire service discovery "services" means something else. See https://mobu.lsst.io/user-guide/in-repo-config.html#service-specific-notebooks
+
+### New features
+
+- Add a new Muster business that performs sanity checks of the ingress and authorization handling against a special-purpose Muster service.
+- Retrieve the list of Phalanx applications in the local environment (used for filtering of notebooks to run) from [Repertoire](https://repertoire.lsst.io/) rather than requiring it be injected by Phalanx.
+- Add a new `dataset` option (defaults to `dp02`) to the SIA business configuration to specify which SIA service to query via [service discovery](https://repertoire.lsst.io/). The `query_set` option now only controls query parameter templates.
+- Add a new `dataset` option (defaults to `dp02`) to the TAP business configuration to specify which TAP service to query via [service discovery](https://repertoire.lsst.io/).
+- Obtain the short human-readable name of the environment for status reporting and GitHub CI from service discovery instead of using a base URL for the environment.
+
 <a id='changelog-17.0.0'></a>
 ## 17.0.0 (2025-12-16)
 
