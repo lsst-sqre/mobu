@@ -85,7 +85,7 @@ class NubladoBusinessOptions(BusinessOptions):
     )
 
     max_websocket_message_size: int | None = Field(
-        10 * 1024 * 1024,
+        None,
         title="Maximum length of WebSocket message (in bytes)",
         description=(
             "This has to be large enough to hold HTML and image output from"
