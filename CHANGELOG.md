@@ -6,6 +6,13 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-19.0.0'></a>
+## 19.0.0 (2026-02-10)
+
+### Backwards-incompatible changes
+
+- `max_websocket_message_size` now defaults to None, which removes the limit on websocket message sizes.
+
 <a id='changelog-18.0.0'></a>
 ## 18.0.0 (2026-01-30)
 
