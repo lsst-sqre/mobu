@@ -104,7 +104,7 @@ class Factory:
         self, context: ProcessContext, logger: BoundLogger | None = None
     ) -> None:
         self._context = context
-        self._logger = logger if logger else structlog.get_logger("mobu")
+        self._logger = logger or structlog.get_logger("mobu")
         self._config = config_dependency.config
 
     def create_slack_webhook_client(self) -> SlackWebhookClient | None:
