@@ -262,7 +262,7 @@ class Business[T: BusinessOptions](metaclass=ABCMeta):
             else:
                 self.control.get_nowait()
                 return False
-        except (TimeoutError, QueueEmpty):
+        except TimeoutError, QueueEmpty:
             return True
 
     async def iter_with_timeout[U](
@@ -363,5 +363,5 @@ class Business[T: BusinessOptions](metaclass=ABCMeta):
                 await asyncio.wait_for(self.control.get(), seconds)
             else:
                 self.control.get_nowait()
-        except (TimeoutError, QueueEmpty):
+        except TimeoutError, QueueEmpty:
             pass
