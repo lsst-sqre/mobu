@@ -1,6 +1,6 @@
 """Mock that simulates the Muster service."""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime
 from urllib.parse import urljoin
 
@@ -8,7 +8,6 @@ import respx
 from httpx import Request, Response
 from rubin.gafaelfawr import GafaelfawrClient, GafaelfawrError
 from rubin.repertoire import DiscoveryClient
-from safir.datetime import current_datetime
 
 __all__ = ["MockMuster", "register_mock_muster"]
 
@@ -92,7 +91,7 @@ class MockMuster:
         authorization = request.headers.get("Authorization")
         if not authorization:
             return Response(401)
-        now = current_datetime()
+        now = datetime.now(tz=UTC).replace(microsecond=0)
         if self._rate_limit_time and now > self._rate_limit_time:
             self._rate_limit_count = 0
             self._rate_limit_time = now + timedelta(minutes=1)

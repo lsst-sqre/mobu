@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from rubin.gafaelfawr import GafaelfawrClient, GafaelfawrGroup
-from safir.datetime import current_datetime
 from structlog.stdlib import BoundLogger
 
 from ..config import Config
@@ -67,11 +68,12 @@ class GafaelfawrStorage:
         rubin.gafaelfawr.GafaelfawrError
             Raised if the request to Gafaelfawr failed.
         """
+        now = datetime.now(tz=UTC).replace(microsecond=0)
         token = await self._gafaelfawr.create_service_token(
             self._config.gafaelfawr_token,
             user.username,
             scopes=scopes,
-            expires=current_datetime() + TOKEN_LIFETIME,
+            expires=now + TOKEN_LIFETIME,
             name="Mobu Test User",
             uid=user.uidnumber,
             gid=user.gidnumber or user.uidnumber,

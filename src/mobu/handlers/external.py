@@ -2,12 +2,12 @@
 
 import json
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, override
 
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import JSONResponse, StreamingResponse
-from safir.datetime import current_datetime
 from safir.metadata import get_metadata
 from safir.models import ErrorModel
 from safir.slack.webhook import SlackRouteErrorHandler
@@ -203,7 +203,8 @@ def get_monkey_log(
         with Path(logfile).open("rb") as fh:
             yield from fh
 
-    filename = f"{flock}-{monkey}-{current_datetime()}"
+    now = datetime.now(tz=UTC).isoformat(timespec="seconds")
+    filename = f"{flock}-{monkey}-{now}"
     return StreamingResponse(
         iterfile(),
         media_type="text/plain",
