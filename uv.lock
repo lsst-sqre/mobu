@@ -1236,7 +1236,7 @@ requires-dist = [
     { name = "pyvo" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "rubin-gafaelfawr" },
-    { name = "rubin-nublado-client", specifier = ">=10" },
+    { name = "rubin-nublado-client", git = "https://github.com/lsst-sqre/nublado?subdirectory=client&branch=tickets%2FDM-53832" },
     { name = "rubin-repertoire" },
     { name = "safir", extras = ["kafka"], specifier = ">=13" },
     { name = "sentry-sdk", specifier = ">=2.32" },
@@ -2035,8 +2035,8 @@ wheels = [
 
 [[package]]
 name = "rubin-nublado-client"
-version = "14.0.0"
-source = { registry = "https://pypi.org/simple" }
+version = "14.0.1.dev33+gda4a38e8f"
+source = { git = "https://github.com/lsst-sqre/nublado?subdirectory=client&branch=tickets%2FDM-53832#da4a38e8f080825939ae8ba68f674e7c3f85217d" }
 dependencies = [
     { name = "httpx" },
     { name = "httpx-sse" },
@@ -2046,10 +2046,6 @@ dependencies = [
     { name = "safir" },
     { name = "structlog" },
     { name = "websockets" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/16/fb/ad6646fcfcbe3687040cac98872a4960c22eec21ec9fb357d71d561947a8/rubin_nublado_client-14.0.0.tar.gz", hash = "sha256:489c4ea1f80003425ae3eb9ccec8d8e4a19672395be61ac84e92c818f655886b", size = 91821, upload-time = "2026-05-12T00:29:58.053Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d1/86/52471febf4d7e09df8290b328b6085d3ec4445e922f5ed00e0875cbc1f85/rubin_nublado_client-14.0.0-py3-none-any.whl", hash = "sha256:5c9c807d1866c13505dbcf975220af6a6b47ad654c49450ff8c8c4ddb8c18ef8", size = 35193, upload-time = "2026-05-12T00:29:59.216Z" },
 ]
 
 [[package]]
