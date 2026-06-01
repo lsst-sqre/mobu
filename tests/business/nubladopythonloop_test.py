@@ -559,6 +559,7 @@ async def test_code_exception(
         "image_description": "Recommended (Weekly 2077_43)",
         "image_reference": "lighthouse.ceres/library/sketchbook:recommended",
         "node": "Node1",
+        "status": "error",
     }
     assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
 
@@ -642,6 +643,7 @@ async def test_long_error(
         "image_description": "Recommended (Weekly 2077_43)",
         "image_reference": "lighthouse.ceres/library/sketchbook:recommended",
         "node": "Node1",
+        "status": "error",
     }
     assert sentry_error["contexts"]["code_info"] == {"code": code}
 
@@ -821,6 +823,7 @@ async def test_ansi_error(
         "image_description": "Recommended (Weekly 2077_43)",
         "image_reference": "lighthouse.ceres/library/sketchbook:recommended",
         "node": "Node1",
+        "status": "error",
     }
     assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
 
