@@ -1261,7 +1261,7 @@ requires-dist = [
     { name = "pyvo" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "rubin-gafaelfawr" },
-    { name = "rubin-nublado-client", git = "https://github.com/lsst-sqre/nublado?subdirectory=client&branch=t%2FDM-55115" },
+    { name = "rubin-nublado-client", git = "https://github.com/lsst-sqre/nublado?subdirectory=client&branch=t%2FDM-55115-pin" },
     { name = "rubin-repertoire" },
     { name = "safir", extras = ["kafka"], specifier = ">=13" },
     { name = "sentry-sdk", specifier = ">=2.32" },
@@ -2089,8 +2089,8 @@ wheels = [
 
 [[package]]
 name = "rubin-nublado-client"
-version = "14.0.1.dev17+g553bd3570"
-source = { git = "https://github.com/lsst-sqre/nublado?subdirectory=client&branch=t%2FDM-55115#553bd3570834e55b53a0cf832a4c8efa1c3c0b9a" }
+version = "14.0.1.dev16+g83375f63e"
+source = { git = "https://github.com/lsst-sqre/nublado?subdirectory=client&branch=t%2FDM-55115-pin#83375f63ed8fcaea5b0c8ebb12459b4ddfcfe90a" }
 dependencies = [
     { name = "httpx" },
     { name = "httpx-sse" },

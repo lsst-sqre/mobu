@@ -197,4 +197,4 @@ skip_fragments = "_template.md.jinja"
 [tool.setuptools_scm]
 
 [tool.uv.sources]
-rubin-nublado-client = { git = "https://github.com/lsst-sqre/nublado", branch = "t/DM-55115", subdirectory = "client" }
+rubin-nublado-client = { git = "https://github.com/lsst-sqre/nublado", branch = "t/DM-55115-pin", subdirectory = "client" }
