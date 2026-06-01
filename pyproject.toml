@@ -195,3 +195,6 @@ new_fragment_template = "file:changelog.d/_template.md.jinja"
 skip_fragments = "_template.md.jinja"
 
 [tool.setuptools_scm]
+
+[tool.uv.sources]
+rubin-nublado-client = { git = "https://github.com/lsst-sqre/nublado", branch = "t/DM-55115", subdirectory = "client" }
