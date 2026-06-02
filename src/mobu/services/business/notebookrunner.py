@@ -368,7 +368,7 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
     ) -> None:
         if not self._notebook:
             raise RuntimeError("Executing a cell without a notebook")
-        self.logger.info(f"Executing cell {cell_id}:\n{code}\n")
+        self.logger.info("Executing cell", cell=cell_id, code=code)
         set_tag("cell", cell_id)
         cell_info = {
             "code": code,
@@ -404,7 +404,7 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
                 raise NotebookCellExecutionError(msg) from e
 
             self._running_code = None
-        self.logger.info(f"Result:\n{reply}\n")
+        self.logger.info("Cell result", result=reply)
         await self._publish_cell_event(
             cell_id=cell_id, duration=duration(span), success=True
         )
