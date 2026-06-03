@@ -23,6 +23,7 @@ from rubin.nublado.client import (
     MockJupyterState,
 )
 from safir.metrics import NOT_NONE, MockEventPublisher
+from safir.testing.data import Data
 from safir.testing.sentry import Captured
 from safir.testing.slack import MockSlackWebhook
 
@@ -892,3 +893,36 @@ async def test_user_spec_groups(
             "username": "bot-mobu-testuser1",
         },
     }
+
+
+@pytest.mark.asyncio
+async def test_code_timeout(
+    *,
+    data: Data,
+    client: AsyncClient,
+    mock_jupyter: MockJupyter,
+    sentry_items: Captured,
+) -> None:
+    config = data.read_json("solitary/input/python-timeout")
+    code = config["business"]["options"]["code"]
+    mock_jupyter.register_python_result(code, "4", delay=timedelta(seconds=2))
+    r = await client.post("/mobu/run", json=config)
+    assert r.status_code == 200
+    data.assert_json_matches(r.json(), "solitary/output/python-timeout")
+
+    # Check that an appropriate error was posted.
+    for sentry_attachment in sentry_items.attachments:
+        assert sentry_attachment.filename == "nublado_code.txt"
+        assert sentry_attachment.bytes.decode() == code
+    (sentry_error,) = sentry_items.errors
+    assert sentry_error["contexts"]["code_info"] == {"code": code}
+    assert sentry_error["exception"]["values"] == AnyContains(
+        AnyWithEntries({"type": "NubladoExecutionTimeoutError", "value": ANY})
+    )
+    assert sentry_error["tags"] == {
+        "business": "NubladoPythonLoop",
+        "image_description": "Recommended (Weekly 2077_43)",
+        "image_reference": "lighthouse.ceres/library/sketchbook:recommended",
+        "node": "Node1",
+    }
+    assert sentry_error["user"] == {"username": config["user"]["username"]}

@@ -78,6 +78,19 @@ class Filterable(BaseModel):
 class NotebookRunnerOptions(NubladoBusinessOptions, Filterable):
     """Options for all types NotebookRunner monkey business."""
 
+    cell_execution_timeout: HumanTimedelta | None = Field(
+        None,
+        title="Timeout for each cell",
+        description=(
+            "Timeout for every cell execution. The same timeout is applied to"
+            " every cell, so it must be long enough to account for the most"
+            " time-consuming cell. This is primarily intended as a backstop"
+            " to prevent cells from hanging forever and never failing, and"
+            " should normally be set to a long interval such as an hour."
+        ),
+        examples=["1h"],
+    )
+
     repo_ref: str = Field(
         NOTEBOOK_REPO_BRANCH,
         title="Git ref of notebook repository to execute",

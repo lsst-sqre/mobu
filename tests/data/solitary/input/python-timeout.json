@@ -1,0 +1,16 @@
+{
+  "name": "test",
+  "count": 1,
+  "user": {
+    "username": "bot-mobu-solitary"
+  },
+  "scopes": [],
+  "business": {
+    "type": "NubladoPythonLoop",
+    "options": {
+      "code": "run_code()",
+      "timeout": "1s",
+      "spawn_settle_time": 0
+    }
+  }
+}

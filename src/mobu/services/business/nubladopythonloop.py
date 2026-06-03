@@ -63,6 +63,7 @@ class NubladoPythonLoop(NubladoBusiness):
     @override
     async def execute_code(self, session: JupyterLabSession) -> None:
         code = self.options.code
+        timeout = self.options.timeout
         sentry_sdk.set_context("code_info", {"code": code})
         for _count in range(self.options.max_executions):
             with start_transaction(
@@ -70,7 +71,7 @@ class NubladoPythonLoop(NubladoBusiness):
                 op="mobu.notebookrunner.execute_python",
             ) as span:
                 try:
-                    reply = await session.run_python(code)
+                    reply = await session.run_python(code, timeout=timeout)
                 except Exception:
                     await self._publish_failure(code=code)
                     raise

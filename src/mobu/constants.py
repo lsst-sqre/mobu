@@ -11,6 +11,7 @@ __all__ = [
     "GITHUB_WEBHOOK_WAIT_SECONDS",
     "NOTEBOOK_REPO_BRANCH",
     "NOTEBOOK_REPO_URL",
+    "NOTEBOOK_SETUP_TIMEOUT",
     "TOKEN_LIFETIME",
     "WEBSOCKET_OPEN_TIMEOUT",
 ]
@@ -29,6 +30,9 @@ NOTEBOOK_REPO_URL = "https://github.com/lsst-sqre/notebook-demo.git"
 
 NOTEBOOK_REPO_BRANCH = "prod"
 """Default repository branch for NotebookRunner."""
+
+NOTEBOOK_SETUP_TIMEOUT = timedelta(minutes=1)
+"""Per-execution timeout for setup code run after a notebook is spawned."""
 
 TOKEN_LIFETIME = timedelta(days=365)
 """Token lifetime for mobu's service tokens.

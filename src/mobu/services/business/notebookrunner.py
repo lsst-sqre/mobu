@@ -21,6 +21,7 @@ from rubin.nublado.client import (
     CodeContext,
     JupyterLabSession,
     NubladoExecutionError,
+    NubladoExecutionTimeoutError,
 )
 from rubin.repertoire import DiscoveryClient
 from safir.sentry import duration
@@ -369,6 +370,7 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
         if not self._notebook:
             raise RuntimeError("Executing a cell without a notebook")
         self.logger.info("Executing cell", cell=cell_id, code=code)
+        timeout = self.options.cell_execution_timeout
         set_tag("cell", cell_id)
         cell_info = {
             "code": code,
@@ -386,7 +388,9 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
             span.set_data("cell_info", cell_info)
             self._running_code = code
             try:
-                reply = await session.run_python(code, context=context)
+                reply = await session.run_python(
+                    code, context=context, timeout=timeout
+                )
             except Exception as e:
                 if isinstance(e, NubladoExecutionError) and e.error:
                     sentry_sdk.get_current_scope().add_attachment(
@@ -400,7 +404,10 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
                 )
 
                 notebook = getattr(context, "notebook", "<unknown notebook")
-                msg = f"{notebook}: Error executing cell"
+                if isinstance(e, NubladoExecutionTimeoutError):
+                    msg = f"{notebook}: Timeout executing cell"
+                else:
+                    msg = f"{notebook}: Error executing cell"
                 raise NotebookCellExecutionError(msg) from e
 
             self._running_code = None
