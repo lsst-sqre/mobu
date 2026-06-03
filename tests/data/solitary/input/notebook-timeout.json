@@ -1,0 +1,20 @@
+{
+  "name": "test",
+  "count": 1,
+  "user": {
+    "username": "bot-mobu-solitary"
+  },
+  "scopes": [],
+  "business": {
+    "type": "NotebookRunnerCounting",
+    "options": {
+      "cell_execution_timeout": 0.01,
+      "execution_idle_time": 0,
+      "max_executions": 1,
+      "repo_url": "<REPLACE>",
+      "repo_ref": "main",
+      "spawn_settle_time": 0,
+      "working_directory": "<REPLACE>"
+    }
+  }
+}

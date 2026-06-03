@@ -18,6 +18,7 @@ from sentry_sdk import set_tag
 from sentry_sdk.tracing import Span
 from structlog.stdlib import BoundLogger
 
+from ...constants import NOTEBOOK_SETUP_TIMEOUT
 from ...events import Events, NubladoDeleteLab, NubladoSpawnLab
 from ...exceptions import (
     JupyterDeleteTimeoutError,
@@ -328,7 +329,8 @@ class NubladoBusiness[T: NubladoBusinessOptions](
         set_tag("node", None)
 
     async def setup_session(self, session: JupyterLabSession) -> None:
-        image_data = await session.run_python(_GET_IMAGE)
+        timeout = NOTEBOOK_SETUP_TIMEOUT
+        image_data = await session.run_python(_GET_IMAGE, timeout=timeout)
         if "\n" in image_data:
             reference, description = image_data.split("\n", 1)
             msg = f"Running on image {reference} ({description.strip()})"
@@ -345,14 +347,14 @@ class NubladoBusiness[T: NubladoBusinessOptions](
         set_tag("image_description", self._image.description)
         set_tag("image_reference", self._image.reference)
         if self.options.get_node:
-            self._node = await session.run_python(_GET_NODE)
+            self._node = await session.run_python(_GET_NODE, timeout=timeout)
             set_tag("node", self._node)
             self.logger.info(f"Running on node {self._node}")
         if self.options.working_directory:
             path = self.options.working_directory
             code = _CHDIR_TEMPLATE.format(wd=path)
             self.logger.info(f"Changing directories to {path}")
-            await session.run_python(code)
+            await session.run_python(code, timeout=timeout)
 
     async def delete_lab(self) -> None:
         with capturing_start_span(op="delete_lab") as span:

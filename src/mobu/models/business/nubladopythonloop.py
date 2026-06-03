@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Literal
 
 from pydantic import Field
+from safir.pydantic import HumanTimedelta
 
 from .base import BusinessConfig
 from .nublado import NubladoBusinessOptions
@@ -32,6 +33,13 @@ class NubladoPythonLoopOptions(NubladoBusinessOptions):
         ),
         examples=[25],
         ge=1,
+    )
+
+    timeout: HumanTimedelta | None = Field(
+        None,
+        title="Code execution timeout",
+        description="Timeout for each execution of the Python code",
+        examples=["60s"],
     )
 
 

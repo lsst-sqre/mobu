@@ -1,0 +1,41 @@
+{
+  "contexts": {
+    "cell_info": {
+      "cell_id": "44ada997",
+      "cell_number": "#2",
+      "code": "print(\"This is another test\")"
+    },
+    "info": {
+      "failed_at": "<ANY>",
+      "started_at": "<ANY>"
+    },
+    "notebook_info": {
+      "iteration": "1/1",
+      "notebook": "test-notebook.ipynb"
+    },
+    "phase": {
+      "phase": "execute_cell",
+      "started_at": "<ANY>"
+    },
+    "repo_info": {
+      "repo_config_file": "PosixPath('mobu.yaml')",
+      "repo_hash": "<ANY>",
+      "repo_ref": "main",
+      "repo_url": "<ANY>"
+    },
+    "runtime": "<ANY>",
+    "trace": "<ANY>"
+  },
+  "tags": {
+    "business": "NotebookRunnerCounting",
+    "cell": "44ada997",
+    "image_description": "Recommended (Weekly 2077_43)",
+    "image_reference": "lighthouse.ceres/library/sketchbook:recommended",
+    "node": "Node1",
+    "notebook": "test-notebook.ipynb",
+    "phase": "execute_cell"
+  },
+  "user": {
+    "username": "bot-mobu-solitary"
+  }
+}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
+from datetime import timedelta
 from pathlib import Path
 from typing import cast
 from unittest.mock import ANY
@@ -13,6 +14,7 @@ from anys import ANY_AWARE_DATETIME_STR, AnyContains, AnySearch, AnyWithEntries
 from httpx import AsyncClient
 from rubin.nublado.client import MockJupyter
 from safir.metrics import NOT_NONE, MockEventPublisher
+from safir.testing.data import Data
 from safir.testing.sentry import Captured
 
 from mobu.events import Events
@@ -708,9 +710,6 @@ async def test_alert(
     # Set up git repo
     repo_hash = await setup_git_repo(repo_path)
 
-    # The bad code run by the exception test.
-    bad_code = 'foo = {"bar": "baz"}\nfoo["nothing"]'
-
     # Start a monkey.
     r = await client.put(
         "/mobu/flocks",
@@ -747,7 +746,6 @@ async def test_alert(
             "name": "NotebookRunnerCounting",
             "notebook": "exception.ipynb",
             "refreshing": False,
-            "running_code": bad_code,
             "success_count": 0,
         },
         "state": "ERROR",
@@ -783,8 +781,8 @@ async def test_alert(
     assert sentry_error["exception"]["values"] == AnyContains(
         AnyWithEntries(
             {
-                "type": "NotebookCellExecutionError",
-                "value": ("exception.ipynb: Error executing cell"),
+                "type": "NubladoExecutionError",
+                "value": "Code execution failed",
             }
         )
     )
@@ -797,6 +795,7 @@ async def test_alert(
         "node": "Node1",
         "notebook": "exception.ipynb",
         "phase": "execute_cell",
+        "status": "error",
     }
     assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
 
@@ -831,4 +830,58 @@ async def test_alert(
     ).published
     pub_cell.assert_published_all(
         [common | {"cell_id": "ed399c0a", "success": False}]
+    )
+
+
+@pytest.mark.asyncio
+async def test_cell_timeout(
+    *,
+    data: Data,
+    client: AsyncClient,
+    mock_jupyter: MockJupyter,
+    tmp_path: Path,
+    sentry_items: Captured,
+) -> None:
+    cwd = Path.cwd()
+    notebooks_path = data.path("notebooks")
+    repo_path = tmp_path / "notebooks"
+    shutil.copytree(str(notebooks_path), str(repo_path))
+    await setup_git_repo(repo_path)
+
+    # Register a delay for one of the cells.
+    code = 'print("This is another test")'
+    mock_jupyter.register_python_result(
+        code, "This is another test\n", delay=timedelta(seconds=2)
+    )
+
+    # Load the configuration. Some values have to be replaced at runtime
+    # because they depend on the temporary path created for each test.
+    config = data.read_json("solitary/input/notebook-timeout")
+    config["business"]["options"]["repo_url"] = str(repo_path)
+    config["business"]["options"]["working_directory"] = str(repo_path)
+
+    # Run the solitary monkey. We have to do this in a try/finally block since
+    # the runner will change working directories, which because working
+    # directories are process-global may mess up future tests.
+    try:
+        r = await client.post("/mobu/run", json=config)
+    finally:
+        os.chdir(cwd)
+
+    # Check the results.
+    assert r.status_code == 200
+    data.assert_json_matches(r.json(), "solitary/output/notebook-timeout")
+
+    # Check that an appropriate Sentry error was posted.
+    (sentry_error,) = sentry_items.errors
+    data.assert_json_matches(
+        {
+            "contexts": sentry_error["contexts"],
+            "tags": sentry_error["tags"],
+            "user": sentry_error["user"],
+        },
+        "solitary/sentry/notebook-timeout",
+    )
+    assert sentry_error["exception"]["values"] == AnyContains(
+        AnyWithEntries({"type": "NubladoExecutionTimeoutError", "value": ANY})
     )

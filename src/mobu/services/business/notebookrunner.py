@@ -15,13 +15,8 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Any, override
 
-import sentry_sdk
 import yaml
-from rubin.nublado.client import (
-    CodeContext,
-    JupyterLabSession,
-    NubladoExecutionError,
-)
+from rubin.nublado.client import CodeContext, JupyterLabSession, NubladoError
 from rubin.repertoire import DiscoveryClient
 from safir.sentry import duration
 from sentry_sdk import set_context, set_tag
@@ -31,11 +26,7 @@ from structlog.stdlib import BoundLogger
 from ...constants import GITHUB_REPO_CONFIG_PATH
 from ...dependencies.config import config_dependency
 from ...events import Events, NotebookCellExecution, NotebookExecution
-from ...exceptions import (
-    NotebookCellExecutionError,
-    NotebookRepositoryError,
-    RepositoryConfigError,
-)
+from ...exceptions import NotebookRepositoryError, RepositoryConfigError
 from ...models.business.notebookrunner import (
     NotebookRunnerData,
     NotebookRunnerOptions,
@@ -368,7 +359,8 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
     ) -> None:
         if not self._notebook:
             raise RuntimeError("Executing a cell without a notebook")
-        self.logger.info(f"Executing cell {cell_id}:\n{code}\n")
+        self.logger.info("Executing cell", cell=cell_id, code=code)
+        timeout = self.options.cell_execution_timeout
         set_tag("cell", cell_id)
         cell_info = {
             "code": code,
@@ -386,25 +378,28 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
             span.set_data("cell_info", cell_info)
             self._running_code = code
             try:
-                reply = await session.run_python(code, context=context)
+                reply = await session.run_python(
+                    code, context=context, timeout=timeout
+                )
             except Exception as e:
-                if isinstance(e, NubladoExecutionError) and e.error:
-                    sentry_sdk.get_current_scope().add_attachment(
-                        filename="nublado_error.txt",
-                        bytes=self.remove_ansi_escapes(e.error).encode(),
-                    )
                 await self._publish_cell_event(
                     cell_id=cell_id,
                     duration=duration(span),
                     success=False,
                 )
-
-                notebook = getattr(context, "notebook", "<unknown notebook")
-                msg = f"{notebook}: Error executing cell"
-                raise NotebookCellExecutionError(msg) from e
-
-            self._running_code = None
-        self.logger.info(f"Result:\n{reply}\n")
+                if isinstance(e, NubladoError):
+                    # Errors from the Nublado client library are already
+                    # Sentry-aware and properly annotated.
+                    raise
+                raise NubladoError(
+                    f"{type(e).__name__}: {e!s}",
+                    self.user.username,
+                    context=context,
+                    started_at=span.timestamp,
+                ) from e
+            finally:
+                self._running_code = None
+        self.logger.info("Cell result", result=reply)
         await self._publish_cell_event(
             cell_id=cell_id, duration=duration(span), success=True
         )

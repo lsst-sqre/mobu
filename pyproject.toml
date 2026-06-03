@@ -30,7 +30,7 @@ dependencies = [
     "pyvo",
     "pyyaml>=6",
     "rubin-gafaelfawr",
-    "rubin-nublado-client>=10",
+    "rubin-nublado-client>=15",
     "rubin-repertoire",
     "safir[kafka]>=13",
     "sentry-sdk>=2.32",
