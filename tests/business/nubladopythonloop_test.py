@@ -905,7 +905,7 @@ async def test_code_timeout(
 ) -> None:
     config = data.read_json("solitary/input/python-timeout")
     code = config["business"]["options"]["code"]
-    mock_jupyter.register_python_result(code, "4", delay=timedelta(seconds=2))
+    mock_jupyter.register_python_result(code, "4", delay=timedelta(seconds=1))
     r = await client.post("/mobu/run", json=config)
     assert r.status_code == 200
     data.assert_json_matches(r.json(), "solitary/output/python-timeout")

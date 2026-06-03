@@ -9,7 +9,7 @@
     "type": "NubladoPythonLoop",
     "options": {
       "code": "run_code()",
-      "timeout": "1s",
+      "timeout": 0.01,
       "spawn_settle_time": 0
     }
   }

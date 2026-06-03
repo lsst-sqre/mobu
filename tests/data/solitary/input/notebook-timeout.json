@@ -8,7 +8,7 @@
   "business": {
     "type": "NotebookRunnerCounting",
     "options": {
-      "cell_execution_timeout": "1s",
+      "cell_execution_timeout": 0.01,
       "execution_idle_time": 0,
       "max_executions": 1,
       "repo_url": "<REPLACE>",
