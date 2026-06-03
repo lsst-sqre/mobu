@@ -72,13 +72,13 @@ dev = [
 ]
 
 lint = [
-    "pre-commit",
-    "pre-commit-uv",
+    "prek",
     "ruff>=0.12",
+    "uv",
 ]
 tox = [
     "tox>=4.24",
-    "tox-uv>=1.25",
+    "tox-uv-bare>=1.25",
 ]
 typing = [
     "mypy>=1.15",

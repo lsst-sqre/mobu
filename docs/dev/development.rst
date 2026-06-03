@@ -43,7 +43,7 @@ To develop mobu, create a virtual environment with :command:`uv venv` and then r
 This init step does three things:
 
 1. Installs mobu in a virtualenv in the :file:`.venv` directory, including the dependency groups for local development.
-2. Installs pre-commit_, tox_, and the necessary tox plugins.
+2. Installs prek_, tox_, and the necessary tox plugins.
 3. Installs the pre-commit hooks.
 
 Finally, you can optionally enter the mobu development virtualenv with:
@@ -75,6 +75,11 @@ uv-lock
 
 When these hooks fail, your Git commit will be aborted.
 To proceed, stage the new modifications and proceed with your Git commit.
+
+If you have to commit changes that fail pre-commit checks, pass the ``--no-verify`` flag to :command:`git commit`.
+This will have to be temporary, though, since the change will fail GitHub CI checks.
+
+Despite the name, Nublado uses prek_ to run pre-commit hooks rather than the package named pre-commit.
 
 .. _dev-run-tests:
 
@@ -121,7 +126,7 @@ dev
     Dependencies required to run the test suite, not including the dependencies required to run tox itself.
 
 lint
-    Dependencies required to run pre-commit_ and to lint the code base.
+    Dependencies required to run prek_ and to lint the code base.
 
 tox
     Dependencies required to run tox_.
