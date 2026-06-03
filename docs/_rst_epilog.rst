@@ -1,6 +1,6 @@
 .. _mypy: https://mypy.readthedocs.io/en/stable/
 .. _Phalanx: https://phalanx.lsst.io/
-.. _pre-commit: https://pre-commit.com
+.. _prek: https://prek.j178.dev/
 .. _pytest: https://docs.pytest.org/en/latest/
 .. _Ruff: https://docs.astral.sh/ruff/
 .. _Safir: https://safir.lsst.io/

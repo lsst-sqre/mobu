@@ -6,6 +6,25 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-19.1.0'></a>
+## 19.1.0 (2026-06-03)
+
+### New features
+
+- Add a new `query_timeout` configuration option for the TAP businesses that specifies a timeout on each query.
+- Add a new `timeout` configuration option for the `NubladoPythonLoop` business that enforces an execution timeout each time the code is run.
+- Add a new `cell_execution_timeout` configuration option for the notebook runner businesses that enforces a per-cell execution timeout. The same timeout is used for all cells, so it must be longer than the expected execution time of any cell. Its primary intended use is as a backstop to ensure that a cell cannot hang forever and thus block the monkey without producing an error. Setting it to an hour or two is often reasonable.
+
+### Bug fixes
+
+- Update the Nublado client to correctly send and parse the new JupyterLab WebSocket protocol.
+- Enforce a timeout of one minute per Python block on the probe Python code run after starting a new Nublado notebook to gather information about that notebook and set up the working directory. This catches problems where the JupyterLab kernel ignores the code execution message, which would otherwise cause the monkey to silently hang.
+- When Nublado code execution fails, clear it from `running_code` immediately, since the code is no longer running. The code will be reported in the exception.
+
+### Other changes
+
+- Use structured logging for cell executions and results in the notebook runner rather than logging messages with added embedded newlines.
+
 <a id='changelog-19.0.0'></a>
 ## 19.0.0 (2026-02-10)
 

@@ -10,7 +10,7 @@ help:
 .PHONY: init
 init:
 	uv sync --frozen --all-groups
-	uv run pre-commit install
+	uv run prek install
 
 # This is defined as a Makefile target instead of only a tox command because
 # if the command fails we want to cat output.txt, which contains the
@@ -32,5 +32,5 @@ update: update-deps init
 .PHONY: update-deps
 update-deps:
 	uv lock --upgrade
-	uv run --only-group=lint pre-commit autoupdate
+	uv run --only-group=lint prek autoupdate
 	./scripts/update-uv-version.sh
