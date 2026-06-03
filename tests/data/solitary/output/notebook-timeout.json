@@ -1,5 +1,5 @@
 {
-  "error": "test-notebook.ipynb: Timeout executing cell",
+  "error": "bot-mobu-solitary: cell 44ada997 of notebook test-notebook.ipynb timed out",
   "log": "<ANY>",
   "success": false
 }

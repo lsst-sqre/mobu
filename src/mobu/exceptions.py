@@ -22,7 +22,6 @@ __all__ = [
     "MusterError",
     "MusterWebError",
     "NotRetainingLogsError",
-    "NotebookCellExecutionError",
     "NotebookRepositoryError",
     "RepositoryConfigError",
     "SIAClientError",
@@ -171,10 +170,6 @@ class JupyterDeleteTimeoutError(Exception):
 
 class JupyterSpawnError(Exception):
     """The Jupyter Lab pod failed to spawn."""
-
-
-class NotebookCellExecutionError(Exception):
-    """Error when executing a notebook cell."""
 
 
 class ServiceDiscoveryError(Exception):

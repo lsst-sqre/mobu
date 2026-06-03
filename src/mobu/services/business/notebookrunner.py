@@ -15,14 +15,8 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Any, override
 
-import sentry_sdk
 import yaml
-from rubin.nublado.client import (
-    CodeContext,
-    JupyterLabSession,
-    NubladoExecutionError,
-    NubladoExecutionTimeoutError,
-)
+from rubin.nublado.client import CodeContext, JupyterLabSession
 from rubin.repertoire import DiscoveryClient
 from safir.sentry import duration
 from sentry_sdk import set_context, set_tag
@@ -32,11 +26,7 @@ from structlog.stdlib import BoundLogger
 from ...constants import GITHUB_REPO_CONFIG_PATH
 from ...dependencies.config import config_dependency
 from ...events import Events, NotebookCellExecution, NotebookExecution
-from ...exceptions import (
-    NotebookCellExecutionError,
-    NotebookRepositoryError,
-    RepositoryConfigError,
-)
+from ...exceptions import NotebookRepositoryError, RepositoryConfigError
 from ...models.business.notebookrunner import (
     NotebookRunnerData,
     NotebookRunnerOptions,
@@ -391,25 +381,13 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
                 reply = await session.run_python(
                     code, context=context, timeout=timeout
                 )
-            except Exception as e:
-                if isinstance(e, NubladoExecutionError) and e.error:
-                    sentry_sdk.get_current_scope().add_attachment(
-                        filename="nublado_error.txt",
-                        bytes=self.remove_ansi_escapes(e.error).encode(),
-                    )
+            except Exception:
                 await self._publish_cell_event(
                     cell_id=cell_id,
                     duration=duration(span),
                     success=False,
                 )
-
-                notebook = getattr(context, "notebook", "<unknown notebook")
-                if isinstance(e, NubladoExecutionTimeoutError):
-                    msg = f"{notebook}: Timeout executing cell"
-                else:
-                    msg = f"{notebook}: Error executing cell"
-                raise NotebookCellExecutionError(msg) from e
-
+                raise
             self._running_code = None
         self.logger.info("Cell result", result=reply)
         await self._publish_cell_event(

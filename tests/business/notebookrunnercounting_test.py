@@ -785,8 +785,8 @@ async def test_alert(
     assert sentry_error["exception"]["values"] == AnyContains(
         AnyWithEntries(
             {
-                "type": "NotebookCellExecutionError",
-                "value": ("exception.ipynb: Error executing cell"),
+                "type": "NubladoExecutionError",
+                "value": "Code execution failed",
             }
         )
     )
@@ -799,6 +799,7 @@ async def test_alert(
         "node": "Node1",
         "notebook": "exception.ipynb",
         "phase": "execute_cell",
+        "status": "error",
     }
     assert sentry_error["user"] == {"username": "bot-mobu-testuser1"}
 

@@ -5,6 +5,10 @@
       "cell_number": "#2",
       "code": "print(\"This is another test\")"
     },
+    "info": {
+      "failed_at": "<ANY>",
+      "started_at": "<ANY>"
+    },
     "notebook_info": {
       "iteration": "1/1",
       "notebook": "test-notebook.ipynb"
