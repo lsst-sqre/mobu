@@ -710,9 +710,6 @@ async def test_alert(
     # Set up git repo
     repo_hash = await setup_git_repo(repo_path)
 
-    # The bad code run by the exception test.
-    bad_code = 'foo = {"bar": "baz"}\nfoo["nothing"]'
-
     # Start a monkey.
     r = await client.put(
         "/mobu/flocks",
@@ -749,7 +746,6 @@ async def test_alert(
             "name": "NotebookRunnerCounting",
             "notebook": "exception.ipynb",
             "refreshing": False,
-            "running_code": bad_code,
             "success_count": 0,
         },
         "state": "ERROR",

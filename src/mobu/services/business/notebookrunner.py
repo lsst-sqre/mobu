@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, override
 
 import yaml
-from rubin.nublado.client import CodeContext, JupyterLabSession
+from rubin.nublado.client import CodeContext, JupyterLabSession, NubladoError
 from rubin.repertoire import DiscoveryClient
 from safir.sentry import duration
 from sentry_sdk import set_context, set_tag
@@ -381,14 +381,24 @@ class NotebookRunner[T: NotebookRunnerOptions](ABC, NubladoBusiness):
                 reply = await session.run_python(
                     code, context=context, timeout=timeout
                 )
-            except Exception:
+            except Exception as e:
                 await self._publish_cell_event(
                     cell_id=cell_id,
                     duration=duration(span),
                     success=False,
                 )
-                raise
-            self._running_code = None
+                if isinstance(e, NubladoError):
+                    # Errors from the Nublado client library are already
+                    # Sentry-aware and properly annotated.
+                    raise
+                raise NubladoError(
+                    f"{type(e).__name__}: {e!s}",
+                    self.user.username,
+                    context=context,
+                    started_at=span.timestamp,
+                ) from e
+            finally:
+                self._running_code = None
         self.logger.info("Cell result", result=reply)
         await self._publish_cell_event(
             cell_id=cell_id, duration=duration(span), success=True
