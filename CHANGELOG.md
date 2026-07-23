@@ -6,6 +6,13 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-19.1.1'></a>
+## 19.1.1 (2026-07-23)
+
+### Bug fixes
+
+- The GitHub refresh webhook handler now correctly matches branch names with slashes in them.
+
 <a id='changelog-19.1.0'></a>
 ## 19.1.0 (2026-06-03)
 
