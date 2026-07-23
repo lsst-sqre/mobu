@@ -52,7 +52,7 @@ async def post_webhook(
 
     owner = event.data.get("organization", {}).get("login")
     if owner not in config.github_ci_app.accepted_github_orgs:
-        context.logger.debug(
+        context.logger.info(
             "Ignoring GitHub event for unaccepted org",
             owner=owner,
             accepted_orgs=config.github_ci_app.accepted_github_orgs,
@@ -69,7 +69,7 @@ async def post_webhook(
     # identifies the webhook request in GitHub's API and UI for
     # diagnostics
     context.rebind_logger(github_app="ci", github_delivery=event.delivery_id)
-    context.logger.debug("Received GitHub webhook", payload=event.data)
+    context.logger.info("Received GitHub webhook", payload=event.data)
     # Give GitHub some time to reach internal consistency.
     await asyncio.sleep(GITHUB_WEBHOOK_WAIT_SECONDS)
     await gidgethub_router.dispatch(

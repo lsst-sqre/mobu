@@ -1,6 +1,7 @@
 """Github webhook handlers for CI app."""
 
 import asyncio
+import re
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -15,6 +16,9 @@ from ..dependencies.config import config_dependency
 from ..dependencies.context import RequestContext, anonymous_context_dependency
 
 __all__ = ["api_router"]
+
+branch_re = re.compile("^refs/heads/(?P<branch>.*)")
+"""Regular expresion to match if a ref is a branch"""
 
 api_router = APIRouter(route_class=SlackRouteErrorHandler)
 """Registers incoming HTTP GitHub webhook requests"""
@@ -49,7 +53,7 @@ async def post_webhook(
 
     owner = event.data.get("organization", {}).get("login")
     if owner not in config.github_refresh_app.accepted_github_orgs:
-        context.logger.debug(
+        context.logger.info(
             "Ignoring GitHub event for unaccepted org",
             owner=owner,
             accepted_orgs=config.github_refresh_app.accepted_github_orgs,
@@ -68,7 +72,7 @@ async def post_webhook(
     context.rebind_logger(
         github_delivery=event.delivery_id, github_app="refresh"
     )
-    context.logger.debug("Received GitHub webhook", payload=event.data)
+    context.logger.info("Received GitHub webhook", payload=event.data)
     # Give GitHub some time to reach internal consistency.
     await asyncio.sleep(GITHUB_WEBHOOK_WAIT_SECONDS)
     await gidgethub_router.dispatch(event=event, context=context)
@@ -82,18 +86,19 @@ async def handle_push(event: Event, context: RequestContext) -> None:
     url = f"{push_event.repository.html_url}.git"
     context.rebind_logger(ref=ref, url=url)
 
-    prefix, branch = ref.rsplit("/", 1)
-    if prefix != "refs/heads":
-        context.logger.debug(
+    match = re.match(branch_re, ref)
+    if not match:
+        context.logger.info(
             "github webhook ignored: ref is not a branch",
         )
         return
+    branch = match.group("branch")
 
     flocks = context.manager.list_flocks_for_repo(
         repo_url=url, repo_ref=branch
     )
     if not flocks:
-        context.logger.debug(
+        context.logger.info(
             "github webhook ignored: no flocks match repo and branch",
         )
         return

@@ -86,8 +86,9 @@ async def test_unacceptable_org(
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("_no_monkey_business", "_enable_github_refresh_app")
+@pytest.mark.parametrize("ref", ["main", "some-branch", "some/branch"])
 async def test_handle_webhook(
-    client: AsyncClient, anon_client: AsyncClient
+    client: AsyncClient, anon_client: AsyncClient, ref: str
 ) -> None:
     configs = [
         {
@@ -115,6 +116,21 @@ async def test_handle_webhook(
                 "options": {
                     "repo_url": "https://github.com/lsst-sqre/some-repo.git",
                     "repo_ref": "some-branch",
+                },
+            },
+        },
+        {
+            "name": "test-notebook-branch-slash",
+            "count": 1,
+            "user_spec": {
+                "username_prefix": "bot-mobu-testuser-notebook-branch-slash"
+            },
+            "scopes": ["exec:notebook"],
+            "business": {
+                "type": "NotebookRunnerCounting",
+                "options": {
+                    "repo_url": "https://github.com/lsst-sqre/some-repo.git",
+                    "repo_ref": "some/branch",
                 },
             },
         },
@@ -151,7 +167,7 @@ async def test_handle_webhook(
     request = webhook_request(
         org="lsst-sqre",
         repo="some-repo",
-        ref="refs/heads/main",
+        ref=f"refs/heads/{ref}",
     )
     response = await anon_client.post(
         "/mobu/github/refresh/webhook",
@@ -165,13 +181,26 @@ async def test_handle_webhook(
     r = await client.get(
         "/mobu/flocks/test-notebook/monkeys/bot-mobu-testuser-notebook1"
     )
-    assert r.json()["business"]["refreshing"] is True
+    if ref == "main":
+        assert r.json()["business"]["refreshing"] is True
+    else:
+        assert r.json()["business"]["refreshing"] is False
 
-    # The other businesses should not be refreshing
     r = await client.get(
         "/mobu/flocks/test-notebook-branch/monkeys/bot-mobu-testuser-notebook-branch1"
     )
-    assert r.json()["business"]["refreshing"] is False
+    if ref == "some-branch":
+        assert r.json()["business"]["refreshing"] is True
+    else:
+        assert r.json()["business"]["refreshing"] is False
+
+    r = await client.get(
+        "/mobu/flocks/test-notebook-branch-slash/monkeys/bot-mobu-testuser-notebook-branch-slash1"
+    )
+    if ref == "some/branch":
+        assert r.json()["business"]["refreshing"] is True
+    else:
+        assert r.json()["business"]["refreshing"] is False
 
     r = await client.get(
         "/mobu/flocks/test-other-notebook/monkeys/bot-mobu-testuser-other-notebook1"
