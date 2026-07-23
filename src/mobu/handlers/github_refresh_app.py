@@ -1,6 +1,7 @@
 """Github webhook handlers for CI app."""
 
 import asyncio
+import re
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -15,6 +16,9 @@ from ..dependencies.config import config_dependency
 from ..dependencies.context import RequestContext, anonymous_context_dependency
 
 __all__ = ["api_router"]
+
+branch_re = re.compile("^refs/heads/(?P<branch>.*)")
+"""Regular expresion to match if a ref is a branch"""
 
 api_router = APIRouter(route_class=SlackRouteErrorHandler)
 """Registers incoming HTTP GitHub webhook requests"""
@@ -82,12 +86,13 @@ async def handle_push(event: Event, context: RequestContext) -> None:
     url = f"{push_event.repository.html_url}.git"
     context.rebind_logger(ref=ref, url=url)
 
-    prefix, branch = ref.rsplit("/", 1)
-    if prefix != "refs/heads":
+    match = re.match(branch_re, ref)
+    if not match:
         context.logger.info(
             "github webhook ignored: ref is not a branch",
         )
         return
+    branch = match.group("branch")
 
     flocks = context.manager.list_flocks_for_repo(
         repo_url=url, repo_ref=branch
