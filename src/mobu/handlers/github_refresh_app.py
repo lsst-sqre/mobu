@@ -49,7 +49,7 @@ async def post_webhook(
 
     owner = event.data.get("organization", {}).get("login")
     if owner not in config.github_refresh_app.accepted_github_orgs:
-        context.logger.debug(
+        context.logger.info(
             "Ignoring GitHub event for unaccepted org",
             owner=owner,
             accepted_orgs=config.github_refresh_app.accepted_github_orgs,
@@ -68,7 +68,7 @@ async def post_webhook(
     context.rebind_logger(
         github_delivery=event.delivery_id, github_app="refresh"
     )
-    context.logger.debug("Received GitHub webhook", payload=event.data)
+    context.logger.info("Received GitHub webhook", payload=event.data)
     # Give GitHub some time to reach internal consistency.
     await asyncio.sleep(GITHUB_WEBHOOK_WAIT_SECONDS)
     await gidgethub_router.dispatch(event=event, context=context)
@@ -84,7 +84,7 @@ async def handle_push(event: Event, context: RequestContext) -> None:
 
     prefix, branch = ref.rsplit("/", 1)
     if prefix != "refs/heads":
-        context.logger.debug(
+        context.logger.info(
             "github webhook ignored: ref is not a branch",
         )
         return
@@ -93,7 +93,7 @@ async def handle_push(event: Event, context: RequestContext) -> None:
         repo_url=url, repo_ref=branch
     )
     if not flocks:
-        context.logger.debug(
+        context.logger.info(
             "github webhook ignored: no flocks match repo and branch",
         )
         return
