@@ -79,6 +79,7 @@ class CiManager:
 
     def __init__(
         self,
+        *,
         github_app_id: int,
         github_private_key: str,
         scopes: list[str],

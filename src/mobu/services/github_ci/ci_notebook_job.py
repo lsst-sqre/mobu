@@ -45,6 +45,7 @@ class CiNotebookJob:
 
     def __init__(
         self,
+        *,
         github_storage: GitHubStorage,
         check_run: CheckRun,
         discovery_client: DiscoveryClient,
@@ -83,13 +84,14 @@ class CiNotebookJob:
             return
 
         # Run notebooks using a Solitary runner
-        summary = "Running these notebooks via Mobu:\n" + "\n".join(
-            [f"* {notebook}" for notebook in notebooks]
-            + [
-                "Note that not all of these may run. Some may be exluded based"
-                " on config in the repo:"
+        summary = (
+            "Running these notebooks via Mobu:\n"
+            + "\n".join([f"* {notebook}" for notebook in notebooks])
+            + (
+                "\nNote that not all of these may run. Some may be exluded"
+                " based on config in the repo:"
                 " https://mobu.lsst.io/user-guide/in-repo-config.html"
-            ]
+            )
         )
         await self.check_run.start(summary=summary)
         solitary_config = SolitaryConfig(
