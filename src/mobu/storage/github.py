@@ -102,6 +102,7 @@ class GitHubStorage:
     @classmethod
     async def create(
         cls,
+        *,
         factory: GitHubAppClientFactory,
         installation_id: int,
         repo_owner: str,
