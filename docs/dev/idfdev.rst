@@ -4,8 +4,7 @@ Testing against ``idfdev``
 
 You can run mobu locally while having all of the actual business run against services in ``idefdev`` (or any other environment).
 
-
-#. Install the `1Password CLI <https://developer.1password.com/docs/cli/>`__.
+#. Install the `1Password CLI <https://www.1password.dev/cli>`__.
 #. Generate a personal `idfdev gafaelfawr token <https://data-dev.lsst.cloud/settings/tokens/>`__ generated with an ``admin:token`` scope.
 #. Put this token in a ``data-dev.lsst.cloud personal token`` entry in your personal 1Password vault.
 #. Run mobu locally with something like this shell script:

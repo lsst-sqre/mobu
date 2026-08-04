@@ -57,6 +57,9 @@ ignore = [
     '^https://data\.lsst\.cloud/mobu',
     '^https://github\.com/organizations/lsst-sqre/settings',
     '^https://github\.com/.*/issues/new$',
+    # StackOverflow no longer supports link checking (probably due to LLM bots)
+    '^https://stackoverflow.com/questions/14693701/',
+    '^https://stackoverflow.com/questions/31900244/',
 ]
 
 [sphinx.redirects]
