@@ -8,7 +8,7 @@ As a result, some things are different about this Sentry integration.
 Scopes and transactions
 =======================
 
-`Isolation scopes <https://docs.sentry.io/platforms/python/enriching-events/scopes/>`_ and `transactions <https://docs.sentry.io/platforms/python/tracing/instrumentation/custom-instrumentation/#add-a-transaction>`_ are created manually.
+`Isolation scopes <https://docs.sentry.io/platforms/python/enriching-events/scopes/>`_ and `transactions <https://docs.sentry.io/platforms/python/tracing/instrumentation/custom-instrumentation/#add-a-transactionservice-span>`_ are created manually.
 All tags and contexts are set on the isolation scope, and any exceptions are manually captured in the monkey runner loop.
 
 * There is one isolation scope for every execution of a business's ``run`` method.
