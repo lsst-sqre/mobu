@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from enum import StrEnum
+from http import HTTPStatus
 from pathlib import Path
 from typing import Self
 
+from gidgethub import HTTPException
 from gidgethub.httpx import GitHubAPI
 from pydantic import (
     AwareDatetime,
@@ -73,8 +76,10 @@ class GitHubStorage:
 
     Parameters
     ----------
-    client
-        An auth'd GitHub API client.
+    factory
+        A GitHub client factory with credentials.
+    installation_id
+        The ID of an installed GitHub app.
     repo_owner
         A GitHub organization.
     repo_name
@@ -85,13 +90,17 @@ class GitHubStorage:
 
     def __init__(
         self,
-        client: GitHubAPI,
+        *,
+        factory: GitHubAppClientFactory,
+        installation_id: int,
         repo_owner: str,
         repo_name: str,
         ref: str,
         pull_number: int,
     ) -> None:
-        self.client = client
+        self._factory = factory
+        self._installation_id = installation_id
+        self.client: GitHubAPI | None = None
         self.repo_owner = repo_owner
         self.repo_name = repo_name
         self.ref = ref
@@ -127,16 +136,39 @@ class GitHubStorage:
         pull_number
             The number that identifies a pull request.
         """
-        client = await factory.create_installation_client(
+        instance = cls(
+            factory=factory,
             installation_id=installation_id,
-        )
-        return cls(
-            client=client,
             repo_name=repo_name,
             repo_owner=repo_owner,
             ref=ref,
             pull_number=pull_number,
         )
+        await instance.refresh_client()
+        return instance
+
+    async def refresh_client(self) -> GitHubAPI:
+        """Refresh the installation access token & client."""
+        self.client = await self._factory.create_installation_client(
+            installation_id=self._installation_id,
+        )
+        return self.client
+
+    async def with_retry[T](
+        self, make_request: Callable[[GitHubAPI], Awaitable[T]]
+    ) -> T:
+        """Make a GitHub API request, retrying once on a stale token."""
+        if self.client is None:
+            raise RuntimeError(
+                "GitHubStorage.client not yet set. Call create() first"
+            )
+        try:
+            return await make_request(self.client)
+        except HTTPException as e:
+            if e.status_code != HTTPStatus.UNAUTHORIZED:
+                raise
+            client = await self.refresh_client()
+            return await make_request(client)
 
     async def get_pr_files(self) -> list[Path]:
         """Get a list of all changed or added files in the pull request.
@@ -147,10 +179,16 @@ class GitHubStorage:
             List of paths relative to the repo root.
         """
         path = f"{self._api_path}/pulls/{self._pull_number}/files"
-        files = [
-            _PullRequestFileResponse.model_validate(info)
-            async for info in self.client.getiter(path)
-        ]
+
+        async def _fetch(
+            client: GitHubAPI,
+        ) -> list[_PullRequestFileResponse]:
+            return [
+                _PullRequestFileResponse.model_validate(info)
+                async for info in client.getiter(path)
+            ]
+
+        files = await self.with_retry(_fetch)
         return [
             file.filename
             for file in files
@@ -197,7 +235,9 @@ class GitHubStorage:
             ),
         ).model_dump(exclude_unset=True, exclude_none=True)
 
-        res = await self.client.post(path, data=data)
+        res = await self.with_retry(
+            lambda client: client.post(path, data=data)
+        )
         check_run = _CheckRunResponse.model_validate(res)
 
         return CheckRun(
@@ -234,7 +274,7 @@ class CheckRun:
         summary: str,
         details: str | None = None,
     ) -> None:
-        self._client = github_storage.client
+        self._github_storage = github_storage
         self._ref = github_storage.ref
         self._name = name
         self._summary = summary
@@ -314,7 +354,6 @@ class CheckRun:
             ),
         )
         data = request.model_dump(exclude_unset=True, exclude_none=True)
-        await self._client.patch(
-            self._api_path,
-            data=data,
+        await self._github_storage.with_retry(
+            lambda client: client.patch(self._api_path, data=data)
         )
