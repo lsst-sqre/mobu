@@ -7,6 +7,7 @@ from asyncio import Queue
 from dataclasses import dataclass, field
 from typing import Literal, TypeAlias
 
+import sentry_sdk
 from aiojobs import Job, Scheduler
 from httpx import AsyncClient
 from rubin.repertoire import DiscoveryClient
@@ -341,7 +342,31 @@ class Worker:
                 f"Processing job: {job}, with user: {self._user}"
             )
 
-            await job.run(user=self._user, scopes=self._scopes)
+            try:
+                await job.run(user=self._user, scopes=self._scopes)
+            except Exception:
+                # An unhandled exception here (stale GitHub
+                # credential for example) should not propagate.
+                # We log it, report it to Sentry, tell GitHub the check failed
+                # and keep going.
+                self._logger.exception(
+                    f"CI job failed unexpectedly: {job}, with user:"
+                    f" {self._user}"
+                )
+                sentry_sdk.capture_exception()
+                try:
+                    await job.check_run.fail(
+                        error=(
+                            "Mobu encountered an unexpected error while"
+                            " running this check. Try re-running it by pushing"
+                            " an empty commit to your branch with: git"
+                            ' commit --allow-empty -m "Empty commit"'
+                        )
+                    )
+                except Exception:
+                    self._logger.exception(
+                        "Failed to report unexpected CI job failure to GitHub"
+                    )
 
             lifecycle.processed.set()
             self.current_job = None

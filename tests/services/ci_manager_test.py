@@ -27,7 +27,9 @@ from tests.support.constants import TEST_GITHUB_CI_APP_PRIVATE_KEY
 from ..support.github import GitHubMocker, MockJob
 
 
-def create_ci_manager(events: Events) -> CiManager:
+def create_ci_manager(
+    events: Events, users: list[User] | None = None
+) -> CiManager:
     """Create a CiManger with appropriately mocked dependencies."""
     config = config_dependency.config
     scopes = [
@@ -42,6 +44,12 @@ def create_ci_manager(events: Events) -> CiManager:
     gafaelfawr = GafaelfawrStorage(config, client, logger)
     repo_manager = RepoManager(logger=logger)
 
+    if users is None:
+        users = [
+            User(username="bot-mobu-user1"),
+            User(username="bot-mobu-user2"),
+        ]
+
     return CiManager(
         discovery_client=DiscoveryClient(),
         http_client=AsyncClient(),
@@ -52,10 +60,7 @@ def create_ci_manager(events: Events) -> CiManager:
         scopes=scopes,
         github_app_id=123,
         github_private_key=TEST_GITHUB_CI_APP_PRIVATE_KEY,
-        users=[
-            User(username="bot-mobu-user1"),
-            User(username="bot-mobu-user2"),
-        ],
+        users=users,
     )
 
 
@@ -133,6 +138,50 @@ async def test_no_changed_files(
         mocker=mocker,
         events=events,
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("_enable_github_ci_app")
+async def test_worker_survives_unhandled_exception(
+    github_mocker: GitHubMocker,
+    mocker: MockerFixture,
+    events: Events,
+) -> None:
+    failing_job = github_mocker.job_raises_unhandled_exception(id="ref1")
+    good_job = github_mocker.job_processed_completely(
+        id="ref2", should_fail=False
+    )
+
+    mocker.patch.object(
+        Business, "run_once", new=github_mocker.get_mock_run_function()
+    )
+
+    # Single worker so that the second job can only be processed if the
+    # same worker that handled the failing job survives.
+    ci_manager = create_ci_manager(
+        events, users=[User(username="bot-mobu-user1")]
+    )
+    await ci_manager.start()
+
+    failing_lifecycle = await ci_manager.enqueue(
+        installation_id=failing_job.installation_id,
+        repo_owner=failing_job.repo_owner,
+        repo_name=failing_job.repo_name,
+        ref=failing_job.ref,
+        pull_number=failing_job.pull_number,
+    )
+    await asyncio.wait_for(failing_lifecycle.processed.wait(), timeout=5)
+
+    good_lifecycle = await ci_manager.enqueue(
+        installation_id=good_job.installation_id,
+        repo_owner=good_job.repo_owner,
+        repo_name=good_job.repo_name,
+        ref=good_job.ref,
+        pull_number=good_job.pull_number,
+    )
+
+    await asyncio.wait_for(good_lifecycle.processed.wait(), timeout=5)
+    await ci_manager.aclose()
 
 
 @pytest.mark.asyncio

@@ -126,6 +126,38 @@ class GitHubMocker:
 
         return job
 
+    def job_raises_unhandled_exception(self, id: str) -> MockJob:
+        """Mock a job whose final check-run update fails."""
+        job = MockJob(id=id)
+        self.jobs.append(job)
+
+        self._mock_get_changed_files(job)
+
+        # Create a check run with a `queued` status
+        self.router.post(
+            path=f"{job.path_prefix}/check-runs",
+        ).respond(json={"id": "1"})
+
+        # Eventually mark the check run 'in progress'
+        self.router.patch(
+            path=f"{job.path_prefix}/check-runs/1", json__status="in_progress"
+        )
+
+        # The call that would normally mark the check run successful
+        # fails (invalid credentials).
+        self.router.patch(
+            path=f"{job.path_prefix}/check-runs/1",
+            json__conclusion="success",
+        ).respond(401, json={"message": "Bad credentials"})
+
+        # The worker then reports the job as failed.
+        self.router.patch(
+            path=f"{job.path_prefix}/check-runs/1",
+            json__conclusion="failure",
+        )
+
+        return job
+
     def job_processed_while_shutting_down(
         self, id: str, *, should_fail: bool
     ) -> MockJob:
