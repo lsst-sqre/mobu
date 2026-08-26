@@ -358,7 +358,9 @@ class Worker:
                     await job.check_run.fail(
                         error=(
                             "Mobu encountered an unexpected error while"
-                            " running this check. Try re-running it."
+                            " running this check. Try re-running it by pushing"
+                            " an empty commit to your branch with: git"
+                            ' commit --allow-empty -m "Empty commit"'
                         )
                     )
                 except Exception:
