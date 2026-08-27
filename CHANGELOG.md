@@ -6,6 +6,15 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-19.1.2'></a>
+
+## 19.1.2 (2026-08-26)
+
+### Bug fixes
+
+- Catch Github CI worker exception and handle gracefully without crashing the loop
+- Retry-once on Github API calls and attempt to mint a new token to catch cases where the token expired during run
+
 <a id='changelog-19.1.1'></a>
 ## 19.1.1 (2026-07-23)
 
