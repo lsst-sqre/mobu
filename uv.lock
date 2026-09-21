@@ -1369,12 +1369,12 @@ dev = [
     { name = "rubin-repertoire" },
     { name = "scriv" },
     { name = "starlette" },
+    { name = "uv" },
     { name = "websockets" },
 ]
 lint = [
     { name = "prek" },
     { name = "ruff" },
-    { name = "uv" },
 ]
 tox = [
     { name = "tox" },
@@ -1423,12 +1423,12 @@ dev = [
     { name = "rubin-repertoire", specifier = ">=0.6" },
     { name = "scriv", extras = ["toml"] },
     { name = "starlette" },
+    { name = "uv" },
     { name = "websockets" },
 ]
 lint = [
     { name = "prek" },
     { name = "ruff", specifier = ">=0.12" },
-    { name = "uv" },
 ]
 tox = [
     { name = "tox", specifier = ">=4.24" },
