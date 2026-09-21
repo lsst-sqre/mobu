@@ -137,6 +137,9 @@ jobs:
         run: uv run --only-group=tox tox run -e docs-linkcheck
 
   build:
+    concurrency:
+      group: docker
+      queue: max
     needs: [test]
     secrets: inherit
     uses: lsst-sqre/multiplatform-build-and-push/.github/workflows/build.yaml@v4
