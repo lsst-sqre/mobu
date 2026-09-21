@@ -68,10 +68,13 @@ def create_app(
         )
         if config.log_profile == Profile.production:
             configure_uvicorn_logging(config.log_level)
+        logger = structlog.get_logger("mobu")
+        logger.info(
+            "Initialized Sentry", environment=config.sentry_environment
+        )
 
         # Enable Slack alerting for uncaught exceptions.
         if config.slack_alerts and config.alert_hook:
-            logger = structlog.get_logger("mobu")
             SlackRouteErrorHandler.initialize(
                 config.alert_hook, "mobu", logger
             )

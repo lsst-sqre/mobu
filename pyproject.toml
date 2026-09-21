@@ -58,7 +58,6 @@ dev = [
     "anys",
     "asgi-lifespan",
     "coverage[toml]",
-    "documenteer[guide]>=2.3.0",
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
@@ -66,19 +65,21 @@ dev = [
     "pytest-sugar",
     "respx",
     "rubin-repertoire>=0.6",
-    "scriv[toml]",
     "starlette",
     "websockets",
+    "uv",
 ]
-
+docs = [
+    "documenteer[guide]>=2.3.0",
+    "scriv[toml]",
+]
 lint = [
     "prek",
     "ruff>=0.12",
-    "uv",
 ]
-tox = [
-    "tox>=4.24",
-    "tox-uv-bare>=1.25",
+nox = [
+    "nox",
+    "nox-uv",
 ]
 typing = [
     "mypy>=1.15",
@@ -95,7 +96,7 @@ branch = true
 source = ["mobu"]
 
 [tool.coverage.paths]
-source = ["src", ".tox/*/site-packages"]
+source = ["src"]
 
 [tool.coverage.report]
 show_missing = true
@@ -145,10 +146,7 @@ asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "strict"
 filterwarnings = [
     # dataclases-avroschema hasn't been fully updated for Python 3.14
-    "ignore:.*Core Pydantic V1 functionality.*:UserWarning",
     "ignore:.*'_UnionGenericAlias' is deprecated.*:DeprecationWarning",
-    # Bug in Sentry with Python 3.14 and later
-    "ignore:.*asyncio.iscoroutinefunction' is deprecated.*:DeprecationWarning",
 ]
 # The python_files setting is not for test detection (pytest will pick up any
 # test files named *_test.py without this setting) but to enable special

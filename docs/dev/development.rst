@@ -12,7 +12,7 @@ mobu is an open source package, meaning that you can contribute to mobu itself, 
 Since mobu is intended for internal use by Rubin Observatory, community contributions can only be accepted if they align with Rubin Observatory's aims.
 For that reason, it's a good idea to propose changes with a new `GitHub issue`_ before investing time in making a pull request.
 
-mobu is developed by the LSST SQuaRE team.
+mobu is developed by the Rubin Observatory SQuaRE team.
 
 .. _GitHub issue: https://github.com/lsst-sqre/mobu/issues/new
 
@@ -37,22 +37,21 @@ To develop mobu, create a virtual environment with :command:`uv venv` and then r
 
    git clone https://github.com/lsst-sqre/mobu.git
    cd mobu
-   uv venv
    make init
 
 This init step does three things:
 
-1. Installs mobu in a virtualenv in the :file:`.venv` directory, including the dependency groups for local development.
-2. Installs prek_, tox_, and the necessary tox plugins.
-3. Installs the pre-commit hooks.
+1. Creates a Python virtual environment in the :file:`.venv` subdirectory with the packages needed to do mobu development installed.
+2. Installs mobu in an editable mode in that virtual environment.
+3. Installs the pre-commit hooks (run by prek_).
 
-Finally, you can optionally enter the mobu development virtualenv with:
+You can activate the mobu virtual environment if you wish with:
 
-.. prompt:: bash
+.. code-block:: sh
 
    source .venv/bin/activate
 
-This is optional; you do not have to activate the virtualenv to do development.
+This is optional; you do not have to activate the virtual environment to do development.
 However, if you do, you can omit :command:`uv run` from the start of all commands described below.
 Also, editors with Python integration, such as VSCode, may work more smoothly if you activate the virtualenv before starting them.
 
@@ -70,50 +69,53 @@ blacken-docs
 ruff
     Lint Python code and attempt to automatically fix some problems.
 
-uv-lock
-    Update the :file:`uv.lock` file if dependencies in :file:`pyproject.toml` have changed.
-
 When these hooks fail, your Git commit will be aborted.
 To proceed, stage the new modifications and proceed with your Git commit.
 
 If you have to commit changes that fail pre-commit checks, pass the ``--no-verify`` flag to :command:`git commit`.
 This will have to be temporary, though, since the change will fail GitHub CI checks.
 
-Despite the name, Nublado uses prek_ to run pre-commit hooks rather than the package named pre-commit.
+Despite the name, mobu uses prek_ to run pre-commit hooks rather than the package named pre-commit.
 
 .. _dev-run-tests:
 
 Running tests
 =============
 
-To test mobu, run tox_:
+mobu uses nox_ as its automation tool for testing.
+
+To run all mobu tests, run:
+
+.. code-block:: sh
+
+   uv run nox
+
+This will run several nox sessions to lint and type-check the code, run the test suite, and build the documentation.
+
+To list the available sessions, run:
 
 .. prompt:: bash
 
-   uv run tox run
+   uv run nox --list
 
-To see a listing of test environments, run:
-
-.. prompt:: bash
-
-   uv run tox list
-
-To run a specific test environment, run:
-
-.. prompt:: bash
-
-   uv run tox -e <environment>
-
-For example, ``uv run tox -e typing`` will only run mypy and not the rest of the tests.
-
-To run a specific test or list of tests, you can add test file names (and any other pytest_ options) after ``--`` when executing the ``py`` tox environment.
+To run a specific test or list of tests, you can add test file names (and any other pytest_ options) after ``--`` when executing the ``test`` nox session.
 For example:
 
 .. prompt:: bash
 
-   uv run tox run -e py -- tests/business/nubladopythonloop_test.py
+   uv run nox -s test -- tests/example_test.py
 
+mobu uses the `Safir test data library <https://safir.lsst.io/user-guide/test-data.html>`__ to manage test data.
 You can run a specific test function by appending two colons and the function name to the end of the file name.
+
+If you change the code in a way that would change test output, run:
+
+.. prompt:: bash
+
+   uv run nox -s test -- --update-test-data
+
+This will update any test output files to match the current output of the test suite.
+Review any changes with :command:`git diff` and ensure they match the expected changes.
 
 Updating dependencies
 =====================
@@ -123,18 +125,21 @@ Runtime dependencies are configured in ``project.dependencies``, and development
 The following dependency groups are used:
 
 dev
-    Dependencies required to run the test suite, not including the dependencies required to run tox itself.
+    Dependencies required to run the test suite, not including the dependencies required to run nox itself.
+
+docs
+    Dependencies required to build the documentation.
 
 lint
     Dependencies required to run prek_ and to lint the code base.
 
-tox
-    Dependencies required to run tox_.
+nox
+    Dependencies required to run nox_.
 
 typing
     Dependencies required to run mypy_
 
-These dependency groups are used by the tox configuration in :file:`tox.ini` to install the appropriate dependencies based on the tox action.
+These dependency groups are used by nox to install the appropriate dependencies based on the nox session.
 The development virtualenv in :file:`.venv` will have all of these dependency groups installed so the developer can freely use commands such as :command:`ruff` and :command:`mypy`.
 
 A frozen version of all of these dependencies is managed by uv_ in the file :file:`uv.lock`.
@@ -174,15 +179,26 @@ Documentation is built with Sphinx_:
 
 .. prompt:: bash
 
-   uv run tox run -e docs
+   uv run nox -s docs
 
 The build documentation is located in the :file:`docs/_build/html` directory.
+
+Additional dependencies required for the documentation build should be added to the ``docs`` dependency group in :file:`pyproject.toml`.
+
+Documentation builds are incremental, and generate and use cached descriptions of the internal Python APIs.
+If you see errors in building the Python API documentation or have problems with changes to the documentation (particularly diagrams) not showing up, try a clean documentation build with:
+
+.. prompt:: bash
+
+   uv run nox -s docs-clean
+
+This will be slower, but it will ensure that the documentation build doesn't rely on any cached data.
 
 To check the documentation for broken links, run:
 
 .. prompt:: bash
 
-   uv run tox run -e docs-linkcheck
+   uv run nox -s docs-linkcheck
 
 .. _dev-change-log:
 
@@ -203,10 +219,17 @@ Change log entries use the following sections:
 - **Bug fixes**
 - **Other changes** (for minor, patch-level changes that are not bug fixes, such as logging formatting changes or updates to the documentation)
 
+The change log entries should be written in imperative tense and describe to the user the change in behavior or the impact on the user at a high level.
+Changes that are not visible to the user, including minor documentation changes, should not have a change log fragment.
+Technical descriptions of how the change was implemented belong in commit messages, not change log entries.
+
 Versioning assumes that mobu is installed via Phalanx, so changes to its internal configuration file do not count as backward-incompatible chnages unless they require changes to per-environment Helm :file:`values-{environment}.yaml` files.
 
 Do not include a change log entry solely for updating pinned dependencies, without any visible change to mobu's behavior.
 Every release is implicitly assumed to update all pinned dependencies.
+
+Formatting change log entries
+-----------------------------
 
 These entries will eventually be cut and pasted into the release description for the next release, so the Markdown for the change descriptions must be compatible with GitHub's Markdown conventions for the release description.
 Specifically:
@@ -214,7 +237,7 @@ Specifically:
 - Each bullet point should be entirely on one line, even if it contains multiple sentences.
   This is an exception to the normal documentation convention of a newline after each sentence.
   Unfortunately, GitHub interprets those newlines as hard line breaks, so they would result in an ugly release description.
-- Avoid using too much complex markup, such as nested bullet lists, since the formatting in the GitHub release description may not be what you expect and manually editing it is tedious.
+- Be cautious with complex markup, such as nested bullet lists, since the formatting in the GitHub release description may not be what you expect and manually repairing it is tedious.
 
 .. _style-guide:
 
@@ -229,7 +252,7 @@ Code
 - The code formatting follows :pep:`8`, though in practice lean on Ruff to format the code for you.
 
 - Use :pep:`484` type annotations.
-  The :command:`uv run tox run -e typing` command, which runs mypy_, ensures that the project's types are consistent.
+  The :command:`uv run nox -s typing` command, which runs mypy_, ensures that the project's types are consistent.
 
 - mobu uses the Ruff_ linter with most checks enabled.
   Its primary configuration is in :file:`ruff-shared.toml`, which should be an exact copy of the version from the `FastAPI Safir app template <https://github.com/lsst/templates/blob/main/project_templates/fastapi_safir_app/example/ruff-shared.toml>`__.

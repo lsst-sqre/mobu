@@ -6,6 +6,17 @@ Find changes for the upcoming release in the project's [changelog.d](https://git
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-19.1.3'></a>
+## 19.1.3 (2026-09-21)
+
+### Bug fixes
+
+- Prefer environment variables to the mobu YAML configuration file when determining configuration overrides. Otherwise, when mobu is installed by Phalanx using Helm v4, the Sentry environment is overridden to be an empty string.
+
+### Other changes
+
+- mobu now uses [nox](https://nox.thea.codes/en/stable/index.html) as the build system for development and testing instead of tox.
+
 <a id='changelog-19.1.2'></a>
 
 ## 19.1.2 (2026-08-26)

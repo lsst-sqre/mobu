@@ -6,7 +6,7 @@ import tempfile
 import uuid
 from pathlib import Path
 from typing import override
-from urllib.parse import urlparse
+from urllib.parse import urlsplit
 
 from rubin.repertoire import DiscoveryClient
 from safir.sentry import duration
@@ -232,7 +232,7 @@ class GitLFSBusiness(Business):
     async def _add_credentials(self, git: Git) -> None:
         credfile = Path(self._working_dir / ".git_credentials")
         # Point config to credential file.
-        w_url = urlparse(self._lfs_write_url)
+        w_url = urlsplit(self._lfs_write_url)
         await git.config(
             "--local",
             f"credential.{w_url.scheme}://{w_url.netloc}.helper",
