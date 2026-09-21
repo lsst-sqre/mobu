@@ -4,12 +4,16 @@ from __future__ import annotations
 
 from pathlib import Path
 from textwrap import dedent
-from typing import Literal, Self
+from typing import Literal, Self, override
 
 import yaml
 from pydantic import AliasChoices, Field, SecretStr
 from pydantic.alias_generators import to_camel
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
 from safir.logging import LogLevel, Profile
 from safir.metrics import MetricsConfiguration, metrics_configuration_factory
 from safir.pydantic import HumanTimedelta
@@ -19,18 +23,61 @@ from mobu.models.flock import FlockConfig
 from .models.user import User
 
 __all__ = [
+    "CamelCaseSettings",
     "Config",
+    "EnvFirstSettings",
     "GitHubCiAppConfig",
     "GitHubRefreshAppConfig",
 ]
 
 
-class GitHubCiAppConfig(BaseSettings):
-    """Configuration for GitHub CI app functionality if it is enabled."""
+class CamelCaseSettings(BaseSettings):
+    """Base class for Pydantic settings supporting camel-case.
+
+    This base class also forbids all extra attributes. It should be used as
+    the base class (possibly indirectly) for all Gafaelfawr configuration
+    models that support environment variable overrides.
+    """
 
     model_config = SettingsConfigDict(
         alias_generator=to_camel, extra="forbid", validate_by_name=True
     )
+
+
+class EnvFirstSettings(CamelCaseSettings):
+    """Base class for Pydantic settings with environment overrides.
+
+    Classes that inherit from this base class will prioritize environment
+    variables over arguments to the class constructor.
+    """
+
+    @override
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Override the sources of settings.
+
+        Deactivate :file:`.env` and secret file support, since Phalanx doesn't
+        use them. Allow environment variables to override init parameters,
+        since init parameters come from the YAML configuration file and we
+        want environment variables to take precedent.
+
+        Ideally, this code would use Pydantic's ``YamlConfigSettingsSource``,
+        but unfortunately it currently doesn't support overriding the path to
+        the configuration file dynamically, which is required by the test
+        suite.
+        """
+        return (env_settings, init_settings)
+
+
+class GitHubCiAppConfig(EnvFirstSettings):
+    """Configuration for GitHub CI app functionality if it is enabled."""
 
     id: int = Field(
         ...,
@@ -112,12 +159,8 @@ class GitHubCiAppConfig(BaseSettings):
     )
 
 
-class GitHubRefreshAppConfig(BaseSettings):
+class GitHubRefreshAppConfig(EnvFirstSettings):
     """Configuration for GitHub refresh app functionality."""
-
-    model_config = SettingsConfigDict(
-        alias_generator=to_camel, extra="forbid", validate_by_name=True
-    )
 
     webhook_secret: str = Field(
         ...,
@@ -141,12 +184,8 @@ class GitHubRefreshAppConfig(BaseSettings):
     )
 
 
-class Config(BaseSettings):
+class Config(EnvFirstSettings):
     """Configuration for mobu."""
-
-    model_config = SettingsConfigDict(
-        alias_generator=to_camel, extra="forbid", validate_by_name=True
-    )
 
     alert_hook: SecretStr | None = Field(
         None,
