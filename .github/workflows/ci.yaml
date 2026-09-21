@@ -37,8 +37,8 @@ jobs:
         with:
           version: ${{ env.UV_VERSION }}
 
-      - name: Run tox
-        run: uv run --only-group=tox tox run -e lint,typing,py,coverage-report
+      - name: Run nox
+        run: uv run --only-group=nox nox -s lint typing test coverage-report
 
   changes:
     runs-on: ubuntu-latest
@@ -88,8 +88,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y graphviz
 
-      - name: Run tox
-        run: uv run --only-group=tox tox run -e docs
+      - name: Run nox
+        run: uv run --only-group=nox nox -s docs
 
       # Upload docs:
       # - on pushes to main if *any* documentation content might have changed
@@ -133,8 +133,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y graphviz
 
-      - name: Run tox
-        run: uv run --only-group=tox tox run -e docs-linkcheck
+      - name: Run nox
+        run: uv run --only-group=nox nox -s docs-linkcheck
 
   build:
     concurrency:

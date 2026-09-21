@@ -1,7 +1,6 @@
-# This is a separate run of the Python test suite that runs from a schedule,
-# doesn't cache the tox environment, and updates pinned dependencies first.
-# The purpose is to test compatibility with the latest versions of
-# dependencies.
+# This is a separate run of the Python test suite that runs from a schedule
+# and updates pinned dependencies first. The purpose is to test compatibility
+# with the latest versions of dependencies.
 
 name: Periodic CI
 
@@ -32,8 +31,8 @@ jobs:
       - name: Update dependencies
         run: make update-deps
 
-      - name: Run tox
-        run: uv run --only-group=tox tox run -e lint,typing,py
+      - name: Run nox
+        run: uv run --only-group=nox nox -s lint typing test
 
       - name: Report status
         if: failure()
@@ -67,8 +66,8 @@ jobs:
       - name: Update dependencies
         run: make update-deps
 
-      - name: Run tox
-        run: uv run --only-group=tox tox run -e docs,docs-linkcheck
+      - name: Run nox
+        run: uv run --only-group=nox nox -s docs docs-linkcheck
 
       - name: Report status
         if: failure()

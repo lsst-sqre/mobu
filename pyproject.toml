@@ -58,7 +58,6 @@ dev = [
     "anys",
     "asgi-lifespan",
     "coverage[toml]",
-    "documenteer[guide]>=2.3.0",
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
@@ -66,19 +65,21 @@ dev = [
     "pytest-sugar",
     "respx",
     "rubin-repertoire>=0.6",
-    "scriv[toml]",
     "starlette",
     "websockets",
     "uv",
 ]
-
+docs = [
+    "documenteer[guide]>=2.3.0",
+    "scriv[toml]",
+]
 lint = [
     "prek",
     "ruff>=0.12",
 ]
-tox = [
-    "tox>=4.24",
-    "tox-uv-bare>=1.25",
+nox = [
+    "nox",
+    "nox-uv",
 ]
 typing = [
     "mypy>=1.15",
