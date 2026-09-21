@@ -7,7 +7,7 @@ from textwrap import dedent
 from typing import Literal, Self, override
 
 import yaml
-from pydantic import AliasChoices, Field, SecretStr
+from pydantic import AliasChoices, AliasGenerator, Field, SecretStr
 from pydantic.alias_generators import to_camel
 from pydantic_settings import (
     BaseSettings,
@@ -40,7 +40,9 @@ class CamelCaseSettings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        alias_generator=to_camel, extra="forbid", validate_by_name=True
+        alias_generator=AliasGenerator(validation_alias=to_camel),
+        extra="forbid",
+        validate_by_name=True,
     )
 
 
