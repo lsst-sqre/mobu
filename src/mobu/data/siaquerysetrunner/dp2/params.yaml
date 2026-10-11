@@ -1,0 +1,14 @@
+---
+# Limits for randomly selected points for DP2.
+min_ra: 4.40
+max_ra: 5.30
+min_dec: -52.0
+max_dec: -51.8
+
+# Limits for randomly generated cones for DP2.
+min_radius: 0.02
+radius_range: 0.3
+
+# Limits for time parameter for DP2.
+start_time: 60790.0
+end_time: 61048.0
